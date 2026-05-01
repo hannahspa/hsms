@@ -1,0 +1,16 @@
+export const COLORS = {
+  grad:        'linear-gradient(135deg, #C9A96E 0%, #A0714F 45%, #7D5A3C 100%)',
+  bg:          '#FAF7F4',
+  card:        '#FFFFFF',
+  border:      'rgba(160,113,79,0.12)',
+  shadow:      '0 4px 24px rgba(139,94,60,0.10)',
+  text:        '#1A1209',
+  textSub:     '#8B7355',
+  textMute:    '#B8A898',
+  thu:         '#2D7A4F',
+  chi:         '#C0392B',
+  taiSan:      '#1A5276',
+  chuyenKhoan: '#6C3483',
+  gold:        '#C9A96E',
+  primary:     '#A0714F',
+}
