@@ -9,4 +9,13 @@ export const formatDate = (date) => {
   return `${days[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
 }
 
-export const todayISO = () => new Date().toISOString().split('T')[0]
+export const todayISO = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+export const formatDateInput = (isoDate) => {
+  if (!isoDate) return ''
+  const [y, m, dd] = isoDate.split('-')
+  return `${dd}/${m}/${y}`
+}
