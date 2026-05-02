@@ -11,11 +11,6 @@ function formatDateVN(isoStr) {
   return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
 }
 
-function formatDateFull(isoStr) {
-  const d = new Date(isoStr + 'T00:00:00')
-  return `${DAYS[d.getDay()]}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
-}
-
 function getDateRange(tab, currentDate) {
   const now = new Date(currentDate)
   if (tab === 'ngay') {
@@ -48,7 +43,6 @@ function getDateRange(tab, currentDate) {
   }
 }
 
-// ── AREA CHART ───────────────────────────────────────────
 function AreaChart({ data, color }) {
   if (!data || data.length === 0) return null
   const maxVal = Math.max(...data.map(d => d.value), 1)
@@ -83,7 +77,6 @@ export default function PhanTichChiPhi({ onBack }) {
   const [danhMuc, setDanhMuc]         = useState([])
   const [loading, setLoading]         = useState(false)
   const [showPicker, setShowPicker]   = useState(false)
-  const [expandedNhom, setExpandedNhom] = useState(null)
 
   const range = useMemo(() => getDateRange(tab, currentDate), [tab, currentDate])
 
@@ -112,7 +105,6 @@ export default function PhanTichChiPhi({ onBack }) {
     [...new Set(data.map(r => r.ngay))].length, 1
   )) : 0
 
-  // Phân tích theo nhóm + hạng mục
   const phanTichNhom = useMemo(() => {
     const nhomMap = {}
     data.forEach(cp => {
@@ -122,7 +114,7 @@ export default function PhanTichChiPhi({ onBack }) {
       const nhomTen  = parent?.ten  || 'Khác'
       const nhomIcon = parent?.icon || '🏷️'
       const hmTen    = child?.ten   || 'Khác'
-      const hmId     = child?.id    || 'khac'
+      const hmId     = child?.id    || cp.danh_muc_id || 'khac'
 
       if (!nhomMap[nhomId]) {
         nhomMap[nhomId] = { id: nhomId, ten: nhomTen, icon: nhomIcon, tong: 0, hangMuc: {} }
@@ -143,32 +135,26 @@ export default function PhanTichChiPhi({ onBack }) {
       }))
   }, [data, danhMuc])
 
-  // Chart data
   const chartData = useMemo(() => {
     if (tab === 'ngay') {
       return Array.from({ length: 30 }, (_, i) => {
         const d = new Date(range.end + 'T00:00:00')
         d.setDate(d.getDate() - (29 - i))
         const iso = d.toISOString().split('T')[0]
-        const total = data.filter(r => r.ngay === iso).reduce((s, r) => s + r.so_tien, 0)
-        return { label: String(d.getDate()), value: total }
+        return { label: String(d.getDate()), value: data.filter(r => r.ngay === iso).reduce((s, r) => s + r.so_tien, 0) }
       })
     }
     if (tab === 'thang') {
-      const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
-      return Array.from({ length: daysInMonth }, (_, i) => {
-        const day = i + 1
-        const iso = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
-        const total = data.filter(r => r.ngay === iso).reduce((s, r) => s + r.so_tien, 0)
-        return { label: String(day), value: total }
+      const days = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+      return Array.from({ length: days }, (_, i) => {
+        const iso = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`
+        return { label: String(i+1), value: data.filter(r => r.ngay === iso).reduce((s, r) => s + r.so_tien, 0) }
       })
     }
     if (tab === 'nam') {
       return Array.from({ length: 12 }, (_, i) => {
-        const m = i + 1
-        const monthStr = `${currentDate.getFullYear()}-${String(m).padStart(2,'0')}`
-        const total = data.filter(r => r.ngay.startsWith(monthStr)).reduce((s, r) => s + r.so_tien, 0)
-        return { label: `T${m}`, value: total }
+        const monthStr = `${currentDate.getFullYear()}-${String(i+1).padStart(2,'0')}`
+        return { label: `T${i+1}`, value: data.filter(r => r.ngay.startsWith(monthStr)).reduce((s, r) => s + r.so_tien, 0) }
       })
     }
     return []
@@ -267,65 +253,79 @@ export default function PhanTichChiPhi({ onBack }) {
               </div>
             </div>
 
-            {/* Phân tích theo nhóm */}
+            {/* Danh sách hạng mục */}
             {phanTichNhom.length === 0 ? (
               <div style={{ background: COLORS.card, borderRadius: '24px', padding: '40px 20px', textAlign: 'center', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
                 <div style={{ fontSize: '32px', marginBottom: '8px' }}>📋</div>
                 <div style={{ fontSize: '13px', color: COLORS.textMute }}>Không có khoản chi nào trong kỳ này</div>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {phanTichNhom.map(nhom => {
-                  const percent = tongChi > 0 ? (nhom.tong / tongChi) * 100 : 0
-                  const isExpanded = expandedNhom === nhom.id
-                  return (
-                    <div key={nhom.id} style={{ background: COLORS.card, borderRadius: '20px', overflow: 'hidden', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
-                      {/* Nhóm header */}
-                      <button
-                        onClick={() => setExpandedNhom(isExpanded ? null : nhom.id)}
-                        style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-                      >
-                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'linear-gradient(135deg,#FFF5F5,#FFE4E4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0, marginRight: '12px' }}>
-                          {nhom.icon}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                            <span style={{ fontWeight: '700', fontSize: '14px', color: COLORS.text }}>{nhom.ten}</span>
-                            <span style={{ fontWeight: '700', fontSize: '14px', color: COLORS.chi }}>{formatCurrency(nhom.tong)}</span>
-                          </div>
-                          {/* Progress bar */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ flex: 1, height: '6px', background: '#F8F3F0', borderRadius: '3px', overflow: 'hidden' }}>
-                              <div style={{ width: `${percent}%`, height: '100%', background: COLORS.chi, borderRadius: '3px', transition: 'width 0.5s ease' }} />
-                            </div>
-                            <span style={{ fontSize: '11px', color: COLORS.textMute, fontWeight: '600', minWidth: '30px' }}>{percent.toFixed(0)}%</span>
-                          </div>
-                        </div>
-                        <span style={{ color: COLORS.textMute, fontSize: '16px', marginLeft: '8px', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>›</span>
-                      </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
-                      {/* Hạng mục con */}
-                      {isExpanded && (
-                        <div style={{ borderTop: `1px solid ${COLORS.border}`, padding: '8px 20px 12px' }}>
-                          {nhom.hangMuc.map((hm, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 8px 52px' }}>
-                              <span style={{ fontSize: '13px', color: COLORS.textSub }}>{hm.ten}</span>
-                              <span style={{ fontSize: '13px', fontWeight: '600', color: COLORS.chi }}>{formatCurrency(hm.tong)}</span>
+                {/* Flat list — từng hạng mục con */}
+                {phanTichNhom.flatMap(nhom =>
+                  nhom.hangMuc.map((hm, i) => {
+                    const percent = tongChi > 0 ? (hm.tong / tongChi) * 100 : 0
+                    return (
+                      <div key={`${nhom.id}-${i}`} style={{
+                        background: COLORS.card, borderRadius: '16px', padding: '14px 16px',
+                        boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}`
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                          {/* Icon nhóm cha */}
+                          <div style={{
+                            width: '36px', height: '36px', borderRadius: '10px',
+                            background: 'linear-gradient(135deg,#FFF5F5,#FFE4E4)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '18px', flexShrink: 0
+                          }}>
+                            {nhom.icon}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {/* Tên nhóm cha nhỏ bên trên */}
+                            <div style={{ fontSize: '10px', color: COLORS.textMute, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              {nhom.ten}
                             </div>
-                          ))}
+                            {/* Tên hạng mục con — TO và RÕ */}
+                            <div style={{ fontSize: '14px', fontWeight: '700', color: COLORS.text, marginTop: '1px' }}>
+                              {hm.ten}
+                            </div>
+                          </div>
+                          <div style={{ fontWeight: '800', fontSize: '15px', color: COLORS.chi, flexShrink: 0 }}>
+                            {formatCurrency(hm.tong)}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
+
+                        {/* Progress bar */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ flex: 1, height: '5px', background: '#F0EBE6', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{
+                              width: `${percent}%`, height: '100%',
+                              background: COLORS.chi, borderRadius: '3px',
+                              transition: 'width 0.5s ease'
+                            }} />
+                          </div>
+                          <span style={{ fontSize: '11px', color: COLORS.textMute, fontWeight: '600', minWidth: '36px', textAlign: 'right' }}>
+                            {percent.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
 
                 {/* Tổng */}
-                <div style={{ background: 'linear-gradient(135deg,#FFF5F5,#FFE4E4)', borderRadius: '20px', padding: '16px 20px', border: 'rgba(192,57,43,0.2) 1px solid' }}>
+                <div style={{
+                  background: 'linear-gradient(135deg,#FFF5F5,#FFE4E4)',
+                  borderRadius: '20px', padding: '16px 20px',
+                  border: '1px solid rgba(192,57,43,0.2)', marginTop: '4px'
+                }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: '800', fontSize: '15px', color: COLORS.text }}>Tổng Chi Phí</span>
                     <span style={{ fontWeight: '800', fontSize: '18px', color: COLORS.chi }}>{formatCurrency(tongChi)}</span>
                   </div>
                 </div>
+
               </div>
             )}
           </>
