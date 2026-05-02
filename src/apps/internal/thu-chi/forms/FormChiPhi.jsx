@@ -58,7 +58,7 @@ export default function FormChiPhi({ viList, onClose, onSaved }) {
         ngay: ngay,
         danh_muc_id: hangMucId,
         so_tien: parseInt(soTien),
-        hinh_thuc_thanh_toan: viSelected?.ten || 'Khác',
+        hinh_thuc_thanh_toan: viSelected?.loai || 'tien_mat',
         dien_giai: dienGiai || null,
       })
       if (error) throw error

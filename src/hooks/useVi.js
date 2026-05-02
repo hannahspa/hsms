@@ -9,8 +9,11 @@ export function useVi() {
   useEffect(() => {
     async function load() {
       try {
+        // Query từ view so_du_vi_thuc_te thay vì bảng vi
         const { data, error } = await supabase
-          .from('vi').select('*').order('thu_tu')
+          .from('so_du_vi_thuc_te')
+          .select('*')
+          .order('thu_tu')
         if (error) throw error
         setViList(data || [])
       } catch (err) {
