@@ -67,7 +67,7 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
           nguoi_yeu_cau: user?.ho_ten || user?.email,
         })
         if (error) throw error
-        showToast('Đã gửi yêu cầu xóa — chờ Admin duyệt')
+        showToast('Đã gửi yêu cầu xóa — chờ Cao Quốc Nam duyệt')
         setTimeout(() => onBack(), 1500)
       }
     } catch (e) {

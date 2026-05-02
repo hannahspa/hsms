@@ -9,9 +9,20 @@ export const formatDate = (date) => {
   return `${days[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
 }
 
+export const getNowVN = () => {
+  const now = new Date()
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000
+  return new Date(utcMs + 7 * 60 * 60000)
+}
+
 export const todayISO = () => {
-  const d = new Date()
+  const d = getNowVN()
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+export const nowTimeVN = () => {
+  const d = getNowVN()
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}-${String(d.getSeconds()).padStart(2,'0')}`
 }
 
 export const formatDateInput = (isoDate) => {
