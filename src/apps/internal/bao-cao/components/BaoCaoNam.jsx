@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { COLORS } from '../../../../constants/colors'
-import { formatCurrency } from '../../../../lib/utils'
+import { formatCurrency , getNowVN} from '../../../../lib/utils'
 
 function BarChart({ data }) {
   const maxVal = Math.max(...data.map(d => Math.max(d.thu,d.chi)), 1)
@@ -21,7 +21,7 @@ function BarChart({ data }) {
 }
 
 export default function BaoCaoNam({ onBack }) {
-  const [year, setYear]           = useState(new Date().getFullYear())
+  const [year, setYear]           = useState(getNowVN().getFullYear())
   const [doanhThu, setDoanhThu]   = useState([])
   const [chiPhi,   setChiPhi]     = useState([])
   const [loading,  setLoading]    = useState(false)

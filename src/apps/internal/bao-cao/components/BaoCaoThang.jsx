@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { COLORS } from '../../../../constants/colors'
-import { formatCurrency } from '../../../../lib/utils'
+import { formatCurrency , getNowVN} from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
 function AreaChart({ data, color }) {
@@ -29,7 +29,7 @@ function AreaChart({ data, color }) {
 }
 
 export default function BaoCaoThang({ onBack }) {
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState(getNowVN())
   const [doanhThu, setDoanhThu]       = useState([])
   const [chiPhi,   setChiPhi]         = useState([])
   const [danhMuc,  setDanhMuc]        = useState([])

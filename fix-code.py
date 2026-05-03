@@ -1,124 +1,83 @@
 import os
 
-REPLACEMENTS = [
+REPLACEMENTS =[
     {
-        "file": "src/apps/checkin/CheckinLich.jsx",
-        "find": """const LOAI_CONFIG = {
-  di_lam:   { bg:'#DCFCE7', color:'#166534', icon:'✅' },
-  off_phep: { bg:'#DBEAFE', color:'#1E40AF', icon:'💙' },
-  off_ov:   { bg:'#FEE2E2', color:'#991B1B', icon:'🚫' },
-  off_t7:   { bg:'#F3E8FF', color:'#6B21A8', icon:'🟣' },
-  off_t7x:  { bg:'#FEE2E2', color:'#991B1B', icon:'❌' },
-}""",
-        "replace": """const LOAI_CONFIG = {
-  di_lam:   { bg:'#F5EDE6', color:'#7D5A3C', icon:'✅' },
-  off_phep: { bg:'#FDF6EE', color:'#A0714F', icon:'🌸' },
-  off_ov:   { bg:'#FEF2F2', color:'#C0392B', icon:'🚫' },
-  off_t7:   { bg:'#FAF0E6', color:'#8B6914', icon:'🌙' },
-  off_t7x:  { bg:'#FEE2E2', color:'#991B1B', icon:'❌' },
-}""",
-        "desc": "Tone màu Hannah Luxury cho LOAI_CONFIG"
+        "file": "src/apps/checkin/CheckinDangKyOff.jsx",
+        "find": """            {(() => {
+              const info = getNgayInfo(showInfo)
+              return (
+                <>
+                  <div style={{ fontWeight:'800', fontSize:'16px', color:COLORS.text, marginBottom:'4px' }}>
+                    📅 {fmt(showInfo)}
+                  </div>
+                  <div style={{ fontSize:'12px', color:COLORS.textMute, marginBottom:'16px' }}>
+                    {nhanVien.vi_tri === 'le_tan' ? 'Lễ Tân' : 'KTV'} — Giới hạn: {gioiHan} người/ngày
+                  </div>
+
+                  {info.others.length === 0 ? (""",
+        "replace": """            {(() => {
+              const info = getNgayInfo(showInfo)
+              const[y, m, d_val] = showInfo.split('-')
+              const isWeekendPopup = new Date(y, m-1, d_val).getDay() === 0 || new Date(y, m-1, d_val).getDay() === 6
+
+              return (
+                <>
+                  <div style={{ fontWeight:'800', fontSize:'16px', color:COLORS.text, marginBottom:'4px' }}>
+                    📅 {fmt(showInfo)} {isWeekendPopup && <span style={{color: '#C0392B', fontSize: '13px', marginLeft: '6px'}}>(Cuối tuần)</span>}
+                  </div>
+                  <div style={{ fontSize:'12px', color:COLORS.textMute, marginBottom:'16px' }}>
+                    {nhanVien.vi_tri === 'le_tan' ? 'Lễ Tân' : 'KTV'} — Giới hạn: {gioiHan} người/ngày
+                  </div>
+
+                  {isWeekendPopup && (
+                    <div style={{ background:'#FEF2F2', border:'1px dashed #FECACA', borderRadius:'12px', padding:'12px', textAlign:'center', color:'#C0392B', fontWeight:'700', marginBottom:'16px', fontSize:'13px', lineHeight:'1.4' }}>
+                      ⚠️ Lưu ý: Đây là ngày T7/CN.<br/>Nếu bạn OFF sẽ bị trừ x2 ngày công!
+                    </div>
+                  )}
+
+                  {info.others.length === 0 ? (""",
+        "desc": "1. Thêm cảnh báo x2 ngày công vào Popup thông tin"
     },
     {
-        "file": "src/apps/checkin/CheckinLich.jsx",
-        "find": """    if (pct === 0) {
-      bg = '#FEE2E2'; color = '#991B1B'; border = '1px solid #FCA5A5'
-      label = '⚠️'; subLabel = '0%'
-    } else if (pct >= 100 && treLate === 0 && veSomPhut === 0) {
-      bg = '#DCFCE7'; color = '#166534'; border = '1px solid #BBF7D0'
-      label = '✅'; subLabel = ''
-    } else if (pct >= 100) {
-      bg = '#FEF9E7'; color = '#8B6914'; border = '1px solid #FDE68A'
-      label = '✅'
-      subLabel = treLate > 0 ? `+${treLate}p` : `-${veSomPhut}p`
-    } else if (pct >= 75) {
-      bg = '#FEF9E7'; color = '#8B6914'; border = '1px solid #FDE68A'
-      label = `${pct}%`
-      subLabel = treLate > 0 ? `+${treLate}p` : veSomPhut > 0 ? `-${veSomPhut}p` : ''
-    } else if (pct >= 50) {
-      bg = '#FEF2F2'; color = '#C0392B'; border = '1px solid #FECACA'
-      label = `${pct}%`
-      subLabel = treLate > 0 ? `+${treLate}p` : veSomPhut > 0 ? `-${veSomPhut}p` : ''
-    } else {
-      bg = '#FEE2E2'; color = '#991B1B'; border = '1px solid #FCA5A5'
-      label = `${pct}%`; subLabel = '⚠️'
-    }""",
-        "replace": """    if (pct === 0) {
-      bg = '#FEF2F2'; color = '#C0392B'; border = '1px solid #FECACA'
-      label = '⚠️'; subLabel = '0%'
-    } else if (pct >= 100 && treLate === 0 && veSomPhut === 0) {
-      bg = '#F5EDE6'; color = '#7D5A3C'; border = '1px solid #C4956A'
-      label = '✅'; subLabel = ''
-    } else if (pct >= 100) {
-      bg = '#FDF6EE'; color = '#A0714F'; border = '1px solid #C9A96E'
-      label = '✅'
-      subLabel = treLate > 0 ? `+${treLate}p` : `-${veSomPhut}p`
-    } else if (pct >= 75) {
-      bg = '#FDF6EE'; color = '#A0714F'; border = '1px solid #C9A96E'
-      label = `${pct}%`
-      subLabel = treLate > 0 ? `+${treLate}p` : veSomPhut > 0 ? `-${veSomPhut}p` : ''
-    } else if (pct >= 50) {
-      bg = '#FEF9F0'; color = '#8B5E3C'; border = '1px solid #E8C4A0'
-      label = `${pct}%`
-      subLabel = treLate > 0 ? `+${treLate}p` : veSomPhut > 0 ? `-${veSomPhut}p` : ''
-    } else {
-      bg = '#FEF2F2'; color = '#C0392B'; border = '1px solid #FECACA'
-      label = `${pct}%`; subLabel = '⚠️'
-    }""",
-        "desc": "Tone màu Hannah Luxury cho ngày đi làm"
-    },
-    {
-        "file": "src/apps/checkin/CheckinLich.jsx",
-        "find": """          {[
-            { label:'Ngày Công', value: tongKet.ngayCong.toFixed(1), color:COLORS.thu, bg:'#F0FDF4', icon:'📅' },
-            { label:'Tăng Ca',   value: `${tongKet.tangCa}h`,        color:'#8B6914',  bg:'#FEF9E7', icon:'⏰' },
-            { label:'Vi Phạm',   value: tongKet.viPham, color: tongKet.viPham > 0 ? COLORS.chi : COLORS.textMute, bg: tongKet.viPham > 0 ? '#FEF2F2' : '#F8F3F0', icon:'⚠️' },
-          ].map(item => (""",
-        "replace": """          {[
-            { label:'Ngày Công', value: tongKet.ngayCong.toFixed(1), color:'#7D5A3C', bg:'#F5EDE6', icon:'📅' },
-            { label:'Tăng Ca',   value: `${tongKet.tangCa}h`,        color:'#A0714F', bg:'#FDF6EE', icon:'⏰' },
-            { label:'Vi Phạm',   value: tongKet.viPham, color: tongKet.viPham > 0 ? '#C0392B' : COLORS.textMute, bg: tongKet.viPham > 0 ? '#FEF2F2' : '#FAF7F4', icon:'⚠️' },
-          ].map(item => (""",
-        "desc": "Tone màu Hannah Luxury cho hàng tổng kết 1"
-    },
-    {
-        "file": "src/apps/checkin/CheckinLich.jsx",
-        "find": """          {[
-            { label:'OFF Có Lương',    value: tongKet.offPhep, color:'#1E40AF', bg:'#DBEAFE', icon:'💙' },
-            { label:'OFF Không Lương', value: tongKet.offOV,   color:'#991B1B', bg:'#FEE2E2', icon:'🚫' },
-            { label:'OFF T7/CN (x2)',  value: tongKet.offT7,   color:'#6B21A8', bg:'#F3E8FF', icon:'🟣' },
-          ].map(item => (""",
-        "replace": """          {[
-            { label:'OFF Có Lương',    value: tongKet.offPhep, color:'#A0714F', bg:'#FDF6EE', icon:'🌸' },
-            { label:'OFF Không Lương', value: tongKet.offOV,   color:'#C0392B', bg:'#FEF2F2', icon:'🚫' },
-            { label:'OFF T7/CN (x2)',  value: tongKet.offT7,   color:'#8B6914', bg:'#FFF8ED', icon:'🌙' },
-          ].map(item => (""",
-        "desc": "Tone màu Hannah Luxury cho hàng tổng kết 2"
-    },
-    {
-        "file": "src/apps/checkin/CheckinLich.jsx",
-        "find": """            {[
-              { icon:'✅', bg:'#DCFCE7', color:'#166534', text:'Đúng giờ 100%' },
-              { icon:'⚠️', bg:'#FEF9E7', color:'#8B6914', text:'Trễ / về sớm' },
-              { icon:'💙', bg:'#DBEAFE', color:'#1E40AF', text:'OFF Có Lương' },
-              { icon:'🚫', bg:'#FEE2E2', color:'#991B1B', text:'OFF Không Lương' },
-              { icon:'🟣', bg:'#F3E8FF', color:'#6B21A8', text:'OFF T7/CN (x2)' },
-              { icon:'⏳', bg:'#FFF9F0', color:'#8B6914', text:'Chờ duyệt' },
-              { icon:'🕐', bg:'#FFF9F0', color:'#8B6914', text:'Đang làm việc' },
-              { icon:'❓', bg:'#FEF2F2', color:'#991B1B', text:'Chưa có data' },
-            ].map((item, i) => (""",
-        "replace": """            {[
-              { icon:'✅', bg:'#F5EDE6', color:'#7D5A3C', text:'Đúng giờ 100%' },
-              { icon:'⚠️', bg:'#FDF6EE', color:'#A0714F', text:'Trễ / về sớm' },
-              { icon:'🌸', bg:'#FDF6EE', color:'#A0714F', text:'OFF Có Lương' },
-              { icon:'🚫', bg:'#FEF2F2', color:'#C0392B', text:'OFF Không Lương' },
-              { icon:'🌙', bg:'#FFF8ED', color:'#8B6914', text:'OFF T7/CN (x2)' },
-              { icon:'⏳', bg:'#FFF8ED', color:'#8B6914', text:'Chờ duyệt' },
-              { icon:'🕐', bg:'#FDF6EE', color:'#A0714F', text:'Đang làm việc' },
-              { icon:'❓', bg:'#FEF2F2', color:'#C0392B', text:'Chưa có data' },
-            ].map((item, i) => (""",
-        "desc": "Tone màu Hannah Luxury cho chú thích"
-    },
+        "file": "src/apps/checkin/CheckinDangKyOff.jsx",
+        "find": """            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+              {LOAI_OFF.map(item => (
+                <button key={item.value} onClick={() => setLoaiOff(item.value)}
+                  style={{ padding:'12px 16px', borderRadius:'12px', border:`2px solid ${loaiOff===item.value ? COLORS.primary : COLORS.border}`, background:loaiOff===item.value ? item.color : COLORS.card, cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
+                  <div style={{ fontWeight:'700', fontSize:'13px', color:loaiOff===item.value ? COLORS.primary : COLORS.text }}>{item.label}</div>
+                  <div style={{ fontSize:'11px', color:COLORS.textMute, marginTop:'2px' }}>{item.desc}</div>
+                </button>
+              ))}
+            </div>""",
+        "replace": """            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+              {LOAI_OFF.map(item => {
+                let isWeOff = false;
+                if (ngayOff) {
+                  const [y, m, d_val] = ngayOff.split('-');
+                  const d = new Date(y, m-1, d_val).getDay();
+                  isWeOff = (d === 0 || d === 6);
+                }
+                const isDisabled = isWeOff && item.value !== 'off_t7';
+
+                return (
+                  <button key={item.value} onClick={() => !isDisabled && setLoaiOff(item.value)}
+                    disabled={isDisabled}
+                    style={{ padding:'12px 16px', borderRadius:'12px', border:`2px solid ${loaiOff===item.value ? COLORS.primary : COLORS.border}`, background: isDisabled ? '#F9FAFB' : (loaiOff===item.value ? item.color : COLORS.card), cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.45 : 1, textAlign:'left', transition:'all 0.2s' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div style={{ fontWeight:'700', fontSize:'13px', color: isDisabled ? COLORS.textMute : (loaiOff===item.value ? COLORS.primary : COLORS.text) }}>
+                        {item.label}
+                      </div>
+                      {isDisabled && <span style={{ fontSize:'12px' }}>🔒</span>}
+                    </div>
+                    <div style={{ fontSize:'11px', color:COLORS.textMute, marginTop:'2px' }}>
+                      {isDisabled ? 'Hệ thống đã khóa do bạn chọn T7/CN' : item.desc}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>""",
+        "desc": "2. Khóa các tuỳ chọn OFF khác nếu là ngày cuối tuần"
+    }
 ]
 
 # ══════════════════════════════════════════════════════
@@ -131,9 +90,9 @@ def doi_soat(filepath, find_text):
     with open(fp, "r", encoding="utf-8") as f:
         content = f.read()
         lines   = content.split('\n')
-    reports = []
+    reports =[]
     first_line = find_text.strip().split('\n')[0].strip()
-    matches = []
+    matches =[]
     for i, line in enumerate(lines):
         if first_line[:25] in line or line.strip()[:25] in first_line[:25]:
             matches.append((i+1, line))

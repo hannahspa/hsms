@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { COLORS } from '../../constants/colors'
-import { todayISO } from '../../lib/utils'
+import { todayISO , getNowVN} from '../../lib/utils'
 
 export default function DatePicker({ open, selectedDate, onClose, onConfirm }) {
   if (!open) return null;
 
-  const[viewDate, setViewDate] = useState(new Date(selectedDate || new Date()));
+  const[viewDate, setViewDate] = useState(new Date(selectedDate || getNowVN()));
   const[tempDate, setTempDate] = useState(selectedDate || todayISO());
 
   const year = viewDate.getFullYear();
@@ -30,7 +30,7 @@ export default function DatePicker({ open, selectedDate, onClose, onConfirm }) {
   };
 
   const handleChonHnay = () => {
-    const d = new Date();
+    const d = getNowVN();
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     const iso = d.toISOString().split('T')[0];
     setTempDate(iso);
@@ -38,7 +38,7 @@ export default function DatePicker({ open, selectedDate, onClose, onConfirm }) {
   };
 
   const handleChonHqua = () => {
-    const d = new Date();
+    const d = getNowVN();
     d.setDate(d.getDate() - 1);
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     const iso = d.toISOString().split('T')[0];

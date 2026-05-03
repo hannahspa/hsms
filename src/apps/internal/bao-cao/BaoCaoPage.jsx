@@ -6,6 +6,7 @@ import BaoCaoThang from './components/BaoCaoThang'
 import BaoCaoNam from './components/BaoCaoNam'
 import PhanTichDoanhThu from './components/PhanTichDoanhThu'
 import PhanTichChiPhi from './components/PhanTichChiPhi'
+import { getNowVN } from '../../../lib/utils'
 
 function IconChart() {
   return (
@@ -37,7 +38,7 @@ function MiniBarChart({ data }) {
 
 function Dashboard({ onNavigate }) {
   const last5Months = Array.from({ length: 5 }, (_, i) => {
-    const d = new Date()
+    const d = getNowVN()
     d.setMonth(d.getMonth() - (4 - i))
     return { label: `T${d.getMonth()+1}`, thu: 0, chi: 0 }
   })

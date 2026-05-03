@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { COLORS } from '../../../../constants/colors'
-import { formatCurrency, todayISO } from '../../../../lib/utils'
+import { formatCurrency, todayISO , getNowVN} from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
 const DAYS = ['CN','T2','T3','T4','T5','T6','T7']
@@ -82,7 +82,7 @@ function AreaChart({ data, color }) {
 
 export default function PhanTichDoanhThu({ onBack }) {
   const [tab, setTab]               = useState('ngay')
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState(getNowVN())
   const [data, setData]             = useState([])
   const [loading, setLoading]       = useState(false)
   const [showPicker, setShowPicker] = useState(false)

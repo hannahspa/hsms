@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { COLORS } from '../../../constants/colors'
-import { formatCurrency, formatCurrencyHide, todayISO } from '../../../lib/utils'
+import { formatCurrency, formatCurrencyHide, todayISO , getNowVN} from '../../../lib/utils'
 import ChiTietGiaoDich from './ChiTietGiaoDich'
 
 export default function TaiKhoanPage({ user }) {
@@ -51,7 +51,7 @@ export default function TaiKhoanPage({ user }) {
   }), [filteredHistory])
 
   const applyQuickDate = (type) => {
-    const d = new Date()
+    const d = getNowVN()
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
     const iso = d.toISOString().split('T')[0]
     if (type === 'hom_nay') {

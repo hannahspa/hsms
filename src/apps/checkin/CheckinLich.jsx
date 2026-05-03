@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/colors'
+import { getNowVN } from '../../lib/utils'
 
 const CA_VAO_CHUAN = { h: 9,  m: 15 }
 const CA_RA_CHUAN  = { h: 20, m: 0  }
@@ -19,7 +20,7 @@ const LOAI_CONFIG = {
 }
 
 export default function CheckinLich({ nhanVien, onBack }) {
-  const now = new Date()
+  const now = getNowVN()
   const [thang,        setThang]        = useState(now.getMonth() + 1)
   const [nam,          setNam]          = useState(now.getFullYear())
   const [chamCongData, setChamCongData] = useState([])

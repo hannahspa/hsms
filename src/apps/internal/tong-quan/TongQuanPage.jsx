@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { COLORS } from '../../../constants/colors'
-import { formatCurrency, formatCurrencyHide, todayISO } from '../../../lib/utils'
+import { formatCurrency, formatCurrencyHide, todayISO , getNowVN} from '../../../lib/utils'
 
 function HeaderTongQuan({ user, viList = [], stats }) {
   const isAdmin = user?.vai_tro === 'admin'
   const tongTS  = (viList || []).reduce((s, v) => s + (v.so_du_hien_tai || 0), 0)
-  const greeting = new Date().getHours() < 12 ? 'Chào buổi sáng' : new Date().getHours() < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
+  const greeting = getNowVN().getHours() < 12 ? 'Chào buổi sáng' : getNowVN().getHours() < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
 
   return (
     <div style={{ background: COLORS.grad, padding: '30px 22px 50px', position: 'relative', overflow: 'hidden' }}>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { COLORS } from '../../../../constants/colors'
-import { formatCurrency, todayISO } from '../../../../lib/utils'
+import { formatCurrency, todayISO , getNowVN} from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
 const DAYS = ['CN','T2','T3','T4','T5','T6','T7']
@@ -44,7 +44,7 @@ function BarChart({ data }) {
 }
 
 export default function BaoCaoTuan({ onBack }) {
-  const [baseDate, setBaseDate]     = useState(new Date())
+  const [baseDate, setBaseDate]     = useState(getNowVN())
   const [doanhThu, setDoanhThu]     = useState([])
   const [chiPhi,   setChiPhi]       = useState([])
   const [loading,  setLoading]      = useState(false)

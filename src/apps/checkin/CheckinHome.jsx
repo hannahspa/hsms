@@ -13,13 +13,13 @@ export default function CheckinHome({ nhanVien, onLogout }) {
   const [tab,        setTab]        = useState('home')
   const [chamCong,   setChamCong]   = useState(null)
   const [loading,    setLoading]    = useState(true)
-  const [time,       setTime]       = useState(new Date())
+  const [time,       setTime]       = useState(getNowVN())
 
   const today = todayISO()
 
   useEffect(() => {
     const getNowVN = () => {
-      const now = new Date()
+      const now = getNowVN()
       const utcMs = now.getTime() + now.getTimezoneOffset() * 60000
       return new Date(utcMs + 7 * 60 * 60000)
     }

@@ -58,6 +58,24 @@ function phanLoaiRa(gioRa) {
   return           { label:`🚨 Về sớm ${formatTre(Math.abs(diff))}`,        color:'#991B1B', bg:'#FEE2E2', cap:'ve_som_nhieu' }
 }
 
+// Tọa độ Hannah Spa (39 Nam Kỳ Khởi Nghĩa, Cần Thơ)
+const SPA_COORD = { lat: 10.0333, lng: 105.7833 }
+const MAX_DISTANCE_M = 50 // Sai số cho phép: 50 mét
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3 // Bán kính trái đất (mét)
+  const phi1 = lat1 * Math.PI/180
+  const phi2 = lat2 * Math.PI/180
+  const deltaPhi = (lat2-lat1) * Math.PI/180
+  const deltaLambda = (lon2-lon1) * Math.PI/180
+
+  const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+            Math.cos(phi1) * Math.cos(phi2) *
+            Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  return R * c
+}
+
 export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated }) {
   const [loading,     setLoading]     = useState(false)
   const [showVeSom,   setShowVeSom]   = useState(false)
@@ -75,13 +93,26 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
     `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`
 
   const handleCheckin = async () => {
-    setLoading(true)
-    try {
-      const now    = getNow()
-      const gioVao = toTimeStrVN(now)
-      const info   = phanLoaiVao(gioVao)
+    if (!navigator.geolocation) {
+      alert("❌ Thiết bị của bạn không hỗ trợ định vị GPS!")
+      return
+    }
 
-      const { error } = await supabase.from('cham_cong').insert({
+    setLoading(true)
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const dist = getDistance(pos.coords.latitude, pos.coords.longitude, SPA_COORD.lat, SPA_COORD.lng)
+      if (dist > MAX_DISTANCE_M) {
+        alert(`❌ Bạn đang ở quá xa Spa (${Math.round(dist)}m). Vui lòng đến nơi mới được chấm công!`)
+        setLoading(false)
+        return
+      }
+
+      try {
+        const now    = getNowVN()
+        const gioVao = toTimeStrVN(now)
+        const info   = phanLoaiVao(gioVao)
+
+        const { error } = await supabase.from('cham_cong').insert({
         nhan_vien_id:        nhanVien.id,
         ngay:                todayISO(),
         gio_vao:             gioVao,
@@ -109,23 +140,46 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
         note: info.cap !== 'dung_gio' ? `Bạn vào trễ so với quy định. Ngày công sẽ được tính khi check-out.` : `Chúc bạn làm việc hiệu quả! 💪`,
       })
       onUpdated()
-    } catch (e) {
-      alert('Lỗi: ' + e.message)
-    } finally {
+      } catch (e) {
+        alert('Lỗi: ' + e.message)
+      } finally {
+        setLoading(false)
+      }
+    }, (err) => {
+      alert("❌ Không thể lấy vị trí GPS: " + err.message + "\nVui lòng bật Vị trí (Location) và cấp quyền cho trình duyệt.")
       setLoading(false)
-    }
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 })
   }
 
   const handleCheckoutRequest = () => {
-    const now   = getNow()
-    const gioRa = toTimeStrVN(now)
-    const info  = phanLoaiRa(gioRa)
-    if (info.cap === 've_som_vua' || info.cap === 've_som_nhieu') {
-      setPendingRa(gioRa)
-      setShowVeSom(true)
+    if (!navigator.geolocation) {
+      alert("❌ Thiết bị của bạn không hỗ trợ định vị GPS!")
       return
     }
-    confirmCheckout(gioRa, '')
+
+    setLoading(true)
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const dist = getDistance(pos.coords.latitude, pos.coords.longitude, SPA_COORD.lat, SPA_COORD.lng)
+      if (dist > MAX_DISTANCE_M) {
+        alert(`❌ Bạn đang ở quá xa Spa (${Math.round(dist)}m). Vui lòng đến Spa mới được check-out!`)
+        setLoading(false)
+        return
+      }
+
+      const now   = getNowVN()
+      const gioRa = toTimeStrVN(now)
+      const info  = phanLoaiRa(gioRa)
+      if (info.cap === 've_som_vua' || info.cap === 've_som_nhieu') {
+        setPendingRa(gioRa)
+        setShowVeSom(true)
+        setLoading(false)
+        return
+      }
+      confirmCheckout(gioRa, '')
+    }, (err) => {
+      alert("❌ Không thể lấy vị trí GPS: " + err.message + "\nVui lòng bật Vị trí (Location) và cấp quyền cho trình duyệt.")
+      setLoading(false)
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 })
   }
 
   const confirmCheckout = async (gioRa, lyDo) => {

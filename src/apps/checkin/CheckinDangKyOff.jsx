@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { COLORS } from '../../constants/colors'
-import { todayISO } from '../../lib/utils'
+import { todayISO , getNowVN} from '../../lib/utils'
 
 const LOAI_OFF = [
   { value:'off_phep',       label:'OFF Phép',               desc:'≤3 ngày/tháng, không T7/CN',    color:'#DBEAFE', batKhaKhang: false },
@@ -16,7 +16,7 @@ const THANG_VN = ['','Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Th�
 const THU_VN   = ['CN','T2','T3','T4','T5','T6','T7']
 
 export default function CheckinDangKyOff({ nhanVien, onBack }) {
-  const now = new Date()
+  const now = getNowVN()
   const [calThang, setCalThang] = useState(now.getMonth() + 1)
   const [calNam,   setCalNam]   = useState(now.getFullYear())
   const [ngayOff,  setNgayOff]  = useState('')
@@ -27,9 +27,10 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
   const [danhSach, setDanhSach] = useState([])
   const [offMap,   setOffMap]   = useState({}) // {date: [{ho_ten, trang_thai}]}
   const [nvMap,    setNvMap]    = useState({}) // {id: ho_ten}
-  const [showInfo, setShowInfo] = useState(null) // ngày đang xem info
+  const[showInfo, setShowInfo] = useState(null) // ngày đang xem info
+  const[soNgayDaOff, setSoNgayDaOff] = useState(0) // Số ngày OFF phép đã dùng trong tháng
 
-  useEffect(() => { loadDanhSach() }, [])
+  useEffect(() => { loadDanhSach() },[])
   useEffect(() => { loadOffCungBoPhan() }, [calThang, calNam])
 
   const loadDanhSach = async () => {
@@ -70,11 +71,15 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
 
     const { data: offData } = await supabase
       .from('dang_ky_off')
-      .select('ngay_off, nhan_vien_id, trang_thai')
+      .select('ngay_off, nhan_vien_id, trang_thai, loai_off')
       .in('nhan_vien_id', ids)
       .gte('ngay_off', startDate)
       .lte('ngay_off', endDate)
-      .in('trang_thai', ['cho_duyet', 'duoc_duyet'])
+      .in('trang_thai',['cho_duyet', 'duoc_duyet'])
+
+    // Tính số ngày OFF phép của user trong tháng
+    const myOffCount = (offData ||[]).filter(r => r.nhan_vien_id === nhanVien.id && r.loai_off === 'off_phep').length
+    setSoNgayDaOff(myOffCount)
 
     // Group theo ngày
     const grouped = {}
@@ -106,10 +111,22 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
     if (!ngayOff)     { showToast('Vui lòng chọn ngày OFF', 'error'); return }
     if (!lyDo.trim()) { showToast('Vui lòng nhập lý do', 'error'); return }
 
+    const info = getNgayInfo(ngayOff)
+    const isFullDay = info.isFull && info.myOff === undefined
+
     // Nếu đủ người nhưng lý do dài > 20 ký tự → bất khả kháng, vẫn cho gửi
-    const batKhaKhang = isFull && lyDo.trim().length > 20
-    if (isFull && !batKhaKhang) {
+    const batKhaKhang = isFullDay && lyDo.trim().length > 20
+    if (isFullDay && !batKhaKhang) {
       showToast('❌ Đủ người OFF! Nhập lý do chi tiết hơn 20 ký tự để gửi yêu cầu đặc biệt.', 'error')
+      return
+    }
+
+    // Bắt buộc loại OFF T7/CN nếu rơi vào cuối tuần
+    const[y, m, d_val] = ngayOff.split('-')
+    const dateObj = new Date(y, m - 1, d_val)
+    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6
+    if (isWeekend && loaiOff === 'off_phep') {
+      showToast('❌ T7/CN không được dùng OFF Phép. Vui lòng chọn loại OFF T7/CN.', 'error')
       return
     }
 
@@ -181,14 +198,23 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
             onClick={e => e.stopPropagation()}>
             {(() => {
               const info = getNgayInfo(showInfo)
+              const[y, m, d_val] = showInfo.split('-')
+              const isWeekendPopup = new Date(y, m-1, d_val).getDay() === 0 || new Date(y, m-1, d_val).getDay() === 6
+
               return (
                 <>
                   <div style={{ fontWeight:'800', fontSize:'16px', color:COLORS.text, marginBottom:'4px' }}>
-                    📅 {fmt(showInfo)}
+                    📅 {fmt(showInfo)} {isWeekendPopup && <span style={{color: '#C0392B', fontSize: '13px', marginLeft: '6px'}}>(Cuối tuần)</span>}
                   </div>
                   <div style={{ fontSize:'12px', color:COLORS.textMute, marginBottom:'16px' }}>
                     {nhanVien.vi_tri === 'le_tan' ? 'Lễ Tân' : 'KTV'} — Giới hạn: {gioiHan} người/ngày
                   </div>
+
+                  {isWeekendPopup && (
+                    <div style={{ background:'#FEF2F2', border:'1px dashed #FECACA', borderRadius:'12px', padding:'12px', textAlign:'center', color:'#C0392B', fontWeight:'700', marginBottom:'16px', fontSize:'13px', lineHeight:'1.4' }}>
+                      ⚠️ Lưu ý: Đây là ngày T7/CN.<br/>Nếu bạn OFF sẽ bị trừ x2 ngày công!
+                    </div>
+                  )}
 
                   {info.others.length === 0 ? (
                     <div style={{ background:'#F0FDF4', borderRadius:'12px', padding:'12px', textAlign:'center', color:'#166534', fontWeight:'700', marginBottom:'16px' }}>
@@ -219,7 +245,10 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
                       </div>
                       <button onClick={() => {
                         setNgayOff(showInfo)
-                        setLoaiOff('off_phep')
+                        const [y, m, d_val] = showInfo.split('-')
+                        const isWe = new Date(y, m-1, d_val).getDay() === 0 || new Date(y, m-1, d_val).getDay() === 6
+                        const limit = nhanVien.gioi_han_off_thang || 3
+                        setLoaiOff(isWe ? 'off_t7' : (soNgayDaOff >= limit ? 'off_ov' : 'off_phep'))
                         setShowInfo(null)
                         setTimeout(() => {
                           document.getElementById('ly-do-textarea')?.focus()
@@ -234,7 +263,14 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
                       </div>
                     </>
                   ) : (
-                    <button onClick={() => { setNgayOff(showInfo); setShowInfo(null) }}
+                    <button onClick={() => {
+                      setNgayOff(showInfo)
+                      const [y, m, d_val] = showInfo.split('-')
+                      const isWe = new Date(y, m-1, d_val).getDay() === 0 || new Date(y, m-1, d_val).getDay() === 6
+                      const limit = nhanVien.gioi_han_off_thang || 3
+                      setLoaiOff(isWe ? 'off_t7' : (soNgayDaOff >= limit ? 'off_ov' : 'off_phep'))
+                      setShowInfo(null)
+                    }}
                       style={{ width:'100%', padding:'14px', borderRadius:'14px', background:COLORS.grad, color:'white', border:'none', fontWeight:'800', fontSize:'14px', cursor:'pointer', marginBottom:'8px' }}>
                       Chọn ngày {fmt(showInfo)}
                     </button>
@@ -259,7 +295,10 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
           <div>
             <div style={{ color:'white', fontWeight:'700', fontSize:'18px' }}>Đăng Ký OFF</div>
             <div style={{ color:'rgba(255,255,255,0.75)', fontSize:'12px', marginTop:'2px' }}>
-              {nhanVien.vi_tri === 'le_tan' ? '⚠️ Lễ Tân: tối đa 1 người OFF/ngày' : `⚠️ KTV: tối đa ${gioiHan} người OFF/ngày`}
+              {nhanVien.vi_tri === 'le_tan' ? '⚠️ Lễ Tân: max 1 người/ngày' : `⚠️ KTV: max ${gioiHan} người/ngày`}
+            </div>
+            <div style={{ color:'white', fontSize:'11px', marginTop:'4px', fontWeight:'600', background:'rgba(0,0,0,0.2)', display:'inline-block', padding:'2px 8px', borderRadius:'8px' }}>
+              🌟 Phép tháng này: đã dùng {soNgayDaOff}/{nhanVien.gioi_han_off_thang || 3} ngày
             </div>
           </div>
         </div>
@@ -319,7 +358,15 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
                   }}
                   onDoubleClick={() => {
                     if (isPast || isFull) return
-                    setNgayOff(iso === ngayOff ? '' : iso)
+                    if (iso === ngayOff) {
+                      setNgayOff('')
+                    } else {
+                      setNgayOff(iso)
+                      const [y, m, d_val] = iso.split('-')
+                      const isWe = new Date(y, m-1, d_val).getDay() === 0 || new Date(y, m-1, d_val).getDay() === 6
+                      const limit = nhanVien.gioi_han_off_thang || 3
+                      setLoaiOff(isWe ? 'off_t7' : (soNgayDaOff >= limit ? 'off_ov' : 'off_phep'))
+                    }
                   }}
                   style={{
                     borderRadius:'10px', padding:'4px 2px', textAlign:'center',
@@ -385,13 +432,31 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
           <div style={{ marginBottom:'16px' }}>
             <div style={{ fontSize:'12px', color:COLORS.textMute, fontWeight:'600', marginBottom:'8px', textTransform:'uppercase' }}>Loại nghỉ</div>
             <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-              {LOAI_OFF.map(item => (
-                <button key={item.value} onClick={() => setLoaiOff(item.value)}
-                  style={{ padding:'12px 16px', borderRadius:'12px', border:`2px solid ${loaiOff===item.value ? COLORS.primary : COLORS.border}`, background:loaiOff===item.value ? item.color : COLORS.card, cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}>
-                  <div style={{ fontWeight:'700', fontSize:'13px', color:loaiOff===item.value ? COLORS.primary : COLORS.text }}>{item.label}</div>
-                  <div style={{ fontSize:'11px', color:COLORS.textMute, marginTop:'2px' }}>{item.desc}</div>
-                </button>
-              ))}
+              {LOAI_OFF.map(item => {
+                let isWeOff = false;
+                if (ngayOff) {
+                  const [y, m, d_val] = ngayOff.split('-');
+                  const d = new Date(y, m-1, d_val).getDay();
+                  isWeOff = (d === 0 || d === 6);
+                }
+                const isDisabled = isWeOff && item.value !== 'off_t7';
+
+                return (
+                  <button key={item.value} onClick={() => !isDisabled && setLoaiOff(item.value)}
+                    disabled={isDisabled}
+                    style={{ padding:'12px 16px', borderRadius:'12px', border:`2px solid ${loaiOff===item.value ? COLORS.primary : COLORS.border}`, background: isDisabled ? '#F9FAFB' : (loaiOff===item.value ? item.color : COLORS.card), cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.45 : 1, textAlign:'left', transition:'all 0.2s' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div style={{ fontWeight:'700', fontSize:'13px', color: isDisabled ? COLORS.textMute : (loaiOff===item.value ? COLORS.primary : COLORS.text) }}>
+                        {item.label}
+                      </div>
+                      {isDisabled && <span style={{ fontSize:'12px' }}>🔒</span>}
+                    </div>
+                    <div style={{ fontSize:'11px', color:COLORS.textMute, marginTop:'2px' }}>
+                      {isDisabled ? 'Hệ thống đã khóa do bạn chọn T7/CN' : item.desc}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
