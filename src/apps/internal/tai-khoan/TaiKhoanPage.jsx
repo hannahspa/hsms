@@ -194,7 +194,7 @@ export default function TaiKhoanPage({ user }) {
         ].map(item => (
           <div key={item.label} style={{ flex:1,background:COLORS.card,padding:'16px',borderRadius:'20px',textAlign:'center',border:`1px solid ${COLORS.border}`,boxShadow:COLORS.shadow }}>
             <div style={{ fontSize:'10px',color:COLORS.textMute,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'6px',fontWeight:'700' }}>{item.label}</div>
-            <div style={{ color:item.color,fontWeight:'800',fontSize:'16px' }}>{formatCurrency(item.value)}</div>
+            <div style={{ color:item.color,fontWeight:'800',fontSize:'16px' }}>{isAdmin ? formatCurrency(item.value) : formatCurrencyHide()}</div>
           </div>
         ))}
       </div>

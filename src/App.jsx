@@ -6,24 +6,48 @@ import AdminApp from './apps/admin/AdminApp'
 import LoginPage from './apps/auth/LoginPage'
 
 function RequireAuth({ children, requireAdmin }) {
-  const { user, loading } = useAuth()
-  
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'sans-serif' }}>Đang tải hệ thống...</div>
-  
+  const { user, loading, logout } = useAuth()
+  const path = window.location.pathname
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F4', fontFamily: 'sans-serif' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '28px', marginBottom: '12px' }}>🌸</div>
+        <div style={{ color: '#A0714F', fontWeight: '700', fontSize: '15px' }}>Hannah Beauty & Spa</div>
+        <div style={{ color: '#B8A898', fontSize: '13px', marginTop: '6px' }}>Đang tải hệ thống...</div>
+      </div>
+    </div>
+  )
+
   if (!user) return <LoginPage />
-  
+
+  // Admin đăng nhập ở /app → tự redirect về /admin
+  if (user.vai_tro === 'admin' && !path.startsWith('/admin')) {
+    window.location.replace('/admin')
+    return null
+  }
+
+  // Không phải admin cố vào /admin
   if (requireAdmin && user.vai_tro !== 'admin') {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-        <h2 style={{ color: '#991B1B' }}>⛔ Không có quyền truy cập</h2>
-        <p>Bạn cần quyền Quản trị viên (Admin) để xem trang này.</p>
-        <button onClick={() => window.location.href = '/app'} style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer' }}>
-          Quay lại trang Lễ Tân
-        </button>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F4', padding: '20px', fontFamily: 'sans-serif' }}>
+        <div style={{ textAlign: 'center', maxWidth: '320px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⛔</div>
+          <div style={{ fontWeight: '800', fontSize: '18px', color: '#1A1209', marginBottom: '8px' }}>Không có quyền truy cập</div>
+          <div style={{ color: '#8B7355', fontSize: '14px', marginBottom: '24px' }}>Trang này chỉ dành cho Quản trị viên.</div>
+          <button onClick={() => window.location.replace('/app')}
+            style={{ padding: '12px 24px', background: 'linear-gradient(135deg, #C9A96E 0%, #A0714F 100%)', color: 'white', border: 'none', borderRadius: '14px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', marginRight: '10px' }}>
+            Về trang Lễ Tân
+          </button>
+          <button onClick={logout}
+            style={{ padding: '12px 24px', background: 'transparent', color: '#8B7355', border: '1px solid #D4B896', borderRadius: '14px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
+            Đăng xuất
+          </button>
+        </div>
       </div>
     )
   }
-  
+
   return children
 }
 

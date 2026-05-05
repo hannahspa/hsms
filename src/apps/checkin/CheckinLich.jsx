@@ -1,56 +1,52 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
-import { COLORS } from '../../constants/colors'
+import { LUX } from '../../constants/lux'
 import { getNowVN } from '../../lib/utils'
+import { tinhLuong } from '../../lib/luong'
+import './styles.css'
 
-const CA_VAO_CHUAN = { h: 9,  m: 15 }
-const CA_RA_CHUAN  = { h: 20, m: 0  }
+const CA_VAO_CHUAN = { h: 9, m: 15 }
+const CA_RA_CHUAN = { h: 20, m: 0 }
 
 function toPhut(timeStr) {
   const [h, m] = (timeStr || '0:0').split(':').map(Number)
   return h * 60 + m
 }
 
-const LOAI_CONFIG = {
-  di_lam:   { bg:'#F5EDE6', color:'#7D5A3C', icon:'✅' },
-  off_phep: { bg:'#FDF6EE', color:'#A0714F', icon:'🌸' },
-  off_ov:   { bg:'#FEF2F2', color:'#C0392B', icon:'🚫' },
-  off_t7:   { bg:'#FAF0E6', color:'#8B6914', icon:'🌙' },
-  off_t7x:  { bg:'#FEE2E2', color:'#991B1B', icon:'❌' },
+const HERO = {
+  background: `radial-gradient(circle at 100% 0%, rgba(212,165,116,0.4), transparent 55%), linear-gradient(155deg,#4a3528 0%,#3d2c20 50%,#2e2018 100%)`,
+  color: '#f5ede0', position: 'relative', overflow: 'hidden',
 }
+
+const backArrow = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+)
 
 export default function CheckinLich({ nhanVien, onBack }) {
   const now = getNowVN()
-  const [thang,        setThang]        = useState(now.getMonth() + 1)
-  const [nam,          setNam]          = useState(now.getFullYear())
+  const [thang, setThang] = useState(now.getMonth() + 1)
+  const [nam, setNam] = useState(now.getFullYear())
   const [chamCongData, setChamCongData] = useState([])
-  const [offData,      setOffData]      = useState([])
-  const [loading,      setLoading]      = useState(false)
+  const [offData, setOffData] = useState([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => { fetchData() }, [thang, nam])
 
   const fetchData = async () => {
     setLoading(true)
-    const startDate = `${nam}-${String(thang).padStart(2,'0')}-01`
-    const lastDay   = new Date(nam, thang, 0).getDate()
-    const endDate   = `${nam}-${String(thang).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`
-
+    const startDate = `${nam}-${String(thang).padStart(2, '0')}-01`
+    const lastDay = new Date(nam, thang, 0).getDate()
+    const endDate = `${nam}-${String(thang).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
     const [ccRes, offRes] = await Promise.all([
-      supabase.from('cham_cong').select('*')
-        .eq('nhan_vien_id', nhanVien.id)
-        .gte('ngay', startDate).lte('ngay', endDate).order('ngay'),
-      supabase.from('dang_ky_off').select('*')
-        .eq('nhan_vien_id', nhanVien.id)
-        .gte('ngay_off', startDate).lte('ngay_off', endDate)
-        .in('trang_thai', ['cho_duyet', 'duoc_duyet'])
+      supabase.from('cham_cong').select('*').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate).order('ngay'),
+      supabase.from('dang_ky_off').select('*').eq('nhan_vien_id', nhanVien.id).gte('ngay_off', startDate).lte('ngay_off', endDate).in('trang_thai', ['cho_duyet', 'duoc_duyet']),
     ])
-
     setChamCongData(ccRes.data || [])
     setOffData(offRes.data || [])
     setLoading(false)
   }
 
-  const daysInMonth    = new Date(nam, thang, 0).getDate()
+  const daysInMonth = new Date(nam, thang, 0).getDate()
   const firstDayOfWeek = new Date(nam, thang - 1, 1).getDay()
 
   const chamCongMap = useMemo(() => {
@@ -66,236 +62,211 @@ export default function CheckinLich({ nhanVien, onBack }) {
     const map = {}
     offData.forEach(r => {
       const day = parseInt(r.ngay_off.split('-')[2])
-      if (!chamCongMap[day]) {
-        map[day] = { ...r, source: 'dang_ky_off', loai: r.loai_off }
-      }
+      if (!chamCongMap[day]) map[day] = { ...r, source: 'dang_ky_off', loai: r.loai_off }
     })
     return map
   }, [offData, chamCongMap])
 
   const tongKet = useMemo(() => {
-    // Bắt đầu từ tổng số ngày trong tháng
-    const soNgayThang = daysInMonth
-    let ngayKhongLuong = 0
-    let tangCa  = 0
-    let offPhep = 0
-    let offOV   = 0
-    let offT7   = 0
-    let viPham  = 0
-
-    // Từ cham_cong — tính tăng ca và vi phạm
-    chamCongData.forEach(r => {
-      if (r.loai === 'di_lam') {
-        tangCa += r.tang_ca_gio || 0
-        // Nếu he_so < 1 → phần thiếu tính vào không lương
-        if (r.gio_ra) {
-          ngayKhongLuong += (1 - (r.he_so ?? 1))
-        }
-      } else if (r.loai === 'off_ov')  { offOV++;   ngayKhongLuong += 1 }
-      else if (r.loai === 'off_t7x')  { viPham++;  ngayKhongLuong += 2 }
-      else if (r.loai === 'off_t7')   { offT7++;   ngayKhongLuong += 2 }
-      else if (r.loai === 'off_phep') { offPhep++ }
-    })
-
-    // Từ dang_ky_off
-    offData.forEach(r => {
-      const day = parseInt(r.ngay_off.split('-')[2])
-      if (!chamCongMap[day]) {
-        if (r.loai_off === 'off_phep')      { offPhep++ }
-        else if (r.loai_off === 'off_ov')   { offOV++;  ngayKhongLuong += 1 }
-        else if (r.loai_off === 'off_t7')   { offT7++;  ngayKhongLuong += 2 }
-        else if (r.loai_off === 'off_t7x')  { viPham++; ngayKhongLuong += 2 }
-      }
-    })
-
-    // Ngày công = Tổng ngày tháng - Ngày không lương
-    const ngayCong = Math.max(0, soNgayThang - ngayKhongLuong)
-
-    return { ngayCong, tangCa, offPhep, offOV, offT7, viPham, soNgayThang }
-  }, [chamCongData, offData, chamCongMap, daysInMonth])
+    const calc = tinhLuong(nhanVien, chamCongData, offData, null, nam, thang)
+    return {
+      ngayCong: calc.ngayCong,
+      tangCa: calc.tongTangCa,
+      offPhep: calc.soOffCoLuong,
+      offOV: calc.soOffPhepVuot + calc.soOffOV,
+      offT7: calc.soOffT7CN,
+      viPham: calc.soPhamT7X,
+      soNgayDiLam: calc.soNgayDiLam,
+    }
+  }, [chamCongData, offData, nhanVien, nam, thang])
 
   const getDayStyle = (day) => {
-    const cc        = chamCongMap[day] || offMap[day]
-    const date      = new Date(nam, thang - 1, day)
+    const cc = chamCongMap[day] || offMap[day]
+    const date = new Date(nam, thang - 1, day)
     const isWeekend = date.getDay() === 0 || date.getDay() === 6
-    const isFuture  = date > now
+    const isFuture = date > now
+    const isToday = date.toDateString() === now.toDateString()
 
     if (isFuture) return {
-      bg: 'transparent', color: COLORS.textMute,
-      label: '', subLabel: '', border: `1px solid ${COLORS.border}`,
-      textColor: COLORS.textMute
+      bg: 'transparent', textColor: LUX.ink4, numColor: LUX.ink4,
+      label: '', subLabel: '', border: `1px solid ${LUX.line}`, isMuted: true,
     }
 
     if (!cc) return {
-      bg:        isWeekend ? '#F8F3F0' : '#FEF2F2',
-      color:     isWeekend ? COLORS.textMute : '#991B1B',
-      label:     isWeekend ? '' : '❓',
-      subLabel:  '',
-      border:    `1px solid ${isWeekend ? COLORS.border : '#FECACA'}`,
-      textColor: isWeekend ? COLORS.textMute : '#991B1B'
+      bg: isWeekend ? '#F8F3F0' : '#FEF2F2', textColor: isWeekend ? LUX.ink3 : '#991B1B',
+      numColor: isWeekend ? LUX.ink3 : '#991B1B',
+      label: isWeekend ? '' : '?', subLabel: '',
+      border: `1px solid ${isWeekend ? LUX.line : '#FECACA'}`, isMuted: false,
     }
 
-    // OFF từ dang_ky_off
     if (cc.source === 'dang_ky_off') {
-      const cfg = LOAI_CONFIG[cc.loai_off] || LOAI_CONFIG.off_phep
       const isPending = cc.trang_thai === 'cho_duyet'
       return {
-        bg: isPending ? '#FFF9F0' : cfg.bg,
-        color: isPending ? '#8B6914' : cfg.color,
-        label: isPending ? '⏳' : cfg.icon,
-        subLabel: isPending ? 'Chờ' : '',
-        border: `1px solid ${isPending ? '#FDE68A' : 'transparent'}`,
-        textColor: isPending ? '#8B6914' : cfg.color
+        bg: isPending ? '#FFF9F0' : 'rgba(184,122,106,0.15)',
+        textColor: isPending ? '#8B6914' : LUX.rose, numColor: isPending ? '#8B6914' : LUX.rose,
+        label: 'OFF', subLabel: isPending ? 'Chờ' : '',
+        border: `1px solid ${isPending ? '#FDE68A' : 'rgba(184,122,106,0.3)'}`, isMuted: false,
       }
     }
 
-    // OFF từ cham_cong
-    if (cc.loai !== 'di_lam') {
-      const cfg = LOAI_CONFIG[cc.loai] || LOAI_CONFIG.off_ov
-      return {
-        bg: cfg.bg, color: cfg.color, label: cfg.icon,
-        subLabel: '', border: '1px solid transparent', textColor: cfg.color
-      }
+    if (cc.loai !== 'di_lam') return {
+      bg: 'rgba(184,122,106,0.15)', textColor: LUX.rose, numColor: LUX.rose,
+      label: 'OFF', subLabel: '', border: `1px solid rgba(184,122,106,0.3)`, isMuted: false,
     }
 
-    // Chưa checkout
-    if (cc.gio_vao && !cc.gio_ra) {
-      return {
-        bg: '#FFF9F0', color: '#8B6914', border: '1px solid #FDE68A',
-        label: '🕐', subLabel: 'làm', textColor: '#8B6914'
-      }
+    if (cc.gio_vao && !cc.gio_ra) return {
+      bg: '#FFF9F0', textColor: '#8B6914', numColor: '#8B6914',
+      label: '', subLabel: 'Làm', border: '1px solid #FDE68A', isMuted: false,
     }
 
-    // Đã checkout
-    const heSo  = cc.he_so ?? 0
-    const pct   = Math.round(heSo * 100)
-    const vaoPhut   = cc.gio_vao ? toPhut(cc.gio_vao.slice(0,5)) : 0
-    const chuanVao  = CA_VAO_CHUAN.h * 60 + CA_VAO_CHUAN.m
-    const treLate   = Math.max(0, vaoPhut - chuanVao)
-    const raPhut    = cc.gio_ra ? toPhut(cc.gio_ra.slice(0,5)) : 0
-    const chuanRa   = CA_RA_CHUAN.h * 60 + CA_RA_CHUAN.m
-    const veSomPhut = Math.max(0, chuanRa - raPhut)
+    const heSo = cc.he_so ?? 0
+    const pct = Math.round(heSo * 100)
+    const vaoPhut = cc.gio_vao ? toPhut(cc.gio_vao.slice(0, 5)) : 0
+    const chuanVao = CA_VAO_CHUAN.h * 60 + CA_VAO_CHUAN.m
+    const treLate = Math.max(0, vaoPhut - chuanVao)
 
-    let bg, color, border, label, subLabel
-
-    if (pct === 0) {
-      bg = '#FEF2F2'; color = '#C0392B'; border = '1px solid #FECACA'
-      label = '⚠️'; subLabel = '0%'
-    } else if (pct >= 100 && treLate === 0 && veSomPhut === 0) {
-      bg = '#F5EDE6'; color = '#7D5A3C'; border = '1px solid #C4956A'
-      label = '✅'; subLabel = ''
-    } else if (pct >= 100) {
-      bg = '#FDF6EE'; color = '#A0714F'; border = '1px solid #C9A96E'
-      label = '✅'
-      subLabel = treLate > 0 ? `+${treLate}p` : `-${veSomPhut}p`
-    } else if (pct >= 75) {
-      bg = '#FDF6EE'; color = '#A0714F'; border = '1px solid #C9A96E'
-      label = `${pct}%`
-      subLabel = treLate > 0 ? `+${treLate}p` : veSomPhut > 0 ? `-${veSomPhut}p` : ''
-    } else if (pct >= 50) {
-      bg = '#FEF9F0'; color = '#8B5E3C'; border = '1px solid #E8C4A0'
-      label = `${pct}%`
-      subLabel = treLate > 0 ? `+${treLate}p` : veSomPhut > 0 ? `-${veSomPhut}p` : ''
-    } else {
-      bg = '#FEF2F2'; color = '#C0392B'; border = '1px solid #FECACA'
-      label = `${pct}%`; subLabel = '⚠️'
+    if (pct >= 100 && treLate === 0) return {
+      bg: 'rgba(122,138,106,0.15)', textColor: LUX.sage, numColor: LUX.sage,
+      label: 'OK', subLabel: '', border: `1px solid rgba(122,138,106,0.3)`, isMuted: false,
     }
-
-    if (cc.trang_thai_tang_ca === 'cho_duyet') {
-      subLabel = '⏳TC'
-    } else if (cc.tang_ca_gio > 0) {
-      subLabel = `+${cc.tang_ca_gio}h`
+    if (pct >= 100) return {
+      bg: '#FDF6EE', textColor: LUX.taupe, numColor: LUX.taupe,
+      label: 'OK', subLabel: treLate > 0 ? `+${treLate}p` : '',
+      border: `1px solid ${LUX.champagne}40`, isMuted: false,
     }
-
-    return { bg, color, border, label, subLabel, textColor: color }
+    if (pct >= 50) return {
+      bg: 'rgba(212,146,74,0.15)', textColor: '#d4924a', numColor: '#d4924a',
+      label: `${pct}%`, subLabel: treLate > 0 ? `+${treLate}p` : '',
+      border: `1px solid rgba(212,146,74,0.3)`, isMuted: false,
+    }
+    return {
+      bg: '#FEF2F2', textColor: '#C0392B', numColor: '#C0392B',
+      label: `${pct}%`, subLabel: '', border: '1px solid #FECACA', isMuted: false,
+    }
   }
 
-  const prevMonth = () => {
-    if (thang === 1) { setThang(12); setNam(n => n - 1) }
-    else setThang(t => t - 1)
-  }
-  const nextMonth = () => {
-    if (thang === 12) { setThang(1); setNam(n => n + 1) }
-    else setThang(t => t + 1)
-  }
+  const prevMonth = () => { if (thang === 1) { setThang(12); setNam(n => n - 1) } else setThang(t => t - 1) }
+  const nextMonth = () => { if (thang === 12) { setThang(1); setNam(n => n + 1) } else setThang(t => t + 1) }
+
+  const statStyle = (mb, mc) => ({
+    background: LUX.surface2, border: `1px solid ${LUX.line}`, borderRadius: LUX.radiusSm,
+    padding: '12px 10px', textAlign: 'center', transition: 'transform 0.25s',
+    cursor: 'default',
+  })
 
   return (
-    <div style={{ minHeight:'100vh', background:'#FAF7F4', paddingBottom:'40px' }}>
+    <div style={{ minHeight: '100vh', background: LUX.bg, fontFamily: LUX.fontSans, paddingBottom: 40 }}>
 
-      <div style={{ background:COLORS.grad, padding:'48px 20px 28px' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'20px' }}>
-          <button onClick={onBack}
-            style={{ width:'36px', height:'36px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', border:'none', color:'white', fontSize:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>←</button>
-          <div style={{ color:'white', fontWeight:'700', fontSize:'18px' }}>Lịch Công Tháng</div>
+      {/* Header */}
+      <header style={{ ...HERO, padding: '20px 22px 36px', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <button onClick={onBack} style={{
+          width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.10)',
+          border: '1px solid rgba(245,237,224,0.18)', color: '#f5ede0',
+          display: 'grid', placeItems: 'center', cursor: 'pointer', backdropFilter: 'blur(8px)',
+        }}>
+          {backArrow}
+        </button>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(245,237,224,0.55)', marginBottom: 4 }}>Hannah Spa</div>
+          <h2 style={{ fontFamily: LUX.fontSerif, fontSize: 26, fontWeight: 600, margin: 0, lineHeight: 1, letterSpacing: '-0.01em' }}>Lịch công tháng</h2>
         </div>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(255,255,255,0.15)', borderRadius:'14px', padding:'10px 16px' }}>
-          <button onClick={prevMonth} style={{ background:'none', border:'none', color:'white', fontSize:'22px', cursor:'pointer', padding:'4px 8px' }}>‹</button>
-          <span style={{ color:'white', fontWeight:'800', fontSize:'16px' }}>Tháng {thang}/{nam}</span>
-          <button onClick={nextMonth} style={{ background:'none', border:'none', color:'white', fontSize:'22px', cursor:'pointer', padding:'4px 8px' }}>›</button>
+      </header>
+
+      {/* Month pill */}
+      <div style={{
+        margin: '-18px 22px 0', position: 'relative',
+        background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(245,237,224,0.18)',
+        borderRadius: 14, padding: '10px 14px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        backdropFilter: 'blur(8px)',
+      }}>
+        <button onClick={prevMonth} style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(245,237,224,0.08)', color: '#f5ede0', cursor: 'pointer', display: 'grid', placeItems: 'center', border: 'none' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, color: '#f5ede0' }}>
+          Tháng {thang} &middot; {nam}
         </div>
+        <button onClick={nextMonth} style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(245,237,224,0.08)', color: '#f5ede0', cursor: 'pointer', display: 'grid', placeItems: 'center', border: 'none' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
       </div>
 
-      <div style={{ padding:'16px' }}>
+      <div style={{ padding: '0 18px' }} className="stagger">
 
-        {/* Hàng 1: Ngày Công | Tăng Ca | Vi Phạm */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', marginBottom:'8px' }}>
+        {/* ── Stat Row 1 ── */}
+        <div />
+        <div style={{ margin: '-16px 0 0', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
           {[
-            { label:'Ngày Công', value: tongKet.ngayCong.toFixed(1), color:'#7D5A3C', bg:'#F5EDE6', icon:'📅' },
-            { label:'Tăng Ca',   value: `${tongKet.tangCa}h`,        color:'#A0714F', bg:'#FDF6EE', icon:'⏰' },
-            { label:'Vi Phạm',   value: tongKet.viPham, color: tongKet.viPham > 0 ? '#C0392B' : COLORS.textMute, bg: tongKet.viPham > 0 ? '#FEF2F2' : '#FAF7F4', icon:'⚠️' },
+            { label: 'Ngày Công', value: tongKet.ngayCong.toFixed(1), color: '#5a6a4a', bg: '#eef2e7', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg> },
+            { label: 'Tăng Ca', value: `${tongKet.tangCa}h`, color: '#a07a45', bg: '#fbe8d4', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/></svg> },
+            { label: 'Vi Phạm', value: tongKet.viPham, color: tongKet.viPham > 0 ? '#c25a4a' : LUX.ink3, bg: tongKet.viPham > 0 ? '#fdeede' : LUX.surface, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l9 17H3z"/><path d="M12 10v4M12 17v.5"/></svg> },
           ].map(item => (
-            <div key={item.label} style={{ background:item.bg, borderRadius:'16px', padding:'12px', textAlign:'center', border:`1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize:'16px', marginBottom:'2px' }}>{item.icon}</div>
-              <div style={{ fontSize:'18px', fontWeight:'800', color:item.color }}>{item.value}</div>
-              <div style={{ fontSize:'10px', color:COLORS.textMute, marginTop:'2px', fontWeight:'600' }}>{item.label}</div>
+            <div key={item.label} style={statStyle()}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: item.bg, color: item.color, display: 'grid', placeItems: 'center', margin: '0 auto 6px' }}>{item.icon}</div>
+              <div style={{ fontFamily: LUX.fontSerif, fontSize: 22, fontWeight: 600, lineHeight: 1, color: LUX.espresso }}>{item.value}</div>
+              <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: LUX.ink3, marginTop: 4 }}>{item.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Hàng 2: OFF Có Lương | OFF Không Lương | OFF T7/CN */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', marginBottom:'16px' }}>
+        {/* ── Stat Row 2 ── */}
+        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
           {[
-            { label:'OFF Có Lương',    value: tongKet.offPhep, color:'#A0714F', bg:'#FDF6EE', icon:'🌸' },
-            { label:'OFF Không Lương', value: tongKet.offOV,   color:'#C0392B', bg:'#FEF2F2', icon:'🚫' },
-            { label:'OFF T7/CN (x2)',  value: tongKet.offT7,   color:'#8B6914', bg:'#FFF8ED', icon:'🌙' },
+            { label: 'OFF Có Lương', value: tongKet.offPhep, color: '#8a4a35', bg: '#f1e3df' },
+            { label: 'OFF Ko Lương', value: tongKet.offOV, color: '#c25a4a', bg: '#fdeede' },
+            { label: 'OFF T7/CN x2', value: tongKet.offT7, color: '#a07a45', bg: '#f5e9d4' },
           ].map(item => (
-            <div key={item.label} style={{ background:item.bg, borderRadius:'16px', padding:'12px', textAlign:'center', border:`1px solid ${COLORS.border}` }}>
-              <div style={{ fontSize:'16px', marginBottom:'2px' }}>{item.icon}</div>
-              <div style={{ fontSize:'18px', fontWeight:'800', color:item.color }}>{item.value}</div>
-              <div style={{ fontSize:'9px', color:COLORS.textMute, marginTop:'2px', fontWeight:'600', lineHeight:'1.2' }}>{item.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Lịch */}
-        <div style={{ background:COLORS.card, borderRadius:'24px', padding:'16px', border:`1px solid ${COLORS.border}`, boxShadow:COLORS.shadow, marginBottom:'12px' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'3px', marginBottom:'6px' }}>
-            {['CN','T2','T3','T4','T5','T6','T7'].map(d => (
-              <div key={d} style={{ textAlign:'center', fontSize:'10px', fontWeight:'700', color:d==='CN'||d==='T7'?COLORS.chi:COLORS.textMute, padding:'4px 0' }}>
-                {d}
+            <div key={item.label} style={statStyle()}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: item.bg, color: item.color, display: 'grid', placeItems: 'center', margin: '0 auto 6px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4c1.5 2.5 4 3.5 4 6a4 4 0 11-8 0c0-2.5 2.5-3.5 4-6z"/></svg>
               </div>
+              <div style={{ fontFamily: LUX.fontSerif, fontSize: 22, fontWeight: 600, lineHeight: 1, color: LUX.espresso }}>{item.value}</div>
+              <div style={{ fontSize: 9, letterSpacing: '0.06em', textTransform: 'uppercase', color: LUX.ink3, marginTop: 4, lineHeight: 1.2 }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Calendar ── */}
+        <div style={{ marginTop: 14, background: LUX.surface2, border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, padding: '16px 14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+            {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((d, i) => (
+              <div key={d} style={{ textAlign: 'center', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: (i === 0 || i === 6) ? LUX.rose : LUX.ink3, padding: '6px 0', fontWeight: 600 }}>{d}</div>
             ))}
           </div>
 
           {loading ? (
-            <div style={{ textAlign:'center', padding:'40px', color:COLORS.textMute }}>Đang tải...</div>
+            <div style={{ textAlign: 'center', padding: '40px', color: LUX.ink3 }}>Đang tải...</div>
           ) : (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'3px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
               {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e-${i}`} />)}
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
                 const style = getDayStyle(day)
+                const date = new Date(nam, thang - 1, day)
+                const isToday = date.toDateString() === now.toDateString()
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6
+
                 return (
                   <div key={day} style={{
-                    borderRadius:'10px', padding:'3px 2px', textAlign:'center',
-                    background: style.bg, border: style.border,
-                    minHeight:'52px', display:'flex', flexDirection:'column',
-                    alignItems:'center', justifyContent:'center', gap:'1px'
+                    aspectRatio: '1', borderRadius: 10, padding: 4,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    background: style.bg, border: isToday ? `2px solid ${LUX.gold}` : style.border,
+                    opacity: style.isMuted ? 0.35 : 1, cursor: style.isMuted ? 'default' : 'pointer',
+                    transition: 'all 0.2s', position: 'relative',
+                    ...(isToday ? { background: 'rgba(212,165,116,0.08)' } : {}),
                   }}>
-                    <div style={{ fontSize:'10px', fontWeight:'600', color:style.textColor, opacity:0.65 }}>{day}</div>
-                    <div style={{ fontSize:'12px', lineHeight:'1.1' }}>{style.label}</div>
-                    {style.subLabel ? (
-                      <div style={{ fontSize:'7px', fontWeight:'700', color:style.color, opacity:0.85, lineHeight:'1' }}>{style.subLabel}</div>
-                    ) : null}
+                    <div style={{
+                      fontSize: 13, fontWeight: isToday ? 700 : 600, color: isToday ? LUX.champagne2 : style.numColor,
+                      lineHeight: 1, marginTop: 2,
+                      ...(isWeekend && !style.isMuted ? { color: LUX.rose } : {}),
+                    }}>{day}</div>
+                    {style.label && (
+                      <div style={{ fontSize: 8, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600, color: style.textColor, marginTop: 'auto' }}>
+                        {isToday ? 'HÔM NAY' : style.label}
+                      </div>
+                    )}
+                    {style.subLabel && (
+                      <div style={{ fontSize: 7, fontWeight: 600, color: style.textColor, opacity: 0.85, lineHeight: 1, marginTop: 1 }}>{style.subLabel}</div>
+                    )}
                   </div>
                 )
               })}
@@ -303,28 +274,27 @@ export default function CheckinLich({ nhanVien, onBack }) {
           )}
         </div>
 
-        {/* Chú thích */}
-        <div style={{ background:COLORS.card, borderRadius:'20px', padding:'16px', border:`1px solid ${COLORS.border}`, boxShadow:COLORS.shadow }}>
-          <div style={{ fontSize:'11px', fontWeight:'700', color:COLORS.textMute, marginBottom:'12px', textTransform:'uppercase' }}>Chú thích</div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+        {/* ── Legend ── */}
+        <div style={{ marginTop: 12, background: LUX.surface2, border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, padding: '14px 16px' }}>
+          <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: LUX.ink3, fontWeight: 600, marginBottom: 10 }}>Chú thích</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {[
-              { icon:'✅', bg:'#F5EDE6', color:'#7D5A3C', text:'Đúng giờ 100%' },
-              { icon:'⚠️', bg:'#FDF6EE', color:'#A0714F', text:'Trễ / về sớm' },
-              { icon:'🌸', bg:'#FDF6EE', color:'#A0714F', text:'OFF Có Lương' },
-              { icon:'🚫', bg:'#FEF2F2', color:'#C0392B', text:'OFF Không Lương' },
-              { icon:'🌙', bg:'#FFF8ED', color:'#8B6914', text:'OFF T7/CN (x2)' },
-              { icon:'⏳', bg:'#FFF8ED', color:'#8B6914', text:'Chờ duyệt' },
-              { icon:'🕐', bg:'#FDF6EE', color:'#A0714F', text:'Đang làm việc' },
-              { icon:'❓', bg:'#FEF2F2', color:'#C0392B', text:'Chưa có data' },
+              { swatch: 'rgba(122,138,106,0.25)', border: '1px solid rgba(122,138,106,0.4)', text: 'Đúng giờ 100%' },
+              { swatch: 'rgba(212,146,74,0.25)', border: '1px solid rgba(212,146,74,0.4)', text: 'Trễ / về sớm' },
+              { swatch: 'rgba(184,122,106,0.25)', border: '1px solid rgba(184,122,106,0.4)', text: 'OFF có lương' },
+              { swatch: 'rgba(212,165,116,0.15)', border: `2px solid ${LUX.gold}`, text: 'Hôm nay' },
             ].map((item, i) => (
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'6px 10px', background:item.bg, borderRadius:'12px' }}>
-                <span style={{ fontSize:'16px' }}>{item.icon}</span>
-                <span style={{ fontSize:'11px', color:item.color, fontWeight:'600' }}>{item.text}</span>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: LUX.surface, padding: '8px 10px', borderRadius: 10, fontSize: 12, color: LUX.ink2 }}>
+                <span style={{ width: 16, height: 16, borderRadius: 5, flexShrink: 0, background: item.swatch, border: item.border }} />
+                {item.text}
               </div>
             ))}
           </div>
         </div>
 
+        <div style={{ textAlign: 'center', paddingTop: 18, fontSize: 11, color: LUX.ink3, letterSpacing: '0.06em' }}>
+          {tongKet.soNgayDiLam} ngày làm việc &middot; Tháng {thang}
+        </div>
       </div>
     </div>
   )

@@ -52,7 +52,7 @@ export default function InternalApp() {
         )}
       </div>
 
-      <BottomNav active={tab} onChange={setTab} onOpenForm={handleOpenForm} />
+      <BottomNav active={tab} onChange={setTab} onOpenForm={handleOpenForm} user={user} />
     </div>
   )
 }

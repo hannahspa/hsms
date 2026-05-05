@@ -1,7 +1,7 @@
 import { COLORS } from '../../constants/colors'
 import FABMenu from '../shared/FABMenu'
 
-const TABS = [
+const TABS_ADMIN = [
   { id: 'tong-quan', icon: '🏠', label: 'Tổng Quan' },
   { id: 'tai-khoan', icon: '💳', label: 'Tài Khoản' },
   { id: '__fab__',   icon: null,  label: ''          },
@@ -9,7 +9,16 @@ const TABS = [
   { id: 'cai-dat',   icon: '⚙️', label: 'Cài Đặt'  },
 ]
 
-export default function BottomNav({ active, onChange, onOpenForm }) {
+const TABS_LETHAN = [
+  { id: 'tong-quan', icon: '🏠', label: 'Tổng Quan' },
+  { id: 'tai-khoan', icon: '💳', label: 'Tài Khoản' },
+  { id: '__fab__',   icon: null,  label: ''          },
+  { id: 'nhap-lieu', icon: '✏️', label: 'Nhập Liệu' },
+  { id: 'cai-dat',   icon: '⚙️', label: 'Cài Đặt'  },
+]
+
+export default function BottomNav({ active, onChange, onOpenForm, user }) {
+  const TABS = user?.vai_tro === 'admin' ? TABS_ADMIN : TABS_LETHAN
   return (
     <div style={{
       position: 'fixed', bottom: '12px',

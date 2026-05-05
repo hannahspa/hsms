@@ -1,200 +1,243 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { COLORS } from '../../constants/colors'
-import { formatCurrency, todayISO } from '../../lib/utils'
+import { LUX } from '../../constants/lux'
+import { todayISO, getNowVN } from '../../lib/utils'
 import CheckinChamCong from './CheckinChamCong'
 import CheckinDangKyOff from './CheckinDangKyOff'
 import CheckinDoiPin from './CheckinDoiPin'
 import CheckinLich from './CheckinLich'
+import CheckinLuong from './CheckinLuong'
+import './styles.css'
 
 const VI_TRI_LABEL = { ktv: 'Kỹ Thuật Viên', le_tan: 'Lễ Tân', tap_vu: 'Tạp Vụ' }
+const DAY_NAMES = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
+
+const AVATAR_GRAD = [
+  'linear-gradient(135deg,#d4a574,#b08a55)',
+  'linear-gradient(135deg,#a07a5c,#6a4a35)',
+  'linear-gradient(135deg,#8a6a52,#5a4030)',
+  'linear-gradient(135deg,#b87a6a,#8a4a35)',
+  'linear-gradient(135deg,#8a9a7a,#5a6a4a)',
+]
+function getGrad(name) { let h = 0; for (const c of name) h += c.charCodeAt(0); return AVATAR_GRAD[h % AVATAR_GRAD.length] }
+function getInitials(name) { const p = name.trim().split(' '); return p[p.length - 1].charAt(0).toUpperCase() }
+
+const HERO = {
+  background: `radial-gradient(circle at 100% 0%, rgba(212,165,116,0.4), transparent 55%), linear-gradient(155deg,#4a3528 0%,#3d2c20 50%,#2e2018 100%)`,
+  color: '#f5ede0', position: 'relative', overflow: 'hidden',
+}
+
+// ── Icons ──
+const ICN = {
+  calendar: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>,
+  off: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M9 3v4M15 3v4M4 10h16M9 14l2 2 4-4"/></svg>,
+  wallet: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M3 11h18"/><circle cx="8" cy="15.5" r="1.5"/><path d="M14 16h4M7 7l3-3h4l3 3"/></svg>,
+  lock: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="11" width="12" height="10" rx="2"/><path d="M9 11V8a3 3 0 016 0v3"/><circle cx="12" cy="16" r="1.5"/></svg>,
+  clock: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3l3 2M19 3l-3 2"/></svg>,
+  check: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  flag: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>,
+  chevron: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>,
+  checkin: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg>,
+}
+
+const SHORTCUTS = [
+  { tab: 'lich', accent: '#7a8a6a', icnBg: '#eef2e7', title: 'Lịch Tháng', desc: 'Xem công tháng này', icon: ICN.calendar },
+  { tab: 'dang-ky-off', accent: '#b87a6a', icnBg: '#f1e3df', title: 'Đăng Ký OFF', desc: 'Xin nghỉ phép', icon: ICN.off },
+  { tab: 'luong', accent: '#c8a675', icnBg: '#f5e9d4', title: 'Lương Tháng', desc: 'Xem chi tiết lương', icon: ICN.wallet },
+  { tab: 'doi-pin', accent: '#8a6a52', icnBg: '#ece2d4', title: 'Đổi PIN', desc: 'Thay đổi mật khẩu', icon: ICN.lock },
+]
 
 export default function CheckinHome({ nhanVien, onLogout }) {
-  const [tab,        setTab]        = useState('home')
-  const [chamCong,   setChamCong]   = useState(null)
-  const [loading,    setLoading]    = useState(true)
-  const [time,       setTime]       = useState(getNowVN())
+  const [tab, setTab] = useState('home')
+  const [chamCong, setChamCong] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [time, setTime] = useState(getNowVN())
 
   const today = todayISO()
 
   useEffect(() => {
-    const getNowVN = () => {
-      const now = getNowVN()
-      const utcMs = now.getTime() + now.getTimezoneOffset() * 60000
-      return new Date(utcMs + 7 * 60 * 60000)
-    }
     const timer = setInterval(() => setTime(getNowVN()), 1000)
     return () => clearInterval(timer)
   }, [])
 
-  useEffect(() => {
-    loadChamCong()
-  }, [])
+  useEffect(() => { loadChamCong() }, [])
 
   const loadChamCong = async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('cham_cong')
-      .select('*')
-      .eq('nhan_vien_id', nhanVien.id)
-      .eq('ngay', today)
-      .maybeSingle()
+    const { data } = await supabase.from('cham_cong').select('*')
+      .eq('nhan_vien_id', nhanVien.id).eq('ngay', today).maybeSingle()
     setChamCong(data || null)
     setLoading(false)
   }
 
-  const getInitials = (name) => {
-    const parts = name.trim().split(' ')
-    return parts[parts.length - 1].charAt(0).toUpperCase()
+  const hh = String(time.getHours()).padStart(2, '0')
+  const mm = String(time.getMinutes()).padStart(2, '0')
+  const ss = String(time.getSeconds()).padStart(2, '0')
+
+  const getStatus = () => {
+    if (!chamCong)
+      return { label: 'Chưa check-in', sub: 'Hạn vào ca: 09:15', color: LUX.ink3, icnColor: LUX.ink3, icnBg: '#f5f0e8', icnBd: LUX.line, icon: ICN.clock, btnLabel: 'Check-in ngay', btnKind: 'in' }
+    if (chamCong.gio_vao && !chamCong.gio_ra)
+      return { label: 'Đang làm việc', sub: `Vào lúc ${(chamCong.gio_vao || '').slice(0, 5)}`, color: LUX.sage, icnColor: LUX.sage, icnBg: '#eef2e7', icnBd: '#b8d4b8', icon: ICN.check, btnLabel: 'Check-out', btnKind: 'out' }
+    if (chamCong.gio_vao && chamCong.gio_ra)
+      return { label: 'Đã hoàn thành ca', sub: `${(chamCong.gio_vao || '').slice(0, 5)} → ${(chamCong.gio_ra || '').slice(0, 5)}`, color: LUX.champagne2, icnColor: LUX.gold, icnBg: '#f5e8d4', icnBd: '#d4c090', icon: ICN.flag, btnLabel: 'Đã hoàn thành', btnKind: 'done' }
+    return { label: chamCong.loai, sub: '', color: LUX.ink3, icnColor: LUX.ink3, icnBg: LUX.surface, icnBd: LUX.line, icon: ICN.clock, btnLabel: 'Chi tiết', btnKind: 'in' }
   }
 
-  const getAvatarColor = (name) => {
-    const colors = ['#A0714F','#C9A96E','#7D5A3C','#B8860B','#8B6914']
-    let hash = 0
-    for (let c of name) hash += c.charCodeAt(0)
-    return colors[hash % colors.length]
-  }
+  const st = getStatus()
 
-  const formatTime = (t) => {
-    return t.toLocaleTimeString('vi-VN', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false })
-  }
-
-  const formatDateFull = (t) => {
-    const days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy']
-    return `${days[t.getDay()]}, ${String(t.getDate()).padStart(2,'0')}/${String(t.getMonth()+1).padStart(2,'0')}/${t.getFullYear()}`
-  }
-
-  const getStatusChamCong = () => {
-    if (!chamCong) return { label: 'Chưa check-in', color: COLORS.textMute, icon: '⏰' }
-    if (chamCong.gio_vao && !chamCong.gio_ra) return { label: 'Đang làm việc', color: '#2D7A4F', icon: '✅' }
-    if (chamCong.gio_vao && chamCong.gio_ra) return { label: 'Đã check-out', color: COLORS.primary, icon: '🏁' }
-    return { label: chamCong.loai, color: COLORS.textMute, icon: '📋' }
-  }
-
-  const status = getStatusChamCong()
-
-  if (tab === 'cham-cong') return (
-    <CheckinChamCong
-      nhanVien={nhanVien}
-      chamCong={chamCong}
-      onBack={() => { setTab('home'); loadChamCong() }}
-      onUpdated={loadChamCong}
-    />
-  )
-
-  if (tab === 'dang-ky-off') return (
-    <CheckinDangKyOff
-      nhanVien={nhanVien}
-      onBack={() => setTab('home')}
-    />
-  )
-if (tab === 'lich') return (
-  <CheckinLich
-    nhanVien={nhanVien}
-    onBack={() => setTab('home')}
-  />
-)
-  if (tab === 'doi-pin') return (
-    <CheckinDoiPin
-      nhanVien={nhanVien}
-      onBack={() => setTab('home')}
-    />
-  )
+  if (tab === 'cham-cong') return <CheckinChamCong nhanVien={nhanVien} chamCong={chamCong} onBack={() => { setTab('home'); loadChamCong() }} onUpdated={loadChamCong} />
+  if (tab === 'dang-ky-off') return <CheckinDangKyOff nhanVien={nhanVien} onBack={() => setTab('home')} />
+  if (tab === 'lich') return <CheckinLich nhanVien={nhanVien} onBack={() => setTab('home')} />
+  if (tab === 'doi-pin') return <CheckinDoiPin nhanVien={nhanVien} onBack={() => setTab('home')} />
+  if (tab === 'luong') return <CheckinLuong nhanVien={nhanVien} onBack={() => setTab('home')} />
 
   return (
-    <div style={{ minHeight:'100vh', background:'#FAF7F4', paddingBottom:'40px' }}>
+    <div style={{ minHeight: '100vh', background: LUX.bg, fontFamily: LUX.fontSans, backgroundImage: 'radial-gradient(circle at 20% 0%, rgba(200,166,117,0.10), transparent 50%), radial-gradient(circle at 80% 100%, rgba(138,106,82,0.08), transparent 50%)' }}>
 
-      {/* Header */}
-      <div style={{ background:COLORS.grad, padding:'48px 20px 28px', position:'relative' }}>
-        <button onClick={onLogout}
-          style={{ position:'absolute', right:'20px', top:'48px', background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'12px', padding:'8px 14px', color:'white', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}>
+      {/* ── Hero ── */}
+      <header style={{ ...HERO, padding: '22px 22px 30px', display: 'flex', alignItems: 'center', gap: 14 }}>
+        {/* Avatar */}
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+          boxShadow: '0 4px 16px -4px rgba(212,165,116,0.5), inset 0 -2px 4px rgba(0,0,0,0.15)',
+        }}>
+          {nhanVien.avatar_url
+            ? <img src={nhanVien.avatar_url} alt={nhanVien.ho_ten} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <div style={{ width: '100%', height: '100%', background: getGrad(nhanVien.ho_ten), display: 'grid', placeItems: 'center' }}>
+              <span style={{ fontFamily: LUX.fontSerif, fontSize: 22, fontWeight: 600, color: '#f5ede0' }}>{getInitials(nhanVien.ho_ten)}</span>
+            </div>
+          }
+        </div>
+
+        {/* Greeting */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(245,237,224,0.55)', marginBottom: 3 }}>Xin chào</div>
+          <div style={{ fontFamily: LUX.fontSerif, fontSize: 26, fontWeight: 600, lineHeight: 1, letterSpacing: '-0.01em', marginBottom: 4 }}>{nhanVien.ho_ten}</div>
+          <div style={{ fontSize: 12, color: 'rgba(245,237,224,0.65)', letterSpacing: '0.04em' }}>{VI_TRI_LABEL[nhanVien.vi_tri]}</div>
+        </div>
+
+        {/* Logout pill */}
+        <button onClick={onLogout} className="ripple" style={{
+          flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(245,237,224,0.18)',
+          color: '#f5ede0', padding: '8px 14px', borderRadius: 999, fontSize: 12, fontWeight: 500,
+          cursor: 'pointer', backdropFilter: 'blur(8px)', transition: 'all 0.25s',
+          fontFamily: 'inherit',
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.16)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+        >
           Đăng xuất
         </button>
+      </header>
 
-        <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
-          {/* Avatar */}
-          <div style={{ width:'64px', height:'64px', borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.5)', flexShrink:0 }}>
-            {nhanVien.avatar_url ? (
-              <img src={nhanVien.avatar_url} alt={nhanVien.ho_ten} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-            ) : (
-              <div style={{ width:'100%', height:'100%', background:getAvatarColor(nhanVien.ho_ten), display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px', fontWeight:'800', color:'white' }}>
-                {getInitials(nhanVien.ho_ten)}
-              </div>
-            )}
-          </div>
-          <div>
-            <div style={{ color:'rgba(255,255,255,0.8)', fontSize:'13px' }}>Xin chào,</div>
-            <div style={{ color:'white', fontSize:'20px', fontWeight:'800' }}>{nhanVien.ho_ten}</div>
-            <div style={{ color:'rgba(255,255,255,0.75)', fontSize:'12px', marginTop:'2px' }}>
-              {VI_TRI_LABEL[nhanVien.vi_tri]}
-            </div>
-          </div>
+      {/* ── Clock Card ── */}
+      <div style={{ margin: '-16px 18px 0', background: LUX.surface2, borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, boxShadow: LUX.shadow, padding: 22, textAlign: 'center', position: 'relative', overflow: 'hidden' }} className="stagger">
+        <div />
+        <div style={{ fontFamily: LUX.fontSerif, fontSize: 56, fontWeight: 600, color: LUX.espresso, lineHeight: 1, letterSpacing: '-0.02em' }}>
+          {hh}<span style={{ color: LUX.champagne }}>:</span>{mm}
+          <span style={{ fontSize: 28, color: LUX.champagne2, fontWeight: 500, marginLeft: 4, animation: 'blink 1s steps(2) infinite' }}>{ss}</span>
+        </div>
+        <div style={{ fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: LUX.ink3, marginTop: 8 }}>
+          {DAY_NAMES[time.getDay()]} &middot; {String(time.getDate()).padStart(2, '0')}.{String(time.getMonth() + 1).padStart(2, '0')}.{time.getFullYear()}
         </div>
       </div>
 
-      <div style={{ padding:'20px 16px' }}>
+      {/* ── Status / Checkin Card ── */}
+      <div style={{ margin: '12px 18px 0', background: LUX.surface2, borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, padding: 18, position: 'relative', overflow: 'hidden' }} className="stagger">
+        <div />
+        <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: LUX.ink3, fontWeight: 600 }}>Hôm nay</div>
 
-        {/* Đồng hồ */}
-        <div style={{ background:COLORS.card, borderRadius:'24px', padding:'24px', marginBottom:'16px', textAlign:'center', border:`1px solid ${COLORS.border}`, boxShadow:COLORS.shadow }}>
-          <div style={{ fontSize:'42px', fontWeight:'800', color:COLORS.text, letterSpacing:'-1px', fontVariantNumeric:'tabular-nums' }}>
-            {formatTime(time)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '12px 0 16px' }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: 'grid', placeItems: 'center',
+            background: st.icnBg, border: `1px solid ${st.icnBd}`, color: st.icnColor,
+          }}>
+            {st.icon}
           </div>
-          <div style={{ fontSize:'14px', color:COLORS.textMute, marginTop:'4px' }}>
-            {formatDateFull(time)}
+          <div>
+            <div style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 600, color: st.color }}>{st.label}</div>
+            {st.sub && <div style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, marginTop: 2, letterSpacing: '0.06em' }}>{st.sub}</div>}
           </div>
         </div>
 
-        {/* Trạng thái hôm nay */}
-        <div style={{ background:COLORS.card, borderRadius:'24px', padding:'20px', marginBottom:'16px', border:`1px solid ${COLORS.border}`, boxShadow:COLORS.shadow }}>
-          <div style={{ fontSize:'13px', color:COLORS.textMute, fontWeight:'600', marginBottom:'12px', textTransform:'uppercase', letterSpacing:'0.5px' }}>
-            Hôm nay
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'16px' }}>
-            <div style={{ fontSize:'32px' }}>{status.icon}</div>
-            <div>
-              <div style={{ fontWeight:'800', fontSize:'16px', color:status.color }}>{status.label}</div>
-              {chamCong?.gio_vao && (
-                <div style={{ fontSize:'12px', color:COLORS.textMute, marginTop:'2px' }}>
-                  Vào: {chamCong.gio_vao?.slice(0,5)}
-                  {chamCong.gio_ra && ` • Ra: ${chamCong.gio_ra?.slice(0,5)}`}
-                </div>
-              )}
-            </div>
-          </div>
+        {!loading && (
+          <button onClick={() => setTab('cham-cong')} className="btn-shimmer ripple"
+            style={{
+              width: '100%', padding: '16px', borderRadius: 14, border: 'none', cursor: 'pointer',
+              background: st.btnKind === 'out' ? 'linear-gradient(180deg,#c06050,#8a3a2a)'
+                : st.btnKind === 'done' ? LUX.surface
+                : 'linear-gradient(180deg,#d4a574,#a07a4a)',
+              color: st.btnKind === 'done' ? LUX.ink3 : '#fdf6e8',
+              fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: 15, letterSpacing: '0.04em',
+              boxShadow: st.btnKind === 'done' ? 'none'
+                : st.btnKind === 'out' ? '0 4px 14px rgba(192,96,80,0.35)'
+                : '0 8px 24px -8px rgba(160,122,74,0.55), inset 0 1px 0 rgba(255,255,255,0.3)',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              {st.btnKind === 'in' ? ICN.checkin : null}
+              {st.btnLabel}
+            </span>
+          </button>
+        )}
+      </div>
 
-          {/* Nút Check-in / Check-out */}
-          {!loading && (
-            <button onClick={() => setTab('cham-cong')} style={{
-              width:'100%', padding:'16px', borderRadius:'16px',
-              background: !chamCong ? COLORS.grad :
-                         chamCong.gio_vao && !chamCong.gio_ra ? 'linear-gradient(135deg,#C0392B,#E74C3C)' :
-                         'linear-gradient(135deg,#95A5A6,#7F8C8D)',
-              color:'white', border:'none', fontWeight:'800', fontSize:'16px', cursor:'pointer',
-              boxShadow:'0 4px 16px rgba(160,113,79,0.3)'
+      {/* ── Shortcut Grid 2×2 ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '14px 18px 28px' }} className="stagger">
+        {SHORTCUTS.map((item, i) => (
+          <button key={item.tab} onClick={() => setTab(item.tab)}
+            style={{
+              background: LUX.surface2, border: `1px solid ${LUX.line}`, borderRadius: LUX.radius,
+              padding: 16, cursor: 'pointer', textAlign: 'left', position: 'relative', overflow: 'hidden',
+              transition: 'all 0.3s cubic-bezier(.2,.8,.2,1)', fontFamily: 'inherit', color: LUX.ink,
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-2px)'
+              e.currentTarget.style.borderColor = item.accent
+              e.currentTarget.style.boxShadow = LUX.shadow
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'none'
+              e.currentTarget.style.borderColor = LUX.line
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          >
+            {/* Accent glow */}
+            <div style={{
+              position: 'absolute', right: -20, bottom: -20, width: 80, height: 80, borderRadius: '50%',
+              background: item.accent, opacity: 0.06, transition: 'all 0.4s cubic-bezier(.2,.8,.2,1)',
+              ...(i === 0 ? {} : {}),
+            }} />
+
+            <div style={{
+              width: 38, height: 38, borderRadius: 11, display: 'grid', placeItems: 'center',
+              background: item.icnBg, color: item.accent, marginBottom: 14,
+              transition: 'transform 0.3s cubic-bezier(.2,.8,.2,1)',
             }}>
-              {!chamCong ? '👆 Check-in' :
-               chamCong.gio_vao && !chamCong.gio_ra ? '🏁 Check-out' :
-               '✅ Đã hoàn thành'}
-            </button>
-          )}
-        </div>
+              {item.icon}
+            </div>
 
-        {/* Menu chức năng */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'12px' }}>
-          {[
-            { icon:'📅', label:'Lịch Tháng',   desc:'Xem công tháng này', tab:'lich',         color:'#F0FDF4' },
-            { icon:'🗓️', label:'Đăng Ký OFF',  desc:'Xin nghỉ phép',      tab:'dang-ky-off',  color:'#EBF5FB' },
-            { icon:'🔑', label:'Đổi PIN',      desc:'Thay đổi mật khẩu',  tab:'doi-pin',      color:'#FEF9E7' },
-          ].map(item => (
-            <button key={item.tab} onClick={() => setTab(item.tab)}
-              style={{ background:item.color, borderRadius:'20px', padding:'20px 16px', border:`1px solid ${COLORS.border}`, cursor:'pointer', textAlign:'left', boxShadow:COLORS.shadow }}>
-              <div style={{ fontSize:'28px', marginBottom:'8px' }}>{item.icon}</div>
-              <div style={{ fontWeight:'700', fontSize:'14px', color:COLORS.text }}>{item.label}</div>
-              <div style={{ fontSize:'11px', color:COLORS.textMute, marginTop:'2px' }}>{item.desc}</div>
-            </button>
-          ))}
-        </div>
+            <div style={{ position: 'absolute', top: 16, right: 16, color: LUX.ink4, transition: 'all 0.25s' }}>
+              {ICN.chevron}
+            </div>
 
+            <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, lineHeight: 1, color: LUX.espresso, marginBottom: 3 }}>
+              {item.title}
+            </div>
+            <div style={{ fontSize: 11, color: LUX.ink3, letterSpacing: '0.04em' }}>
+              {item.desc}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div style={{ textAlign: 'center', padding: '18px 0 28px', fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: LUX.ink3 }}>
+        Hannah Spa &middot; {String(time.getDate()).padStart(2, '0')}.{String(time.getMonth() + 1).padStart(2, '0')}.{time.getFullYear()}
       </div>
     </div>
   )

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { COLORS } from '../../../constants/colors'
+import { useAuth } from '../../../context/AuthContext'
 import BaoCaoNgay from './components/BaoCaoNgay'
 import BaoCaoTuan from './components/BaoCaoTuan'
 import BaoCaoThang from './components/BaoCaoThang'
@@ -137,8 +138,20 @@ function Dashboard({ onNavigate }) {
 }
 
 export default function BaoCaoPage() {
+  const { user } = useAuth()
   const [view, setView] = useState('dashboard')
   const handleBack = () => setView('dashboard')
+
+  if (user?.vai_tro !== 'admin') return (
+    <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+      <div style={{ fontWeight: '800', fontSize: '18px', color: '#1A1209', marginBottom: '8px' }}>Chỉ dành cho Admin</div>
+      <div style={{ fontSize: '13px', color: '#B8A898', lineHeight: '1.6' }}>
+        Báo cáo tài chính chỉ Quản trị viên mới được xem.
+        <br />Nếu cần xem báo cáo, liên hệ anh Nam.
+      </div>
+    </div>
+  )
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease' }}>

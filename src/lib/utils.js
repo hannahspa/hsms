@@ -3,10 +3,12 @@ export const formatCurrency = (n) =>
 
 export const formatCurrencyHide = () => '••••••••'
 
-export const formatDate = (date) => {
-  const d = new Date(date)
+export const formatDate = (isoDate) => {
+  if (!isoDate) return ''
+  const [y, m, d] = String(isoDate).substring(0, 10).split('-').map(Number)
+  const date = new Date(y, m - 1, d) // dùng constructor local tránh UTC shift
   const days = ['CN','T2','T3','T4','T5','T6','T7']
-  return `${days[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
+  return `${days[date.getDay()]} ${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${y}`
 }
 
 export const getNowVN = () => {
