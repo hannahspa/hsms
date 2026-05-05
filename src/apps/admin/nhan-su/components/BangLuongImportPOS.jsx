@@ -123,7 +123,6 @@ export default function BangLuongImportPOS({ thang, nam, nvList, onImported }) {
           hoa_hong_dv: item.hoaHong,
           hoa_hong_the: 0,
           tien_tour: item.tienTour,
-          hoa_hong: item.hoaHong,
         }
 
         if (existing) {

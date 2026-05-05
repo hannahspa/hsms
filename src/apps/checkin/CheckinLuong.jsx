@@ -42,11 +42,15 @@ export default function CheckinLuong({ nhanVien, onBack }) {
     ])
 
     const quy = quyRes.data
+    // For current month: cap at today for real-time
+    const nowRef = getNowVN()
+    const isCurrent = month === nowRef.getMonth() + 1 && year === nowRef.getFullYear()
+    const todayRef = isCurrent ? nowRef.getDate() : null
     const calc = tinhLuong(nhanVien, ccRes.data || [], offRes.data || [], blRes.data, year, month, {
       so_da_tich_luy: quy?.so_ngay_tich || 0,
       so_da_dung: quy?.so_ngay_da_dung || 0,
       so_dung_thang_nay: quy?.so_dung_thang_nay || 0,
-    })
+    }, todayRef)
 
     const bl = blRes.data
     setData({

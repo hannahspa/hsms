@@ -68,7 +68,10 @@ export default function CheckinLich({ nhanVien, onBack }) {
   }, [offData, chamCongMap])
 
   const tongKet = useMemo(() => {
-    const calc = tinhLuong(nhanVien, chamCongData, offData, null, nam, thang)
+    const nowRef = getNowVN()
+    const isCurrent = thang === nowRef.getMonth() + 1 && nam === nowRef.getFullYear()
+    const todayRef = isCurrent ? nowRef.getDate() : null
+    const calc = tinhLuong(nhanVien, chamCongData, offData, null, nam, thang, null, todayRef)
     return {
       ngayCong: calc.ngayCong,
       tangCa: calc.tongTangCa,

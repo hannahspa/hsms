@@ -7,6 +7,24 @@ import BangLuongImportPOS from './BangLuongImportPOS'
 
 const DON_GIA_TANG_CA = 25000
 
+function canChot(thang, nam, ky) {
+  const now = getNowVN()
+  const curM = now.getMonth() + 1
+  const curY = now.getFullYear()
+  const curD = now.getDate()
+  // Current or future month → never chot
+  if (nam > curY || (nam === curY && thang >= curM)) return false
+  // Determine if this is the "previous month" (month right before current)
+  const prevM = curM === 1 ? 12 : curM - 1
+  const prevY = curM === 1 ? curY - 1 : curY
+  const isPrev = (thang === prevM && nam === prevY)
+  // Older than previous month → always OK
+  if (!isPrev) return true
+  // Previous month → gate by payroll cycle
+  if (ky === 1) return curD >= 5
+  return curD >= 15
+}
+
 function getInitials(name) {
   const parts = name.trim().split(' ')
   return parts[parts.length - 1].charAt(0).toUpperCase()
@@ -101,6 +119,11 @@ export default function TabBangLuong() {
       const bangLuongMap = {}; (resBangLuong.data || []).forEach(r => { bangLuongMap[r.nhan_vien_id] = r })
       const quyOffMap    = {}; (resQuyOff.data || []).forEach(r => { quyOffMap[r.nhan_vien_id] = r })
 
+      // For current month: cap at today's date for real-time data
+      const nowRef = getNowVN()
+      const isCurrentMonth = thang === nowRef.getMonth() + 1 && nam === nowRef.getFullYear()
+      const todayRef = isCurrentMonth ? nowRef.getDate() : null
+
       const result = {}
       nvData.forEach(nv => {
         const bl = bangLuongMap[nv.id]
@@ -109,7 +132,7 @@ export default function TabBangLuong() {
           so_da_tich_luy: quy?.so_ngay_tich || 0,
           so_da_dung: quy?.so_ngay_da_dung || 0,
           so_dung_thang_nay: quy?.so_dung_thang_nay || 0,
-        })
+        }, todayRef)
         result[nv.id].kyQuyTrangThai = nv.ky_quy_trang_thai || 'hoan_tat'
         result[nv.id].trangThaiLC  = bl?.trang_thai_lc || bl?.trang_thai || 'chua_tinh'
         result[nv.id].trangThaiLKD = bl?.trang_thai_lkd || 'chua_tinh'
@@ -144,6 +167,17 @@ export default function TabBangLuong() {
 
   const handleLuu = async (chot = false) => {
     if (!selected) return
+    if (chot && !canChot(thang, nam, ky)) {
+      const now = getNowVN()
+      const isCurrent = thang === now.getMonth() + 1 && nam === now.getFullYear()
+      showToast(
+        isCurrent
+          ? 'Không thể chốt lương tháng hiện tại. Hãy đợi hết tháng.'
+          : `Kỳ ${ky} chỉ được chốt từ ngày ${ky === 1 ? '05' : '15'} tháng sau.`,
+        'error'
+      )
+      return
+    }
     setSaving(true)
     try {
       const ld = luongData[selected.id]
@@ -158,7 +192,6 @@ export default function TabBangLuong() {
           tru_ung_luong: editState.truUngLuong, tru_ky_quy: ld.truKyQuy,
           tong_linh: ld.tongLinh, // keep total updated
           trang_thai_lc: chot ? 'da_chot' : 'da_tinh',
-          hoa_hong: ld.hoaHong, // legacy column
         }
       } else {
         // Kỳ 2 — Lương Kinh Doanh
@@ -171,7 +204,6 @@ export default function TabBangLuong() {
           hoa_hong_dv: editState.hoaHongDV,
           hoa_hong_the: 0,
           tien_tour: editState.tienTour,
-          hoa_hong: editState.hoaHongDV,
           tong_linh: tongLinh,
           trang_thai_lkd: chot ? 'da_chot' : 'da_tinh',
         }
@@ -187,6 +219,23 @@ export default function TabBangLuong() {
       }
       if (error) throw error
       showToast(chot ? '✓ Đã chốt lương Kỳ ' + ky + '!' : '✓ Đã lưu bảng lương Kỳ ' + ky)
+      await fetchAll()
+      setSelected(null)
+    } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
+    finally { setSaving(false) }
+  }
+
+  const handleUnlock = async () => {
+    if (!selected) return
+    const ld = luongData[selected.id]
+    if (!ld?.bangLuongId) return
+    setSaving(true)
+    try {
+      const col = ky === 1 ? 'trang_thai_lc' : 'trang_thai_lkd'
+      const { error } = await supabase.from('bang_luong')
+        .update({ [col]: 'da_tinh' }).eq('id', ld.bangLuongId)
+      if (error) throw error
+      showToast('✓ Đã mở chốt Kỳ ' + ky + ' — có thể chỉnh sửa')
       await fetchAll()
       setSelected(null)
     } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
@@ -233,7 +282,6 @@ export default function TabBangLuong() {
           hoa_hong_dv: tongKinhDoanh,
           hoa_hong_the: 0,
           tien_tour: 0,
-          hoa_hong: tongKinhDoanh,
           tong_linh: tongLinh,
         }
 
@@ -272,13 +320,44 @@ export default function TabBangLuong() {
       )}
 
       {/* Chọn tháng */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: LUX.surface, borderRadius: LUX.radius, padding: '12px 16px', marginBottom: '12px', border: `1px solid ${LUX.line}`, boxShadow: LUX.shadowSm }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: LUX.surface, borderRadius: LUX.radius, padding: '12px 16px', marginBottom: '6px', border: `1px solid ${LUX.line}`, boxShadow: LUX.shadowSm }}>
         <button onClick={prevMonth} style={{ background: 'none', border: 'none', fontSize: '22px', color: LUX.taupe, cursor: 'pointer', padding: '4px 8px' }}>‹</button>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '20px', color: LUX.espresso }}>Tháng {thang} / {nam}</div>
         </div>
         <button onClick={nextMonth} style={{ background: 'none', border: 'none', fontSize: '22px', color: LUX.taupe, cursor: 'pointer', padding: '4px 8px' }}>›</button>
       </div>
+
+      {/* Badge cảnh báo tháng hiện tại / chưa đến kỳ chốt */}
+      {(() => {
+        const now = getNowVN()
+        const isCurrent = thang === now.getMonth() + 1 && nam === now.getFullYear()
+        const canChotNow = canChot(thang, nam, ky)
+        if (isCurrent) {
+          return (
+            <div style={{ background: '#e8f0fe', borderRadius: LUX.radiusSm, padding: '8px 14px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #a8c8f0' }}>
+              <span style={{ fontSize: 14 }}>🕐</span>
+              <div>
+                <span style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700, color: '#1A5276' }}>Dữ liệu thời gian thực</span>
+                <span style={{ fontFamily: LUX.fontSans, fontSize: 11, color: '#1A527699', marginLeft: 8 }}>— chưa thể chốt đến hết tháng</span>
+              </div>
+            </div>
+          )
+        }
+        if (!canChotNow && !isCurrent) {
+          const chotM = thang === 12 ? 1 : thang + 1
+          const chotY = thang === 12 ? nam + 1 : nam
+          return (
+            <div style={{ background: '#fdf3e0', borderRadius: LUX.radiusSm, padding: '8px 14px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #e8d5b0' }}>
+              <span style={{ fontSize: 14 }}>📅</span>
+              <span style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 600, color: LUX.taupe }}>
+                Kỳ {ky} được chốt từ ngày {ky === 1 ? '05' : '15'}/{String(chotM).padStart(2,'0')}/{chotY}
+              </span>
+            </div>
+          )
+        }
+        return null
+      })()}
 
       {/* ── Kỳ tab switch ── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: LUX.surface2, borderRadius: LUX.radius, padding: 4, border: `1px solid ${LUX.line}` }}>
@@ -639,7 +718,18 @@ export default function TabBangLuong() {
                 </div>
 
                 {/* Nút hành động */}
-                {!isChot ? (
+                {isChot ? (
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={() => { if (window.confirm(`Mở chốt Kỳ ${ky} cho ${selected.ho_ten}? Có thể chỉnh sửa lại sau khi mở.`)) handleUnlock() }} disabled={saving}
+                      style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.danger}`, background: '#fff5f5', color: LUX.danger, fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                      {saving ? '...' : '🔓 Mở Chốt'}
+                    </button>
+                    <button onClick={() => setSelected(null)}
+                      style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, background: LUX.surface2, fontFamily: LUX.fontSans, color: LUX.ink3, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                      Đóng
+                    </button>
+                  </div>
+                ) : canChot(thang, nam, ky) ? (
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button onClick={() => handleLuu(false)} disabled={saving}
                       style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, background: LUX.surface2, fontFamily: LUX.fontSans, color: LUX.ink2, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
@@ -651,9 +741,9 @@ export default function TabBangLuong() {
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => setSelected(null)}
-                    style={{ width: '100%', padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, background: LUX.surface2, fontFamily: LUX.fontSans, color: LUX.ink3, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
-                    Đóng
+                  <button onClick={() => handleLuu(false)} disabled={saving}
+                    style={{ width: '100%', padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, background: LUX.surface2, fontFamily: LUX.fontSans, color: LUX.ink2, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                    {saving ? '...' : 'Lưu'}
                   </button>
                 )}
               </div>
