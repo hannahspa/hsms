@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { COLORS } from '../../../constants/colors'
+import { LUX } from '../../../constants/lux'
 import { formatCurrency } from '../../../lib/utils'
 
 const HINH_THUC_LABELS = {
@@ -78,7 +78,7 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
     }
   }
 
-  const loaiColor = giaoDich.loai === 'thu' ? COLORS.thu : giaoDich.loai === 'chi' ? COLORS.chi : COLORS.chuyenKhoan
+  const loaiColor = giaoDich.loai === 'thu' ? '#2D7A4F' : giaoDich.loai === 'chi' ? '#C0392B' : '#6C3483'
   const loaiIcon  = giaoDich.loai === 'thu' ? '💰' : giaoDich.loai === 'chi' ? '💸' : '🔄'
 
   return (
@@ -86,13 +86,13 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
 
       {/* Toast */}
       {toast && (
-        <div style={{ position:'fixed',top:'20px',left:'50%',transform:'translateX(-50%)',zIndex:9999,background:toast.type==='error'?COLORS.chi:'#2D7A4F',color:'white',padding:'12px 24px',borderRadius:'12px',fontWeight:'700',fontSize:'13px',boxShadow:'0 4px 20px rgba(0,0,0,0.15)' }}>
+        <div style={{ position:'fixed',top:'20px',left:'50%',transform:'translateX(-50%)',zIndex:9999,background:toast.type==='error'?'#C0392B':'#2D7A4F',color:'white',padding:'12px 24px',borderRadius:'12px',fontWeight:'700',fontSize:'13px',boxShadow:'0 4px 20px rgba(0,0,0,0.15)' }}>
           {toast.msg}
         </div>
       )}
 
       {/* Header */}
-      <div style={{ background:COLORS.grad,padding:'44px 20px 24px' }}>
+      <div style={{ background:LUX.heroGrad,padding:'44px 20px 24px' }}>
         <div style={{ display:'flex',alignItems:'center',gap:'12px',marginBottom:'20px' }}>
           <button onClick={onBack} style={{ width:'36px',height:'36px',borderRadius:'50%',background:'rgba(255,255,255,0.2)',border:'1.5px solid rgba(255,255,255,0.3)',color:'white',fontSize:'18px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>←</button>
           <div style={{ color:'white',fontWeight:'700',fontSize:'18px' }}>Chi Tiết Giao Dịch</div>
@@ -111,8 +111,8 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
       <div style={{ padding:'20px 16px' }}>
 
         {/* Chi tiết */}
-        <div style={{ background:COLORS.card,borderRadius:'24px',padding:'20px',marginBottom:'16px',border:`1px solid ${COLORS.border}`,boxShadow:COLORS.shadow }}>
-          <div style={{ fontWeight:'800',fontSize:'15px',color:COLORS.text,marginBottom:'16px' }}>Thông tin giao dịch</div>
+        <div style={{ background:LUX.surface2,borderRadius:'24px',padding:'20px',marginBottom:'16px',border:`1px solid ${LUX.line}`,boxShadow:LUX.shadowSm }}>
+          <div style={{ fontWeight:'800',fontSize:'15px',color:LUX.ink,marginBottom:'16px' }}>Thông tin giao dịch</div>
 
           {[
             { label:'Ngày',        value: fmt(giaoDich.ngay) },
@@ -120,9 +120,9 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
             { label:'Danh mục',    value: giaoDich.ten_danh_muc || giaoDich.ten_vi_tu || '—' },
             { label:'Diễn giải',   value: giaoDich.dien_giai || '—' },
           ].map(row => (
-            <div key={row.label} style={{ display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:`1px solid ${COLORS.border}` }}>
-              <span style={{ fontSize:'13px',color:COLORS.textMute }}>{row.label}</span>
-              <span style={{ fontSize:'13px',fontWeight:'700',color:COLORS.text,maxWidth:'60%',textAlign:'right' }}>{row.value}</span>
+            <div key={row.label} style={{ display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:`1px solid ${LUX.line}` }}>
+              <span style={{ fontSize:'13px',color:LUX.ink3 }}>{row.label}</span>
+              <span style={{ fontSize:'13px',fontWeight:'700',color:LUX.ink,maxWidth:'60%',textAlign:'right' }}>{row.value}</span>
             </div>
           ))}
         </div>
@@ -132,12 +132,12 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
           <div style={{ display:'flex',gap:'12px',marginBottom:'16px' }}>
             <button
               onClick={() => setShowEditForm(true)}
-              style={{ flex:1,padding:'16px',borderRadius:'16px',background:COLORS.card,border:`2px solid ${COLORS.primary}`,color:COLORS.primary,fontWeight:'800',fontSize:'14px',cursor:'pointer' }}>
+              style={{ flex:1,padding:'16px',borderRadius:'16px',background:LUX.surface2,border:`2px solid ${LUX.taupe}`,color:LUX.taupe,fontWeight:'800',fontSize:'14px',cursor:'pointer' }}>
               ✏️ Sửa
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              style={{ flex:1,padding:'16px',borderRadius:'16px',background:'#FEF2F2',border:`2px solid ${COLORS.chi}`,color:COLORS.chi,fontWeight:'800',fontSize:'14px',cursor:'pointer' }}>
+              style={{ flex:1,padding:'16px',borderRadius:'16px',background:'#FEF2F2',border:`2px solid ${'#C0392B'}`,color:'#C0392B',fontWeight:'800',fontSize:'14px',cursor:'pointer' }}>
               🗑️ Xóa
             </button>
           </div>
@@ -154,13 +154,13 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
       {showDeleteConfirm && (
         <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',zIndex:999 }}
           onClick={() => setShowDeleteConfirm(false)}>
-          <div style={{ background:COLORS.bg,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'420px',margin:'0 auto',padding:'24px 20px 40px' }}
+          <div style={{ background:LUX.bg,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'420px',margin:'0 auto',padding:'24px 20px 40px' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ fontSize:'32px',textAlign:'center',marginBottom:'12px' }}>🗑️</div>
-            <h3 style={{ fontSize:'18px',fontWeight:'800',color:COLORS.text,textAlign:'center',marginBottom:'8px' }}>
+            <h3 style={{ fontSize:'18px',fontWeight:'800',color:LUX.ink,textAlign:'center',marginBottom:'8px' }}>
               {isAdmin ? 'Xóa giao dịch?' : 'Gửi yêu cầu xóa?'}
             </h3>
-            <p style={{ fontSize:'13px',color:COLORS.textMute,textAlign:'center',marginBottom:'20px' }}>
+            <p style={{ fontSize:'13px',color:LUX.ink3,textAlign:'center',marginBottom:'20px' }}>
               {isAdmin
                 ? 'Hành động này không thể hoàn tác.'
                 : 'Yêu cầu sẽ được gửi cho Admin duyệt.'}
@@ -169,15 +169,15 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
               value={lyDo}
               onChange={e => setLyDo(e.target.value)}
               placeholder="Nhập lý do xóa..."
-              style={{ width:'100%',padding:'12px',borderRadius:'12px',border:`1px solid ${COLORS.border}`,fontSize:'14px',resize:'none',height:'80px',marginBottom:'16px',boxSizing:'border-box',outline:'none' }}
+              style={{ width:'100%',padding:'12px',borderRadius:'12px',border:`1px solid ${LUX.line}`,fontSize:'14px',resize:'none',height:'80px',marginBottom:'16px',boxSizing:'border-box',outline:'none' }}
             />
             <div style={{ display:'flex',gap:'12px' }}>
               <button onClick={() => setShowDeleteConfirm(false)}
-                style={{ flex:1,padding:'14px',borderRadius:'14px',background:COLORS.card,border:`1px solid ${COLORS.border}`,fontWeight:'700',cursor:'pointer' }}>
+                style={{ flex:1,padding:'14px',borderRadius:'14px',background:LUX.surface2,border:`1px solid ${LUX.line}`,fontWeight:'700',cursor:'pointer' }}>
                 Hủy
               </button>
               <button onClick={handleDelete} disabled={loading}
-                style={{ flex:1,padding:'14px',borderRadius:'14px',background:COLORS.chi,color:'white',border:'none',fontWeight:'800',cursor:'pointer',opacity:loading?0.6:1 }}>
+                style={{ flex:1,padding:'14px',borderRadius:'14px',background:'#C0392B',color:'white',border:'none',fontWeight:'800',cursor:'pointer',opacity:loading?0.6:1 }}>
                 {loading ? '...' : isAdmin ? 'Xóa ngay' : 'Gửi yêu cầu'}
               </button>
             </div>
@@ -189,9 +189,9 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
       {showEditForm && (
         <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',zIndex:999 }}
           onClick={() => setShowEditForm(false)}>
-          <div style={{ background:COLORS.bg,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'420px',margin:'0 auto',padding:'24px 20px 40px' }}
+          <div style={{ background:LUX.bg,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'420px',margin:'0 auto',padding:'24px 20px 40px' }}
             onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize:'18px',fontWeight:'800',color:COLORS.text,marginBottom:'20px' }}>✏️ Sửa Giao Dịch</h3>
+            <h3 style={{ fontSize:'18px',fontWeight:'800',color:LUX.ink,marginBottom:'20px' }}>✏️ Sửa Giao Dịch</h3>
             <EditGiaoDich
               giaoDich={giaoDich}
               user={user}
@@ -266,39 +266,39 @@ function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }
   return (
     <div>
       <div style={{ marginBottom:'16px' }}>
-        <div style={{ fontSize:'12px',color:COLORS.textMute,marginBottom:'6px',fontWeight:'600' }}>Số tiền (đ)</div>
+        <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Số tiền (đ)</div>
         <input
           value={formatInput(soTien)}
           onChange={e => setSoTien(e.target.value.replace(/\D/g,''))}
-          style={{ width:'100%',padding:'14px',borderRadius:'12px',border:`1px solid ${COLORS.border}`,fontSize:'18px',fontWeight:'800',color:COLORS.text,outline:'none',boxSizing:'border-box' }}
+          style={{ width:'100%',padding:'14px',borderRadius:'12px',border:`1px solid ${LUX.line}`,fontSize:'18px',fontWeight:'800',color:LUX.ink,outline:'none',boxSizing:'border-box' }}
         />
       </div>
       <div style={{ marginBottom:'16px' }}>
-        <div style={{ fontSize:'12px',color:COLORS.textMute,marginBottom:'6px',fontWeight:'600' }}>Diễn giải</div>
+        <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Diễn giải</div>
         <input
           value={dienGiai}
           onChange={e => setDienGiai(e.target.value)}
-          style={{ width:'100%',padding:'14px',borderRadius:'12px',border:`1px solid ${COLORS.border}`,fontSize:'14px',color:COLORS.text,outline:'none',boxSizing:'border-box' }}
+          style={{ width:'100%',padding:'14px',borderRadius:'12px',border:`1px solid ${LUX.line}`,fontSize:'14px',color:LUX.ink,outline:'none',boxSizing:'border-box' }}
         />
       </div>
       <div style={{ marginBottom:'20px' }}>
-        <div style={{ fontSize:'12px',color:COLORS.textMute,marginBottom:'6px',fontWeight:'600' }}>
+        <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>
           Lý do {isAdmin ? '' : '(bắt buộc — gửi Admin duyệt)'}
         </div>
         <textarea
           value={lyDo}
           onChange={e => setLyDo(e.target.value)}
           placeholder="Nhập lý do chỉnh sửa..."
-          style={{ width:'100%',padding:'12px',borderRadius:'12px',border:`1px solid ${COLORS.border}`,fontSize:'14px',resize:'none',height:'72px',outline:'none',boxSizing:'border-box' }}
+          style={{ width:'100%',padding:'12px',borderRadius:'12px',border:`1px solid ${LUX.line}`,fontSize:'14px',resize:'none',height:'72px',outline:'none',boxSizing:'border-box' }}
         />
       </div>
       <div style={{ display:'flex',gap:'12px' }}>
         <button onClick={onClose}
-          style={{ flex:1,padding:'14px',borderRadius:'14px',background:COLORS.card,border:`1px solid ${COLORS.border}`,fontWeight:'700',cursor:'pointer' }}>
+          style={{ flex:1,padding:'14px',borderRadius:'14px',background:LUX.surface2,border:`1px solid ${LUX.line}`,fontWeight:'700',cursor:'pointer' }}>
           Hủy
         </button>
         <button onClick={handleSave} disabled={loading}
-          style={{ flex:1,padding:'14px',borderRadius:'14px',background:COLORS.grad,color:'white',border:'none',fontWeight:'800',cursor:'pointer',opacity:loading?0.6:1 }}>
+          style={{ flex:1,padding:'14px',borderRadius:'14px',background:LUX.heroGrad,color:'white',border:'none',fontWeight:'800',cursor:'pointer',opacity:loading?0.6:1 }}>
           {loading ? '...' : isAdmin ? 'Lưu ngay' : 'Gửi yêu cầu'}
         </button>
       </div>

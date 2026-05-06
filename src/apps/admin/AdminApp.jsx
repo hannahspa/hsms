@@ -8,7 +8,7 @@ export default function AdminApp() {
 
   const handleLogout = async () => {
     await logout()
-    window.location.replace('/admin')
+    window.location.replace('/')
   }
 
   if (path.startsWith('/admin/nhan-su')) {
@@ -54,7 +54,7 @@ export default function AdminApp() {
             </div>
           </button>
 
-          <button onClick={() => window.location.href = '/app'}
+          <button onClick={() => window.location.href = '/SoThuChi'}
             style={{ padding: '20px', background: COLORS.card, color: COLORS.text, border: `1px solid ${COLORS.border}`, borderRadius: '18px', fontWeight: '800', fontSize: '15px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '14px', boxShadow: COLORS.shadow }}>
             <span style={{ fontSize: '28px' }}>💰</span>
             <div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { COLORS } from '../../../../constants/colors'
+import { LUX } from '../../../../constants/lux'
 import { formatCurrency , getNowVN} from '../../../../lib/utils'
 
 function BarChart({ data }) {
@@ -10,10 +10,10 @@ function BarChart({ data }) {
       {data.map((d,i) => (
         <div key={i} style={{ flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'2px',height:'100%' }}>
           <div style={{ flex:1,width:'100%',display:'flex',flexDirection:'column',justifyContent:'flex-end',gap:'2px' }}>
-            <div style={{ width:'100%',background:COLORS.thu,borderRadius:'3px 3px 0 0',height:`${(d.thu/maxVal)*90}%`,minHeight:d.thu>0?'3px':'0',transition:'height 0.5s ease' }} />
-            <div style={{ width:'100%',background:COLORS.chi,borderRadius:'3px 3px 0 0',height:`${(d.chi/maxVal)*90}%`,minHeight:d.chi>0?'3px':'0',transition:'height 0.5s ease' }} />
+            <div style={{ width:'100%',background:'#2D7A4F',borderRadius:'3px 3px 0 0',height:`${(d.thu/maxVal)*90}%`,minHeight:d.thu>0?'3px':'0',transition:'height 0.5s ease' }} />
+            <div style={{ width:'100%',background:'#C0392B',borderRadius:'3px 3px 0 0',height:`${(d.chi/maxVal)*90}%`,minHeight:d.chi>0?'3px':'0',transition:'height 0.5s ease' }} />
           </div>
-          <div style={{ fontSize:'9px',color:COLORS.textMute,fontWeight:'600' }}>{d.label}</div>
+          <div style={{ fontSize:'9px',color:LUX.ink3,fontWeight:'600' }}>{d.label}</div>
         </div>
       ))}
     </div>
@@ -60,7 +60,7 @@ export default function BaoCaoNam({ onBack }) {
     <div style={{ background:'#FAF7F4',minHeight:'100vh',paddingBottom:'100px' }}>
 
       {/* Header */}
-      <div style={{ background:COLORS.grad,padding:'44px 20px 24px' }}>
+      <div style={{ background:LUX.heroGrad,padding:'44px 20px 24px' }}>
         <div style={{ display:'flex',alignItems:'center',gap:'12px',marginBottom:'20px' }}>
           <button onClick={onBack} style={{ width:'36px',height:'36px',borderRadius:'50%',background:'rgba(255,255,255,0.2)',border:'1.5px solid rgba(255,255,255,0.3)',color:'white',fontSize:'18px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>←</button>
           <div style={{ color:'white',fontWeight:'700',fontSize:'18px' }}>Báo Cáo Năm</div>
@@ -74,14 +74,14 @@ export default function BaoCaoNam({ onBack }) {
 
       <div style={{ padding:'0 16px',marginTop:'-12px' }}>
         {loading ? (
-          <div style={{ textAlign:'center',padding:'60px',color:COLORS.textMute }}>
+          <div style={{ textAlign:'center',padding:'60px',color:LUX.ink3 }}>
             <div style={{ fontSize:'32px',marginBottom:'8px' }}>📊</div>
             <div style={{ fontSize:'13px' }}>Đang tổng hợp năm {year}...</div>
           </div>
         ) : (
           <>
             {/* Tổng kết năm */}
-            <div style={{ background:COLORS.grad,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:'0 8px 24px rgba(139,94,60,0.2)' }}>
+            <div style={{ background:LUX.heroGrad,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:'0 8px 24px rgba(139,94,60,0.2)' }}>
               <div style={{ fontSize:'11px',color:'rgba(255,255,255,0.7)',letterSpacing:'1px',marginBottom:'4px' }}>LỢI NHUẬN NĂM {year}</div>
               <div style={{ fontSize:'34px',fontWeight:'800',color:'white',marginBottom:'16px' }}>{formatCurrency(loiNhuan)}</div>
               <div style={{ display:'flex',justifyContent:'space-between',borderTop:'1px solid rgba(255,255,255,0.2)',paddingTop:'14px' }}>
@@ -97,35 +97,35 @@ export default function BaoCaoNam({ onBack }) {
             </div>
 
             {/* Biểu đồ 12 tháng */}
-            <div style={{ background:COLORS.card,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:COLORS.shadow,border:`1px solid ${COLORS.border}` }}>
-              <div style={{ fontWeight:'800',fontSize:'14px',color:COLORS.text,marginBottom:'16px' }}>Tình Hình Thu Chi {year}</div>
+            <div style={{ background:LUX.surface2,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}` }}>
+              <div style={{ fontWeight:'800',fontSize:'14px',color:LUX.ink,marginBottom:'16px' }}>Tình Hình Thu Chi {year}</div>
               <BarChart data={chartData} />
               <div style={{ display:'flex',gap:'16px',marginTop:'10px',justifyContent:'center' }}>
                 <div style={{ display:'flex',alignItems:'center',gap:'6px' }}>
-                  <div style={{ width:'10px',height:'10px',borderRadius:'2px',background:COLORS.thu }} />
-                  <span style={{ fontSize:'11px',color:COLORS.textSub }}>Thu</span>
+                  <div style={{ width:'10px',height:'10px',borderRadius:'2px',background:'#2D7A4F' }} />
+                  <span style={{ fontSize:'11px',color:LUX.ink2 }}>Thu</span>
                 </div>
                 <div style={{ display:'flex',alignItems:'center',gap:'6px' }}>
-                  <div style={{ width:'10px',height:'10px',borderRadius:'2px',background:COLORS.chi }} />
-                  <span style={{ fontSize:'11px',color:COLORS.textSub }}>Chi</span>
+                  <div style={{ width:'10px',height:'10px',borderRadius:'2px',background:'#C0392B' }} />
+                  <span style={{ fontSize:'11px',color:LUX.ink2 }}>Chi</span>
                 </div>
               </div>
             </div>
 
             {/* Bảng 12 tháng */}
-            <div style={{ background:COLORS.card,borderRadius:'24px',overflow:'hidden',boxShadow:COLORS.shadow,border:`1px solid ${COLORS.border}` }}>
-              <div style={{ padding:'16px 20px',borderBottom:`1px solid ${COLORS.border}` }}>
-                <div style={{ fontWeight:'800',fontSize:'14px',color:COLORS.text }}>Chi Tiết Từng Tháng</div>
+            <div style={{ background:LUX.surface2,borderRadius:'24px',overflow:'hidden',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}` }}>
+              <div style={{ padding:'16px 20px',borderBottom:`1px solid ${LUX.line}` }}>
+                <div style={{ fontWeight:'800',fontSize:'14px',color:LUX.ink }}>Chi Tiết Từng Tháng</div>
               </div>
               {chartData.map((d,i) => (
                 <div key={i}>
                   <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 20px' }}>
-                    <div style={{ fontWeight:'600',fontSize:'14px',color:COLORS.text }}>Tháng {i+1}</div>
+                    <div style={{ fontWeight:'600',fontSize:'14px',color:LUX.ink }}>Tháng {i+1}</div>
                     <div style={{ textAlign:'right' }}>
-                      <div style={{ fontWeight:'700',fontSize:'14px',color:d.thu>0?COLORS.thu:COLORS.textMute }}>{formatCurrency(d.thu)}</div>
-                      {d.chi > 0 && <div style={{ fontSize:'11px',color:COLORS.chi,marginTop:'2px' }}>Chi: {formatCurrency(d.chi)}</div>}
+                      <div style={{ fontWeight:'700',fontSize:'14px',color:d.thu>0?'#2D7A4F':LUX.ink3 }}>{formatCurrency(d.thu)}</div>
+                      {d.chi > 0 && <div style={{ fontSize:'11px',color:'#C0392B',marginTop:'2px' }}>Chi: {formatCurrency(d.chi)}</div>}
                       {(d.thu>0||d.chi>0) && (
-                        <div style={{ fontSize:'11px',color:d.loiNhuan>=0?COLORS.thu:COLORS.chi,marginTop:'1px',fontWeight:'600' }}>
+                        <div style={{ fontSize:'11px',color:d.loiNhuan>=0?'#2D7A4F':'#C0392B',marginTop:'1px',fontWeight:'600' }}>
                           {d.loiNhuan>=0?'▲':'▼'} {formatCurrency(Math.abs(d.loiNhuan))}
                         </div>
                       )}

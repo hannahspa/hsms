@@ -1,4 +1,4 @@
-import { COLORS } from '../../constants/colors'
+import { LUX } from '../../constants/lux'
 import FABMenu from '../shared/FABMenu'
 
 const TABS_ADMIN = [
@@ -24,10 +24,13 @@ export default function BottomNav({ active, onChange, onOpenForm, user }) {
       position: 'fixed', bottom: '12px',
       left: '50%', transform: 'translateX(-50%)',
       width: '388px', maxWidth: '94%',
-      background: COLORS.grad, borderRadius: '32px',
+      background: LUX.heroGrad, borderRadius: '32px',
       display: 'flex', justifyContent: 'space-around', alignItems: 'center',
       padding: '10px 8px 12px',
-      boxShadow: '0 8px 32px rgba(139,94,60,0.4)', zIndex: 100
+      boxShadow: '0 12px 40px rgba(60,40,25,0.35), 0 2px 8px rgba(60,40,25,0.15)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      zIndex: 100,
+      backdropFilter: 'blur(10px)',
     }}>
       {TABS.map((item, i) => (
         item.id === '__fab__' ? (
@@ -39,20 +42,22 @@ export default function BottomNav({ active, onChange, onOpenForm, user }) {
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             gap: '3px', background: 'none', border: 'none', cursor: 'pointer',
             minWidth: '60px', padding: '2px 0',
-            transition: 'transform 0.15s',
-            opacity: active === item.id ? 1 : 0.6
+            transition: 'all 0.2s ease',
+            opacity: active === item.id ? 1 : 0.55
           }}
             onMouseDown={e => e.currentTarget.style.transform = 'scale(0.88)'}
             onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
           >
-            <span style={{ fontSize: '21px' }}>{item.icon}</span>
+            <span style={{ fontSize: '21px', filter: active === item.id ? 'none' : 'grayscale(30%)' }}>{item.icon}</span>
             <span style={{
               fontSize: '10px',
-              fontWeight: active === item.id ? '700' : '500',
-              color: active === item.id ? 'white' : 'rgba(255,255,255,0.7)'
+              fontWeight: active === item.id ? '600' : '400',
+              color: active === item.id ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.55)',
+              letterSpacing: '0.3px',
+              fontFamily: LUX.fontSans,
             }}>{item.label}</span>
             {active === item.id && (
-              <div style={{ width: '16px', height: '2px', backgroundColor: COLORS.gold, borderRadius: '2px' }} />
+              <div style={{ width: '18px', height: '2px', backgroundColor: LUX.gold, borderRadius: '2px', marginTop: '1px' }} />
             )}
           </button>
         )

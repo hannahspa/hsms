@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { COLORS } from '../../../../constants/colors'
+import { LUX } from '../../../../constants/lux'
 import { formatCurrency, todayISO , getNowVN} from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
@@ -33,10 +33,10 @@ function BarChart({ data }) {
       {data.map((d, i) => (
         <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', height: '100%' }}>
           <div style={{ flex: 1, width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '2px' }}>
-            <div style={{ width: '100%', background: COLORS.thu, borderRadius: '4px 4px 0 0', height: `${(d.thu / maxVal) * 80}%`, minHeight: d.thu > 0 ? '4px' : '0' }} />
-            <div style={{ width: '100%', background: COLORS.chi, borderRadius: '4px 4px 0 0', height: `${(d.chi / maxVal) * 80}%`, minHeight: d.chi > 0 ? '4px' : '0' }} />
+            <div style={{ width: '100%', background: '#2D7A4F', borderRadius: '4px 4px 0 0', height: `${(d.thu / maxVal) * 80}%`, minHeight: d.thu > 0 ? '4px' : '0' }} />
+            <div style={{ width: '100%', background: '#C0392B', borderRadius: '4px 4px 0 0', height: `${(d.chi / maxVal) * 80}%`, minHeight: d.chi > 0 ? '4px' : '0' }} />
           </div>
-          <div style={{ fontSize: '10px', color: COLORS.textMute, fontWeight: '600' }}>{d.label}</div>
+          <div style={{ fontSize: '10px', color: LUX.ink3, fontWeight: '600' }}>{d.label}</div>
         </div>
       ))}
     </div>
@@ -96,7 +96,7 @@ export default function BaoCaoTuan({ onBack }) {
         onConfirm={iso => { setBaseDate(new Date(iso+'T00:00:00')); setShowPicker(false) }} />
 
       {/* Header */}
-      <div style={{ background: COLORS.grad, padding: '44px 20px 24px' }}>
+      <div style={{ background: LUX.heroGrad, padding: '44px 20px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
           <button onClick={onBack} style={{ width:'36px',height:'36px',borderRadius:'50%',background:'rgba(255,255,255,0.2)',border:'1.5px solid rgba(255,255,255,0.3)',color:'white',fontSize:'18px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>←</button>
           <div style={{ color:'white',fontWeight:'700',fontSize:'18px' }}>Báo Cáo Tuần</div>
@@ -113,22 +113,22 @@ export default function BaoCaoTuan({ onBack }) {
 
       <div style={{ padding:'0 16px', marginTop:'-12px' }}>
         {loading ? (
-          <div style={{ textAlign:'center',padding:'60px',color:COLORS.textMute }}>
+          <div style={{ textAlign:'center',padding:'60px',color:LUX.ink3 }}>
             <div style={{ fontSize:'32px',marginBottom:'8px' }}>📊</div>
             <div style={{ fontSize:'13px' }}>Đang tải...</div>
           </div>
         ) : (
           <>
             {/* Tổng kết tuần */}
-            <div style={{ background:COLORS.card,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:COLORS.shadow,border:`1px solid ${COLORS.border}` }}>
+            <div style={{ background:LUX.surface2,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}` }}>
               <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px',marginBottom:'20px' }}>
                 {[
-                  { label:'THỰC THU',  value:thucThu,  color:COLORS.thu },
-                  { label:'TỔNG CHI',  value:tongChi,  color:COLORS.chi },
-                  { label:'LỢI NHUẬN',value:loiNhuan, color:loiNhuan>=0?COLORS.thu:COLORS.chi },
+                  { label:'THỰC THU',  value:thucThu,  color:'#2D7A4F' },
+                  { label:'TỔNG CHI',  value:tongChi,  color:'#C0392B' },
+                  { label:'LỢI NHUẬN',value:loiNhuan, color:loiNhuan>=0?'#2D7A4F':'#C0392B' },
                 ].map(item => (
                   <div key={item.label} style={{ textAlign:'center' }}>
-                    <div style={{ fontSize:'9px',letterSpacing:'1px',color:COLORS.textMute,marginBottom:'4px',fontWeight:'600' }}>{item.label}</div>
+                    <div style={{ fontSize:'9px',letterSpacing:'1px',color:LUX.ink3,marginBottom:'4px',fontWeight:'600' }}>{item.label}</div>
                     <div style={{ fontSize:'13px',fontWeight:'800',color:item.color }}>{formatCurrency(item.value)}</div>
                   </div>
                 ))}
@@ -136,32 +136,32 @@ export default function BaoCaoTuan({ onBack }) {
               <BarChart data={chartData} />
               <div style={{ display:'flex',gap:'16px',marginTop:'10px',justifyContent:'center' }}>
                 <div style={{ display:'flex',alignItems:'center',gap:'6px' }}>
-                  <div style={{ width:'10px',height:'10px',borderRadius:'2px',background:COLORS.thu }} />
-                  <span style={{ fontSize:'11px',color:COLORS.textSub }}>Thu</span>
+                  <div style={{ width:'10px',height:'10px',borderRadius:'2px',background:'#2D7A4F' }} />
+                  <span style={{ fontSize:'11px',color:LUX.ink2 }}>Thu</span>
                 </div>
                 <div style={{ display:'flex',alignItems:'center',gap:'6px' }}>
-                  <div style={{ width:'10px',height:'10px',borderRadius:'2px',background:COLORS.chi }} />
-                  <span style={{ fontSize:'11px',color:COLORS.textSub }}>Chi</span>
+                  <div style={{ width:'10px',height:'10px',borderRadius:'2px',background:'#C0392B' }} />
+                  <span style={{ fontSize:'11px',color:LUX.ink2 }}>Chi</span>
                 </div>
               </div>
             </div>
 
             {/* Chi tiết từng ngày */}
-            <div style={{ background:COLORS.card,borderRadius:'24px',overflow:'hidden',boxShadow:COLORS.shadow,border:`1px solid ${COLORS.border}` }}>
-              <div style={{ padding:'16px 20px',borderBottom:`1px solid ${COLORS.border}` }}>
-                <div style={{ fontWeight:'800',fontSize:'14px',color:COLORS.text }}>Chi Tiết Từng Ngày</div>
+            <div style={{ background:LUX.surface2,borderRadius:'24px',overflow:'hidden',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}` }}>
+              <div style={{ padding:'16px 20px',borderBottom:`1px solid ${LUX.line}` }}>
+                <div style={{ fontWeight:'800',fontSize:'14px',color:LUX.ink }}>Chi Tiết Từng Ngày</div>
               </div>
               {chartData.map((d, i) => (
                 <div key={d.iso}>
                   <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 20px' }}>
                     <div>
-                      <div style={{ fontWeight:'600',fontSize:'14px',color:COLORS.text }}>{d.label} — {formatDateVN(d.iso)}</div>
-                      {d.chi > 0 && <div style={{ fontSize:'11px',color:COLORS.textMute,marginTop:'2px' }}>Chi: {formatCurrency(d.chi)}</div>}
+                      <div style={{ fontWeight:'600',fontSize:'14px',color:LUX.ink }}>{d.label} — {formatDateVN(d.iso)}</div>
+                      {d.chi > 0 && <div style={{ fontSize:'11px',color:LUX.ink3,marginTop:'2px' }}>Chi: {formatCurrency(d.chi)}</div>}
                     </div>
                     <div style={{ textAlign:'right' }}>
-                      <div style={{ fontWeight:'700',fontSize:'14px',color:d.thu>0?COLORS.thu:COLORS.textMute }}>{formatCurrency(d.thu)}</div>
+                      <div style={{ fontWeight:'700',fontSize:'14px',color:d.thu>0?'#2D7A4F':LUX.ink3 }}>{formatCurrency(d.thu)}</div>
                       {d.thu > 0 && d.chi > 0 && (
-                        <div style={{ fontSize:'11px',color:d.thu-d.chi>=0?COLORS.thu:COLORS.chi,marginTop:'2px' }}>
+                        <div style={{ fontSize:'11px',color:d.thu-d.chi>=0?'#2D7A4F':'#C0392B',marginTop:'2px' }}>
                           {d.thu-d.chi>=0?'+':''}{formatCurrency(d.thu-d.chi)}
                         </div>
                       )}

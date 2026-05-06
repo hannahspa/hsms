@@ -156,7 +156,7 @@ export default function AdminNhanSuPage() {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             Trang chủ
           </button>
-          <button onClick={async () => { await logout(); window.location.replace('/admin') }}
+          <button onClick={async () => { await logout(); window.location.replace('/') }}
             style={{ background: 'transparent', border: '1px solid rgba(245,237,224,0.18)', color: 'rgba(245,237,224,0.7)', padding: '8px 14px', borderRadius: 999, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans }}>
             Đăng xuất
           </button>

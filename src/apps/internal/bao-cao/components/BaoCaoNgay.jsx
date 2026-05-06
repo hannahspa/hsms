@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { COLORS } from '../../../../constants/colors'
+import { LUX } from '../../../../constants/lux'
 import { formatCurrency, todayISO } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
@@ -101,7 +101,7 @@ export default function BaoCaoNgay({ onBack }) {
       />
 
       {/* Header gradient */}
-      <div style={{ background: COLORS.grad, padding: '44px 20px 24px' }}>
+      <div style={{ background: LUX.heroGrad, padding: '44px 20px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
           <button onClick={onBack} style={{
             width: '36px', height: '36px', borderRadius: '50%',
@@ -145,22 +145,22 @@ export default function BaoCaoNgay({ onBack }) {
 
       <div style={{ padding: '0 16px', marginTop: '-12px' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: COLORS.textMute }}>
+          <div style={{ textAlign: 'center', padding: '60px', color: LUX.ink3 }}>
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>📊</div>
             <div style={{ fontSize: '13px' }}>Đang tổng hợp số liệu...</div>
           </div>
         ) : (
           <>
             {/* Tổng kết ngày */}
-            <div style={{ background: COLORS.card, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
+            <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 {[
-                  { label: 'THỰC THU',   value: thucThu,    color: COLORS.thu },
-                  { label: 'TỔNG CHI',   value: tongChiPhi, color: COLORS.chi },
-                  { label: 'LỢI NHUẬN', value: loiNhuan,   color: loiNhuan >= 0 ? COLORS.thu : COLORS.chi },
+                  { label: 'THỰC THU',   value: thucThu,    color: '#2D7A4F' },
+                  { label: 'TỔNG CHI',   value: tongChiPhi, color: '#C0392B' },
+                  { label: 'LỢI NHUẬN', value: loiNhuan,   color: loiNhuan >= 0 ? '#2D7A4F' : '#C0392B' },
                 ].map(item => (
                   <div key={item.label} style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '9px', letterSpacing: '1px', color: COLORS.textMute, marginBottom: '4px', fontWeight: '600' }}>{item.label}</div>
+                    <div style={{ fontSize: '9px', letterSpacing: '1px', color: LUX.ink3, marginBottom: '4px', fontWeight: '600' }}>{item.label}</div>
                     <div style={{ fontSize: '14px', fontWeight: '800', color: item.color }}>{formatCurrency(item.value)}</div>
                   </div>
                 ))}
@@ -168,48 +168,48 @@ export default function BaoCaoNgay({ onBack }) {
             </div>
 
             {/* Doanh Thu */}
-            <div style={{ background: COLORS.card, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
+            <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <div style={{ width: '4px', height: '18px', borderRadius: '2px', background: COLORS.thu }} />
-                <span style={{ fontWeight: '800', fontSize: '14px', letterSpacing: '0.5px', color: COLORS.text }}>DOANH THU</span>
+                <div style={{ width: '4px', height: '18px', borderRadius: '2px', background: '#2D7A4F' }} />
+                <span style={{ fontWeight: '800', fontSize: '14px', letterSpacing: '0.5px', color: LUX.ink }}>DOANH THU</span>
               </div>
               {dtTheoHinhThuc.map((ht, i) => (
                 <div key={ht.id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span style={{ fontSize: '18px' }}>{ht.icon}</span>
-                      <span style={{ fontSize: '14px', color: COLORS.text }}>{ht.label}</span>
+                      <span style={{ fontSize: '14px', color: LUX.ink }}>{ht.label}</span>
                       {ht.id === 'the_tra_truoc' && (
                         <span style={{ fontSize: '9px', background: '#FFF3CD', color: '#856404', padding: '2px 6px', borderRadius: '8px', fontWeight: '600' }}>Không tính TT</span>
                       )}
                     </div>
-                    <span style={{ fontWeight: '700', fontSize: '14px', color: ht.soTien > 0 ? COLORS.thu : COLORS.textMute }}>
+                    <span style={{ fontWeight: '700', fontSize: '14px', color: ht.soTien > 0 ? '#2D7A4F' : LUX.ink3 }}>
                       {formatCurrency(ht.soTien)}
                     </span>
                   </div>
                   {i < dtTheoHinhThuc.length - 1 && <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(160,113,79,0.1),transparent)' }} />}
                 </div>
               ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 4px', borderTop: `2px solid ${COLORS.border}`, marginTop: '4px' }}>
-                <span style={{ fontWeight: '800', fontSize: '14px', color: COLORS.text }}>Tổng Doanh Thu</span>
-                <span style={{ fontWeight: '800', fontSize: '16px', color: COLORS.thu }}>{formatCurrency(tongDoanhThu)}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 4px', borderTop: `2px solid ${LUX.line}`, marginTop: '4px' }}>
+                <span style={{ fontWeight: '800', fontSize: '14px', color: LUX.ink }}>Tổng Doanh Thu</span>
+                <span style={{ fontWeight: '800', fontSize: '16px', color: '#2D7A4F' }}>{formatCurrency(tongDoanhThu)}</span>
               </div>
               {tongDoanhThu !== thucThu && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '4px' }}>
-                  <span style={{ fontSize: '12px', color: COLORS.textMute }}>Thực Thu (trừ Thẻ Trả Trước)</span>
-                  <span style={{ fontWeight: '700', fontSize: '14px', color: COLORS.thu }}>{formatCurrency(thucThu)}</span>
+                  <span style={{ fontSize: '12px', color: LUX.ink3 }}>Thực Thu (trừ Thẻ Trả Trước)</span>
+                  <span style={{ fontWeight: '700', fontSize: '14px', color: '#2D7A4F' }}>{formatCurrency(thucThu)}</span>
                 </div>
               )}
             </div>
 
             {/* Chi Phí */}
-            <div style={{ background: COLORS.card, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
+            <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <div style={{ width: '4px', height: '18px', borderRadius: '2px', background: COLORS.chi }} />
-                <span style={{ fontWeight: '800', fontSize: '14px', letterSpacing: '0.5px', color: COLORS.text }}>CHI PHÍ CHI TIẾT</span>
+                <div style={{ width: '4px', height: '18px', borderRadius: '2px', background: '#C0392B' }} />
+                <span style={{ fontWeight: '800', fontSize: '14px', letterSpacing: '0.5px', color: LUX.ink }}>CHI PHÍ CHI TIẾT</span>
               </div>
               {chiPhiCoTen.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: COLORS.textMute, fontSize: '13px' }}>Không có khoản chi nào trong ngày này</div>
+                <div style={{ textAlign: 'center', padding: '20px', color: LUX.ink3, fontSize: '13px' }}>Không có khoản chi nào trong ngày này</div>
               ) : (
                 chiPhiCoTen.map((cp, i) => (
                   <div key={cp.id}>
@@ -217,30 +217,30 @@ export default function BaoCaoNgay({ onBack }) {
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
                           <span style={{ fontSize: '14px' }}>{cp.iconNhom}</span>
-                          <span style={{ fontSize: '13px', fontWeight: '600', color: COLORS.text }}>{cp.tenHangMuc}</span>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: LUX.ink }}>{cp.tenHangMuc}</span>
                         </div>
-                        <div style={{ fontSize: '11px', color: COLORS.textMute, paddingLeft: '22px' }}>
+                        <div style={{ fontSize: '11px', color: LUX.ink3, paddingLeft: '22px' }}>
                           {cp.tenNhom}{cp.dien_giai ? ` • ${cp.dien_giai}` : ''}
                         </div>
                       </div>
-                      <span style={{ fontWeight: '700', fontSize: '14px', color: COLORS.chi }}>{formatCurrency(cp.so_tien)}</span>
+                      <span style={{ fontWeight: '700', fontSize: '14px', color: '#C0392B' }}>{formatCurrency(cp.so_tien)}</span>
                     </div>
                     {i < chiPhiCoTen.length - 1 && <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(160,113,79,0.1),transparent)' }} />}
                   </div>
                 ))
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 4px', borderTop: `2px solid ${COLORS.border}`, marginTop: '4px' }}>
-                <span style={{ fontWeight: '800', fontSize: '14px', color: COLORS.text }}>Tổng Chi Phí</span>
-                <span style={{ fontWeight: '800', fontSize: '16px', color: COLORS.chi }}>{formatCurrency(tongChiPhi)}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 4px', borderTop: `2px solid ${LUX.line}`, marginTop: '4px' }}>
+                <span style={{ fontWeight: '800', fontSize: '14px', color: LUX.ink }}>Tổng Chi Phí</span>
+                <span style={{ fontWeight: '800', fontSize: '16px', color: '#C0392B' }}>{formatCurrency(tongChiPhi)}</span>
               </div>
             </div>
 
             {/* Chuyển Khoản Nội Bộ */}
             {ckNB.length > 0 && (
-              <div style={{ background: COLORS.card, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
+              <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                  <div style={{ width: '4px', height: '18px', borderRadius: '2px', background: COLORS.chuyenKhoan }} />
-                  <span style={{ fontWeight: '800', fontSize: '14px', letterSpacing: '0.5px', color: COLORS.text }}>CHUYỂN KHOẢN NỘI BỘ</span>
+                  <div style={{ width: '4px', height: '18px', borderRadius: '2px', background: '#6C3483' }} />
+                  <span style={{ fontWeight: '800', fontSize: '14px', letterSpacing: '0.5px', color: LUX.ink }}>CHUYỂN KHOẢN NỘI BỘ</span>
                 </div>
                 {ckNB.map((ck, i) => {
                   const tuVi  = viList.find(v => v.id === ck.tu_vi_id)
@@ -249,12 +249,12 @@ export default function BaoCaoNgay({ onBack }) {
                     <div key={ck.id}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
                         <div>
-                          <div style={{ fontSize: '13px', fontWeight: '600', color: COLORS.text }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: LUX.ink }}>
                             {tuVi?.ten || '?'} → {denVi?.ten || '?'}
                           </div>
-                          {ck.dien_giai && <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '2px' }}>{ck.dien_giai}</div>}
+                          {ck.dien_giai && <div style={{ fontSize: '11px', color: LUX.ink3, marginTop: '2px' }}>{ck.dien_giai}</div>}
                         </div>
-                        <span style={{ fontWeight: '700', fontSize: '14px', color: COLORS.chuyenKhoan }}>{formatCurrency(ck.so_tien)}</span>
+                        <span style={{ fontWeight: '700', fontSize: '14px', color: '#6C3483' }}>{formatCurrency(ck.so_tien)}</span>
                       </div>
                       {i < ckNB.length - 1 && <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(160,113,79,0.1),transparent)' }} />}
                     </div>
@@ -271,14 +271,14 @@ export default function BaoCaoNgay({ onBack }) {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: '12px', letterSpacing: '1px', color: COLORS.textMute, fontWeight: '600', marginBottom: '4px' }}>LỢI NHUẬN NGÀY</div>
-                  <div style={{ fontSize: '11px', color: COLORS.textMute }}>Thực Thu − Tổng Chi</div>
+                  <div style={{ fontSize: '12px', letterSpacing: '1px', color: LUX.ink3, fontWeight: '600', marginBottom: '4px' }}>LỢI NHUẬN NGÀY</div>
+                  <div style={{ fontSize: '11px', color: LUX.ink3 }}>Thực Thu − Tổng Chi</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '26px', fontWeight: '800', color: loiNhuan >= 0 ? COLORS.thu : COLORS.chi }}>
+                  <div style={{ fontSize: '26px', fontWeight: '800', color: loiNhuan >= 0 ? '#2D7A4F' : '#C0392B' }}>
                     {formatCurrency(loiNhuan)}
                   </div>
-                  <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '2px' }}>
+                  <div style={{ fontSize: '11px', color: LUX.ink3, marginTop: '2px' }}>
                     {loiNhuan >= 0 ? '✅ Có lãi' : '⚠️ Lỗ'}
                   </div>
                 </div>
@@ -286,10 +286,10 @@ export default function BaoCaoNgay({ onBack }) {
             </div>
 
             {/* Số Dư Tài Khoản */}
-            <div style={{ background: COLORS.card, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
+            <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <div style={{ width: '4px', height: '18px', borderRadius: '2px', background: COLORS.taiSan }} />
-                <span style={{ fontWeight: '800', fontSize: '14px', letterSpacing: '0.5px', color: COLORS.text }}>SỐ DƯ TÀI KHOẢN ĐẾN NGÀY</span>
+                <div style={{ width: '4px', height: '18px', borderRadius: '2px', background: '#1A5276' }} />
+                <span style={{ fontWeight: '800', fontSize: '14px', letterSpacing: '0.5px', color: LUX.ink }}>SỐ DƯ TÀI KHOẢN ĐẾN NGÀY</span>
               </div>
               {viList.map((vi, i) => (
                 <div key={vi.id}>
@@ -297,22 +297,22 @@ export default function BaoCaoNgay({ onBack }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span style={{ fontSize: '20px' }}>{vi.icon}</span>
                       <div>
-                        <div style={{ fontSize: '14px', fontWeight: '600', color: COLORS.text }}>{vi.ten}</div>
-                        <div style={{ fontSize: '11px', color: COLORS.textMute }}>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: LUX.ink }}>{vi.ten}</div>
+                        <div style={{ fontSize: '11px', color: LUX.ink3 }}>
                           {vi.loai === 'tien_mat' ? 'Tiền mặt tại quầy' : vi.ten === 'MB Bank' ? 'Tài khoản chính' : 'Quẹt thẻ • về 3-7 ngày'}
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontWeight: '700', fontSize: '14px', color: COLORS.taiSan }}>
+                    <span style={{ fontWeight: '700', fontSize: '14px', color: '#1A5276' }}>
                       {formatCurrency(vi.so_du_dau || 0)}
                     </span>
                   </div>
                   {i < viList.length - 1 && <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(160,113,79,0.1),transparent)' }} />}
                 </div>
               ))}
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 4px', borderTop: `2px solid ${COLORS.border}`, marginTop: '4px' }}>
-                <span style={{ fontWeight: '800', fontSize: '14px', color: COLORS.text }}>Tổng Tài Sản</span>
-                <span style={{ fontWeight: '800', fontSize: '16px', color: COLORS.taiSan }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 4px', borderTop: `2px solid ${LUX.line}`, marginTop: '4px' }}>
+                <span style={{ fontWeight: '800', fontSize: '14px', color: LUX.ink }}>Tổng Tài Sản</span>
+                <span style={{ fontWeight: '800', fontSize: '16px', color: '#1A5276' }}>
                   {formatCurrency(viList.reduce((s, v) => s + (v.so_du_dau || 0), 0))}
                 </span>
               </div>

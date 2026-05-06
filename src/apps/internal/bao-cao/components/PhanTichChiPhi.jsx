@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { COLORS } from '../../../../constants/colors'
+import { LUX } from '../../../../constants/lux'
 import { formatCurrency, todayISO , getNowVN} from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
@@ -186,7 +186,7 @@ export default function PhanTichChiPhi({ onBack }) {
       />
 
       {/* Header */}
-      <div style={{ background: COLORS.grad, padding: '44px 20px 20px' }}>
+      <div style={{ background: LUX.heroGrad, padding: '44px 20px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
           <button onClick={onBack} style={{
             width: '36px', height: '36px', borderRadius: '50%',
@@ -202,7 +202,7 @@ export default function PhanTichChiPhi({ onBack }) {
             <button key={t} onClick={() => setTab(t)} style={{
               flex: 1, padding: '8px', borderRadius: '10px', border: 'none',
               background: tab === t ? 'white' : 'transparent',
-              color: tab === t ? COLORS.primary : 'rgba(255,255,255,0.8)',
+              color: tab === t ? LUX.taupe : 'rgba(255,255,255,0.8)',
               fontWeight: tab === t ? '700' : '500', fontSize: '13px', cursor: 'pointer',
               transition: 'all 0.2s'
             }}>
@@ -216,48 +216,48 @@ export default function PhanTichChiPhi({ onBack }) {
 
         {/* Navigator */}
         <div style={{
-          background: COLORS.card, borderRadius: '16px', padding: '12px 16px',
-          marginBottom: '14px', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}`,
+          background: LUX.surface2, borderRadius: '16px', padding: '12px 16px',
+          marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between'
         }}>
-          <button onClick={prevPeriod} style={{ background: 'none', border: 'none', fontSize: '20px', color: COLORS.textSub, cursor: 'pointer', padding: '4px 8px' }}>‹</button>
+          <button onClick={prevPeriod} style={{ background: 'none', border: 'none', fontSize: '20px', color: LUX.ink2, cursor: 'pointer', padding: '4px 8px' }}>‹</button>
           <button onClick={() => setShowPicker(true)} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: '8px'
           }}>
             <span style={{ fontSize: '16px' }}>📅</span>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: COLORS.primary }}>{range.label}</span>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: LUX.taupe }}>{range.label}</span>
           </button>
-          <button onClick={nextPeriod} style={{ background: 'none', border: 'none', fontSize: '20px', color: COLORS.textSub, cursor: 'pointer', padding: '4px 8px' }}>›</button>
+          <button onClick={nextPeriod} style={{ background: 'none', border: 'none', fontSize: '20px', color: LUX.ink2, cursor: 'pointer', padding: '4px 8px' }}>›</button>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: COLORS.textMute }}>
+          <div style={{ textAlign: 'center', padding: '60px', color: LUX.ink3 }}>
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>📉</div>
             <div style={{ fontSize: '13px' }}>Đang tải dữ liệu...</div>
           </div>
         ) : (
           <>
             {/* Biểu đồ */}
-            <div style={{ background: COLORS.card, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
-              <AreaChart data={chartData} color={COLORS.chi} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${COLORS.border}` }}>
+            <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
+              <AreaChart data={chartData} color={'#C0392B'} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${LUX.line}` }}>
                 <div>
-                  <div style={{ fontSize: '11px', color: COLORS.textMute, marginBottom: '2px' }}>Tổng Chi Tiêu</div>
-                  <div style={{ fontWeight: '800', fontSize: '18px', color: COLORS.chi }}>{formatCurrency(tongChi)}</div>
+                  <div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px' }}>Tổng Chi Tiêu</div>
+                  <div style={{ fontWeight: '800', fontSize: '18px', color: '#C0392B' }}>{formatCurrency(tongChi)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '11px', color: COLORS.textMute, marginBottom: '2px' }}>Trung bình / ngày</div>
-                  <div style={{ fontWeight: '700', fontSize: '15px', color: COLORS.text }}>{formatCurrency(tbNgay)}</div>
+                  <div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px' }}>Trung bình / ngày</div>
+                  <div style={{ fontWeight: '700', fontSize: '15px', color: LUX.ink }}>{formatCurrency(tbNgay)}</div>
                 </div>
               </div>
             </div>
 
             {/* Danh sách hạng mục */}
             {phanTichNhom.length === 0 ? (
-              <div style={{ background: COLORS.card, borderRadius: '24px', padding: '40px 20px', textAlign: 'center', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
+              <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '40px 20px', textAlign: 'center', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
                 <div style={{ fontSize: '32px', marginBottom: '8px' }}>📋</div>
-                <div style={{ fontSize: '13px', color: COLORS.textMute }}>Không có khoản chi nào trong kỳ này</div>
+                <div style={{ fontSize: '13px', color: LUX.ink3 }}>Không có khoản chi nào trong kỳ này</div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -268,8 +268,8 @@ export default function PhanTichChiPhi({ onBack }) {
                     const percent = tongChi > 0 ? (hm.tong / tongChi) * 100 : 0
                     return (
                       <div key={`${nhom.id}-${i}`} style={{
-                        background: COLORS.card, borderRadius: '16px', padding: '14px 16px',
-                        boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}`
+                        background: LUX.surface2, borderRadius: '16px', padding: '14px 16px',
+                        boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                           {/* Icon nhóm cha */}
@@ -283,15 +283,15 @@ export default function PhanTichChiPhi({ onBack }) {
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {/* Tên nhóm cha nhỏ bên trên */}
-                            <div style={{ fontSize: '10px', color: COLORS.textMute, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            <div style={{ fontSize: '10px', color: LUX.ink3, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                               {nhom.ten}
                             </div>
                             {/* Tên hạng mục con — TO và RÕ */}
-                            <div style={{ fontSize: '14px', fontWeight: '700', color: COLORS.text, marginTop: '1px' }}>
+                            <div style={{ fontSize: '14px', fontWeight: '700', color: LUX.ink, marginTop: '1px' }}>
                               {hm.ten}
                             </div>
                           </div>
-                          <div style={{ fontWeight: '800', fontSize: '15px', color: COLORS.chi, flexShrink: 0 }}>
+                          <div style={{ fontWeight: '800', fontSize: '15px', color: '#C0392B', flexShrink: 0 }}>
                             {formatCurrency(hm.tong)}
                           </div>
                         </div>
@@ -301,11 +301,11 @@ export default function PhanTichChiPhi({ onBack }) {
                           <div style={{ flex: 1, height: '5px', background: '#F0EBE6', borderRadius: '3px', overflow: 'hidden' }}>
                             <div style={{
                               width: `${percent}%`, height: '100%',
-                              background: COLORS.chi, borderRadius: '3px',
+                              background: '#C0392B', borderRadius: '3px',
                               transition: 'width 0.5s ease'
                             }} />
                           </div>
-                          <span style={{ fontSize: '11px', color: COLORS.textMute, fontWeight: '600', minWidth: '36px', textAlign: 'right' }}>
+                          <span style={{ fontSize: '11px', color: LUX.ink3, fontWeight: '600', minWidth: '36px', textAlign: 'right' }}>
                             {percent.toFixed(1)}%
                           </span>
                         </div>
@@ -321,8 +321,8 @@ export default function PhanTichChiPhi({ onBack }) {
                   border: '1px solid rgba(192,57,43,0.2)', marginTop: '4px'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: '800', fontSize: '15px', color: COLORS.text }}>Tổng Chi Phí</span>
-                    <span style={{ fontWeight: '800', fontSize: '18px', color: COLORS.chi }}>{formatCurrency(tongChi)}</span>
+                    <span style={{ fontWeight: '800', fontSize: '15px', color: LUX.ink }}>Tổng Chi Phí</span>
+                    <span style={{ fontWeight: '800', fontSize: '18px', color: '#C0392B' }}>{formatCurrency(tongChi)}</span>
                   </div>
                 </div>
 

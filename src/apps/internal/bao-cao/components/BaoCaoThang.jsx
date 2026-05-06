@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { COLORS } from '../../../../constants/colors'
+import { LUX } from '../../../../constants/lux'
 import { formatCurrency , getNowVN} from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
@@ -98,7 +98,7 @@ export default function BaoCaoThang({ onBack }) {
         onConfirm={iso=>{ setCurrentDate(new Date(iso+'T00:00:00')); setShowPicker(false) }} />
 
       {/* Header */}
-      <div style={{ background:COLORS.grad,padding:'44px 20px 24px' }}>
+      <div style={{ background:LUX.heroGrad,padding:'44px 20px 24px' }}>
         <div style={{ display:'flex',alignItems:'center',gap:'12px',marginBottom:'20px' }}>
           <button onClick={onBack} style={{ width:'36px',height:'36px',borderRadius:'50%',background:'rgba(255,255,255,0.2)',border:'1.5px solid rgba(255,255,255,0.3)',color:'white',fontSize:'18px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>←</button>
           <div style={{ color:'white',fontWeight:'700',fontSize:'18px' }}>Báo Cáo Tháng</div>
@@ -115,14 +115,14 @@ export default function BaoCaoThang({ onBack }) {
 
       <div style={{ padding:'0 16px',marginTop:'-12px' }}>
         {loading ? (
-          <div style={{ textAlign:'center',padding:'60px',color:COLORS.textMute }}>
+          <div style={{ textAlign:'center',padding:'60px',color:LUX.ink3 }}>
             <div style={{ fontSize:'32px',marginBottom:'8px' }}>📊</div>
             <div style={{ fontSize:'13px' }}>Đang tổng hợp...</div>
           </div>
         ) : (
           <>
             {/* Tổng kết */}
-            <div style={{ background:COLORS.grad,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:'0 8px 24px rgba(139,94,60,0.2)' }}>
+            <div style={{ background:LUX.heroGrad,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:'0 8px 24px rgba(139,94,60,0.2)' }}>
               <div style={{ fontSize:'11px',color:'rgba(255,255,255,0.7)',letterSpacing:'1px',marginBottom:'4px' }}>LỢI NHUẬN THÁNG {month}/{year}</div>
               <div style={{ fontSize:'32px',fontWeight:'800',color:'white',marginBottom:'16px' }}>{formatCurrency(loiNhuan)}</div>
               <div style={{ display:'flex',justifyContent:'space-between',borderTop:'1px solid rgba(255,255,255,0.2)',paddingTop:'14px' }}>
@@ -138,41 +138,41 @@ export default function BaoCaoThang({ onBack }) {
             </div>
 
             {/* Biểu đồ Thu */}
-            <div style={{ background:COLORS.card,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:COLORS.shadow,border:`1px solid ${COLORS.border}` }}>
-              <div style={{ fontWeight:'700',fontSize:'14px',color:COLORS.thu,marginBottom:'12px' }}>📈 Doanh Thu Theo Ngày</div>
-              <AreaChart data={thuChart} color={COLORS.thu} />
-              <div style={{ display:'flex',justifyContent:'space-between',marginTop:'12px',paddingTop:'12px',borderTop:`1px solid ${COLORS.border}` }}>
+            <div style={{ background:LUX.surface2,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}` }}>
+              <div style={{ fontWeight:'700',fontSize:'14px',color:'#2D7A4F',marginBottom:'12px' }}>📈 Doanh Thu Theo Ngày</div>
+              <AreaChart data={thuChart} color={'#2D7A4F'} />
+              <div style={{ display:'flex',justifyContent:'space-between',marginTop:'12px',paddingTop:'12px',borderTop:`1px solid ${LUX.line}` }}>
                 <div>
-                  <div style={{ fontSize:'11px',color:COLORS.textMute }}>Tổng Doanh Thu</div>
-                  <div style={{ fontWeight:'700',color:COLORS.thu }}>{formatCurrency(tongDT)}</div>
+                  <div style={{ fontSize:'11px',color:LUX.ink3 }}>Tổng Doanh Thu</div>
+                  <div style={{ fontWeight:'700',color:'#2D7A4F' }}>{formatCurrency(tongDT)}</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:'11px',color:COLORS.textMute }}>Thực Thu</div>
-                  <div style={{ fontWeight:'700',color:COLORS.thu }}>{formatCurrency(thucThu)}</div>
+                  <div style={{ fontSize:'11px',color:LUX.ink3 }}>Thực Thu</div>
+                  <div style={{ fontWeight:'700',color:'#2D7A4F' }}>{formatCurrency(thucThu)}</div>
                 </div>
               </div>
             </div>
 
             {/* Biểu đồ Chi */}
-            <div style={{ background:COLORS.card,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:COLORS.shadow,border:`1px solid ${COLORS.border}` }}>
-              <div style={{ fontWeight:'700',fontSize:'14px',color:COLORS.chi,marginBottom:'12px' }}>📉 Chi Phí Theo Ngày</div>
-              <AreaChart data={chiChart} color={COLORS.chi} />
-              <div style={{ display:'flex',justifyContent:'space-between',marginTop:'12px',paddingTop:'12px',borderTop:`1px solid ${COLORS.border}` }}>
+            <div style={{ background:LUX.surface2,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}` }}>
+              <div style={{ fontWeight:'700',fontSize:'14px',color:'#C0392B',marginBottom:'12px' }}>📉 Chi Phí Theo Ngày</div>
+              <AreaChart data={chiChart} color={'#C0392B'} />
+              <div style={{ display:'flex',justifyContent:'space-between',marginTop:'12px',paddingTop:'12px',borderTop:`1px solid ${LUX.line}` }}>
                 <div>
-                  <div style={{ fontSize:'11px',color:COLORS.textMute }}>Tổng Chi Phí</div>
-                  <div style={{ fontWeight:'700',color:COLORS.chi }}>{formatCurrency(tongChi)}</div>
+                  <div style={{ fontSize:'11px',color:LUX.ink3 }}>Tổng Chi Phí</div>
+                  <div style={{ fontWeight:'700',color:'#C0392B' }}>{formatCurrency(tongChi)}</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:'11px',color:COLORS.textMute }}>TB/ngày</div>
-                  <div style={{ fontWeight:'700',color:COLORS.text }}>{formatCurrency(Math.round(tongChi/daysInMonth))}</div>
+                  <div style={{ fontSize:'11px',color:LUX.ink3 }}>TB/ngày</div>
+                  <div style={{ fontWeight:'700',color:LUX.ink }}>{formatCurrency(Math.round(tongChi/daysInMonth))}</div>
                 </div>
               </div>
             </div>
 
             {/* Phân tích chi phí */}
             {chiPhiNhom.length > 0 && (
-              <div style={{ background:COLORS.card,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:COLORS.shadow,border:`1px solid ${COLORS.border}` }}>
-                <div style={{ fontWeight:'800',fontSize:'14px',color:COLORS.text,marginBottom:'16px' }}>Phân Tích Chi Phí</div>
+              <div style={{ background:LUX.surface2,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}` }}>
+                <div style={{ fontWeight:'800',fontSize:'14px',color:LUX.ink,marginBottom:'16px' }}>Phân Tích Chi Phí</div>
                 {chiPhiNhom.map((item,i) => {
                   const pct = tongChi > 0 ? (item.tong/tongChi)*100 : 0
                   return (
@@ -180,15 +180,15 @@ export default function BaoCaoThang({ onBack }) {
                       <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px' }}>
                         <div style={{ display:'flex',alignItems:'center',gap:'8px' }}>
                           <span style={{ fontSize:'16px' }}>{item.icon}</span>
-                          <span style={{ fontWeight:'600',fontSize:'13px',color:COLORS.text }}>{item.name}</span>
+                          <span style={{ fontWeight:'600',fontSize:'13px',color:LUX.ink }}>{item.name}</span>
                         </div>
-                        <span style={{ fontWeight:'700',fontSize:'13px',color:COLORS.chi }}>{formatCurrency(item.tong)}</span>
+                        <span style={{ fontWeight:'700',fontSize:'13px',color:'#C0392B' }}>{formatCurrency(item.tong)}</span>
                       </div>
                       <div style={{ display:'flex',alignItems:'center',gap:'8px' }}>
                         <div style={{ flex:1,height:'6px',background:'#F8F3F0',borderRadius:'3px',overflow:'hidden' }}>
-                          <div style={{ width:`${pct}%`,height:'100%',background:COLORS.primary,borderRadius:'3px' }} />
+                          <div style={{ width:`${pct}%`,height:'100%',background:LUX.taupe,borderRadius:'3px' }} />
                         </div>
-                        <span style={{ fontSize:'10px',color:COLORS.textMute,width:'28px',textAlign:'right' }}>{pct.toFixed(0)}%</span>
+                        <span style={{ fontSize:'10px',color:LUX.ink3,width:'28px',textAlign:'right' }}>{pct.toFixed(0)}%</span>
                       </div>
                     </div>
                   )

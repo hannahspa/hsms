@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { COLORS } from '../../../../constants/colors'
+import { LUX } from '../../../../constants/lux'
 import { formatCurrency, todayISO , getNowVN} from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
@@ -189,7 +189,7 @@ export default function PhanTichDoanhThu({ onBack }) {
       />
 
       {/* Header */}
-      <div style={{ background: COLORS.grad, padding: '44px 20px 20px' }}>
+      <div style={{ background: LUX.heroGrad, padding: '44px 20px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
           <button onClick={onBack} style={{
             width: '36px', height: '36px', borderRadius: '50%',
@@ -206,7 +206,7 @@ export default function PhanTichDoanhThu({ onBack }) {
             <button key={t} onClick={() => setTab(t)} style={{
               flex: 1, padding: '8px', borderRadius: '10px', border: 'none',
               background: tab === t ? 'white' : 'transparent',
-              color: tab === t ? COLORS.primary : 'rgba(255,255,255,0.8)',
+              color: tab === t ? LUX.taupe : 'rgba(255,255,255,0.8)',
               fontWeight: tab === t ? '700' : '500', fontSize: '13px', cursor: 'pointer',
               transition: 'all 0.2s'
             }}>
@@ -220,65 +220,65 @@ export default function PhanTichDoanhThu({ onBack }) {
 
         {/* Date range navigator */}
         <div style={{
-          background: COLORS.card, borderRadius: '16px', padding: '12px 16px',
-          marginBottom: '14px', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}`,
+          background: LUX.surface2, borderRadius: '16px', padding: '12px 16px',
+          marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between'
         }}>
-          <button onClick={prevPeriod} style={{ background: 'none', border: 'none', fontSize: '20px', color: COLORS.textSub, cursor: 'pointer', padding: '4px 8px' }}>‹</button>
+          <button onClick={prevPeriod} style={{ background: 'none', border: 'none', fontSize: '20px', color: LUX.ink2, cursor: 'pointer', padding: '4px 8px' }}>‹</button>
           <button onClick={() => setShowPicker(true)} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: '8px'
           }}>
             <span style={{ fontSize: '16px' }}>📅</span>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: COLORS.primary }}>{range.label}</span>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: LUX.taupe }}>{range.label}</span>
           </button>
-          <button onClick={nextPeriod} style={{ background: 'none', border: 'none', fontSize: '20px', color: COLORS.textSub, cursor: 'pointer', padding: '4px 8px' }}>›</button>
+          <button onClick={nextPeriod} style={{ background: 'none', border: 'none', fontSize: '20px', color: LUX.ink2, cursor: 'pointer', padding: '4px 8px' }}>›</button>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: COLORS.textMute }}>
+          <div style={{ textAlign: 'center', padding: '60px', color: LUX.ink3 }}>
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>📈</div>
             <div style={{ fontSize: '13px' }}>Đang tải dữ liệu...</div>
           </div>
         ) : (
           <>
             {/* Biểu đồ */}
-            <div style={{ background: COLORS.card, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
-              <AreaChart data={chartData} color={COLORS.thu} />
+            <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
+              <AreaChart data={chartData} color={'#2D7A4F'} />
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${COLORS.border}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${LUX.line}` }}>
                 <div>
-                  <div style={{ fontSize: '11px', color: COLORS.textMute, marginBottom: '2px' }}>Tổng Thu</div>
-                  <div style={{ fontWeight: '800', fontSize: '18px', color: COLORS.thu }}>{formatCurrency(thucThu)}</div>
+                  <div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px' }}>Tổng Thu</div>
+                  <div style={{ fontWeight: '800', fontSize: '18px', color: '#2D7A4F' }}>{formatCurrency(thucThu)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '11px', color: COLORS.textMute, marginBottom: '2px' }}>Trung bình / ngày</div>
-                  <div style={{ fontWeight: '700', fontSize: '15px', color: COLORS.text }}>{formatCurrency(tbNgay)}</div>
+                  <div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px' }}>Trung bình / ngày</div>
+                  <div style={{ fontWeight: '700', fontSize: '15px', color: LUX.ink }}>{formatCurrency(tbNgay)}</div>
                 </div>
               </div>
             </div>
 
             {/* Danh sách theo ngày */}
             {byNgay.length === 0 ? (
-              <div style={{ background: COLORS.card, borderRadius: '24px', padding: '40px 20px', textAlign: 'center', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
+              <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '40px 20px', textAlign: 'center', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
                 <div style={{ fontSize: '32px', marginBottom: '8px' }}>📊</div>
-                <div style={{ fontSize: '13px', color: COLORS.textMute }}>Không có doanh thu trong kỳ này</div>
+                <div style={{ fontSize: '13px', color: LUX.ink3 }}>Không có doanh thu trong kỳ này</div>
               </div>
             ) : (
-              <div style={{ background: COLORS.card, borderRadius: '24px', padding: '4px 0', boxShadow: COLORS.shadow, border: `1px solid ${COLORS.border}` }}>
+              <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '4px 0', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
                 {byNgay.map((item, i) => (
                   <div key={item.ngay}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px' }}>
                       <div>
-                        <div style={{ fontWeight: '600', fontSize: '14px', color: COLORS.text }}>
+                        <div style={{ fontWeight: '600', fontSize: '14px', color: LUX.ink }}>
                           {formatDateFull(item.ngay)}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontWeight: '700', fontSize: '15px', color: COLORS.thu }}>
+                        <span style={{ fontWeight: '700', fontSize: '15px', color: '#2D7A4F' }}>
                           {formatCurrency(item.value)}
                         </span>
-                        <span style={{ color: COLORS.textMute, fontSize: '16px' }}>›</span>
+                        <span style={{ color: LUX.ink3, fontSize: '16px' }}>›</span>
                       </div>
                     </div>
                     {i < byNgay.length - 1 && (

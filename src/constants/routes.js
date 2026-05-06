@@ -1,11 +1,11 @@
 export const ROUTES = {
-  // Internal App
-  APP:        '/app',
-  TONG_QUAN:  '/app',
-  TAI_KHOAN:  '/app/tai-khoan',
-  NHAP_LIEU:  '/app/nhap-lieu',
-  BAO_CAO:    '/app/bao-cao',
-  CAI_DAT:    '/app/cai-dat',
+  // So Thu Chi App (Internal App)
+  APP:        '/SoThuChi',
+  TONG_QUAN:  '/SoThuChi',
+  TAI_KHOAN:  '/SoThuChi/tai-khoan',
+  NHAP_LIEU:  '/SoThuChi/nhap-lieu',
+  BAO_CAO:    '/SoThuChi/bao-cao',
+  CAI_DAT:    '/SoThuChi/cai-dat',
 
   // Admin
   ADMIN:      '/admin',

@@ -3,6 +3,7 @@ import { AppProvider }  from './context/AppContext'
 import InternalApp from './apps/internal/InternalApp'
 import CheckinApp from './apps/checkin/CheckinApp'
 import AdminApp from './apps/admin/AdminApp'
+import HomePage from './apps/website/HomePage'
 import LoginPage from './apps/auth/LoginPage'
 
 function RequireAuth({ children, requireAdmin }) {
@@ -21,8 +22,8 @@ function RequireAuth({ children, requireAdmin }) {
 
   if (!user) return <LoginPage />
 
-  // Admin đăng nhập ở /app → tự redirect về /admin
-  if (user.vai_tro === 'admin' && !path.startsWith('/admin')) {
+  // Admin vào /checkin → redirect về /admin (không chặn /SoThuChi)
+  if (user.vai_tro === 'admin' && path.startsWith('/checkin')) {
     window.location.replace('/admin')
     return null
   }
@@ -35,9 +36,9 @@ function RequireAuth({ children, requireAdmin }) {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⛔</div>
           <div style={{ fontWeight: '800', fontSize: '18px', color: '#1A1209', marginBottom: '8px' }}>Không có quyền truy cập</div>
           <div style={{ color: '#8B7355', fontSize: '14px', marginBottom: '24px' }}>Trang này chỉ dành cho Quản trị viên.</div>
-          <button onClick={() => window.location.replace('/app')}
+          <button onClick={() => window.location.replace('/SoThuChi')}
             style={{ padding: '12px 24px', background: 'linear-gradient(135deg, #C9A96E 0%, #A0714F 100%)', color: 'white', border: 'none', borderRadius: '14px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', marginRight: '10px' }}>
-            Về trang Lễ Tân
+            Về trang SoThuChi
           </button>
           <button onClick={logout}
             style={{ padding: '12px 24px', background: 'transparent', color: '#8B7355', border: '1px solid #D4B896', borderRadius: '14px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
@@ -56,6 +57,14 @@ export default function App() {
 
   if (path.startsWith('/checkin')) {
     return <CheckinApp />
+  }
+
+  // Cổng Chính — public landing page
+  const isHome = path === '/' || path === ''
+  const isPublic = path.startsWith('/menu') || path.startsWith('/shop')
+
+  if (isHome || isPublic) {
+    return <HomePage />
   }
 
   return (
