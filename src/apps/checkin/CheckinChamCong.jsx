@@ -60,7 +60,7 @@ function phanLoaiRa(gioRa) {
 }
 
 // GPS
-const SPA_COORD = { lat: 10.0311, lng: 105.7843 }
+const SPA_COORD = { lat: 10.031917, lng: 105.785083 }
 const MAX_DISTANCE_M = 50
 
 function getDistance(lat1, lon1, lat2, lon2) {

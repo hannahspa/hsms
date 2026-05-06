@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { formatCurrency, getNowVN } from '../../../../lib/utils'
+import AdminSuaChamCong from './AdminSuaChamCong'
 
 const VI_TRI_OPTS  = [
   { value: 'ktv',    label: 'KTV' },
@@ -164,6 +165,7 @@ export default function TabHoSo() {
   const [loading,      setLoading]      = useState(true)
   const [selected,  setSelected]  = useState(null)
   const [editSheet, setEditSheet] = useState(null)
+  const [chamCongSheet, setChamCongSheet] = useState(null)
   const [saving,    setSaving]    = useState(false)
   const [toast,     setToast]     = useState(null)
 
@@ -462,6 +464,10 @@ export default function TabHoSo() {
                 <KyQuyDetail nv={selected} />
               </SheetSection>
 
+              <button onClick={() => setChamCongSheet(selected)}
+                style={{ width: '100%', background: LUX.surface2, color: LUX.espresso, border: `2px solid ${LUX.gold}60`, borderRadius: LUX.radius, padding: '14px', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginTop: '8px' }}>
+                📋 Sửa Chấm Công Tháng
+              </button>
               <button onClick={() => openEdit(selected)}
                 style={{ width: '100%', background: LUX.goldGrad, color: 'white', border: 'none', borderRadius: LUX.radius, padding: '15px', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '15px', cursor: 'pointer', marginTop: '8px', boxShadow: `0 4px 16px ${LUX.gold}50` }}>
                 Chỉnh Sửa Hồ Sơ
@@ -593,6 +599,15 @@ export default function TabHoSo() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Admin Sửa Chấm Công Sheet ── */}
+      {chamCongSheet && (
+        <AdminSuaChamCong
+          nhanVien={chamCongSheet}
+          onClose={() => setChamCongSheet(null)}
+          onSaved={fetchAll}
+        />
       )}
     </div>
   )
