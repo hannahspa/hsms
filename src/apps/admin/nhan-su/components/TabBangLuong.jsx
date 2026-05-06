@@ -4,6 +4,7 @@ import { LUX } from '../../../../constants/lux'
 import { formatCurrency, getNowVN } from '../../../../lib/utils'
 import { tinhLuong as calcLuong } from '../../../../lib/luong'
 import BangLuongImportPOS from './BangLuongImportPOS'
+import ConfirmDialog from '../../../../components/shared/ConfirmDialog'
 
 const DON_GIA_TANG_CA = 25000
 
@@ -82,6 +83,7 @@ export default function TabBangLuong() {
   const [leTanInput, setLeTanInput] = useState({ tongDT: 0, dtMyPham: 0, dsKD: 0, dsNP: 0 })
   const [calcLeTan,  setCalcLeTan]  = useState(null) // preview result
   const [toast,     setToast]     = useState(null)
+  const [confirm,   setConfirm]   = useState(null)
 
   const prevMonth = () => { if (thang === 1) { setThang(12); setNam(n=>n-1) } else setThang(t=>t-1) }
   const nextMonth = () => { if (thang === 12) { setThang(1); setNam(n=>n+1) } else setThang(t=>t+1) }
@@ -243,62 +245,76 @@ export default function TabBangLuong() {
     finally { setSaving(false) }
   }
 
-  const handlePhatLuong = async () => {
+  const handlePhatLuong = () => {
     const nvIds = Object.keys(luongData)
     if (nvIds.length === 0) return
-    if (!window.confirm(`Xác nhận ĐÃ PHÁT LƯƠNG Kỳ ${ky} cho TẤT CẢ ${nvIds.length} nhân viên?\n\n${ky === 1 ? 'Ký quỹ sẽ tự động +1 tháng cho nhân viên đang đóng.' : ''}`)) return
-    setSaving(true)
-    try {
-      const col = ky === 1 ? 'trang_thai_lc' : 'trang_thai_lkd'
-      const bangLuongIds = nvIds.map(id => luongData[id]?.bangLuongId).filter(Boolean)
-      if (bangLuongIds.length > 0) {
-        const { error } = await supabase.from('bang_luong')
-          .update({ [col]: 'da_phat_luong' }).in('id', bangLuongIds)
-        if (error) throw error
-      }
-      // Kỳ 1: tăng ký quỹ +1 tháng cho nhân viên đang đóng
-      if (ky === 1) {
-        const nvDangDong = nvList.filter(nv =>
-          nv.ky_quy_trang_thai === 'dang_dong' && (nv.ky_quy_so_thang || 0) < 12
-        )
-        for (const nv of nvDangDong) {
-          const thangMoi = (nv.ky_quy_so_thang || 0) + 1
-          const trangThaiMoi = thangMoi >= 12 ? 'hoan_tat' : 'dang_dong'
-          await supabase.from('nhan_vien').update({
-            ky_quy_so_thang: thangMoi,
-            ky_quy_trang_thai: trangThaiMoi,
-          }).eq('id', nv.id)
-        }
-        if (nvDangDong.length > 0) {
-          showToast(`✓ Đã phát lương Kỳ ${ky} + cập nhật ký quỹ ${nvDangDong.length} nhân viên`)
-        } else {
-          showToast(`✓ Đã phát lương Kỳ ${ky} — không có NV nào đang đóng ký quỹ`)
-        }
-      } else {
-        showToast(`✓ Đã phát lương Kỳ ${ky} cho ${nvIds.length} nhân viên`)
-      }
-      await fetchAll()
-    } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
-    finally { setSaving(false) }
+    setConfirm({
+      title: `Phát Lương Kỳ ${ky}`,
+      message: `Xác nhận đã thanh toán lương cho TẤT CẢ ${nvIds.length} nhân viên?`,
+      note: ky === 1 ? 'Ký quỹ sẽ tự động +1 tháng cho nhân viên đang đóng.' : null,
+      confirmLabel: 'Đã Phát Lương 💰',
+      onConfirm: async () => {
+        setConfirm(null)
+        setSaving(true)
+        try {
+          const col = ky === 1 ? 'trang_thai_lc' : 'trang_thai_lkd'
+          const bangLuongIds = nvIds.map(id => luongData[id]?.bangLuongId).filter(Boolean)
+          if (bangLuongIds.length > 0) {
+            const { error } = await supabase.from('bang_luong')
+              .update({ [col]: 'da_phat_luong' }).in('id', bangLuongIds)
+            if (error) throw error
+          }
+          if (ky === 1) {
+            const nvDangDong = nvList.filter(nv =>
+              nv.ky_quy_trang_thai === 'dang_dong' && (nv.ky_quy_so_thang || 0) < 12
+            )
+            for (const nv of nvDangDong) {
+              const thangMoi = (nv.ky_quy_so_thang || 0) + 1
+              const trangThaiMoi = thangMoi >= 12 ? 'hoan_tat' : 'dang_dong'
+              await supabase.from('nhan_vien').update({
+                ky_quy_so_thang: thangMoi,
+                ky_quy_trang_thai: trangThaiMoi,
+              }).eq('id', nv.id)
+            }
+            showToast(nvDangDong.length > 0
+              ? `✓ Đã phát lương Kỳ ${ky} + cập nhật ký quỹ ${nvDangDong.length} NV`
+              : `✓ Đã phát lương Kỳ ${ky}`)
+          } else {
+            showToast(`✓ Đã phát lương Kỳ ${ky} cho ${nvIds.length} nhân viên`)
+          }
+          await fetchAll()
+        } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
+        finally { setSaving(false) }
+      },
+    })
   }
 
-  const handleMoPhatLuong = async () => {
+  const handleMoPhatLuong = () => {
     const nvIds = Object.keys(luongData)
     if (nvIds.length === 0) return
-    if (!window.confirm(`Mở trạng thái Đã Phát Lương Kỳ ${ky} cho tất cả nhân viên?\nQuay về trạng thái Đã Chốt.${ky === 1 ? '\n\nLưu ý: Ký quỹ đã tăng sẽ KHÔNG tự động giảm.' : ''}`)) return
-    setSaving(true)
-    try {
-      const col = ky === 1 ? 'trang_thai_lc' : 'trang_thai_lkd'
-      const bangLuongIds = nvIds.map(id => luongData[id]?.bangLuongId).filter(Boolean)
-      if (bangLuongIds.length > 0) {
-        const { error } = await supabase.from('bang_luong')
-          .update({ [col]: 'da_chot' }).in('id', bangLuongIds)
-        if (error) throw error
-      }
-      showToast(`✓ Đã mở trạng thái phát lương Kỳ ${ky} — quay về Đã Chốt`)
-      await fetchAll()
-    } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
-    finally { setSaving(false) }
+    setConfirm({
+      title: `Mở Phát Lương Kỳ ${ky}`,
+      message: `Quay về trạng thái Đã Chốt cho tất cả ${nvIds.length} nhân viên?`,
+      note: ky === 1 ? 'Ký quỹ đã tăng sẽ KHÔNG tự động giảm.' : null,
+      confirmLabel: 'Mở Phát Lương',
+      danger: true,
+      onConfirm: async () => {
+        setConfirm(null)
+        setSaving(true)
+        try {
+          const col = ky === 1 ? 'trang_thai_lc' : 'trang_thai_lkd'
+          const bangLuongIds = nvIds.map(id => luongData[id]?.bangLuongId).filter(Boolean)
+          if (bangLuongIds.length > 0) {
+            const { error } = await supabase.from('bang_luong')
+              .update({ [col]: 'da_chot' }).in('id', bangLuongIds)
+            if (error) throw error
+          }
+          showToast(`✓ Đã mở phát lương Kỳ ${ky} — quay về Đã Chốt`)
+          await fetchAll()
+        } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
+        finally { setSaving(false) }
+      },
+    })
   }
 
   // ── Tính Lễ Tân ──
@@ -727,6 +743,9 @@ export default function TabBangLuong() {
         </div>
       )}
 
+      {/* ── Confirm Dialog ── */}
+      <ConfirmDialog open={!!confirm} {...(confirm || {})} onCancel={() => setConfirm(null)} />
+
       {/* ── Bottom sheet chi tiết ── */}
       {selected && (() => {
         const ld = luongData[selected.id]
@@ -917,7 +936,7 @@ export default function TabBangLuong() {
                 {/* Nút hành động */}
                 {isChot ? (
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => { if (window.confirm(`Mở chốt Kỳ ${ky} cho ${selected.ho_ten}? Có thể chỉnh sửa lại sau khi mở.`)) handleUnlock() }} disabled={saving}
+                    <button onClick={() => setConfirm({ title: `Mở Chốt Kỳ ${ky}`, message: `Mở chốt cho ${selected.ho_ten}? Có thể chỉnh sửa lại sau khi mở.`, confirmLabel: 'Mở Chốt', danger: true, onConfirm: () => { setConfirm(null); handleUnlock() } })} disabled={saving}
                       style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.danger}`, background: '#fff5f5', color: LUX.danger, fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
                       {saving ? '...' : '🔓 Mở Chốt'}
                     </button>

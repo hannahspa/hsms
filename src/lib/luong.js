@@ -15,11 +15,14 @@ import { getNowVN } from './utils'
 // Constants
 export const DON_GIA_TANG_CA = 25000
 export const KY_QUY_MOIS     = 500000
+export const KY_QUY_TONG     = 12
+export const KY_QUY_THUONG   = 500000
 export const PHAT_T7X_SAT    = 300000
 export const PHAT_T7X_SUN    = 500000
 
-// Vietnamese national holidays 2026
-const HOLIDAYS_2026 = [
+// Vietnamese national holidays
+const HOLIDAYS = [
+  // 2026
   '2026-01-01', // Tet Duong Lich
   '2026-02-16', // Tet Am Lich (29 Tet)
   '2026-02-17', // Tet Am Lich (Mung 1)
@@ -27,11 +30,19 @@ const HOLIDAYS_2026 = [
   '2026-04-30', // Giai Phong
   '2026-05-01', // Quoc Te Lao Dong
   '2026-09-02', // Quoc Khanh
+  // 2027
+  '2027-01-01', // Tet Duong Lich
+  '2027-02-05', // Tet Am Lich (29 Tet)
+  '2027-02-06', // Tet Am Lich (Mung 1)
+  '2027-02-07', // Tet Am Lich (Mung 2)
+  '2027-04-30', // Giai Phong
+  '2027-05-01', // Quoc Te Lao Dong
+  '2027-09-02', // Quoc Khanh
 ]
 
 export function isHoliday(dateStr) {
   if (!dateStr) return false
-  return HOLIDAYS_2026.includes(String(dateStr).substring(0, 10))
+  return HOLIDAYS.includes(String(dateStr).substring(0, 10))
 }
 
 export function getDaysInMonth(year, month) {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { getNowVN } from '../../../../lib/utils'
+import ConfirmDialog from '../../../../components/shared/ConfirmDialog'
 
 const CA_VAO_CHUAN = { h: 9, m: 15 }
 const CA_RA_CHUAN = { h: 20, m: 0 }
@@ -58,6 +59,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [editDay, setEditDay] = useState(null)
   const [toast, setToast] = useState(null)
+  const [confirm, setConfirm] = useState(null)
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -196,19 +198,27 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
     finally { setSaving(false) }
   }
 
-  const handleDeleteDay = async () => {
+  const handleDeleteDay = () => {
     if (!editDay || editDay.isNew) { setEditDay(null); return }
-    if (!confirm(`Xoá bản ghi chấm công ngày ${fmtNgay(editDay.cc.ngay)}?`)) return
-    setSaving(true)
-    try {
-      const { error } = await supabase.from('cham_cong').delete().eq('id', editDay.cc.id)
-      if (error) throw error
-      showToast('✓ Đã xoá bản ghi')
-      setEditDay(null)
-      await fetchData()
-      if (onSaved) onSaved()
-    } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
-    finally { setSaving(false) }
+    setConfirm({
+      title: 'Xoá Chấm Công',
+      message: `Xoá bản ghi chấm công ngày ${fmtNgay(editDay.cc.ngay)}?`,
+      confirmLabel: 'Xoá',
+      danger: true,
+      onConfirm: async () => {
+        setConfirm(null)
+        setSaving(true)
+        try {
+          const { error } = await supabase.from('cham_cong').delete().eq('id', editDay.cc.id)
+          if (error) throw error
+          showToast('✓ Đã xoá bản ghi')
+          setEditDay(null)
+          await fetchData()
+          if (onSaved) onSaved()
+        } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
+        finally { setSaving(false) }
+      },
+    })
   }
 
   const openNewDay = (dateStr) => {
@@ -363,6 +373,9 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
       onClick={() => { onClose(); if (onSaved) onSaved() }}>
       <div style={{ background: LUX.bg, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
         onClick={e => e.stopPropagation()}>
+
+        {/* Confirm Dialog */}
+        <ConfirmDialog open={!!confirm} {...(confirm || {})} onCancel={() => setConfirm(null)} />
 
         {/* Toast */}
         {toast && (

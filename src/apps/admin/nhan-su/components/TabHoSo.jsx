@@ -3,6 +3,7 @@ import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { formatCurrency, getNowVN } from '../../../../lib/utils'
 import AdminSuaChamCong from './AdminSuaChamCong'
+import { KY_QUY_TONG, KY_QUY_MOIS, KY_QUY_THUONG } from '../../../../lib/luong'
 
 const VI_TRI_OPTS  = [
   { value: 'ktv',    label: 'KTV' },
@@ -15,9 +16,6 @@ const VI_TRI_COLOR = {
   le_tan: { bg: '#eef2e7', color: '#5a6a4a' },
   tap_vu: { bg: LUX.surface, color: LUX.ink3 },
 }
-const KY_QUY_TONG  = 12
-const KY_QUY_MOIS  = 500000
-const KY_QUY_THUONG = 500000
 
 function getInitials(name) {
   const parts = name.trim().split(' ')
