@@ -1,7 +1,34 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { LUX } from '../../../constants/lux'
-import { formatCurrency, formatCurrencyHide, todayISO , getNowVN} from '../../../lib/utils'
+import { formatCurrency, formatCurrencyHide, todayISO, getNowVN, formatDateInput } from '../../../lib/utils'
+
+const HINH_THUC_LABEL = {
+  tien_mat: 'Tiền Mặt',
+  chuyen_khoan: 'Chuyển Khoản',
+  quet_the: 'Quẹt Thẻ',
+  the_tra_truoc: 'Thẻ Trả Trước',
+}
+
+function getItemLabel(item) {
+  if (item.loai === 'thu') return `Doanh Thu ${HINH_THUC_LABEL[item.hinh_thuc] || item.hinh_thuc || ''}`
+  if (item.loai === 'chi') return item.ten_danh_muc || 'Chi Phí'
+  if (item.loai === 'chuyen_khoan') return `CK: ${item.ten_vi_tu || '?'} → ${item.ten_vi_den || '?'}`
+  return item.mo_ta || 'Giao dịch'
+}
+
+function getItemDesc(item) {
+  if (item.loai === 'thu') return item.dien_giai || 'Doanh thu'
+  if (item.loai === 'chi') return item.dien_giai || 'Chi phí'
+  if (item.loai === 'chuyen_khoan') return item.dien_giai || 'Chuyển khoản nội bộ'
+  return item.dien_giai || ''
+}
+
+function getViDesc(vi) {
+  if (vi.loai === 'tien_mat') return 'Tiền mặt tại quầy'
+  if (vi.loai === 'ngan_hang') return 'Ngân hàng'
+  return vi.loai || ''
+}
 
 function HeaderTongQuan({ user, viList = [], stats }) {
   const isAdmin = user?.vai_tro === 'admin'
@@ -92,7 +119,7 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm }) {
                     <div style={{ width: '40px', height: '40px', borderRadius: LUX.radiusSm, background: `linear-gradient(135deg, ${LUX.surface}, ${LUX.line})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{vi.icon}</div>
                     <div>
                       <div style={{ fontWeight: '600', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSans }}>{vi.ten}</div>
-                      <div style={{ fontSize: '11px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{vi.ten === 'Tiền Mặt' ? 'Tại quầy' : 'Ngân hàng'}</div>
+                      <div style={{ fontSize: '11px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{getViDesc(vi)}</div>
                     </div>
                   </div>
                   <div style={{ fontWeight: '700', fontSize: '14px', color: isAdmin ? LUX.taupe : LUX.ink3, fontFamily: LUX.fontMono }}>
@@ -120,8 +147,8 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm }) {
                                 {item.loai === 'thu' ? '💰' : item.loai === 'chi' ? '💸' : '🔄'}
                             </div>
                             <div>
-                                <div style={{ fontWeight: '600', fontSize: '13px', color: LUX.ink, fontFamily: LUX.fontSans }}>{item.danh_muc || item.mo_ta}</div>
-                                <div style={{ fontSize: '10px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{item.dien_giai || 'Giao dịch hệ thống'}</div>
+                                <div style={{ fontWeight: '600', fontSize: '13px', color: LUX.ink, fontFamily: LUX.fontSans }}>{getItemLabel(item)}</div>
+                                <div style={{ fontSize: '10px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{getItemDesc(item)}</div>
                             </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
