@@ -180,10 +180,10 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   const truKyQuy    = nv.ky_quy_trang_thai === 'dang_dong' ? KY_QUY_MOIS : 0
   const truUngLuong = bangLuongRow?.tru_ung_luong ?? 0
   const hoaHong     = bangLuongRow?.hoa_hong ?? 0
-  const hoaHongDV   = bangLuongRow?.hoa_hong_dv ?? 0
-  const hoaHongThe  = bangLuongRow?.hoa_hong_the ?? 0
-  const tienTour    = bangLuongRow?.tien_tour ?? 0
-  const tongKinhDoanh = hoaHongDV + hoaHongThe + tienTour
+  const hoaHongDV       = bangLuongRow?.hoa_hong_dv ?? 0
+  const tienTour        = bangLuongRow?.tien_tour ?? 0
+  const thuongDatDoanhSo = bangLuongRow?.hoa_hong_the ?? 0  // dung cot hoa_hong_the
+  const tongKinhDoanh   = hoaHongDV + tienTour + thuongDatDoanhSo
   const tongLinh    = Math.max(0, luongCoBan + tienTangCa + hoaHong + tongKinhDoanh - tienPhat - truKyQuy - truUngLuong)
 
   // Tổng ngày le tich luy
@@ -232,8 +232,8 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
 
     // Salary — Kỳ 2 (Lương Kinh Doanh)
     hoaHongDV,
-    hoaHongThe,
     tienTour,
+    thuongDatDoanhSo,
     tongKinhDoanh,
 
     // Tổng

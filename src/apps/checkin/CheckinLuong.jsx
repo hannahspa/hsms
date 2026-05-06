@@ -111,11 +111,11 @@ export default function CheckinLuong({ nhanVien, onBack }) {
   const tongKy1 = showLC.luongCoBan + showLC.tienTangCa - showLC.tienPhat - showLC.truKyQuy - showLC.truUngLuong
 
   const showLKD = c ? ((bl && bl.trang_thai_lkd && bl.trang_thai_lkd !== 'chua_tinh')
-    ? { hoaHongDV: bl.hoa_hong_dv || 0, tienTour: bl.tien_tour || 0 }
-    : { hoaHongDV: c.hoaHongDV || 0, tienTour: c.tienTour || 0 })
-    : { hoaHongDV: 0, tienTour: 0 }
+    ? { hoaHongDV: bl.hoa_hong_dv || 0, tienTour: bl.tien_tour || 0, thuongDS: bl.hoa_hong_the || 0 }
+    : { hoaHongDV: c.hoaHongDV || 0, tienTour: c.tienTour || 0, thuongDS: c.thuongDatDoanhSo || 0 })
+    : { hoaHongDV: 0, tienTour: 0, thuongDS: 0 }
 
-  const tongKy2 = showLKD.hoaHongDV + showLKD.tienTour
+  const tongKy2 = showLKD.hoaHongDV + showLKD.tienTour + showLKD.thuongDS
   const tongLinh = tongKy1 + tongKy2
 
   return (
@@ -325,30 +325,45 @@ export default function CheckinLuong({ nhanVien, onBack }) {
                 <span style={{ background: stLKD.bg, color: stLKD.color, padding: '4px 10px', borderRadius: 999, fontSize: 10, fontWeight: 600 }}>{stLKD.label}</span>
               </div>
               <div style={{ padding: '4px 18px' }}>
-                {[
-                  { icon: '💆', label: 'Hoa hồng (DV + Thẻ)', note: 'Từ POS myspa.vn', value: showLKD.hoaHongDV, plus: true, hide: !showLKD.hoaHongDV },
-                  { icon: '✈️', label: 'Tiền tour', note: 'Tour tháng', value: showLKD.tienTour, plus: true, hide: !showLKD.tienTour },
-                ].filter(item => !item.hide).map((item, i) => (
-                  <div key={item.label} style={{ display: 'grid', gridTemplateColumns: '38px 1fr auto', gap: 12, alignItems: 'center', padding: '14px 0', borderTop: i === 0 ? 'none' : `1px solid ${LUX.line}` }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 11, background: LUX.surface, color: LUX.taupe, display: 'grid', placeItems: 'center', fontSize: 16 }}>{item.icon}</div>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: LUX.espresso, lineHeight: 1.1 }}>{item.label}</div>
-                      <div style={{ fontFamily: LUX.fontMono, fontSize: 10, color: LUX.ink3, marginTop: 4 }}>{item.note}</div>
-                    </div>
-                    <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, color: LUX.sage }}>
-                      +{formatCurrency(item.value)}
-                    </div>
-                  </div>
-                ))}
-                {!showLKD.hoaHongDV && !showLKD.tienTour && (
-                  <div style={{ padding: '18px 0', textAlign: 'center', color: LUX.ink3, fontSize: 12, fontStyle: 'italic' }}>
-                    Chưa có dữ liệu — Admin sẽ import từ POS myspa.vn
-                  </div>
-                )}
-                <div style={{ borderTop: `1.5px solid ${LUX.line}`, padding: '16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 600, color: LUX.espresso }}>Kỳ 2</span>
-                  <span style={{ fontFamily: LUX.fontSerif, fontSize: 24, fontWeight: 700, color: LUX.espresso }}>{formatCurrency(tongKy2)}</span>
-                </div>
+                {(() => {
+                  const isLeTan = nhanVien.vi_tri === 'le_tan'
+                  const items = isLeTan
+                    ? [
+                        { icon: '📐', label: 'Lương Kinh Doanh (công thức)', note: 'Tính theo doanh thu POS', value: showLKD.tienTour, plus: true, hide: !showLKD.tienTour },
+                        { icon: '💆', label: 'Hoa Hồng (từ Excel POS)', note: 'Import từ myspa.vn', value: showLKD.hoaHongDV, plus: true, hide: !showLKD.hoaHongDV },
+                        { icon: '🎯', label: 'Thưởng Đạt Doanh Số', note: 'Admin nhập tay', value: showLKD.thuongDS, plus: true, hide: !showLKD.thuongDS },
+                      ]
+                    : [
+                        { icon: '💆', label: 'Hoa Hồng (từ Excel POS)', note: 'Import từ myspa.vn', value: showLKD.hoaHongDV, plus: true, hide: !showLKD.hoaHongDV },
+                        { icon: '✈️', label: 'Tiền Tour', note: 'Tour tháng', value: showLKD.tienTour, plus: true, hide: !showLKD.tienTour },
+                        { icon: '🎯', label: 'Thưởng Đạt Doanh Số', note: 'Admin nhập tay', value: showLKD.thuongDS, plus: true, hide: !showLKD.thuongDS },
+                      ]
+                  return (
+                    <>
+                      {items.filter(item => !item.hide).map((item, i) => (
+                        <div key={item.label} style={{ display: 'grid', gridTemplateColumns: '38px 1fr auto', gap: 12, alignItems: 'center', padding: '14px 0', borderTop: i === 0 ? 'none' : `1px solid ${LUX.line}` }}>
+                          <div style={{ width: 38, height: 38, borderRadius: 11, background: LUX.surface, color: LUX.taupe, display: 'grid', placeItems: 'center', fontSize: 16 }}>{item.icon}</div>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: LUX.espresso, lineHeight: 1.1 }}>{item.label}</div>
+                            <div style={{ fontFamily: LUX.fontMono, fontSize: 10, color: LUX.ink3, marginTop: 4 }}>{item.note}</div>
+                          </div>
+                          <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, color: LUX.sage }}>
+                            +{formatCurrency(item.value)}
+                          </div>
+                        </div>
+                      ))}
+                      {!showLKD.hoaHongDV && !showLKD.tienTour && !showLKD.thuongDS && (
+                        <div style={{ padding: '18px 0', textAlign: 'center', color: LUX.ink3, fontSize: 12, fontStyle: 'italic' }}>
+                          Chưa có dữ liệu — Admin sẽ import từ POS myspa.vn
+                        </div>
+                      )}
+                      <div style={{ borderTop: `1.5px solid ${LUX.line}`, padding: '16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 600, color: LUX.espresso }}>Kỳ 2</span>
+                        <span style={{ fontFamily: LUX.fontSerif, fontSize: 24, fontWeight: 700, color: LUX.espresso }}>{formatCurrency(tongKy2)}</span>
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
             </div>
 

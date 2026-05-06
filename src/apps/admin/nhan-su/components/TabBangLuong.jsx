@@ -139,8 +139,8 @@ export default function TabBangLuong() {
         result[nv.id].bangLuongId  = bl?.id || null
         // Store raw KD values from DB for edit state
         result[nv.id].hoaHongDV  = bl?.hoa_hong_dv || 0
-        result[nv.id].hoaHongThe = 0
         result[nv.id].tienTour   = bl?.tien_tour || 0
+        result[nv.id].thuongDatDoanhSo = bl?.hoa_hong_the || 0  // Thưởng Đạt Doanh Số
         result[nv.id].truUngLuong = bl?.tru_ung_luong || 0
       })
 
@@ -160,6 +160,7 @@ export default function TabBangLuong() {
       setEditState({
         hoaHongDV:  ld?.hoaHongDV ?? 0,
         tienTour:   ld?.tienTour  ?? 0,
+        thuongDS:   ld?.thuongDatDoanhSo ?? 0,
       })
     }
     setSelected(nv)
@@ -195,14 +196,13 @@ export default function TabBangLuong() {
         }
       } else {
         // Kỳ 2 — Lương Kinh Doanh
-        const tongKinhDoanh = editState.hoaHongDV + editState.tienTour
-        // Recalc tong_linh = LC total + KD total
+        const tongKinhDoanh = editState.hoaHongDV + editState.tienTour + (editState.thuongDS || 0)
         const tongLC = ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - (ld.truUngLuong || 0)
         const tongLinh = tongLC + tongKinhDoanh
         payload = {
           nhan_vien_id: selected.id, thang, nam,
           hoa_hong_dv: editState.hoaHongDV,
-          hoa_hong_the: 0,
+          hoa_hong_the: editState.thuongDS || 0,
           tien_tour: editState.tienTour,
           tong_linh: tongLinh,
           trang_thai_lkd: chot ? 'da_chot' : 'da_tinh',
@@ -271,17 +271,18 @@ export default function TabBangLuong() {
 
       for (const nv of leTanNVs) {
         const ld = luongData[nv.id]
-        // Hoa hồng Lễ Tân = HH từ Excel (đã import) + Lương Kinh Doanh (công thức)
+        // Lễ Tân: Hoa hồng từ Excel + Lương Kinh Doanh (công thức) + Thưởng
         const hhExcel = ld?.hoaHongDV || 0
-        const tongKinhDoanh = hhExcel + calcLeTan.moiNguoi
+        const thuongDS = ld?.thuongDatDoanhSo || 0
+        const tongKinhDoanh = hhExcel + calcLeTan.moiNguoi + thuongDS
         const tongLC = ld ? (ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - (ld.truUngLuong || 0)) : 0
         const tongLinh = tongLC + tongKinhDoanh
 
         const payload = {
           nhan_vien_id: nv.id, thang, nam,
-          hoa_hong_dv: tongKinhDoanh,
-          hoa_hong_the: 0,
-          tien_tour: 0,
+          hoa_hong_dv: hhExcel,              // Hoa hồng từ Excel
+          hoa_hong_the: thuongDS,             // Thưởng Đạt Doanh Số
+          tien_tour: calcLeTan.moiNguoi,      // Lương Kinh Doanh (công thức)
           tong_linh: tongLinh,
         }
 
@@ -306,7 +307,7 @@ export default function TabBangLuong() {
   // Tổng chi theo kỳ đang chọn
   const tongTheoKy = ky === 1
     ? Object.values(luongData).reduce((s, ld) => s + (ld?.luongCoBan || 0) + (ld?.tienTangCa || 0) - (ld?.tienPhat || 0) - (ld?.truKyQuy || 0) - (ld?.truUngLuong || 0), 0)
-    : Object.values(luongData).reduce((s, ld) => s + (ld?.hoaHongDV || 0) + (ld?.tienTour || 0), 0)
+    : Object.values(luongData).reduce((s, ld) => s + (ld?.hoaHongDV || 0) + (ld?.tienTour || 0) + (ld?.thuongDatDoanhSo || 0), 0)
 
   const tongLinhTatCa = Object.values(luongData).reduce((s, ld) => s + (ld?.tongLinh || 0), 0)
 
@@ -478,52 +479,84 @@ export default function TabBangLuong() {
             Tính Lương Kinh Doanh
           </button>
 
-          {/* Kết quả tính */}
-          {calcLeTan && (
-            <div style={{ background: 'white', borderRadius: 12, padding: 14, border: '1px solid #a8c8f0' }}>
-              <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 700, color: '#1A5276', textTransform: 'uppercase', marginBottom: 10 }}>
-                Chi tiết công thức
+          {/* Kết quả tính Lễ Tân */}
+          {calcLeTan && (() => {
+            const ltNVs = nvList.filter(nv => nv.vi_tri === 'le_tan')
+            const kd = ltNVs.find(nv => nv.ho_ten.includes('Khánh Duy'))
+            const np = ltNVs.find(nv => nv.ho_ten.includes('Ngọc Phương'))
+            const hhKdExcel = kd ? (luongData[kd.id]?.hoaHongDV || 0) : 0
+            const hhNpExcel = np ? (luongData[np.id]?.hoaHongDV || 0) : 0
+            const thuongKD = kd ? (luongData[kd.id]?.thuongDatDoanhSo || 0) : 0
+            const thuongNP = np ? (luongData[np.id]?.thuongDatDoanhSo || 0) : 0
+            const tongKD = calcLeTan.moiNguoi + hhKdExcel + thuongKD
+            const tongNP = calcLeTan.moiNguoi + hhNpExcel + thuongNP
+            return (
+              <div style={{ background: 'white', borderRadius: 12, padding: 14, border: '1px solid #a8c8f0' }}>
+                <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 700, color: '#1A5276', textTransform: 'uppercase', marginBottom: 10 }}>
+                  Chi tiết công thức
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 14px', fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2 }}>
+                  <span>DS Khánh Duy:</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.dsKD)}</span>
+                  <span>DS Ngọc Phương:</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.dsNP)}</span>
+                  <span>DT Mỹ Phẩm:</span>       <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(leTanInput.dtMyPham)}</span>
+                  <span style={{ color: '#1A5276', fontWeight: 700 }}>Cơ sở bậc 1:</span> <span style={{ textAlign: 'right', fontWeight: 700, color: '#1A5276' }}>{formatCurrency(calcLeTan.coSo1)}</span>
+                  <span>HH bậc 1 (1%):</span>    <span style={{ textAlign: 'right', fontWeight: 600 }}>+{formatCurrency(calcLeTan.hh1)}</span>
+                  <span>Vượt &gt;150tr:</span>        <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.vuot)}</span>
+                  <span>HH bậc 2 (1.5%):</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>+{formatCurrency(calcLeTan.hh2)}</span>
+                </div>
+
+                {/* ── Thông tin Chấm Công Tham Khảo ── */}
+                <div style={{ borderTop: '1.5px solid #a8c8f0', marginTop: 12, paddingTop: 12 }}>
+                  <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 700, color: '#1A5276', textTransform: 'uppercase', marginBottom: 10 }}>
+                    Thông tin Chấm Công Tham Khảo
+                  </div>
+
+                  {/* Khánh Duy */}
+                  <div style={{ background: '#f8fafc', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                    <div style={{ fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700, color: '#1A5276', marginBottom: 8 }}>Khánh Duy</div>
+                    {[
+                      { label: 'Lương Kinh Doanh', value: calcLeTan.moiNguoi },
+                      { label: 'Hoa Hồng (Excel)', value: hhKdExcel },
+                      { label: 'Thưởng Đạt Doanh Số', value: thuongKD },
+                    ].map(item => (
+                      <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2 }}>
+                        <span>{item.label}</span>
+                        <span style={{ fontFamily: LUX.fontMono, fontWeight: 600 }}>{formatCurrency(item.value)}</span>
+                      </div>
+                    ))}
+                    <div style={{ borderTop: '1px solid #d4e4fc', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: '#1A5276' }}>Tổng</span>
+                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 700, color: '#1A5276' }}>{formatCurrency(tongKD)}</span>
+                    </div>
+                  </div>
+
+                  {/* Ngọc Phương */}
+                  <div style={{ background: '#f8fafc', borderRadius: 10, padding: 12 }}>
+                    <div style={{ fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700, color: '#1A5276', marginBottom: 8 }}>Ngọc Phương</div>
+                    {[
+                      { label: 'Lương Kinh Doanh', value: calcLeTan.moiNguoi },
+                      { label: 'Hoa Hồng (Excel)', value: hhNpExcel },
+                      { label: 'Thưởng Đạt Doanh Số', value: thuongNP },
+                    ].map(item => (
+                      <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2 }}>
+                        <span>{item.label}</span>
+                        <span style={{ fontFamily: LUX.fontMono, fontWeight: 600 }}>{formatCurrency(item.value)}</span>
+                      </div>
+                    ))}
+                    <div style={{ borderTop: '1px solid #d4e4fc', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: '#1A5276' }}>Tổng</span>
+                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 700, color: '#1A5276' }}>{formatCurrency(tongNP)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button onClick={handleSaveLeTan} disabled={saving}
+                  style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 10, border: 'none', background: LUX.goldGrad, color: 'white', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: `0 4px 14px ${LUX.gold}50`, opacity: saving ? 0.7 : 1 }}>
+                  {saving ? 'Đang lưu...' : `Áp Dụng Lương Kinh Doanh Cho Lễ Tân`}
+                </button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 14px', fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2 }}>
-                <span>DS Khánh Duy:</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.dsKD)}</span>
-                <span>DS Ngọc Phương:</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.dsNP)}</span>
-                <span>DT Mỹ Phẩm:</span>       <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(leTanInput.dtMyPham)}</span>
-                <span style={{ color: '#1A5276', fontWeight: 700 }}>Cơ sở bậc 1:</span> <span style={{ textAlign: 'right', fontWeight: 700, color: '#1A5276' }}>{formatCurrency(calcLeTan.coSo1)}</span>
-                <span>HH bậc 1 (1%):</span>    <span style={{ textAlign: 'right', fontWeight: 600 }}>+{formatCurrency(calcLeTan.hh1)}</span>
-                <span>Vượt &gt;150tr:</span>        <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.vuot)}</span>
-                <span>HH bậc 2 (1.5%):</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>+{formatCurrency(calcLeTan.hh2)}</span>
-              </div>
-              {(() => {
-                // Get Excel HH for Lễ Tân from luongData
-                const ltNVs = nvList.filter(nv => nv.vi_tri === 'le_tan')
-                const hhKdExcel = ltNVs.length > 0 ? (luongData[ltNVs[0]?.id]?.hoaHongDV || 0) : 0
-                const hhNpExcel = ltNVs.length > 1 ? (luongData[ltNVs[1]?.id]?.hoaHongDV || 0) : 0
-                const tongKD = calcLeTan.moiNguoi + hhKdExcel
-                const tongNP = calcLeTan.moiNguoi + hhNpExcel
-                return (
-                  <>
-                    <div style={{ borderTop: '1.5px solid #a8c8f0', marginTop: 10, paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 600, color: '#6a4a8a' }}>Lương Kinh Doanh / người</span>
-                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 20, fontWeight: 700, color: '#6a4a8a' }}>{formatCurrency(calcLeTan.moiNguoi)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 10, borderTop: '1px dashed #a8c8f040' }}>
-                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 12, color: LUX.ink3 }}>
-                        + Hoa hồng từ Excel (đã import): KD {formatCurrency(hhKdExcel)}, NP {formatCurrency(hhNpExcel)}
-                      </span>
-                    </div>
-                    <div style={{ borderTop: '1.5px solid #a8c8f0', marginTop: 10, paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 700, color: '#1A5276' }}>Tổng mỗi Lễ Tân</span>
-                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 22, fontWeight: 700, color: '#1A5276' }}>{formatCurrency(calcLeTan.moiNguoi)} + {formatCurrency(hhKdExcel)}</span>
-                    </div>
-                  </>
-                )
-              })()}
-              <button onClick={handleSaveLeTan} disabled={saving}
-                style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 10, border: 'none', background: LUX.goldGrad, color: 'white', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: `0 4px 14px ${LUX.gold}50`, opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Đang lưu...' : `Áp Dụng Lương Kinh Doanh Cho Lễ Tân`}
-              </button>
-            </div>
-          )}
+            )
+          })()}
         </div>
       )}
 
@@ -537,7 +570,8 @@ export default function TabBangLuong() {
             const kyTT = ky === 1 ? ld.trangThaiLC : ld.trangThaiLKD
             const kyTong = ky === 1
               ? ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - ld.truUngLuong
-              : ld.hoaHongDV + ld.tienTour
+              : ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0)
+            const isLeTan = nv.vi_tri === 'le_tan'
 
             return (
               <button key={nv.id} onClick={() => openDetail(nv)}
@@ -562,7 +596,8 @@ export default function TabBangLuong() {
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontFamily: LUX.fontMono, fontSize: '15px', fontWeight: 700, color: ky === 1 ? LUX.taupe : '#1A5276' }}>{formatCurrency(kyTong)}</div>
                   {ky === 1 && ld.tienTangCa > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#6a4a8a', fontWeight: 600 }}>+TC {formatCurrency(ld.tienTangCa)}</div>}
-                  {ky === 2 && (ld.hoaHongDV + ld.tienTour) > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#1A5276', fontWeight: 600 }}>2 mục</div>}
+                  {ky === 2 && !isLeTan && (ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0)) > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#1A5276', fontWeight: 600 }}>{[ld.hoaHongDV > 0 && 'HH', ld.tienTour > 0 && 'Tour', (ld.thuongDatDoanhSo || 0) > 0 && 'Thưởng'].filter(Boolean).join(' + ')}</div>}
+                  {ky === 2 && isLeTan && (ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0)) > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#1A5276', fontWeight: 600 }}>{[ld.hoaHongDV > 0 && 'HH', ld.tienTour > 0 && 'LgKD', (ld.thuongDatDoanhSo || 0) > 0 && 'Thưởng'].filter(Boolean).join(' + ')}</div>}
                 </div>
                 <div style={{ color: LUX.line2, fontSize: '18px', flexShrink: 0 }}>›</div>
               </button>
@@ -576,6 +611,7 @@ export default function TabBangLuong() {
         const ld = luongData[selected.id]
         if (!ld) return null
         const isChot = ky === 1 ? ld.trangThaiLC === 'da_chot' : ld.trangThaiLKD === 'da_chot'
+        const isLeTan = selected.vi_tri === 'le_tan'
 
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 999, display: 'flex', alignItems: 'flex-end' }}
@@ -652,38 +688,79 @@ export default function TabBangLuong() {
                   </>
                 ) : (
                   <>
-                    {/* KỲ 2 — Import POS + KD fields */}
-                    <BLSection title="Dữ Liệu Kinh Doanh Từ POS">
-                      <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: LUX.ink3, marginBottom: '12px', background: LUX.bg, borderRadius: '10px', padding: '8px 12px', lineHeight: 1.6 }}>
-                        Dữ liệu từ myspa.vn, import qua Excel hoặc nhập tay
-                      </div>
-                      {isChot ? (
-                        <div style={{ textAlign: 'center', padding: '12px', fontFamily: LUX.fontSans, color: LUX.ink3, fontSize: '13px', background: LUX.bg, borderRadius: LUX.radiusSm }}>
-                          Kỳ 2 đã chốt — không thể chỉnh sửa
-                        </div>
-                      ) : (
-                        <>
-                          <MoneyInput label="Hoa hồng (DV + Thẻ)" value={editState.hoaHongDV} onChange={v => setEditState(s => ({ ...s, hoaHongDV: v }))} color="#1A5276" />
-                          <MoneyInput label="Tiền tour" value={editState.tienTour} onChange={v => setEditState(s => ({ ...s, tienTour: v }))} color="#1A5276" />
-                        </>
-                      )}
-                    </BLSection>
-
-                    {/* Chấm công reference Kỳ 2 */}
-                    <BLSection title="Thông Tin Chấm Công (Tham Khảo)">
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px' }}>
-                        {[
-                          { label:'Ngày công', value: ld.ngayCong, color:'#5a6a4a', bg:'#eef2e7' },
-                          { label:'Đi làm',    value: ld.soNgayDiLam, color:LUX.taupe, bg:'#f5e8d4' },
-                          { label:'Tăng ca',  value: ld.tongTangCa + 'h', color:'#6a4a8a', bg:'#ede9f8' },
-                        ].map(item => (
-                          <div key={item.label} style={{ background: item.bg, borderRadius: LUX.radiusSm, padding: '10px 8px', textAlign: 'center' }}>
-                            <div style={{ fontFamily: LUX.fontSerif, fontSize: '22px', fontWeight: 600, color: item.color }}>{item.value}</div>
-                            <div style={{ fontFamily: LUX.fontSans, fontSize: '9px', color: LUX.ink3, fontWeight: 600, marginTop: '2px', lineHeight: 1.2 }}>{item.label}</div>
+                    {/* KỲ 2 — Lương Kinh Doanh: phân biệt KTV vs Lễ Tân */}
+                    {isLeTan ? (
+                      <>
+                        <BLSection title="Lương Kinh Doanh — Lễ Tân">
+                          <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: LUX.ink3, marginBottom: '12px', background: LUX.bg, borderRadius: '10px', padding: '8px 12px', lineHeight: 1.6 }}>
+                            Lương KD từ công thức (Tính ở trên) + Hoa hồng từ Excel POS + Thưởng
                           </div>
-                        ))}
-                      </div>
-                    </BLSection>
+                          {isChot ? (
+                            <div style={{ textAlign: 'center', padding: '12px', fontFamily: LUX.fontSans, color: LUX.ink3, fontSize: '13px', background: LUX.bg, borderRadius: LUX.radiusSm }}>
+                              Kỳ 2 đã chốt — không thể chỉnh sửa
+                            </div>
+                          ) : (
+                            <>
+                              <MoneyInput label="Lương Kinh Doanh (công thức)" value={editState.tienTour} onChange={() => {}} readOnly color="#6a4a8a" />
+                              <MoneyInput label="Hoa Hồng (từ Excel POS)" value={editState.hoaHongDV} onChange={v => setEditState(s => ({ ...s, hoaHongDV: v }))} color="#1A5276" />
+                              <MoneyInput label="Thưởng Đạt Doanh Số" value={editState.thuongDS || 0} onChange={v => setEditState(s => ({ ...s, thuongDS: v }))} color="#166534" />
+                            </>
+                          )}
+                        </BLSection>
+
+                        <BLSection title="Thông Tin Chấm Công Tham Khảo">
+                          <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: LUX.ink3, marginBottom: '12px', background: LUX.bg, borderRadius: '10px', padding: '8px 12px', lineHeight: 1.6 }}>
+                            Lương Kinh Doanh: {formatCurrency(editState.tienTour)} + Hoa Hồng: {formatCurrency(editState.hoaHongDV)} + Thưởng: {formatCurrency(editState.thuongDS || 0)}
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px' }}>
+                            {[
+                              { label:'Ngày công', value: ld.ngayCong, color:'#5a6a4a', bg:'#eef2e7' },
+                              { label:'Đi làm',    value: ld.soNgayDiLam, color:LUX.taupe, bg:'#f5e8d4' },
+                              { label:'Tăng ca',  value: ld.tongTangCa + 'h', color:'#6a4a8a', bg:'#ede9f8' },
+                            ].map(item => (
+                              <div key={item.label} style={{ background: item.bg, borderRadius: LUX.radiusSm, padding: '10px 8px', textAlign: 'center' }}>
+                                <div style={{ fontFamily: LUX.fontSerif, fontSize: '22px', fontWeight: 600, color: item.color }}>{item.value}</div>
+                                <div style={{ fontFamily: LUX.fontSans, fontSize: '9px', color: LUX.ink3, fontWeight: 600, marginTop: '2px', lineHeight: 1.2 }}>{item.label}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </BLSection>
+                      </>
+                    ) : (
+                      <>
+                        <BLSection title="Dữ Liệu Kinh Doanh — KTV">
+                          <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: LUX.ink3, marginBottom: '12px', background: LUX.bg, borderRadius: '10px', padding: '8px 12px', lineHeight: 1.6 }}>
+                            Dữ liệu từ myspa.vn, import qua Excel hoặc nhập tay
+                          </div>
+                          {isChot ? (
+                            <div style={{ textAlign: 'center', padding: '12px', fontFamily: LUX.fontSans, color: LUX.ink3, fontSize: '13px', background: LUX.bg, borderRadius: LUX.radiusSm }}>
+                              Kỳ 2 đã chốt — không thể chỉnh sửa
+                            </div>
+                          ) : (
+                            <>
+                              <MoneyInput label="Hoa hồng (từ Excel POS)" value={editState.hoaHongDV} onChange={v => setEditState(s => ({ ...s, hoaHongDV: v }))} color="#1A5276" />
+                              <MoneyInput label="Tiền tour" value={editState.tienTour} onChange={v => setEditState(s => ({ ...s, tienTour: v }))} color="#1A5276" />
+                              <MoneyInput label="Thưởng Đạt Doanh Số" value={editState.thuongDS || 0} onChange={v => setEditState(s => ({ ...s, thuongDS: v }))} color="#166534" />
+                            </>
+                          )}
+                        </BLSection>
+
+                        <BLSection title="Thông Tin Chấm Công Tham Khảo">
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px' }}>
+                            {[
+                              { label:'Ngày công', value: ld.ngayCong, color:'#5a6a4a', bg:'#eef2e7' },
+                              { label:'Đi làm',    value: ld.soNgayDiLam, color:LUX.taupe, bg:'#f5e8d4' },
+                              { label:'Tăng ca',  value: ld.tongTangCa + 'h', color:'#6a4a8a', bg:'#ede9f8' },
+                            ].map(item => (
+                              <div key={item.label} style={{ background: item.bg, borderRadius: LUX.radiusSm, padding: '10px 8px', textAlign: 'center' }}>
+                                <div style={{ fontFamily: LUX.fontSerif, fontSize: '22px', fontWeight: 600, color: item.color }}>{item.value}</div>
+                                <div style={{ fontFamily: LUX.fontSans, fontSize: '9px', color: LUX.ink3, fontWeight: 600, marginTop: '2px', lineHeight: 1.2 }}>{item.label}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </BLSection>
+                      </>
+                    )}
                   </>
                 )}
 
@@ -695,7 +772,7 @@ export default function TabBangLuong() {
                   <div style={{ fontFamily: LUX.fontSerif, fontSize: '32px', fontWeight: 600, color: LUX.champagne }}>
                     {ky === 1
                       ? formatCurrency(ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - editState.truUngLuong)
-                      : formatCurrency(editState.hoaHongDV + editState.tienTour)
+                      : formatCurrency(editState.hoaHongDV + editState.tienTour + (editState.thuongDS || 0))
                     }
                   </div>
                   <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '6px', lineHeight: 1.6 }}>
@@ -709,9 +786,11 @@ export default function TabBangLuong() {
                       </>
                     ) : (
                       <>
-                        {editState.hoaHongDV > 0 && `${formatCurrency(editState.hoaHongDV)} Hoa hồng`}
-                        {editState.tienTour > 0 && ` + ${formatCurrency(editState.tienTour)} Tour`}
-                        {!editState.hoaHongDV && !editState.tienTour && 'Chưa có dữ liệu'}
+                        {isLeTan
+                          ? `${formatCurrency(editState.tienTour)} LgKD + ${formatCurrency(editState.hoaHongDV)} HH${(editState.thuongDS || 0) > 0 ? ` + ${formatCurrency(editState.thuongDS)} Thưởng` : ''}`
+                          : `${formatCurrency(editState.hoaHongDV)} HH${editState.tienTour > 0 ? ` + ${formatCurrency(editState.tienTour)} Tour` : ''}${(editState.thuongDS || 0) > 0 ? ` + ${formatCurrency(editState.thuongDS)} Thưởng` : ''}`
+                        }
+                        {!editState.hoaHongDV && !editState.tienTour && !(editState.thuongDS || 0) && 'Chưa có dữ liệu'}
                       </>
                     )}
                   </div>
