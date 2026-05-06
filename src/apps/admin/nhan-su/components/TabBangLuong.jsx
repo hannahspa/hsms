@@ -36,6 +36,7 @@ function getAvatarColor(name) {
 }
 
 function TrangThaiBadge({ tt }) {
+  if (tt === 'da_phat_luong') return <Chip bg="#dcfce7" color="#166534">💰 Đã Phát Lương</Chip>
   if (tt === 'da_chot') return <Chip bg="#eef2e7" color="#5a6a4a">✓ Đã Chốt</Chip>
   if (tt === 'da_tinh') return <Chip bg="#ede9f8" color="#5a4a8a">● Đã Tính</Chip>
   return <Chip bg={LUX.surface} color={LUX.ink3}>○ Chưa Tính</Chip>
@@ -242,6 +243,64 @@ export default function TabBangLuong() {
     finally { setSaving(false) }
   }
 
+  const handlePhatLuong = async () => {
+    const nvIds = Object.keys(luongData)
+    if (nvIds.length === 0) return
+    if (!window.confirm(`Xác nhận ĐÃ PHÁT LƯƠNG Kỳ ${ky} cho TẤT CẢ ${nvIds.length} nhân viên?\n\n${ky === 1 ? 'Ký quỹ sẽ tự động +1 tháng cho nhân viên đang đóng.' : ''}`)) return
+    setSaving(true)
+    try {
+      const col = ky === 1 ? 'trang_thai_lc' : 'trang_thai_lkd'
+      const bangLuongIds = nvIds.map(id => luongData[id]?.bangLuongId).filter(Boolean)
+      if (bangLuongIds.length > 0) {
+        const { error } = await supabase.from('bang_luong')
+          .update({ [col]: 'da_phat_luong' }).in('id', bangLuongIds)
+        if (error) throw error
+      }
+      // Kỳ 1: tăng ký quỹ +1 tháng cho nhân viên đang đóng
+      if (ky === 1) {
+        const nvDangDong = nvList.filter(nv =>
+          nv.ky_quy_trang_thai === 'dang_dong' && (nv.ky_quy_so_thang || 0) < 12
+        )
+        for (const nv of nvDangDong) {
+          const thangMoi = (nv.ky_quy_so_thang || 0) + 1
+          const trangThaiMoi = thangMoi >= 12 ? 'hoan_tat' : 'dang_dong'
+          await supabase.from('nhan_vien').update({
+            ky_quy_so_thang: thangMoi,
+            ky_quy_trang_thai: trangThaiMoi,
+          }).eq('id', nv.id)
+        }
+        if (nvDangDong.length > 0) {
+          showToast(`✓ Đã phát lương Kỳ ${ky} + cập nhật ký quỹ ${nvDangDong.length} nhân viên`)
+        } else {
+          showToast(`✓ Đã phát lương Kỳ ${ky} — không có NV nào đang đóng ký quỹ`)
+        }
+      } else {
+        showToast(`✓ Đã phát lương Kỳ ${ky} cho ${nvIds.length} nhân viên`)
+      }
+      await fetchAll()
+    } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
+    finally { setSaving(false) }
+  }
+
+  const handleMoPhatLuong = async () => {
+    const nvIds = Object.keys(luongData)
+    if (nvIds.length === 0) return
+    if (!window.confirm(`Mở trạng thái Đã Phát Lương Kỳ ${ky} cho tất cả nhân viên?\nQuay về trạng thái Đã Chốt.${ky === 1 ? '\n\nLưu ý: Ký quỹ đã tăng sẽ KHÔNG tự động giảm.' : ''}`)) return
+    setSaving(true)
+    try {
+      const col = ky === 1 ? 'trang_thai_lc' : 'trang_thai_lkd'
+      const bangLuongIds = nvIds.map(id => luongData[id]?.bangLuongId).filter(Boolean)
+      if (bangLuongIds.length > 0) {
+        const { error } = await supabase.from('bang_luong')
+          .update({ [col]: 'da_chot' }).in('id', bangLuongIds)
+        if (error) throw error
+      }
+      showToast(`✓ Đã mở trạng thái phát lương Kỳ ${ky} — quay về Đã Chốt`)
+      await fetchAll()
+    } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
+    finally { setSaving(false) }
+  }
+
   // ── Tính Lễ Tân ──
   const tinhLeTan = () => {
     const tongDT = leTanInput.tongDT || 0
@@ -396,6 +455,68 @@ export default function TabBangLuong() {
           <div style={{ fontFamily: LUX.fontSerif, fontSize: '16px', color: 'rgba(255,255,255,0.5)' }}>{formatCurrency(tongLinhTatCa)}</div>
         </div>
       </div>
+
+      {/* ── Đã Phát Lương button ── */}
+      {(() => {
+        const allNvIds = Object.keys(luongData)
+        if (allNvIds.length === 0) return null
+        const col = ky === 1 ? 'trangThaiLC' : 'trangThaiLKD'
+        const allChot = allNvIds.every(id => luongData[id]?.[col] === 'da_chot')
+        const allPhat = allNvIds.every(id => luongData[id]?.[col] === 'da_phat_luong')
+        const somePhat = allNvIds.some(id => luongData[id]?.[col] === 'da_phat_luong')
+
+        if (allPhat) {
+          return (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ background: '#dcfce7', borderRadius: LUX.radius, padding: '14px 18px', border: '1px solid #86efac', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '14px', color: '#166534' }}>💰 Đã Phát Lương Kỳ {ky}</div>
+                  <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: '#16653499', marginTop: '2px' }}>
+                    {allNvIds.length} nhân viên · {ky === 1 ? 'Ký quỹ đã được cập nhật' : 'Lương kinh doanh đã thanh toán'}
+                  </div>
+                </div>
+                <button onClick={handleMoPhatLuong} disabled={saving}
+                  style={{ padding: '8px 16px', borderRadius: LUX.radiusSm, border: '1px solid #86efac', background: 'white', color: '#166534', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '12px', cursor: 'pointer' }}>
+                  {saving ? '...' : '↩ Mở Phát Lương'}
+                </button>
+              </div>
+            </div>
+          )
+        }
+
+        if (allChot) {
+          return (
+            <div style={{ marginBottom: '16px' }}>
+              <button onClick={handlePhatLuong} disabled={saving}
+                style={{ width: '100%', padding: '16px', borderRadius: LUX.radius, border: 'none',
+                  background: 'linear-gradient(135deg,#059669,#047857)',
+                  color: 'white', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '15px',
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 6px 24px rgba(5,150,105,0.35)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '20px' }}>💰</span>
+                {saving ? 'Đang xử lý...' : `Xác Nhận Đã Phát Lương Kỳ ${ky} — ${allNvIds.length} Nhân Viên`}
+              </button>
+              {ky === 1 && <div style={{ textAlign: 'center', marginTop: '6px', fontFamily: LUX.fontSans, fontSize: '10px', color: LUX.ink3 }}>
+                Ký quỹ sẽ tự động +1 tháng cho nhân viên đang đóng
+              </div>}
+            </div>
+          )
+        }
+
+        if (somePhat) {
+          return (
+            <div style={{ marginBottom: '16px', background: '#fef9e7', borderRadius: LUX.radiusSm, padding: '10px 14px', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14 }}>⚠️</span>
+              <span style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 600, color: LUX.taupe }}>
+                Một số nhân viên đã phát lương, số khác chưa. Hãy chốt tất cả trước khi phát lương hàng loạt.
+              </span>
+            </div>
+          )
+        }
+
+        return null
+      })()}
 
       {/* Import POS button (Kỳ 2 only) */}
       {ky === 2 && (
