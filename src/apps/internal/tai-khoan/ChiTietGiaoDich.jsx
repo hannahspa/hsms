@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { LUX } from '../../../constants/lux'
-import { formatCurrency } from '../../../lib/utils'
+import { formatCurrency, formatDateInput } from '../../../lib/utils'
 
 const HINH_THUC_LABELS = {
   tien_mat:      '💵 Tiền Mặt',
@@ -20,12 +20,6 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
   const isAdmin = user?.vai_tro === 'admin'
   const isLeTan = user?.vai_tro === 'le_tan'
   const canEdit = isAdmin || isLeTan
-
-  const fmt = (iso) => {
-    if (!iso) return ''
-    const [y, m, d] = iso.split('-')
-    return `${d}/${m}/${y}`
-  }
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -115,7 +109,7 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
           <div style={{ fontWeight:'800',fontSize:'15px',color:LUX.ink,marginBottom:'16px' }}>Thông tin giao dịch</div>
 
           {[
-            { label:'Ngày',        value: fmt(giaoDich.ngay) },
+            { label:'Ngày',        value: formatDateInput(giaoDich.ngay) },
             { label:'Hình thức',   value: HINH_THUC_LABELS[giaoDich.hinh_thuc] || giaoDich.hinh_thuc || giaoDich.mo_ta || '—' },
             { label:'Danh mục',    value: giaoDich.ten_danh_muc || giaoDich.ten_vi_tu || '—' },
             { label:'Diễn giải',   value: giaoDich.dien_giai || '—' },
@@ -185,7 +179,7 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
         </div>
       )}
 
-      {/* Modal Sửa — placeholder, anh muốn tôi làm đầy đủ thì nói */}
+      {/* Modal Sửa */}
       {showEditForm && (
         <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',zIndex:999 }}
           onClick={() => setShowEditForm(false)}>

@@ -1,15 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, todayISO , getNowVN} from '../../../../lib/utils'
+import { formatCurrency, todayISO, getNowVN, formatDateInput, DAYS } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
-
-const DAYS = ['CN','T2','T3','T4','T5','T6','T7']
-
-function formatDateVN(isoStr) {
-  const d = new Date(isoStr + 'T00:00:00')
-  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
-}
 
 function getWeekRange(baseDate) {
   const d = new Date(baseDate)
@@ -22,7 +15,7 @@ function getWeekRange(baseDate) {
   return {
     start: mon.toISOString().split('T')[0],
     end:   sun.toISOString().split('T')[0],
-    label: `${formatDateVN(mon.toISOString().split('T')[0])} - ${formatDateVN(sun.toISOString().split('T')[0])}`
+    label: `${formatDateInput(mon.toISOString().split('T')[0])} - ${formatDateInput(sun.toISOString().split('T')[0])}`
   }
 }
 
@@ -155,7 +148,7 @@ export default function BaoCaoTuan({ onBack }) {
                 <div key={d.iso}>
                   <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 20px' }}>
                     <div>
-                      <div style={{ fontWeight:'600',fontSize:'14px',color:LUX.ink }}>{d.label} — {formatDateVN(d.iso)}</div>
+                      <div style={{ fontWeight:'600',fontSize:'14px',color:LUX.ink }}>{d.label} — {formatDateInput(d.iso)}</div>
                       {d.chi > 0 && <div style={{ fontSize:'11px',color:LUX.ink3,marginTop:'2px' }}>Chi: {formatCurrency(d.chi)}</div>}
                     </div>
                     <div style={{ textAlign:'right' }}>

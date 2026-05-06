@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, todayISO } from '../../../../lib/utils'
+import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
 export default function FormChiPhi({ viList, onClose, onSaved }) {
@@ -67,11 +67,6 @@ export default function FormChiPhi({ viList, onClose, onSaved }) {
     } finally {
       setSaving(false)
     }
-  }
-
-  const displayDate = (isoDate) => {
-    const [y, m, d] = isoDate.split('-')
-    return `${d}/${m}/${y}`
   }
 
   const overlayBg = 'rgba(42,32,26,0.55)'
@@ -226,7 +221,7 @@ export default function FormChiPhi({ viList, onClose, onSaved }) {
 
           <div onClick={() => setShowLich(true)} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`, cursor: 'pointer' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>📅</div>
-            <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Ngày Chi</div><div style={{ fontSize: '15px', fontWeight: '600', color: LUX.ink, fontFamily: LUX.fontSans }}>{displayDate(ngay)}</div></div>
+            <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Ngày Chi</div><div style={{ fontSize: '15px', fontWeight: '600', color: LUX.ink, fontFamily: LUX.fontSans }}>{formatDateInput(ngay)}</div></div>
             <div style={{ fontSize: '18px', color: LUX.ink3 }}>›</div>
           </div>
 

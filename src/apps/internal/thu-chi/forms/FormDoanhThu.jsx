@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, todayISO } from '../../../../lib/utils'
+import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import { HINH_THUC_THU } from '../../../../constants/enums'
 import DatePicker from '../../../../components/shared/DatePicker'
 
@@ -30,11 +30,6 @@ export default function FormDoanhThu({ onClose, onSaved }) {
     } finally {
       setSaving(false)
     }
-  }
-
-  const displayDate = (isoDate) => {
-    const [y, m, d] = isoDate.split('-')
-    return `${d}/${m}/${y}`
   }
 
   return (
@@ -77,7 +72,7 @@ export default function FormDoanhThu({ onClose, onSaved }) {
 
           <div onClick={() => setShowLich(true)} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`, cursor: 'pointer' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>📅</div>
-            <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Ngày Thu</div><div style={{ fontSize: '15px', fontWeight: '600', color: LUX.ink, fontFamily: LUX.fontSans }}>{displayDate(ngay)}</div></div>
+            <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Ngày Thu</div><div style={{ fontSize: '15px', fontWeight: '600', color: LUX.ink, fontFamily: LUX.fontSans }}>{formatDateInput(ngay)}</div></div>
             <div style={{ fontSize: '18px', color: LUX.ink3 }}>›</div>
           </div>
 

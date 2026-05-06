@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, todayISO } from '../../../../lib/utils'
+import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
 export default function FormChuyenKhoan({ viList, onClose, onSaved }) {
@@ -42,11 +42,6 @@ export default function FormChuyenKhoan({ viList, onClose, onSaved }) {
     } finally {
       setSaving(false)
     }
-  }
-
-  const displayDate = (isoDate) => {
-    const [y, m, d] = isoDate.split('-')
-    return `${d}/${m}/${y}`
   }
 
   const overlayBg = 'rgba(42,32,26,0.55)'
@@ -117,7 +112,7 @@ export default function FormChuyenKhoan({ viList, onClose, onSaved }) {
           {/* Số tiền */}
           <div style={{ background:LUX.surface2,borderRadius:LUX.radius,padding:'20px',marginBottom:'16px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}`,textAlign:'center' }}>
             <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'8px',textTransform:'uppercase',letterSpacing:'1px',fontFamily:LUX.fontSans }}>Số Tiền Chuyển</div>
-            <input type="number" placeholder="0" value={soTien} onChange={e => setSoTien(e.target.value)}
+            <input type="number" placeholder="0" value={soTien} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))}
               style={{ width:'100%',border:'none',outline:'none',fontSize:'36px',fontWeight:'700',textAlign:'center',background:'transparent',color:soTien?'#6C3483':LUX.line2,fontFamily:LUX.fontMono }} />
             {soTien && (
               <div style={{ fontSize:'14px',color:'#6C3483',fontWeight:'600',marginTop:'4px',fontFamily:LUX.fontSans }}>
@@ -172,7 +167,7 @@ export default function FormChuyenKhoan({ viList, onClose, onSaved }) {
             <div style={{ width:'40px',height:'40px',borderRadius:'11px',background:'#EFF6FF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px' }}>📅</div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:'11px',color:LUX.ink3,marginBottom:'2px',fontFamily:LUX.fontSans }}>Ngày Thực Hiện</div>
-              <div style={{ fontSize:'15px',fontWeight:'600',color:LUX.ink,fontFamily:LUX.fontSans }}>{displayDate(ngay)}</div>
+              <div style={{ fontSize:'15px',fontWeight:'600',color:LUX.ink,fontFamily:LUX.fontSans }}>{formatDateInput(ngay)}</div>
             </div>
             <div style={{ fontSize:'18px',color:LUX.ink3 }}>›</div>
           </div>

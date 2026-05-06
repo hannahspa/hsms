@@ -1,20 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, todayISO , getNowVN} from '../../../../lib/utils'
+import { formatCurrency, todayISO, getNowVN, formatDateInput, formatDateFull } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
-
-const DAYS = ['CN','T2','T3','T4','T5','T6','T7']
-
-function formatDateVN(isoStr) {
-  const d = new Date(isoStr + 'T00:00:00')
-  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
-}
-
-function formatDateFull(isoStr) {
-  const d = new Date(isoStr + 'T00:00:00')
-  return `${DAYS[d.getDay()]}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
-}
 
 function getDateRange(tab, currentDate) {
   const now = new Date(currentDate)
@@ -26,7 +14,7 @@ function getDateRange(tab, currentDate) {
     return {
       start: start.toISOString().split('T')[0],
       end:   end.toISOString().split('T')[0],
-      label: `${formatDateVN(start.toISOString().split('T')[0])} - ${formatDateVN(end.toISOString().split('T')[0])}`
+      label: `${formatDateInput(start.toISOString().split('T')[0])} - ${formatDateInput(end.toISOString().split('T')[0])}`
     }
   }
   if (tab === 'thang') {

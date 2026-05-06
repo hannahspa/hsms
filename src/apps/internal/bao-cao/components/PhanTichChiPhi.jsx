@@ -1,15 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, todayISO , getNowVN} from '../../../../lib/utils'
+import { formatCurrency, todayISO, getNowVN, formatDateInput } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
-
-const DAYS = ['CN','T2','T3','T4','T5','T6','T7']
-
-function formatDateVN(isoStr) {
-  const d = new Date(isoStr + 'T00:00:00')
-  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
-}
 
 function getDateRange(tab, currentDate) {
   const now = new Date(currentDate)
@@ -20,7 +13,7 @@ function getDateRange(tab, currentDate) {
     return {
       start: start.toISOString().split('T')[0],
       end:   end.toISOString().split('T')[0],
-      label: `${formatDateVN(start.toISOString().split('T')[0])} - ${formatDateVN(end.toISOString().split('T')[0])}`
+      label: `${formatDateInput(start.toISOString().split('T')[0])} - ${formatDateInput(end.toISOString().split('T')[0])}`
     }
   }
   if (tab === 'thang') {
@@ -101,9 +94,12 @@ export default function PhanTichChiPhi({ onBack }) {
   }, [range])
 
   const tongChi = data.reduce((s, r) => s + r.so_tien, 0)
-  const tbNgay  = tongChi > 0 ? Math.round(tongChi / Math.max(
-    [...new Set(data.map(r => r.ngay))].length, 1
-  )) : 0
+  const soNgayTrongKy = (() => {
+    const start = new Date(range.start + 'T00:00:00')
+    const end   = new Date(range.end + 'T00:00:00')
+    return Math.max(1, Math.round((end - start) / 86400000) + 1)
+  })()
+  const tbNgay  = tongChi > 0 ? Math.round(tongChi / soNgayTrongKy) : 0
 
   const phanTichNhom = useMemo(() => {
     const nhomMap = {}

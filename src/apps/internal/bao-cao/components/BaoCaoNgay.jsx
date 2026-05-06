@@ -1,15 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, todayISO } from '../../../../lib/utils'
+import { formatCurrency, todayISO, formatDateFull } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
-
-const DAYS = ['CN','T2','T3','T4','T5','T6','T7']
-
-function formatDateVN(isoStr) {
-  const d = new Date(isoStr + 'T00:00:00')
-  return `${DAYS[d.getDay()]}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
-}
 
 export default function BaoCaoNgay({ onBack }) {
   const [ngay, setNgay] = useState(todayISO())
@@ -26,13 +19,14 @@ export default function BaoCaoNgay({ onBack }) {
     async function fetchData() {
       setLoading(true)
       try {
-        const [dt, cp, ck, dm, vi] = await Promise.all([
+        const results = await Promise.allSettled([
           supabase.from('doanh_thu').select('*').eq('ngay', ngay),
           supabase.from('chi_phi').select('*').eq('ngay', ngay),
           supabase.from('chuyen_khoan_noi_bo').select('*').eq('ngay', ngay),
           supabase.from('danh_muc_chi_phi').select('*'),
-          supabase.from('vi').select('*').order('thu_tu'),
+          supabase.from('so_du_vi_thuc_te').select('*').order('thu_tu'),
         ])
+        const [dt, cp, ck, dm, vi] = results.map(r => r.status === 'fulfilled' ? r.value : { data: [] })
         setDoanhThu(dt.data || [])
         setChiPhi(cp.data || [])
         setCkNB(ck.data || [])
@@ -123,11 +117,11 @@ export default function BaoCaoNgay({ onBack }) {
             background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center'
           }}>
             <div style={{ color: 'white', fontWeight: '700', fontSize: '15px' }}>
-              {isToday ? 'Hôm nay' : formatDateVN(ngay)}
+              {isToday ? 'Hôm nay' : formatDateFull(ngay)}
             </div>
             {isToday && (
               <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '12px', marginTop: '2px' }}>
-                {formatDateVN(ngay)}
+                {formatDateFull(ngay)}
               </div>
             )}
             <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
@@ -299,12 +293,12 @@ export default function BaoCaoNgay({ onBack }) {
                       <div>
                         <div style={{ fontSize: '14px', fontWeight: '600', color: LUX.ink }}>{vi.ten}</div>
                         <div style={{ fontSize: '11px', color: LUX.ink3 }}>
-                          {vi.loai === 'tien_mat' ? 'Tiền mặt tại quầy' : vi.ten === 'MB Bank' ? 'Tài khoản chính' : 'Quẹt thẻ • về 3-7 ngày'}
+                          {vi.loai === 'tien_mat' ? 'Tiền mặt tại quầy' : vi.loai === 'ngan_hang' ? 'Tài khoản ngân hàng' : 'Ví điện tử'}
                         </div>
                       </div>
                     </div>
                     <span style={{ fontWeight: '700', fontSize: '14px', color: '#1A5276' }}>
-                      {formatCurrency(vi.so_du_dau || 0)}
+                      {formatCurrency(vi.so_du_hien_tai || 0)}
                     </span>
                   </div>
                   {i < viList.length - 1 && <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(160,113,79,0.1),transparent)' }} />}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { LUX } from '../../../constants/lux'
-import { formatCurrency, formatCurrencyHide, todayISO , getNowVN} from '../../../lib/utils'
+import { formatCurrency, formatCurrencyHide, todayISO, getNowVN, formatDateInput } from '../../../lib/utils'
 import ChiTietGiaoDich from './ChiTietGiaoDich'
 
 export default function TaiKhoanPage({ user }) {
@@ -70,12 +70,6 @@ export default function TaiKhoanPage({ user }) {
       setEndDate(ld.toISOString().split('T')[0])
     }
     setShowDatePicker(false)
-  }
-
-  const fmt = (iso) => {
-    if (!iso) return ''
-    const [y, m, d] = iso.split('-')
-    return `${d}/${m}/${y}`
   }
 
   const getGDLabel = (item) => {
@@ -178,7 +172,7 @@ export default function TaiKhoanPage({ user }) {
           <span style={{ fontSize:'18px' }}>📅</span>
           <div style={{ textAlign:'left' }}>
             <div style={{ fontSize:'11px',color:LUX.ink3,fontWeight:'600',fontFamily:LUX.fontSans }}>Thời gian hiển thị</div>
-            <div style={{ fontWeight:'700',color:LUX.ink,fontSize:'14px',fontFamily:LUX.fontSans }}>{fmt(startDate)} — {fmt(endDate)}</div>
+            <div style={{ fontWeight:'700',color:LUX.ink,fontSize:'14px',fontFamily:LUX.fontSans }}>{formatDateInput(startDate)} — {formatDateInput(endDate)}</div>
           </div>
         </div>
         <span style={{ color:LUX.taupe,fontSize:'20px' }}>›</span>
@@ -216,7 +210,7 @@ export default function TaiKhoanPage({ user }) {
                 <div>
                   <div style={{ fontWeight:'600',fontSize:'13px',color:LUX.ink,fontFamily:LUX.fontSans }}>{getGDLabel(item)}</div>
                   <div style={{ fontSize:'11px',color:LUX.ink3,marginTop:'2px',fontFamily:LUX.fontSans }}>
-                    {fmt(item.ngay)}{item.dien_giai ? ` • ${item.dien_giai}` : ''}
+                    {formatDateInput(item.ngay)}{item.dien_giai ? ` • ${item.dien_giai}` : ''}
                   </div>
                 </div>
               </div>
