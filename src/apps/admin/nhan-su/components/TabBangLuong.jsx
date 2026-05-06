@@ -701,7 +701,7 @@ export default function TabBangLuong() {
                             </div>
                           ) : (
                             <>
-                              <MoneyInput label="Lương Kinh Doanh (công thức)" value={editState.tienTour} onChange={() => {}} readOnly color="#6a4a8a" />
+                              <MoneyInput label="Lương Kinh Doanh (công thức)" value={editState.tienTour} onChange={v => setEditState(s => ({ ...s, tienTour: v }))} color="#6a4a8a" />
                               <MoneyInput label="Hoa Hồng (từ Excel POS)" value={editState.hoaHongDV} onChange={v => setEditState(s => ({ ...s, hoaHongDV: v }))} color="#1A5276" />
                               <MoneyInput label="Thưởng Đạt Doanh Số" value={editState.thuongDS || 0} onChange={v => setEditState(s => ({ ...s, thuongDS: v }))} color="#166534" />
                             </>
