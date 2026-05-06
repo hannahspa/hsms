@@ -708,15 +708,12 @@ export default function TabBangLuong() {
                           )}
                         </BLSection>
 
-                        <BLSection title="Thông Tin Chấm Công Tham Khảo">
-                          <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: LUX.ink3, marginBottom: '12px', background: LUX.bg, borderRadius: '10px', padding: '8px 12px', lineHeight: 1.6 }}>
-                            Lương Kinh Doanh: {formatCurrency(editState.tienTour)} + Hoa Hồng: {formatCurrency(editState.hoaHongDV)} + Thưởng: {formatCurrency(editState.thuongDS || 0)}
-                          </div>
+                        <BLSection title="Tổng Hợp Lương Kinh Doanh">
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px' }}>
                             {[
-                              { label:'Ngày công', value: ld.ngayCong, color:'#5a6a4a', bg:'#eef2e7' },
-                              { label:'Đi làm',    value: ld.soNgayDiLam, color:LUX.taupe, bg:'#f5e8d4' },
-                              { label:'Tăng ca',  value: ld.tongTangCa + 'h', color:'#6a4a8a', bg:'#ede9f8' },
+                              { label:'Lương KD', value: formatCurrency(editState.tienTour), color:'#6a4a8a', bg:'#ede9f8' },
+                              { label:'Hoa Hồng', value: formatCurrency(editState.hoaHongDV), color:'#1A5276', bg:'#e8f0fe' },
+                              { label:'Thưởng DS', value: formatCurrency(editState.thuongDS || 0), color:'#166534', bg:'#dcfce7' },
                             ].map(item => (
                               <div key={item.label} style={{ background: item.bg, borderRadius: LUX.radiusSm, padding: '10px 8px', textAlign: 'center' }}>
                                 <div style={{ fontFamily: LUX.fontSerif, fontSize: '22px', fontWeight: 600, color: item.color }}>{item.value}</div>
