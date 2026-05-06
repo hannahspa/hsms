@@ -10,10 +10,10 @@ const TABS_ADMIN = [
 ]
 
 const TABS_LETHAN = [
-  { id: 'tong-quan', icon: '🏠', label: 'Tổng Quan' },
-  { id: 'tai-khoan', icon: '💳', label: 'Tài Khoản' },
-  { id: '__fab__',   icon: null,  label: ''          },
+  { id: 'doi-soat',  icon: '📋', label: 'Đối Soát'  },
   { id: 'nhap-lieu', icon: '✏️', label: 'Nhập Liệu' },
+  { id: '__fab__',   icon: null,  label: ''          },
+  { id: null,        icon: null,  label: ''          },
   { id: 'cai-dat',   icon: '⚙️', label: 'Cài Đặt'  },
 ]
 
@@ -33,7 +33,9 @@ export default function BottomNav({ active, onChange, onOpenForm, user }) {
       backdropFilter: 'blur(10px)',
     }}>
       {TABS.map((item, i) => (
-        item.id === '__fab__' ? (
+        item.id === null ? (
+          <div key={i} style={{ minWidth: '60px' }} />
+        ) : item.id === '__fab__' ? (
           <div key={i} style={{ position: 'relative', width: '60px', display: 'flex', justifyContent: 'center' }}>
             <FABMenu onSelect={onOpenForm} />
           </div>

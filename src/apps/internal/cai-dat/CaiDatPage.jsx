@@ -2,6 +2,13 @@ import { useState } from 'react'
 import { LUX } from '../../../constants/lux'
 import { useAuth } from '../../../context/AuthContext'
 import QuanLyDanhMuc from './components/QuanLyDanhMuc'
+import QuanLyDoanhThu from './components/QuanLyDoanhThu'
+import QuanLyVi from './components/QuanLyVi'
+import ThongTinSpa from './components/ThongTinSpa'
+import HoSoNhanVien from './components/HoSoNhanVien'
+import DoiMatKhau from './components/DoiMatKhau'
+import DonChungTu from './components/DonChungTu'
+import QuanLyUser from './components/QuanLyUser'
 
 export default function CaiDatPage({ user }) {
   const isAdmin = user?.vai_tro === 'admin'
@@ -13,12 +20,7 @@ export default function CaiDatPage({ user }) {
       alert('🔒 Bạn không có quyền truy cập tính năng này!');
       return;
     }
-
-    if (item.id === 'dm_chi_phi') {
-        setActiveModal('dm_chi_phi');
-    } else {
-        alert(`🚧 Đang phát triển tính năng: ${item.label}`);
-    }
+    setActiveModal(item.id)
   }
 
   const sections = [
@@ -30,6 +32,8 @@ export default function CaiDatPage({ user }) {
     { title: 'Hệ Thống & Nhân Sự', items:[
       { id: 'thong_tin',    icon: '🏠', label: 'Thông Tin Spa',       sub: 'Hannah Beauty & Spa',    admin: true  },
       { id: 'nhan_vien',    icon: '👥', label: 'Hồ Sơ Nhân Viên',    sub: '10 nhân viên (Lương/Phép)',admin: true  },
+      { id: 'quan_ly_user', icon: '👤', label: 'Quản Lý User',       sub: 'Thêm / Sửa / Xoá user đăng nhập', admin: true  },
+      { id: 'don_chung_tu', icon: '🗑️', label: 'Dọn Chứng Từ Cũ',    sub: 'Quản lý dung lượng storage', admin: true  },
       { id: 'mat_khau',     icon: '🔐', label: 'Đổi Mật Khẩu',        sub: 'Bảo mật tài khoản cá nhân', admin: false },
     ]},
   ]
@@ -112,9 +116,14 @@ export default function CaiDatPage({ user }) {
         <div style={{ opacity: 0.8 }}>Version 1.0.0 — Financial Module</div>
       </div>
 
-      {activeModal === 'dm_chi_phi' && (
-          <QuanLyDanhMuc onClose={() => setActiveModal(null)} />
-      )}
+      {activeModal === 'dm_doanh_thu' && <QuanLyDoanhThu onClose={() => setActiveModal(null)} />}
+      {activeModal === 'dm_chi_phi'   && <QuanLyDanhMuc onClose={() => setActiveModal(null)} />}
+      {activeModal === 'quan_ly_vi'   && <QuanLyVi onClose={() => setActiveModal(null)} />}
+      {activeModal === 'thong_tin'    && <ThongTinSpa onClose={() => setActiveModal(null)} />}
+      {activeModal === 'nhan_vien'    && <HoSoNhanVien onClose={() => setActiveModal(null)} />}
+      {activeModal === 'don_chung_tu' && <DonChungTu onClose={() => setActiveModal(null)} />}
+      {activeModal === 'quan_ly_user' && <QuanLyUser onClose={() => setActiveModal(null)} />}
+      {activeModal === 'mat_khau'     && <DoiMatKhau onClose={() => setActiveModal(null)} />}
     </div>
   )
 }

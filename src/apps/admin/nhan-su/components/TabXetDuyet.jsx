@@ -7,6 +7,7 @@ export default function TabXetDuyet({ onUpdate }) {
   const [dungLeList,  setDungLeList]  = useState([])
   const [nvMap,       setNvMap]       = useState({})
   const [loading,     setLoading]     = useState(true)
+  const [rejectModal, setRejectModal] = useState(null) // { type: 'off'|'le', id, defaultReason }
 
   useEffect(() => { fetchData() }, [])
 
@@ -43,25 +44,33 @@ export default function TabXetDuyet({ onUpdate }) {
     finally { setLoading(false) }
   }
 
-  const handleDuyet = async (id, trangThaiMoi) => {
-    if (trangThaiMoi === 'tu_choi') {
-      const lyDo = window.prompt('Nhập lý do từ chối (nhân viên sẽ thấy):', 'Không thể duyệt do thiếu người')
-      if (lyDo === null) return
-      await supabase.from('dang_ky_off').update({ trang_thai: 'tu_choi', ghi_chu_duyet: lyDo }).eq('id', id)
-    } else {
-      await supabase.from('dang_ky_off').update({ trang_thai: 'duoc_duyet', ghi_chu_duyet: 'OK' }).eq('id', id)
-    }
+  const executeRejectOff = async (id, lyDo) => {
+    await supabase.from('dang_ky_off').update({ trang_thai: 'tu_choi', ghi_chu_duyet: lyDo }).eq('id', id)
     fetchData()
     onUpdate?.()
   }
 
+  const executeRejectLe = async (yeuCauId, lyDo) => {
+    await supabase.from('yeu_cau_chinh_sua').update({
+      trang_thai: 'tu_choi', nguoi_duyet: 'Admin', ghi_chu_duyet: lyDo,
+    }).eq('id', yeuCauId)
+    fetchData()
+    onUpdate?.()
+  }
+
+  const handleDuyet = async (id, trangThaiMoi) => {
+    if (trangThaiMoi === 'tu_choi') {
+      setRejectModal({ type: 'off', id, defaultReason: 'Không thể duyệt do thiếu người' })
+    } else {
+      await supabase.from('dang_ky_off').update({ trang_thai: 'duoc_duyet', ghi_chu_duyet: 'OK' }).eq('id', id)
+      fetchData()
+      onUpdate?.()
+    }
+  }
+
   const handleDuyetDungLe = async (yeuCauId, duyet) => {
     if (!duyet) {
-      const lyDo = window.prompt('Nhập lý do từ chối:', 'Chưa đủ điều kiện')
-      if (lyDo === null) return
-      await supabase.from('yeu_cau_chinh_sua').update({
-        trang_thai: 'tu_choi', nguoi_duyet: 'Admin', ghi_chu_duyet: lyDo,
-      }).eq('id', yeuCauId)
+      setRejectModal({ type: 'le', id: yeuCauId, defaultReason: 'Chưa đủ điều kiện' })
     } else {
       const yc = dungLeList.find(d => d.id === yeuCauId)
       if (!yc) return
@@ -278,6 +287,37 @@ export default function TabXetDuyet({ onUpdate }) {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {rejectModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'flex-end' }}
+          onClick={() => setRejectModal(null)}>
+          <div style={{ background: LUX.surface2, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '480px', margin: '0 auto', padding: '24px 20px 40px' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontFamily: LUX.fontSerif, fontSize: '17px', fontWeight: 700, color: LUX.ink, marginBottom: '4px' }}>Lý do từ chối</h3>
+            <p style={{ fontFamily: LUX.fontSans, fontSize: '12px', color: LUX.ink3, marginBottom: '16px' }}>Nhân viên sẽ thấy lý do này</p>
+            <textarea id="reject-reason" defaultValue={rejectModal.defaultReason}
+              rows={3}
+              style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${LUX.line}`, fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: LUX.fontSans, marginBottom: '16px' }}
+            />
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setRejectModal(null)}
+                style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, background: LUX.surface, border: `1px solid ${LUX.line}`, color: LUX.ink2, fontWeight: 600, fontSize: '14px', cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                Hủy
+              </button>
+              <button onClick={() => {
+                const lyDo = document.getElementById('reject-reason').value.trim() || rejectModal.defaultReason
+                if (rejectModal.type === 'off') executeRejectOff(rejectModal.id, lyDo)
+                else executeRejectLe(rejectModal.id, lyDo)
+                setRejectModal(null)
+              }}
+                style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, background: '#C0392B', border: 'none', color: 'white', fontWeight: 700, fontSize: '14px', cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                Xác Nhận Từ Chối
+              </button>
+            </div>
           </div>
         </div>
       )}

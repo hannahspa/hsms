@@ -3,20 +3,24 @@ import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
+import ImageUpload from '../../../../components/shared/ImageUpload'
 
-export default function FormChiPhi({ viList, onClose, onSaved }) {
-  const [soTien,      setSoTien]      = useState('')
-  const[nhomId,      setNhomId]      = useState(null)
-  const[hangMucId,   setHangMucId]   = useState(null)
-  const [viId,        setViId]        = useState(null)
-  const [ngay,        setNgay]        = useState(todayISO())
-  const [dienGiai,    setDienGiai]    = useState('')
-  const[saving,      setSaving]      = useState(false)
-  const [step,        setStep]        = useState('main')
-  const [nhomList,    setNhomList]    = useState([])
-  const[hangMucList, setHangMucList] = useState([])
-  const [loading,     setLoading]     = useState(true)
-  const [showLich,    setShowLich]    = useState(false)
+export default function FormChiPhi({ viList, user, onClose, onSaved }) {
+  const [soTien,       setSoTien]       = useState('')
+  const [nhomId,       setNhomId]       = useState(null)
+  const [hangMucId,    setHangMucId]    = useState(null)
+  const [viId,         setViId]         = useState(null)
+  const [nguoiChiId,   setNguoiChiId]   = useState(null)
+  const [ngay,         setNgay]         = useState(todayISO())
+  const [dienGiai,     setDienGiai]     = useState('')
+  const [saving,       setSaving]       = useState(false)
+  const [step,         setStep]         = useState('main')
+  const [nhomList,     setNhomList]     = useState([])
+  const [hangMucList,  setHangMucList]  = useState([])
+  const [nhanVienList, setNhanVienList] = useState([])
+  const [chungTuUrl,   setChungTuUrl]   = useState(null)
+  const [loading,      setLoading]      = useState(true)
+  const [showLich,     setShowLich]     = useState(false)
 
   useEffect(() => {
     async function loadDanhMuc() {
@@ -35,7 +39,20 @@ export default function FormChiPhi({ viList, onClose, onSaved }) {
     loadDanhMuc()
   },[])
 
-  const nhomSelected    = nhomList.find(n => n.id === nhomId)
+  useEffect(() => {
+    async function loadNhanVien() {
+      const { data } = await supabase
+        .from('nhan_vien')
+        .select('id, ho_ten, vi_tri')
+        .eq('trang_thai', 'dang_lam')
+        .order('ho_ten')
+      if (data) setNhanVienList(data)
+    }
+    loadNhanVien()
+  }, [])
+
+  const nhomSelected      = nhomList.find(n => n.id === nhomId)
+  const nguoiChiSelected  = nhanVienList.find(n => n.id === nguoiChiId)
   const hangMucSelected = hangMucList.find(h => h.id === hangMucId)
   const viSelected      = viList.find(v => v.id === viId)
   const hangMucCuaNhom  = hangMucList.filter(h => h.parent_id === nhomId)
@@ -57,6 +74,9 @@ export default function FormChiPhi({ viList, onClose, onSaved }) {
         danh_muc_id: hangMucId,
         so_tien: parseInt(soTien),
         hinh_thuc_thanh_toan: viSelected?.loai || 'tien_mat',
+        vi_id: viId,
+        nguoi_nhap: nguoiChiSelected?.ho_ten || user?.ho_ten || null,
+        chung_tu_url: chungTuUrl,
         dien_giai: dienGiai || null,
       })
       if (error) throw error
@@ -166,6 +186,39 @@ export default function FormChiPhi({ viList, onClose, onSaved }) {
     )
   }
 
+  // ── Chọn người chi ──
+  if (step === 'chon_nguoi_chi') {
+    return (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: overlayBg, display: 'flex', alignItems: 'flex-end', zIndex: 500 }}>
+        <div style={{ background: LUX.surface2, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '520px', margin: '0 auto', padding: '24px 20px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '17px', fontWeight: '700', color: LUX.ink, fontFamily: LUX.fontSerif }}>Người Chi Tiền</h3>
+            <button onClick={() => setStep('main')} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: LUX.ink3 }}>✕</button>
+          </div>
+          {nhanVienList.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px', color: LUX.ink3, fontSize: '13px', fontFamily: LUX.fontSans }}>Đang tải danh sách nhân viên...</div>
+          ) : nhanVienList.map((nv, i) => (
+            <div key={nv.id}>
+              <button onClick={() => { setNguoiChiId(nv.id); setStep('main') }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '14px 0', background: 'none', border: 'none', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '700', color: '#C0392B', fontFamily: LUX.fontSans }}>
+                    {nv.ho_ten?.charAt(0) || '?'}
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontWeight: '600', fontSize: '15px', color: LUX.ink, fontFamily: LUX.fontSans }}>{nv.ho_ten}</div>
+                    <div style={{ fontSize: '12px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{nv.vi_tri === 'le_tan' ? 'Lễ Tân' : nv.vi_tri === 'ktv' ? 'KTV' : nv.vi_tri === 'tap_vu' ? 'Tạp Vụ' : nv.vi_tri}</div>
+                  </div>
+                </div>
+                {nguoiChiId === nv.id && <span style={{ color: LUX.taupe, fontSize: '20px' }}>✓</span>}
+              </button>
+              {i < nhanVienList.length - 1 && <div style={{ height: '1px', background: LUX.line }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   // ── Form chính ──
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: overlayBg, display: 'flex', alignItems: 'flex-end', zIndex: 500 }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -219,6 +272,16 @@ export default function FormChiPhi({ viList, onClose, onSaved }) {
             <span style={{ color: LUX.gold, fontSize: '18px' }}>›</span>
           </button>
 
+          <button onClick={() => setStep('chon_nguoi_chi')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`, cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '700', color: '#C0392B', fontFamily: LUX.fontSans }}>
+                {nguoiChiSelected ? nguoiChiSelected.ho_ten?.charAt(0) : '👤'}
+              </div>
+              <div style={{ textAlign: 'left' }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Người Chi</div><div style={{ fontWeight: '600', fontSize: '14px', color: nguoiChiSelected ? LUX.ink : LUX.ink3, fontFamily: LUX.fontSans }}>{nguoiChiSelected ? nguoiChiSelected.ho_ten : 'Chọn người chi'}</div></div>
+            </div>
+            <span style={{ color: LUX.gold, fontSize: '18px' }}>›</span>
+          </button>
+
           <div onClick={() => setShowLich(true)} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`, cursor: 'pointer' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>📅</div>
             <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Ngày Chi</div><div style={{ fontSize: '15px', fontWeight: '600', color: LUX.ink, fontFamily: LUX.fontSans }}>{formatDateInput(ngay)}</div></div>
@@ -231,6 +294,11 @@ export default function FormChiPhi({ viList, onClose, onSaved }) {
               <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '4px', fontFamily: LUX.fontSans }}>Diễn Giải</div><textarea placeholder="Ghi chú thêm (không bắt buộc)..." value={dienGiai} onChange={e => setDienGiai(e.target.value)} rows={2} style={{ width: '100%', border: 'none', outline: 'none', fontSize: '14px', color: LUX.ink, background: 'transparent', resize: 'none', fontFamily: LUX.fontSans }} /></div>
             </div>
           </div>
+
+          <ImageUpload
+            onUploaded={(url) => setChungTuUrl(url)}
+            onRemove={() => setChungTuUrl(null)}
+          />
 
           <button onClick={handleSave} disabled={saving} style={{ width: '100%', padding: '16px', background: saving ? LUX.ink3 : 'linear-gradient(135deg,#E57373,#C0392B)', border: 'none', borderRadius: LUX.radius, color: 'white', fontSize: '16px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 6px 20px rgba(192,57,43,0.35)', transition: 'all 0.2s', fontFamily: LUX.fontSans }}>
             {saving ? '⏳ Đang lưu...' : '💾 Lưu Chi Phí'}

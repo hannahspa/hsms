@@ -31,20 +31,8 @@ export function AuthProvider({ children }) {
   const fetchProfile = async (authUser) => {
     try {
       const { data, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).single()
-      if (error) {
-        // Profile doesn't exist yet — auto-create on first login
-        const isAdmin = authUser.email === 'quocnam2201@gmail.com'
-        const hoTen = authUser.user_metadata?.ho_ten || authUser.email
-        const vaiTro = isAdmin ? 'admin' : (authUser.user_metadata?.vai_tro || 'ktv')
-        const { data: newProfile, error: createError } = await supabase.from('profiles').insert({
-          id: authUser.id,
-          ho_ten: hoTen,
-          email: authUser.email,
-          vai_tro: vaiTro,
-          trang_thai: true,
-        }).select('*').single()
-        if (createError) throw createError
-        setUser(newProfile)
+      if (error || !data) {
+        setUser(null)
       } else {
         setUser(data)
       }

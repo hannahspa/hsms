@@ -22,9 +22,3 @@ export const HINH_THUC_THU = [
   { id: 'quet_the',      label: 'Quẹt Thẻ',         icon: '💳', vi: 'TP Bank'    },
   { id: 'the_tra_truoc', label: 'Thẻ Trả Trước',    icon: '🎫', vi: 'Tiền Mặt'  },
 ]
-
-export const MOCK_USERS = {
-  admin:  { ten: 'Cao Quốc Nam', vai_tro: 'admin'  },
-  le_tan: { ten: 'Khánh Duy',    vai_tro: 'le_tan' },
-  ktv:    { ten: 'Cẩm My',       vai_tro: 'ktv'    },
-}

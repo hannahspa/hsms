@@ -7,6 +7,7 @@ import BaoCaoThang from './components/BaoCaoThang'
 import BaoCaoNam from './components/BaoCaoNam'
 import PhanTichDoanhThu from './components/PhanTichDoanhThu'
 import PhanTichChiPhi from './components/PhanTichChiPhi'
+import BaoCaoDongTien from './components/BaoCaoDongTien'
 import { getNowVN } from '../../../lib/utils'
 
 function MiniBarChart({ data }) {
@@ -42,6 +43,7 @@ function Dashboard({ onNavigate }) {
   ]
 
   const phanTichItems = [
+    { id: 'bao-cao-dong-tien',     icon: '💵', label: 'Báo Cáo Dòng Tiền',  desc: 'Lưu chuyển tiền tệ chuẩn quốc tế', bg: '#FDF4FF', border: '#B87ABA' },
     { id: 'phan-tich-chi-phi',    icon: '📉', label: 'Phân Tích Chi Phí',   desc: 'Theo nhóm & hạng mục', bg: '#FEF2F2', border: '#E59898' },
     { id: 'phan-tich-doanh-thu',  icon: '📈', label: 'Phân Tích Doanh Thu', desc: 'Theo hình thức thu',   bg: '#F0FDF4', border: '#7ABA8A' },
   ]
@@ -152,6 +154,7 @@ export default function BaoCaoPage() {
       {view === 'bao-cao-nam'        && <BaoCaoNam        onBack={handleBack} />}
       {view === 'phan-tich-doanh-thu' && <PhanTichDoanhThu onBack={handleBack} />}
       {view === 'phan-tich-chi-phi'  && <PhanTichChiPhi  onBack={handleBack} />}
+      {view === 'bao-cao-dong-tien'   && <BaoCaoDongTien  onBack={handleBack} />}
     </div>
   )
 }

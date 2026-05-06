@@ -3,6 +3,7 @@ import { supabase } from '../../../../lib/supabase'
 import { COLORS } from '../../../../constants/colors'
 import { todayISO, getNowVN } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
+import { useAuth } from '../../../../context/AuthContext'
 
 const LOAI_OFF = [
   { value: 'off_phep', label: 'OFF Phép',            desc: 'Có lương, trừ vào giới hạn tháng',   color: '#DBEAFE', textColor: '#1E40AF' },
@@ -31,6 +32,7 @@ function formatNgayHienThi(iso) {
 }
 
 export default function AdminTaoOff({ open, onClose, onSuccess }) {
+  const { user } = useAuth()
   const [nvList,     setNvList]     = useState([])
   const [nvId,       setNvId]       = useState('')
   const [ngayOff,    setNgayOff]    = useState(todayISO())
@@ -112,7 +114,7 @@ export default function AdminTaoOff({ open, onClose, onSuccess }) {
         ly_do:        ghiChu.trim() || 'Admin tạo trực tiếp',
         trang_thai:   'duoc_duyet',
         nguon:        'admin',
-        ghi_chu_duyet: 'Tạo bởi Cao Quốc Nam',
+        ghi_chu_duyet: `Tạo bởi ${user?.ho_ten || 'Admin'}`,
       })
       if (error) throw error
       showToast('✅ Đã tạo OFF thành công!')

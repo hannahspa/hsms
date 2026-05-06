@@ -4,7 +4,7 @@ import { LUX } from '../../../../constants/lux'
 import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 
-export default function FormChuyenKhoan({ viList, onClose, onSaved }) {
+export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
   const [soTien,   setSoTien]   = useState('')
   const [ngay,     setNgay]     = useState(todayISO())
   const [dienGiai, setDienGiai] = useState('')
@@ -33,6 +33,7 @@ export default function FormChuyenKhoan({ viList, onClose, onSaved }) {
         den_vi_id: denViId,
         so_tien:   parseInt(soTien),
         dien_giai: dienGiai || null,
+        nguoi_thuc_hien: user?.ho_ten || null,
       })
       if (error) throw error
       onSaved('success', `Đã chuyển ${formatCurrency(parseInt(soTien))} thành công!`)

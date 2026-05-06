@@ -857,3 +857,55 @@ import-thang4.py: import Excel vào Supabase
    diemmy241292@gmail.com, khanhduy100102@icloud.com
    (domain chưa verify, tạm dùng onboarding@resend.dev)
 ═══════════════════════════════════════════════════════════
+## TRẠNG THÁI DỰ ÁN (Cập nhật 06/05/2026)
+═══════════════════════════════════════════════════════════
+
+### PRODUCTION READY — ĐÃ HOÀN THÀNH
+
+✅ Auth: Supabase Auth hoạt động, 3 tài khoản:
+   - Admin:  quocnam2201@gmail.com (Cao Quốc Nam)
+   - Lễ Tân: kd.hannahspa@gmail.com (Đỗ Thị Khánh Duy) — pass: hannah2025
+   - Lễ Tân: np.hannahspa@gmail.com (Hồ Ngọc Phương) — pass: hannah2025
+
+✅ Phân quyền:
+   - Admin → Tổng Quan | Tài Khoản | + | Báo Cáo | Cài Đặt
+   - Lễ Tân → Đối Soát | Nhập Liệu | + | (trống) | Cài Đặt
+   - AuthContext đọc vai_tro từ profiles, KHÔNG auto-create profile
+
+✅ Module Thu Chi:
+   - Form DoanhThu/ChiPhi/ChuyenKhoan có upload chứng từ
+   - Người nhập/người chi được lưu tự động
+   - DoiSoatPage cho Lễ Tân (ẩn số dư, chỉ thấy count)
+   - DoiSoatNgay: checklist cuối ngày (bảng doi_soat_ngay)
+   - 7 báo cáo + BaoCaoDongTien (Cash Flow Statement)
+
+✅ Module Nhân Sự:
+   - Checkin/out, đăng ký OFF, lịch tháng
+   - Admin duyệt OFF + tăng ca (modal thay window.prompt)
+   - AdminTaoOff dùng user.ho_ten thay hardcode
+   - AvatarUpload tích hợp TabHoSo
+
+✅ Storage:
+   - Bucket chung-tu (chứng từ thu chi)
+   - Bucket avatars (ảnh nhân viên)
+   - DonChungTu.jsx: quản lý/xoá chứng từ cũ
+
+✅ Đã cleanup:
+   - Xoá MOCK_USERS (enums.js)
+   - Xoá AdminNhanSu.jsx (dead code)
+   - .env files đã git rm --cached
+   - .gitignore đã sửa
+
+### CẦN LÀM
+
+[ ] Deploy Vercel production + domain hannahspa.vn
+[ ] Tắt public sign-up trên Supabase
+[ ] Nhập data thật từ Google Sheets vào Supabase
+[ ] Test Lễ Tân nhập liệu thực tế
+
+### URL
+  Dev:  localhost:5173
+  Live: hsms-weld.vercel.app → sẽ redirect về hannahspa.vn
+  Repo: github.com/hannahspa/hsms
+
+═══════════════════════════════════════════════════════════

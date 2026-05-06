@@ -4,14 +4,16 @@ import { LUX } from '../../../../constants/lux'
 import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import { HINH_THUC_THU } from '../../../../constants/enums'
 import DatePicker from '../../../../components/shared/DatePicker'
+import ImageUpload from '../../../../components/shared/ImageUpload'
 
-export default function FormDoanhThu({ onClose, onSaved }) {
-  const [soTien,   setSoTien]   = useState('')
-  const[hinhThuc, setHinhThuc] = useState(null)
-  const [ngay,     setNgay]     = useState(todayISO())
-  const [dienGiai, setDienGiai] = useState('')
-  const [saving,   setSaving]   = useState(false)
-  const[showLich, setShowLich] = useState(false)
+export default function FormDoanhThu({ user, onClose, onSaved }) {
+  const [soTien,      setSoTien]      = useState('')
+  const [hinhThuc,    setHinhThuc]    = useState(null)
+  const [ngay,        setNgay]        = useState(todayISO())
+  const [dienGiai,    setDienGiai]    = useState('')
+  const [chungTuUrl,  setChungTuUrl]  = useState(null)
+  const [saving,      setSaving]      = useState(false)
+  const [showLich,    setShowLich]    = useState(false)
 
   const handleSave = async () => {
     if (!soTien || parseInt(soTien) <= 0) return onSaved('error', 'Vui lòng nhập số tiền!')
@@ -21,6 +23,8 @@ export default function FormDoanhThu({ onClose, onSaved }) {
     try {
       const { error } = await supabase.from('doanh_thu').insert({
         ngay: ngay, hinh_thuc: hinhThuc.id, so_tien: parseInt(soTien), dien_giai: dienGiai || null,
+        nguoi_nhap: user?.ho_ten || null,
+        chung_tu_url: chungTuUrl,
       })
       if (error) throw error
       onSaved('success', `Đã thu ${formatCurrency(parseInt(soTien))} thành công!`)
@@ -76,12 +80,17 @@ export default function FormDoanhThu({ onClose, onSaved }) {
             <div style={{ fontSize: '18px', color: LUX.ink3 }}>›</div>
           </div>
 
-          <div style={{ background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '24px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
+          <div style={{ background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: '#FDF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>📝</div>
               <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '4px', fontFamily: LUX.fontSans }}>Diễn Giải</div><textarea placeholder="Ghi chú thêm (không bắt buộc)..." value={dienGiai} onChange={e => setDienGiai(e.target.value)} rows={2} style={{ width: '100%', border: 'none', outline: 'none', fontSize: '14px', color: LUX.ink, background: 'transparent', resize: 'none', fontFamily: LUX.fontSans }} /></div>
             </div>
           </div>
+
+          <ImageUpload
+            onUploaded={(url) => setChungTuUrl(url)}
+            onRemove={() => setChungTuUrl(null)}
+          />
 
           <button onClick={handleSave} disabled={saving} style={{ width: '100%', padding: '16px', background: saving ? LUX.ink3 : 'linear-gradient(135deg,#2D7A4F,#1A5A3A)', border: 'none', borderRadius: LUX.radius, color: 'white', fontSize: '16px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 6px 20px rgba(45,122,79,0.35)', transition: 'all 0.2s', fontFamily: LUX.fontSans }}>
             {saving ? '⏳ Đang lưu...' : '💾 Lưu Doanh Thu'}

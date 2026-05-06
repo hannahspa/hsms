@@ -3,6 +3,7 @@ import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { formatCurrency, getNowVN } from '../../../../lib/utils'
 import AdminSuaChamCong from './AdminSuaChamCong'
+import AvatarUpload from '../../../../components/shared/AvatarUpload'
 import { KY_QUY_TONG, KY_QUY_MOIS, KY_QUY_THUONG } from '../../../../lib/luong'
 
 const VI_TRI_OPTS  = [
@@ -251,6 +252,7 @@ export default function TabHoSo() {
         ky_quy_trang_thai: nv.ky_quy_trang_thai || 'dang_dong',
         ky_quy_so_thang: parseInt(nv.ky_quy_so_thang) || 0,
         ky_quy_bat_dau: nv.ky_quy_bat_dau || null,
+        avatar_url: nv.avatar_url || null,
       }
       let error
       if (mode === 'add') {
@@ -507,6 +509,12 @@ export default function TabHoSo() {
               <LuxField label="Số Điện Thoại" value={editSheet.nv.so_dien_thoai}
                 onChange={v => setEditSheet(s => ({ ...s, nv: { ...s.nv, so_dien_thoai: v } }))}
                 placeholder="0912 345 678" />
+
+              <AvatarUpload
+                currentUrl={editSheet.nv.avatar_url}
+                onUploaded={url => setEditSheet(s => ({ ...s, nv: { ...s.nv, avatar_url: url } }))}
+              />
+
               <LuxField label="Ngày Vào Làm (dd/MM/yyyy)" value={editSheet.nv.ngay_bat_dau}
                 onChange={v => {
                   let iso = v

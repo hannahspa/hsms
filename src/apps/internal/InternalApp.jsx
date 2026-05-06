@@ -11,6 +11,7 @@ import TaiKhoanPage from './tai-khoan/TaiKhoanPage'
 import NhapLieuPage from './thu-chi/NhapLieuPage'
 import BaoCaoPage from './bao-cao/BaoCaoPage'
 import CaiDatPage from './cai-dat/CaiDatPage'
+import DoiSoatPage from './thu-chi/DoiSoatPage'
 import FormDoanhThu from './thu-chi/forms/FormDoanhThu'
 import FormChiPhi from './thu-chi/forms/FormChiPhi'
 import FormChuyenKhoan from './thu-chi/forms/FormChuyenKhoan'
@@ -19,9 +20,9 @@ const BREAKPOINT = 768
 
 export default function InternalApp() {
   const [splash, setSplash] = useState(true)
-  const [tab,    setTab]    = useState('tong-quan')
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= BREAKPOINT)
   const { user }            = useAuth()
+  const [tab,    setTab]    = useState(user?.vai_tro === 'le_tan' ? 'doi-soat' : 'tong-quan')
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= BREAKPOINT)
   const { viList, loading } = useVi()
   const { toast, showToast, form, openForm, closeForm } = useApp()
 
@@ -30,6 +31,10 @@ export default function InternalApp() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  // Redirect Lễ Tân from admin tabs
+  const isLeTan = user?.vai_tro === 'le_tan'
+  const effectiveTab = isLeTan && ['tong-quan', 'tai-khoan', 'bao-cao'].includes(tab) ? 'doi-soat' : tab
 
   const handleOpenForm = (type) => {
     if (type === 'bc') { setTab('bao-cao'); return }
@@ -79,9 +84,9 @@ export default function InternalApp() {
         {splash && <SplashScreen onDone={() => setSplash(false)} />}
         {toast  && <Toast msg={toast.msg} type={toast.type} onClose={() => showToast(null)} />}
 
-        {form === 'thu' && <FormDoanhThu  viList={viList} onClose={closeForm} onSaved={showToast} />}
-        {form === 'chi' && <FormChiPhi    viList={viList} onClose={closeForm} onSaved={showToast} />}
-        {form === 'ck'  && <FormChuyenKhoan viList={viList} onClose={closeForm} onSaved={showToast} />}
+        {form === 'thu' && <FormDoanhThu  viList={viList} user={user} onClose={closeForm} onSaved={showToast} />}
+        {form === 'chi' && <FormChiPhi    viList={viList} user={user} onClose={closeForm} onSaved={showToast} />}
+        {form === 'ck'  && <FormChuyenKhoan viList={viList} user={user} onClose={closeForm} onSaved={showToast} />}
 
         <div style={{ paddingBottom: '80px' }}>
           {loading ? (
@@ -91,16 +96,17 @@ export default function InternalApp() {
             </div>
           ) : (
             <>
-              {tab === 'tong-quan' && <TongQuanPage viList={viList} user={user} onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
-              {tab === 'tai-khoan' && <TaiKhoanPage viList={viList} user={user} isDesktop={isDesktop} />}
-              {tab === 'nhap-lieu' && <NhapLieuPage onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
-              {tab === 'bao-cao'   && <BaoCaoPage isDesktop={isDesktop} />}
-              {tab === 'cai-dat'   && <CaiDatPage user={user} isDesktop={isDesktop} />}
+              {effectiveTab === 'tong-quan' && <TongQuanPage viList={viList} user={user} onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
+              {effectiveTab === 'tai-khoan' && <TaiKhoanPage viList={viList} user={user} isDesktop={isDesktop} />}
+              {effectiveTab === 'doi-soat'  && <DoiSoatPage user={user} onOpenForm={handleOpenForm} />}
+              {effectiveTab === 'nhap-lieu' && <NhapLieuPage onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
+              {effectiveTab === 'bao-cao'   && <BaoCaoPage isDesktop={isDesktop} />}
+              {effectiveTab === 'cai-dat'   && <CaiDatPage user={user} isDesktop={isDesktop} />}
             </>
           )}
         </div>
 
-        <BottomNav active={tab} onChange={setTab} onOpenForm={handleOpenForm} user={user} />
+        <BottomNav active={effectiveTab} onChange={setTab} onOpenForm={handleOpenForm} user={user} />
       </div>
     </>
   )
