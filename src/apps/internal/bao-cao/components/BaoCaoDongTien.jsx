@@ -21,7 +21,7 @@ export default function BaoCaoDongTien({ onBack }) {
 
         const [{ data: dtData }, { data: cpData }] = await Promise.all([
           supabase.from('doanh_thu').select('so_tien, hinh_thuc').gte('ngay', start).lte('ngay', end),
-          supabase.from('chi_phi').select('so_tien, danh_muc_id, phan_loai_dong_tien').gte('ngay', start).lte('ngay', end),
+          supabase.from('chi_phi').select('so_tien, danh_muc_id').gte('ngay', start).lte('ngay', end),
         ])
 
         const thucThu = (dtData || []).filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0)
