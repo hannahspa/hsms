@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { LUX } from '../../../constants/lux'
 import { formatCurrency, formatCurrencyHide, todayISO, getNowVN, formatDateInput } from '../../../lib/utils'
+import ChiTietGiaoDich from '../tai-khoan/ChiTietGiaoDich'
 
 const HINH_THUC_LABEL = {
   tien_mat: 'Tiền Mặt',
@@ -72,26 +73,74 @@ function HeaderTongQuan({ user, viList = [], stats }) {
 export default function TongQuanPage({ user, viList: extViList, onOpenForm }) {
   const [viList, setViList] = useState([])
   const [history, setHistory] = useState([])
-  const [stats, setStats] = useState({ thucThu: 0, chi: 0, tongDoanhThu: 0 })
+  const [stats, setStats] = useState({ thucThu: 0, chi: 0, tongDoanhThu: 0, pendingCount: 0, insights: null })
   const [loading, setLoading] = useState(true)
+  const [selectedGD, setSelectedGD] = useState(null)
+  const [insightData, setInsightData] = useState(null)
   const isAdmin = user?.vai_tro === 'admin';
 
   useEffect(() => {
     async function fetchData() {
       try {
         const today = todayISO();
-        const { data: viData } = await supabase.from('so_du_vi_thuc_te').select('*');
-        const { data: historyData } = await supabase.from('lich_su_giao_dich_tong_hop').select('*').limit(8);
-        const { data: dtToday } = await supabase.from('doanh_thu').select('so_tien, hinh_thuc').eq('ngay', today);
-        const { data: cpToday } = await supabase.from('chi_phi').select('so_tien').eq('ngay', today);
+        const now = getNowVN();
+        const dayOfWeek = now.getDay(); // 0=CN, 1=T2...
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        const monISO = startOfWeek.toISOString().split('T')[0];
+
+        const [viRes, historyRes, dtTodayRes, cpTodayRes, ycRes, dtWeekRes, cpWeekRes] = await Promise.all([
+          supabase.from('so_du_vi_thuc_te').select('*'),
+          supabase.from('lich_su_giao_dich_tong_hop').select('*').limit(8),
+          supabase.from('doanh_thu').select('so_tien, hinh_thuc').eq('ngay', today),
+          supabase.from('chi_phi').select('so_tien').eq('ngay', today),
+          supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet'),
+          supabase.from('doanh_thu').select('so_tien, hinh_thuc').gte('ngay', monISO).lte('ngay', today),
+          supabase.from('chi_phi').select('so_tien, danh_muc_id').gte('ngay', monISO).lte('ngay', today),
+        ]);
+        const { data: viData } = viRes;
+        const { data: historyData } = historyRes;
+        const { data: dtToday } = dtTodayRes;
+        const { data: cpToday } = cpTodayRes;
+        const pendingCount = ycRes.count || 0;
 
         const thucThu = (dtToday || []).filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0) || 0;
         const totalDT = (dtToday || []).reduce((s, r) => s + r.so_tien, 0) || 0;
         const totalChi = (cpToday || []).reduce((s, r) => s + r.so_tien, 0) || 0;
 
+        // Weekly insights
+        const thuWeek = (dtWeekRes.data || []).filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0) || 0;
+        const totalDTWeek = (dtWeekRes.data || []).reduce((s, r) => s + r.so_tien, 0) || 0;
+        const chiWeek = (cpWeekRes.data || []).reduce((s, r) => s + r.so_tien, 0) || 0;
+        const loiNhuanWeek = thuWeek - chiWeek;
+
+        let insights = null;
+        if (isAdmin) {
+          const soDuThapNhat = Math.min(...(viData || []).map(v => v.so_du_hien_tai || 0));
+          const tenViThap = (viData || []).find(v => (v.so_du_hien_tai || 0) === soDuThapNhat);
+          const chiNhieuNhat = cpWeekRes.data?.length > 0
+            ? cpWeekRes.data.reduce((max, c) => c.so_tien > (max?.so_tien || 0) ? c : max, null)
+            : null;
+
+          if (chiWeek > thuWeek && thuWeek > 0) {
+            insights = { type: 'warning', icon: '⚠️', title: 'Chi tiêu vượt thu nhập tuần này',
+              detail: `Tuần này: Thu ${formatCurrency(thuWeek)} vs Chi ${formatCurrency(chiWeek)}. Lợi nhuận âm ${formatCurrency(loiNhuanWeek)}. Cần kiểm soát chi tiêu ngay!` };
+          } else if (soDuThapNhat < 1000000 && soDuThapNhat >= 0) {
+            insights = { type: 'warning', icon: '⚠️', title: `Số dư ${tenViThap?.ten || 'ví'} đang rất thấp`,
+              detail: `Chỉ còn ${formatCurrency(soDuThapNhat)}. Cân nhắc hạn chế chi tiêu từ ví này.` };
+          } else if (chiWeek > thuWeek * 0.7 && thuWeek > 0) {
+            insights = { type: 'info', icon: '💡', title: 'Chi tiêu đang ở mức cao',
+              detail: `Chiếm ${Math.round(chiWeek / thuWeek * 100)}% thu nhập tuần. Nên xem lại các khoản chi không cần thiết.` };
+          } else if (chiNhieuNhat && chiWeek > 0) {
+            insights = { type: 'success', icon: '✅', title: 'Tài chính tuần này ổn định',
+              detail: `Thu ${formatCurrency(thuWeek)} — Lời ${formatCurrency(loiNhuanWeek)}. Tiếp tục duy trì!` };
+          }
+        }
+
         setViList(viData || []);
         setHistory(historyData || []);
-        setStats({ thucThu, chi: totalChi, tongDoanhThu: totalDT });
+        setStats({ thucThu, chi: totalChi, tongDoanhThu: totalDT, pendingCount, insights });
+        setInsightData({ thuWeek, chiWeek, loiNhuanWeek, soDuThapNhat, tenViThap });
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
     }
@@ -132,6 +181,37 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm }) {
           </div>
         </div>
 
+        {/* Phân tích tài chính thông minh */}
+        {isAdmin && stats.insights && (
+          <div style={{ background: stats.insights.type === 'warning' ? '#FFF9F0' : stats.insights.type === 'info' ? '#F0F4FF' : '#F0FDF4', borderRadius: LUX.radiusLg, padding: '16px 18px', marginBottom: '16px', boxShadow: LUX.shadow, border: `1px solid ${stats.insights.type === 'warning' ? '#F0C080' : stats.insights.type === 'info' ? '#B8C8E8' : '#86D0A8'}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '28px' }}>{stats.insights.icon}</span>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSans, marginBottom: '4px' }}>{stats.insights.title}</div>
+                <div style={{ fontSize: '12px', color: LUX.ink2, fontFamily: LUX.fontSans, lineHeight: '1.5' }}>{stats.insights.detail}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Thông báo yêu cầu chờ duyệt */}
+        {isAdmin && stats.pendingCount > 0 && (
+          <div onClick={() => window.open('/admin', '_self')} style={{ background: 'linear-gradient(135deg,#FFF9F0,#FFF3E0)', borderRadius: LUX.radiusLg, padding: '16px 18px', marginBottom: '16px', boxShadow: LUX.shadow, border: '2px solid #F0C080', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#F0C080', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
+              🔔
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: '700', fontSize: '14px', color: '#8B6914', fontFamily: LUX.fontSans }}>
+                {stats.pendingCount} yêu cầu chờ duyệt
+              </div>
+              <div style={{ fontSize: '12px', color: '#A68A3C', fontFamily: LUX.fontSans }}>
+                Nhân viên gửi yêu cầu sửa/xóa giao dịch — vào Admin để duyệt
+              </div>
+            </div>
+            <span style={{ color: '#8B6914', fontSize: '20px' }}>›</span>
+          </div>
+        )}
+
         {/* Hoạt động gần đây */}
         <div style={{ background: LUX.surface2, borderRadius: LUX.radiusLg, padding: '18px 18px', marginBottom: '110px', boxShadow: LUX.shadow, border: `1px solid ${LUX.line}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -141,7 +221,7 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm }) {
 
           {(history || []).map((item, i) => (
                 <div key={item.id || i}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0' }}>
+                    <div onClick={() => setSelectedGD(item)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                             <div style={{ width: '38px', height: '38px', borderRadius: LUX.radiusSm, background: item.loai === 'thu' ? '#F0FDF4' : item.loai === 'chi' ? '#FEF2F2' : '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
                                 {item.loai === 'thu' ? '💰' : item.loai === 'chi' ? '💸' : '🔄'}
@@ -165,6 +245,15 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm }) {
             ))}
         </div>
       </div>
+
+      {selectedGD && (
+        <ChiTietGiaoDich
+          giaoDich={selectedGD}
+          user={user}
+          onBack={() => setSelectedGD(null)}
+          onUpdated={() => { setSelectedGD(null); window.location.reload() }}
+        />
+      )}
     </div>
   )
 }
