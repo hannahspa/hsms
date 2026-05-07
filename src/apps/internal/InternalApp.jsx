@@ -34,7 +34,7 @@ export default function InternalApp() {
 
   // Redirect Lễ Tân from admin tabs
   const isLeTan = user?.vai_tro === 'le_tan'
-  const effectiveTab = isLeTan && ['tong-quan', 'tai-khoan', 'bao-cao'].includes(tab) ? 'doi-soat' : tab
+  const effectiveTab = isLeTan && ['tong-quan', 'tai-khoan', 'bao-cao', 'nhap-lieu'].includes(tab) ? 'doi-soat' : tab
 
   const handleOpenForm = (type) => {
     if (type === 'bc') { setTab('bao-cao'); return }
@@ -75,10 +75,12 @@ export default function InternalApp() {
         backgroundColor: LUX.bg,
         minHeight: '100vh',
         maxWidth: isDesktop ? '520px' : '100%',
+        width: '100%',
         margin: '0 auto',
         fontFamily: LUX.fontSans,
         position: 'relative',
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        overflowY: 'auto',
         boxShadow: isDesktop ? LUX.shadowLg : 'none',
       }}>
         {splash && <SplashScreen onDone={() => setSplash(false)} />}

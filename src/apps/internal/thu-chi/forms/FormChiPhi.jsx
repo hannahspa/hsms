@@ -67,6 +67,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
     if (!soTien || parseInt(soTien) <= 0) return onSaved('error', 'Vui lòng nhập số tiền!')
     if (!hangMucId) return onSaved('error', 'Vui lòng chọn hạng mục chi!')
     if (!viId)      return onSaved('error', 'Vui lòng chọn ví chi ra!')
+    if (!dienGiai?.trim()) return onSaved('error', 'Vui lòng nhập diễn giải!')
     setSaving(true)
     try {
       const { error } = await supabase.from('chi_phi').insert({
@@ -291,7 +292,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
           <div style={{ background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '24px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: '#FDF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>📝</div>
-              <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '4px', fontFamily: LUX.fontSans }}>Diễn Giải</div><textarea placeholder="Ghi chú thêm (không bắt buộc)..." value={dienGiai} onChange={e => setDienGiai(e.target.value)} rows={2} style={{ width: '100%', border: 'none', outline: 'none', fontSize: '14px', color: LUX.ink, background: 'transparent', resize: 'none', fontFamily: LUX.fontSans }} /></div>
+              <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '4px', fontFamily: LUX.fontSans }}>Diễn Giải <span style={{color:'#C0392B'}}>*</span></div><textarea placeholder="Nhập nội dung chi tiêu..." value={dienGiai} onChange={e => setDienGiai(e.target.value)} rows={2} style={{ width: '100%', border: 'none', outline: 'none', fontSize: '14px', color: LUX.ink, background: 'transparent', resize: 'none', fontFamily: LUX.fontSans }} /></div>
             </div>
           </div>
 
