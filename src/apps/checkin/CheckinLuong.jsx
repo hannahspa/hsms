@@ -100,8 +100,8 @@ export default function CheckinLuong({ nhanVien, onBack }) {
 
   const c = data?.calc
   const bl = data?.official
-  const stLC = TRANG_THAI_LABEL[data?.trangThaiLC || 'chua_tinh']
-  const stLKD = TRANG_THAI_LABEL[data?.trangThaiLKD || 'chua_tinh']
+  const stLC = TRANG_THAI_LABEL[data?.trangThaiLC] || TRANG_THAI_LABEL.chua_tinh
+  const stLKD = TRANG_THAI_LABEL[data?.trangThaiLKD] || TRANG_THAI_LABEL.chua_tinh
 
   const showLC = c ? ((bl && bl.trang_thai_lc && bl.trang_thai_lc !== 'chua_tinh')
     ? { luongCoBan: bl.luong_co_ban, tienTangCa: bl.tien_tang_ca, tienPhat: bl.tien_phat, truKyQuy: bl.tru_ky_quy, truUngLuong: bl.tru_ung_luong }
