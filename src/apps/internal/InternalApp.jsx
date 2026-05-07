@@ -15,6 +15,7 @@ import DoiSoatPage from './thu-chi/DoiSoatPage'
 import FormDoanhThu from './thu-chi/forms/FormDoanhThu'
 import FormChiPhi from './thu-chi/forms/FormChiPhi'
 import FormChuyenKhoan from './thu-chi/forms/FormChuyenKhoan'
+import PheDuyetThuChi from './cai-dat/components/PheDuyetThuChi'
 
 const BREAKPOINT = 768
 
@@ -26,6 +27,7 @@ export default function InternalApp() {
   const { viList, loading } = useVi()
   const { toast, showToast, form, openForm, closeForm } = useApp()
   const [refreshKey, setRefreshKey] = useState(0)
+  const [pheDuyetOpen, setPheDuyetOpen] = useState(false)
 
   const handleSaved = (type, msg) => {
     showToast(type, msg)
@@ -94,6 +96,7 @@ export default function InternalApp() {
         {form === 'thu' && <FormDoanhThu  viList={viList} user={user} onClose={closeForm} onSaved={handleSaved} />}
         {form === 'chi' && <FormChiPhi    viList={viList} user={user} onClose={closeForm} onSaved={handleSaved} />}
         {form === 'ck'  && <FormChuyenKhoan viList={viList} user={user} onClose={closeForm} onSaved={handleSaved} />}
+        {pheDuyetOpen && <PheDuyetThuChi onClose={() => setPheDuyetOpen(false)} onUpdated={() => setRefreshKey(k => k + 1)} />}
 
         <div style={{ paddingBottom: isLeTan ? '0px' : '80px' }}>
           {loading ? (
@@ -103,7 +106,7 @@ export default function InternalApp() {
             </div>
           ) : (
             <>
-              {effectiveTab === 'tong-quan' && <TongQuanPage viList={viList} user={user} onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
+              {effectiveTab === 'tong-quan' && <TongQuanPage viList={viList} user={user} onOpenForm={handleOpenForm} isDesktop={isDesktop} onOpenPheDuyet={() => setPheDuyetOpen(true)} />}
               {effectiveTab === 'tai-khoan' && <TaiKhoanPage viList={viList} user={user} isDesktop={isDesktop} />}
               {effectiveTab === 'doi-soat'  && <DoiSoatPage user={user} onOpenForm={handleOpenForm} onSettings={() => setTab('cai-dat')} refreshKey={refreshKey} />}
               {effectiveTab === 'nhap-lieu' && <NhapLieuPage onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
