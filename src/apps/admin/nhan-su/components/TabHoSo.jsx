@@ -378,8 +378,11 @@ export default function TabHoSo() {
               {specialList.map(nv => (
                 <button key={nv.id} onClick={() => setSelected(nv)}
                   style={{ background: LUX.surface, borderRadius: LUX.radius, padding: '14px 16px', border: `1px solid ${LUX.line}`, display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.8, cursor: 'pointer', textAlign: 'left', width: '100%', marginBottom: '8px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: getAvatarColor(nv.ho_ten), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '19px', fontWeight: 700, color: 'white', fontFamily: LUX.fontSans, flexShrink: 0 }}>
-                    {getInitials(nv.ho_ten)}
+                  <div style={{ width: '48px', height: '48px', borderRadius: '14px', overflow: 'hidden', border: `2px solid ${LUX.line}`, flexShrink: 0 }}>
+                    {nv.avatar_url
+                      ? <img src={nv.avatar_url} alt={nv.ho_ten} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <div style={{ width: '100%', height: '100%', background: getAvatarColor(nv.ho_ten), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '19px', fontWeight: 700, color: 'white', fontFamily: LUX.fontSans }}>{getInitials(nv.ho_ten)}</div>
+                    }
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontFamily: LUX.fontSerif, fontSize: '17px', fontWeight: 600, color: LUX.espresso }}>{nv.ho_ten.trim().split(' ').slice(-2).join(' ')}</div>
@@ -499,6 +502,14 @@ export default function TabHoSo() {
             </div>
 
             <div style={{ padding: '0 20px' }}>
+              {/* Avatar — đặt đầu tiên để dễ nhìn thấy */}
+              <AvatarUpload
+                nvId={editSheet.nv.id}
+                nvName={editSheet.nv.ho_ten}
+                currentUrl={editSheet.nv.avatar_url}
+                onUploaded={url => setEditSheet(s => ({ ...s, nv: { ...s.nv, avatar_url: url } }))}
+              />
+
               <LuxSectionLabel>Thông Tin Cơ Bản</LuxSectionLabel>
               <LuxField label="Họ và Tên *" value={editSheet.nv.ho_ten}
                 onChange={v => setEditSheet(s => ({ ...s, nv: { ...s.nv, ho_ten: v } }))}
@@ -509,11 +520,6 @@ export default function TabHoSo() {
               <LuxField label="Số Điện Thoại" value={editSheet.nv.so_dien_thoai}
                 onChange={v => setEditSheet(s => ({ ...s, nv: { ...s.nv, so_dien_thoai: v } }))}
                 placeholder="0912 345 678" />
-
-              <AvatarUpload
-                currentUrl={editSheet.nv.avatar_url}
-                onUploaded={url => setEditSheet(s => ({ ...s, nv: { ...s.nv, avatar_url: url } }))}
-              />
 
               <LuxField label="Ngày Vào Làm (dd/MM/yyyy)" value={editSheet.nv.ngay_bat_dau}
                 onChange={v => {
