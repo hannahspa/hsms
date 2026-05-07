@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import HeroSection from './sections/HeroSection'
 import ServicesSection from './sections/ServicesSection'
 import AboutSection from './sections/AboutSection'
-import GallerySection from './sections/GallerySection'
+import AtmosphereSection from './sections/AtmosphereSection'
 import TestimonialsSection from './sections/TestimonialsSection'
 import ContactSection from './sections/ContactSection'
 import FooterSection from './sections/FooterSection'
@@ -51,7 +51,7 @@ export default function LandingPage() {
         <HeroSection />
         <ServicesSection />
         <AboutSection />
-        <GallerySection />
+        <AtmosphereSection />
         <TestimonialsSection />
         <ContactSection />
         <FooterSection />

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { LUX } from '../../../constants/lux'
 import { formatCurrency, formatDateInput } from '../../../lib/utils'
@@ -202,20 +202,82 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
   )
 }
 
-// ── Sub-component: Form sửa ───────────────────────────────
+// ── Sub-component: Form sửa TOÀN DIỆN ────────────────────
+// Fetch bản ghi gốc từ source table để có đủ field (danh_muc_id, hinh_thuc_thanh_toan, tu_vi_id...)
+// Cho phép sửa TẤT CẢ field: ngày, số tiền, diễn giải, hình thức, danh mục, ví...
 function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }) {
-  const [soTien,         setSoTien]         = useState(String(giaoDich.so_tien))
-  const [dienGiai,       setDienGiai]       = useState(giaoDich.dien_giai || '')
-  const [ngay,           setNgay]           = useState(giaoDich.ngay || '')
+  const [record,   setRecord]   = useState(null)  // bản ghi gốc từ source table
+  const [dmList,   setDmList]   = useState([])    // danh mục chi phí
+  const [viList,   setViList]   = useState([])    // danh sách ví
+  const [ready,    setReady]    = useState(false)
+
+  // Form state
+  const [soTien,         setSoTien]         = useState('')
+  const [dienGiai,       setDienGiai]       = useState('')
+  const [ngay,           setNgay]           = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
+  const [hinhThuc,       setHinhThuc]       = useState('')       // Doanh Thu
+  const [danhMucId,      setDanhMucId]      = useState('')       // Chi Phí
+  const [hinhThucTT,     setHinhThucTT]     = useState('')       // Chi Phí (hinh_thuc_thanh_toan)
+  const [tuViId,         setTuViId]         = useState('')       // CK Nội Bộ
+  const [denViId,        setDenViId]        = useState('')       // CK Nội Bộ
   const [lyDo,           setLyDo]           = useState('')
   const [loading,        setLoading]        = useState(false)
 
+  const loai = giaoDich.loai // 'thu' | 'chi' | 'chuyen_khoan'
+  const banGhiId = giaoDich.ban_ghi_id || giaoDich.id
+
   const getLoaiBang = () => {
-    if (giaoDich.loai === 'thu') return 'doanh_thu'
-    if (giaoDich.loai === 'chi') return 'chi_phi'
+    if (loai === 'thu') return 'doanh_thu'
+    if (loai === 'chi') return 'chi_phi'
     return 'chuyen_khoan_noi_bo'
   }
+
+  // Fetch đủ dữ liệu khi mount
+  useEffect(() => {
+    async function load() {
+      try {
+        const bang = getLoaiBang()
+        const [recRes, dmRes, viRes] = await Promise.all([
+          supabase.from(bang).select('*').eq('id', banGhiId).single(),
+          loai === 'chi' ? supabase.from('danh_muc_chi_phi').select('*').eq('is_active', true).order('thu_tu') : Promise.resolve(null),
+          loai === 'chuyen_khoan' ? supabase.from('vi').select('*').eq('is_active', true).order('thu_tu') : Promise.resolve(null),
+        ])
+
+        const rec = recRes.data
+        setRecord(rec)
+        if (dmRes) setDmList(dmRes.data || [])
+        if (viRes) setViList(viRes.data || [])
+
+        // Khởi tạo form state từ bản ghi gốc
+        if (rec) {
+          setSoTien(String(rec.so_tien || ''))
+          setDienGiai(rec.dien_giai || '')
+          setNgay(rec.ngay || '')
+          if (loai === 'thu') {
+            setHinhThuc(rec.hinh_thuc || '')
+          } else if (loai === 'chi') {
+            setDanhMucId(rec.danh_muc_id || '')
+            setHinhThucTT(rec.hinh_thuc_thanh_toan || '')
+          } else if (loai === 'chuyen_khoan') {
+            setTuViId(rec.tu_vi_id || '')
+            setDenViId(rec.den_vi_id || '')
+          }
+        }
+        setReady(true)
+      } catch (e) {
+        console.error('Load edit data:', e)
+        // Fallback: dùng dữ liệu từ view
+        setSoTien(String(giaoDich.so_tien || ''))
+        setDienGiai(giaoDich.dien_giai || '')
+        setNgay(giaoDich.ngay || '')
+        if (loai === 'thu') setHinhThuc(giaoDich.hinh_thuc || '')
+        if (loai === 'chi') setHinhThucTT(giaoDich.hinh_thuc || '')
+        setReady(true)
+      }
+    }
+    load()
+  }, [])
 
   const handleSave = async () => {
     if (!lyDo.trim()) { showToast('Vui lòng nhập lý do sửa', 'error'); return }
@@ -224,22 +286,35 @@ function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }
 
     setLoading(true)
     try {
+      // Xây dựng duLieuMoi với TẤT CẢ field liên quan
       const duLieuMoi = { so_tien: parsed, dien_giai: dienGiai, ngay }
+      if (loai === 'thu') {
+        duLieuMoi.hinh_thuc = hinhThuc
+      } else if (loai === 'chi') {
+        duLieuMoi.danh_muc_id = danhMucId
+        duLieuMoi.hinh_thuc_thanh_toan = hinhThucTT
+      } else if (loai === 'chuyen_khoan') {
+        duLieuMoi.tu_vi_id = tuViId
+        duLieuMoi.den_vi_id = denViId
+      }
+
+      // du_lieu_cu = bản ghi gốc từ source table (nếu có) nếu không thì dùng view
+      const duLieuCu = record || giaoDich
 
       if (isAdmin) {
         const { error } = await supabase
           .from(getLoaiBang())
           .update(duLieuMoi)
-          .eq('id', giaoDich.ban_ghi_id || giaoDich.id)
+          .eq('id', banGhiId)
         if (error) throw error
         showToast('Đã cập nhật giao dịch')
         setTimeout(() => onUpdated(), 1000)
       } else {
         const { error } = await supabase.from('yeu_cau_chinh_sua').insert({
           loai_bang:     getLoaiBang(),
-          ban_ghi_id:    giaoDich.ban_ghi_id || giaoDich.id,
+          ban_ghi_id:    banGhiId,
           loai_yeu_cau:  'sua',
-          du_lieu_cu:    giaoDich,
+          du_lieu_cu:    duLieuCu,
           du_lieu_moi:   duLieuMoi,
           ly_do:         lyDo,
           nguoi_yeu_cau: user?.ho_ten || user?.email,
@@ -256,12 +331,22 @@ function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }
   }
 
   const formatInput = (val) => {
-    const num = val.replace(/\D/g, '')
+    const num = String(val || '').replace(/\D/g, '')
     return num ? parseInt(num).toLocaleString('vi-VN') : ''
+  }
+
+  if (!ready) return <div style={{textAlign:'center',padding:'40px',color:LUX.ink3}}>Đang tải dữ liệu...</div>
+
+  const selectStyle = {
+    width: '100%', padding: '14px', borderRadius: '12px',
+    border: `1px solid ${LUX.line}`, background: LUX.surface2,
+    fontSize: '14px', color: LUX.ink, outline: 'none',
+    boxSizing: 'border-box', fontFamily: LUX.fontSans, cursor: 'pointer',
   }
 
   return (
     <div>
+      {/* Ngày */}
       <div style={{ marginBottom:'16px' }}>
         <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Ngày</div>
         <button onClick={() => setShowDatePicker(true)}
@@ -272,6 +357,68 @@ function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }
           onClose={() => setShowDatePicker(false)}
           onConfirm={d => { setNgay(d); setShowDatePicker(false) }} />
       </div>
+
+      {/* Doanh Thu: Hình thức */}
+      {loai === 'thu' && (
+        <div style={{ marginBottom:'16px' }}>
+          <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Hình thức thanh toán</div>
+          <select value={hinhThuc} onChange={e => setHinhThuc(e.target.value)} style={selectStyle}>
+            <option value="tien_mat">💵 Tiền Mặt</option>
+            <option value="chuyen_khoan">🏦 Chuyển Khoản</option>
+            <option value="quet_the">💳 Quẹt Thẻ</option>
+            <option value="the_tra_truoc">🎫 Thẻ Trả Trước</option>
+          </select>
+        </div>
+      )}
+
+      {/* Chi Phí: Danh mục + Hình thức thanh toán */}
+      {loai === 'chi' && (
+        <>
+          <div style={{ marginBottom:'16px' }}>
+            <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Danh mục chi phí</div>
+            <select value={danhMucId} onChange={e => setDanhMucId(e.target.value)} style={selectStyle}>
+              <option value="">-- Chọn danh mục --</option>
+              {dmList.filter(d => d.parent_id).map(d => (
+                <option key={d.id} value={d.id}>{d.ten}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ marginBottom:'16px' }}>
+            <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Tài khoản chi</div>
+            <select value={hinhThucTT} onChange={e => setHinhThucTT(e.target.value)} style={selectStyle}>
+              <option value="tien_mat">💵 Tiền Mặt</option>
+              <option value="chuyen_khoan">🏦 Chuyển Khoản</option>
+              <option value="quet_the">💳 Quẹt Thẻ</option>
+            </select>
+          </div>
+        </>
+      )}
+
+      {/* Chuyển Khoản Nội Bộ: Ví nguồn → Ví đích */}
+      {loai === 'chuyen_khoan' && (
+        <>
+          <div style={{ marginBottom:'16px' }}>
+            <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Từ ví</div>
+            <select value={tuViId} onChange={e => setTuViId(e.target.value)} style={selectStyle}>
+              <option value="">-- Chọn ví nguồn --</option>
+              {viList.map(v => (
+                <option key={v.id} value={v.id}>{v.icon} {v.ten}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ marginBottom:'16px' }}>
+            <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Đến ví</div>
+            <select value={denViId} onChange={e => setDenViId(e.target.value)} style={selectStyle}>
+              <option value="">-- Chọn ví đích --</option>
+              {viList.map(v => (
+                <option key={v.id} value={v.id}>{v.icon} {v.ten}</option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
+
+      {/* Số tiền */}
       <div style={{ marginBottom:'16px' }}>
         <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Số tiền (đ)</div>
         <input
@@ -280,6 +427,8 @@ function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }
           style={{ width:'100%',padding:'14px',borderRadius:'12px',border:`1px solid ${LUX.line}`,fontSize:'18px',fontWeight:'800',color:LUX.ink,outline:'none',boxSizing:'border-box' }}
         />
       </div>
+
+      {/* Diễn giải */}
       <div style={{ marginBottom:'16px' }}>
         <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Diễn giải</div>
         <input
@@ -288,6 +437,8 @@ function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }
           style={{ width:'100%',padding:'14px',borderRadius:'12px',border:`1px solid ${LUX.line}`,fontSize:'14px',color:LUX.ink,outline:'none',boxSizing:'border-box' }}
         />
       </div>
+
+      {/* Lý do */}
       <div style={{ marginBottom:'20px' }}>
         <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>
           Lý do {isAdmin ? '' : '(bắt buộc — gửi Admin duyệt)'}
@@ -299,6 +450,22 @@ function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }
           style={{ width:'100%',padding:'12px',borderRadius:'12px',border:`1px solid ${LUX.line}`,fontSize:'14px',resize:'none',height:'72px',outline:'none',boxSizing:'border-box' }}
         />
       </div>
+
+      {/* Show diff summary */}
+      {record && (
+        <div style={{ background:'#FFF9F0',borderRadius:'12px',padding:'10px 14px',marginBottom:'16px',border:'1px solid #F0C080',fontSize:'11px',color:'#8B6914' }}>
+          <div style={{fontWeight:'700',marginBottom:'4px'}}>Thay đổi sẽ được áp dụng:</div>
+          {loai === 'thu' && hinhThuc !== (record.hinh_thuc || '') && <div>• Hình thức: {record.hinh_thuc} → {hinhThuc}</div>}
+          {loai === 'chi' && danhMucId !== (record.danh_muc_id || '') && <div>• Danh mục: đổi sang ID mới</div>}
+          {loai === 'chi' && hinhThucTT !== (record.hinh_thuc_thanh_toan || '') && <div>• TK chi: {record.hinh_thuc_thanh_toan} → {hinhThucTT}</div>}
+          {loai === 'chuyen_khoan' && tuViId !== (record.tu_vi_id || '') && <div>• Ví nguồn: thay đổi</div>}
+          {loai === 'chuyen_khoan' && denViId !== (record.den_vi_id || '') && <div>• Ví đích: thay đổi</div>}
+          {parseInt(soTien.replace(/\D/g,'')) !== (record.so_tien || 0) && <div>• Số tiền: {formatCurrency(record.so_tien)} → {formatCurrency(parseInt(soTien.replace(/\D/g,'')))}</div>}
+          {dienGiai !== (record.dien_giai || '') && <div>• Diễn giải: {record.dien_giai || '(trống)'} → {dienGiai || '(trống)'}</div>}
+          {ngay !== (record.ngay || '') && <div>• Ngày: {formatDateInput(record.ngay)} → {formatDateInput(ngay)}</div>}
+        </div>
+      )}
+
       <div style={{ display:'flex',gap:'12px' }}>
         <button onClick={onClose}
           style={{ flex:1,padding:'14px',borderRadius:'14px',background:LUX.surface2,border:`1px solid ${LUX.line}`,fontWeight:'700',cursor:'pointer' }}>

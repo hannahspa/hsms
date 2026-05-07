@@ -85,17 +85,31 @@ export default function TabXetDuyet({ onUpdate }) {
     }
     const yc = suaXoaList.find(d => d.id === ycId)
     if (!yc) return
+    if (!yc.ban_ghi_id) { console.error('Thiếu ban_ghi_id'); return }
 
     try {
+      let result
       if (yc.loai_yeu_cau === 'sua') {
-        await supabase.from(yc.loai_bang).update(yc.du_lieu_moi).eq('id', yc.ban_ghi_id)
+        if (!yc.du_lieu_moi || Object.keys(yc.du_lieu_moi).length === 0) {
+          console.error('du_lieu_moi rỗng'); return
+        }
+        result = await supabase.from(yc.loai_bang).update(yc.du_lieu_moi).eq('id', yc.ban_ghi_id)
       } else if (yc.loai_yeu_cau === 'xoa') {
-        await supabase.from(yc.loai_bang).delete().eq('id', yc.ban_ghi_id)
+        result = await supabase.from(yc.loai_bang).delete().eq('id', yc.ban_ghi_id)
+      } else {
+        return
       }
+
+      if (result.error) {
+        console.error('Lỗi cập nhật dữ liệu:', result.error)
+        return
+      }
+
+      // Chỉ đánh dấu đã duyệt khi update/delete THÀNH CÔNG
       await supabase.from('yeu_cau_chinh_sua').update({
         trang_thai: 'da_duyet', nguoi_duyet: 'Admin',
       }).eq('id', ycId)
-    } catch (e) { console.error('Duyet sua/xoa:', e) }
+    } catch (e) { console.error('Duyet sua/xoa:', e); return }
 
     fetchData()
     onUpdate?.()
