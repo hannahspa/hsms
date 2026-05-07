@@ -9,21 +9,20 @@ function createImage(url) {
     const img = new Image()
     img.addEventListener('load', () => resolve(img))
     img.addEventListener('error', reject)
-    img.setAttribute('crossOrigin', 'anonymous')
     img.src = url
   })
 }
 
-async function getCroppedBlob(imageSrc, crop) {
+// Trả về data URL (base64) — không cần Supabase Storage, tránh lỗi anon RLS
+async function getCroppedDataUrl(imageSrc, crop) {
   const image = await createImage(imageSrc)
   const canvas = document.createElement('canvas')
-  const SIZE = 600
+  const SIZE = 320   // 320×320 đủ sắc nét, nhỏ gọn để lưu DB
   canvas.width = SIZE
   canvas.height = SIZE
   const ctx = canvas.getContext('2d')
-  // Vẽ tròn trước khi clip để ảnh export ra có nền trong suốt
   ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, SIZE, SIZE)
-  return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92))
+  return canvas.toDataURL('image/jpeg', 0.82)
 }
 
 // ── Avatar helpers ────────────────────────────────────────────
@@ -79,38 +78,30 @@ export default function CheckinDoiAvatar({ nhanVien, onBack, onUpdated }) {
     setCroppedAreaPixels(pixels)
   }, [])
 
-  // Cắt ảnh → preview tạm
+  // Cắt ảnh → preview tạm (data URL, không cần upload)
   const handlePreviewCrop = async () => {
     if (!croppedAreaPixels || !imageSrc) return
-    const blob = await getCroppedBlob(imageSrc, croppedAreaPixels)
-    setCroppedPreview(URL.createObjectURL(blob))
+    const dataUrl = await getCroppedDataUrl(imageSrc, croppedAreaPixels)
+    setCroppedPreview(dataUrl)
   }
 
-  // Xác nhận → upload Supabase
+  // Xác nhận → lưu data URL thẳng vào DB (không qua Supabase Storage)
+  // Tránh lỗi RLS anon: checkin không có Supabase Auth session
   const handleSave = async () => {
     if (!croppedAreaPixels || !imageSrc) return
     setUploading(true)
     try {
-      const blob     = await getCroppedBlob(imageSrc, croppedAreaPixels)
-      const fileName = `${nhanVien.id}.jpg`
-
-      const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, blob, { contentType: 'image/jpeg', cacheControl: '3600', upsert: true })
-      if (error) throw error
-
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(data.path)
-      const finalUrl = publicUrl + '?t=' + Date.now()
+      const dataUrl = await getCroppedDataUrl(imageSrc, croppedAreaPixels)
 
       const { error: dbErr } = await supabase
-        .from('nhan_vien').update({ avatar_url: finalUrl }).eq('id', nhanVien.id)
+        .from('nhan_vien').update({ avatar_url: dataUrl }).eq('id', nhanVien.id)
       if (dbErr) throw dbErr
 
-      setCurrentUrl(finalUrl)
+      setCurrentUrl(dataUrl)
       setImageSrc(null)
       setCroppedPreview(null)
       showToast('✓ Đã cập nhật ảnh đại diện!')
-      onUpdated?.(finalUrl)
+      onUpdated?.(dataUrl)
     } catch (err) {
       showToast('Lỗi: ' + err.message, 'error')
     } finally {
@@ -266,15 +257,9 @@ export default function CheckinDoiAvatar({ nhanVien, onBack, onUpdated }) {
         <div style={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <label>
             <div style={{ padding: '16px', borderRadius: 16, background: LUX.goldGrad, color: 'white', fontWeight: 700, fontSize: 15, textAlign: 'center', cursor: 'pointer', boxShadow: `0 6px 20px ${LUX.gold}40` }}>
-              📷 Chọn ảnh từ điện thoại
+              📷 Chọn ảnh / Chụp mới
             </div>
-            <input type="file" accept="image/*" capture="environment" onChange={onFileChange} style={{ display: 'none' }} />
-          </label>
-
-          <label>
-            <div style={{ padding: '16px', borderRadius: 16, background: 'rgba(201,169,110,0.12)', border: `1px solid ${LUX.gold}30`, color: LUX.gold, fontWeight: 700, fontSize: 15, textAlign: 'center', cursor: 'pointer' }}>
-              🖼️ Chọn từ thư viện
-            </div>
+            {/* Không dùng capture — để OS tự hiện picker (camera + thư viện) */}
             <input type="file" accept="image/*" onChange={onFileChange} style={{ display: 'none' }} />
           </label>
 
