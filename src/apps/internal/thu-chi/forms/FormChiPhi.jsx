@@ -69,7 +69,13 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
     if (!viId)      return onSaved('error', 'Vui lòng chọn ví chi ra!')
     if (!dienGiai?.trim()) return onSaved('error', 'Vui lòng nhập diễn giải!')
 
-    const soDu = viSelected?.so_du_hien_tai || 0
+    // Fetch fresh balance to avoid stale prop issue after Doanh Thu was entered in same session
+    const { data: freshVi } = await supabase
+      .from('so_du_vi_thuc_te')
+      .select('so_du_hien_tai')
+      .eq('id', viId)
+      .single()
+    const soDu = freshVi?.so_du_hien_tai ?? viSelected?.so_du_hien_tai ?? 0
     if (parseInt(soTien) > soDu) {
       const isAdmin = user?.vai_tro === 'admin'
       return onSaved('error', isAdmin
