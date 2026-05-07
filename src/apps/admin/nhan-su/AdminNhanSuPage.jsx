@@ -85,7 +85,8 @@ function LuxSubHeader({ title, crumb, onBack, action, onAction }) {
 // ── Dashboard ──────────────────────────────────────────────
 export default function AdminNhanSuPage() {
   const { user, logout } = useAuth()
-  const [view,        setView]        = useState(null)
+  const initialTab = new URLSearchParams(window.location.search).get('tab') || null
+  const [view,        setView]        = useState(initialTab)
   const [stats,       setStats]       = useState({ nvCount: 0, diLam: 0, choduyet: 0 })
   const [showTaoOff,  setShowTaoOff]  = useState(false)
   const [refreshKey,  setRefreshKey]  = useState(0)
@@ -96,11 +97,12 @@ export default function AdminNhanSuPage() {
       supabase.from('nhan_vien').select('id', { count: 'exact' }).eq('trang_thai', 'dang_lam'),
       supabase.from('cham_cong').select('nhan_vien_id').eq('ngay', today).not('gio_vao', 'is', null),
       supabase.from('dang_ky_off').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet'),
-    ]).then(([nv, cc, od]) => {
+      supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet'),
+    ]).then(([nv, cc, od, yc]) => {
       setStats({
         nvCount:  nv.count || 0,
         diLam:    (cc.data || []).length,
-        choduyet: od.count || 0,
+        choduyet: (od.count || 0) + (yc.count || 0),
       })
     })
   }, [refreshKey])
