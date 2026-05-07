@@ -61,7 +61,7 @@ function phanLoaiRa(gioRa) {
 
 // GPS
 const SPA_COORD = { lat: 10.031917, lng: 105.785083 }
-const MAX_DISTANCE_M = 50
+const MAX_DISTANCE_M = 150
 
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3
@@ -111,7 +111,7 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const dist = getDistance(pos.coords.latitude, pos.coords.longitude, SPA_COORD.lat, SPA_COORD.lng)
       if (dist > MAX_DISTANCE_M) {
-        alert(`Bạn đang ở quá xa Spa (${Math.round(dist)}m). Vui lòng đến nơi mới được chấm công!`)
+        alert(`Vị trí của bạn đang cách Spa ${Math.round(dist)}m (tối đa ${MAX_DISTANCE_M}m).\n\nNếu bạn đang ở Spa, hãy:\n• Ra gần cửa sổ hoặc ra ngoài\n• Bật WiFi và kết nối mạng Spa\n• Thử lại sau 30 giây`)
         setLoading(false)
         return
       }
@@ -155,7 +155,7 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
     navigator.geolocation.getCurrentPosition((pos) => {
       const dist = getDistance(pos.coords.latitude, pos.coords.longitude, SPA_COORD.lat, SPA_COORD.lng)
       if (dist > MAX_DISTANCE_M) {
-        alert(`Bạn đang ở quá xa Spa (${Math.round(dist)}m). Vui lòng đến Spa mới được check-out!`)
+        alert(`Vị trí của bạn đang cách Spa ${Math.round(dist)}m (tối đa ${MAX_DISTANCE_M}m).\n\nNếu bạn đang ở Spa, hãy:\n• Ra gần cửa sổ hoặc ra ngoài\n• Bật WiFi và kết nối mạng Spa\n• Thử lại sau 30 giây`)
         setLoading(false)
         return
       }
