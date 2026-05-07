@@ -25,6 +25,14 @@ function getItemDesc(item) {
   return item.dien_giai || ''
 }
 
+function formatVNDate(isoStr) {
+  if (!isoStr) return ''
+  const [y, m, d] = isoStr.split('-')
+  const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+  const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
+  return `${days[date.getDay()]}, ${d}/${m}/${y}`
+}
+
 function getViDesc(vi) {
   if (vi.loai === 'tien_mat') return 'Tiền mặt tại quầy'
   if (vi.loai === 'ngan_hang') return 'Ngân hàng'
@@ -139,7 +147,7 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
 
         setViList(viData || []);
         setHistory(historyData || []);
-        setStats({ thucThu, chi: totalChi, tongDoanhThu: totalDT, pendingCount, insights });
+        setStats({ thucThu, chi: totalChi, tongDoanhThu: totalDT, pendingCount, insights, today });
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
     }
@@ -179,6 +187,49 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
             ))}
           </div>
         </div>
+
+        {/* Số Liệu Hôm Nay */}
+        {isAdmin && (
+          <div style={{ background: LUX.surface2, borderRadius: LUX.radiusLg, padding: '18px', marginBottom: '16px', boxShadow: LUX.shadow, border: `1px solid ${LUX.line}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSerif }}>Số Liệu Hôm Nay</div>
+                <div style={{ fontSize: '12px', color: LUX.taupe, fontFamily: LUX.fontSans, marginTop: '3px', fontWeight: '600' }}>
+                  {formatVNDate(stats.today)}
+                </div>
+                <div style={{ fontSize: '10px', color: LUX.ink3, fontFamily: LUX.fontSans, marginTop: '1px' }}>
+                  Múi giờ Việt Nam (GMT+7)
+                </div>
+              </div>
+              <div style={{ background: '#F0FDF4', color: '#2D7A4F', padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '700', fontFamily: LUX.fontSans, border: '1px solid #86D0A8' }}>
+                🇻🇳 VN
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              {[
+                { label: 'Doanh Thu', value: stats.tongDoanhThu, color: '#2D7A4F', bg: '#F0FDF4', note: 'tổng thu' },
+                { label: 'Thực Thu', value: stats.thucThu, color: '#1A5276', bg: '#EBF5FB', note: 'trừ thẻ TT' },
+                { label: 'Chi Phí', value: stats.chi, color: '#C0392B', bg: '#FEF2F2', note: 'tổng chi' },
+                { label: 'Lợi Nhuận', value: stats.thucThu - stats.chi, color: (stats.thucThu - stats.chi) >= 0 ? '#2D7A4F' : '#C0392B', bg: (stats.thucThu - stats.chi) >= 0 ? '#F0FDF4' : '#FEF2F2', note: 'thu - chi' },
+              ].map((item, idx) => (
+                <div key={idx} style={{ background: item.bg, borderRadius: LUX.radiusSm, padding: '12px', border: `1px solid ${item.color}20` }}>
+                  <div style={{ fontSize: '10px', color: LUX.ink3, fontFamily: LUX.fontSans, marginBottom: '4px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</div>
+                  <div style={{ fontWeight: '800', fontSize: '15px', color: item.color, fontFamily: LUX.fontMono }}>{formatCurrency(item.value)}</div>
+                  <div style={{ fontSize: '9px', color: LUX.ink3, fontFamily: LUX.fontSans, marginTop: '2px' }}>{item.note}</div>
+                </div>
+              ))}
+            </div>
+
+            {stats.tongDoanhThu === 0 && stats.chi === 0 && (
+              <div style={{ marginTop: '12px', padding: '10px 12px', background: '#FFF9F0', borderRadius: LUX.radiusSm, border: '1px solid #F0C080' }}>
+                <div style={{ fontSize: '11px', color: '#8B6914', fontFamily: LUX.fontSans, fontWeight: '600' }}>
+                  ⏳ Chưa có dữ liệu cho ngày này — Lễ Tân chưa nhập hoặc nhập sai ngày
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Phân tích tài chính thông minh */}
         {isAdmin && stats.insights && (
@@ -235,7 +286,8 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
                                 {item.loai === 'chi' ? '-' : item.loai === 'thu' ? '+' : ''} {formatCurrency(item.so_tien)}
                             </div>
                             <div style={{ fontSize: '9px', color: LUX.ink3, fontFamily: LUX.fontSans }}>
-                                {item.created_at ? new Date(item.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                {item.ngay ? (() => { const [y,m,d]=item.ngay.split('-'); return `${d}/${m}` })() : ''}
+                                {item.created_at ? ' · ' + new Date(item.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }) : ''}
                             </div>
                         </div>
                     </div>
