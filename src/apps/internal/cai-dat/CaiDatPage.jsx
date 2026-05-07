@@ -51,13 +51,19 @@ export default function CaiDatPage({ user }) {
           <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
             {isAdmin ? '👑' : '💁'}
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ color: '#FFFBF5', fontWeight: '700', fontSize: '18px', letterSpacing: '0.5px', fontFamily: LUX.fontSerif }}>{user?.ten || user?.ho_ten || 'Người dùng'}</div>
             <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', marginTop: '4px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: LUX.fontSans }}>
               <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#86EFAC' }} />
               {isAdmin ? 'Quản Trị Viên (Admin)' : 'Nhân Viên Spa'}
             </div>
           </div>
+          <button
+            onClick={async () => { await logout(); window.location.replace('/') }}
+            style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '12px', color: 'white', padding: '10px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: LUX.fontSans, whiteSpace: 'nowrap' }}
+          >
+            <span style={{ fontSize: '16px' }}>🚪</span> Đăng Xuất
+          </button>
         </div>
       </div>
 
