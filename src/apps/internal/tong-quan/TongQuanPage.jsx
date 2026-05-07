@@ -94,7 +94,7 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
           supabase.from('lich_su_giao_dich_tong_hop').select('*').limit(8),
           supabase.from('doanh_thu').select('so_tien, hinh_thuc').eq('ngay', today),
           supabase.from('chi_phi').select('so_tien').eq('ngay', today),
-          supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet'),
+          supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet').in('loai_yeu_cau', ['sua', 'xoa']),
           supabase.from('doanh_thu').select('so_tien, hinh_thuc').gte('ngay', monISO).lte('ngay', today),
           supabase.from('chi_phi').select('so_tien, danh_muc_id').gte('ngay', monISO).lte('ngay', today),
         ]);
