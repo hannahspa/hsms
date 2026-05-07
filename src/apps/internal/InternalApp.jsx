@@ -90,7 +90,7 @@ export default function InternalApp() {
         {form === 'chi' && <FormChiPhi    viList={viList} user={user} onClose={closeForm} onSaved={showToast} />}
         {form === 'ck'  && <FormChuyenKhoan viList={viList} user={user} onClose={closeForm} onSaved={showToast} />}
 
-        <div style={{ paddingBottom: '80px' }}>
+        <div style={{ paddingBottom: isLeTan ? '0px' : '80px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '80px', color: LUX.ink3 }}>
               <div style={{ fontSize: '28px', marginBottom: '12px' }}>🌸</div>
@@ -100,15 +100,25 @@ export default function InternalApp() {
             <>
               {effectiveTab === 'tong-quan' && <TongQuanPage viList={viList} user={user} onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
               {effectiveTab === 'tai-khoan' && <TaiKhoanPage viList={viList} user={user} isDesktop={isDesktop} />}
-              {effectiveTab === 'doi-soat'  && <DoiSoatPage user={user} onOpenForm={handleOpenForm} />}
+              {effectiveTab === 'doi-soat'  && <DoiSoatPage user={user} onOpenForm={handleOpenForm} onSettings={() => setTab('cai-dat')} />}
               {effectiveTab === 'nhap-lieu' && <NhapLieuPage onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
               {effectiveTab === 'bao-cao'   && <BaoCaoPage isDesktop={isDesktop} />}
-              {effectiveTab === 'cai-dat'   && <CaiDatPage user={user} isDesktop={isDesktop} />}
+              {effectiveTab === 'cai-dat'   && (
+                <>
+                  {isLeTan && (
+                    <button onClick={() => setTab('doi-soat')}
+                      style={{ position: 'fixed', top: '12px', left: '12px', zIndex: 1001, width: '36px', height: '36px', borderRadius: '10px', background: LUX.surface2, border: `1px solid ${LUX.line}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', cursor: 'pointer', color: LUX.ink, boxShadow: LUX.shadowSm }}>
+                      ←
+                    </button>
+                  )}
+                  <CaiDatPage user={user} isDesktop={isDesktop} />
+                </>
+              )}
             </>
           )}
         </div>
 
-        <BottomNav active={effectiveTab} onChange={setTab} onOpenForm={handleOpenForm} user={user} />
+        {!isLeTan && <BottomNav active={effectiveTab} onChange={setTab} onOpenForm={handleOpenForm} user={user} />}
       </div>
     </>
   )

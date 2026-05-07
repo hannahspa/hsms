@@ -20,13 +20,20 @@ function getItemLabel(item) {
   return item.mo_ta || 'Giao dịch'
 }
 
-export default function DoiSoatPage({ user, onOpenForm }) {
+export default function DoiSoatPage({ user, onOpenForm, onSettings }) {
   const [ngay, setNgay] = useState(todayISO())
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [showLich, setShowLich] = useState(false)
   const [showDoiSoat, setShowDoiSoat] = useState(false)
   const [selectedGD, setSelectedGD] = useState(null)
+  const [fabOpen, setFabOpen] = useState(false)
+
+  const fabOptions = [
+    { id: 'thu', icon: '💰', label: 'Doanh Thu', bg: 'linear-gradient(135deg,#F0FDF4,#DCFCE7)', color: '#2D7A4F' },
+    { id: 'chi', icon: '💸', label: 'Chi Phí',   bg: 'linear-gradient(135deg,#FFF5F5,#FFE4E4)', color: '#C0392B' },
+    { id: 'ck',  icon: '🔄', label: 'CK Nội Bộ',  bg: 'linear-gradient(135deg,#F5F3FF,#EDE9FE)', color: '#6C3483' },
+  ]
 
   const fetchData = async (date) => {
     setLoading(true)
@@ -52,7 +59,7 @@ export default function DoiSoatPage({ user, onOpenForm }) {
   const todayLabel = isToday ? 'Hôm nay' : formatDateInput(ngay)
 
   return (
-    <div style={{ background: LUX.bg, minHeight: '100vh', paddingBottom: '100px' }}>
+    <div style={{ background: LUX.bg, minHeight: '100vh', paddingBottom: '90px' }}>
 
       {/* ── Header Compact ── */}
       <div style={{ padding: '20px 20px 8px', background: LUX.surface }}>
@@ -61,7 +68,10 @@ export default function DoiSoatPage({ user, onOpenForm }) {
             <div style={{ fontSize: '12px', color: LUX.ink3, fontFamily: LUX.fontSans }}>Xin chào,</div>
             <div style={{ fontWeight: '700', fontSize: '17px', color: LUX.ink, fontFamily: LUX.fontSerif }}>{user?.ho_ten || 'Lễ Tân'}</div>
           </div>
-          <div style={{ width: '42px', height: '42px', borderRadius: '14px', background: LUX.heroGrad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'white' }}>💁</div>
+          <button onClick={onSettings}
+            style={{ width: '36px', height: '36px', borderRadius: '12px', background: LUX.surface2, border: `1px solid ${LUX.line}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', cursor: 'pointer', color: LUX.ink3 }}>
+            ⚙️
+          </button>
         </div>
 
         {/* ── Quick Actions ── */}
@@ -183,6 +193,30 @@ export default function DoiSoatPage({ user, onOpenForm }) {
           onUpdated={() => { setSelectedGD(null); fetchData(ngay) }}
         />
       )}
+
+      {/* ── FAB ── */}
+      {fabOpen && <div onClick={() => setFabOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 97 }} />}
+      {fabOpen && (
+        <div style={{ position: 'fixed', bottom: '90px', right: '16px', zIndex: 98, background: 'white', borderRadius: '20px', padding: '6px', boxShadow: '0 8px 32px rgba(139,94,60,0.25)' }}>
+          {fabOptions.map(opt => (
+            <button key={opt.id} onClick={() => { onOpenForm?.(opt.id); setFabOpen(false) }}
+              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '12px 14px', background: 'none', border: 'none', borderRadius: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              onMouseEnter={e => e.currentTarget.style.background = LUX.bg}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: opt.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{opt.icon}</div>
+              <span style={{ fontWeight: '600', fontSize: '13px', color: opt.color, fontFamily: LUX.fontSans }}>{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <button onClick={() => setFabOpen(!fabOpen)}
+        style={{ position: 'fixed', bottom: '24px', right: '16px', width: '52px', height: '52px', borderRadius: '50%',
+          background: fabOpen ? '#C0392B' : LUX.heroGrad, color: 'white', fontSize: fabOpen ? '24px' : '28px',
+          border: 'none', cursor: 'pointer', boxShadow: '0 4px 20px rgba(139,94,60,0.4)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99,
+          transform: fabOpen ? 'rotate(45deg)' : 'rotate(0deg)', transition: 'all 0.2s' }}>
+        +
+      </button>
     </div>
   )
 }
