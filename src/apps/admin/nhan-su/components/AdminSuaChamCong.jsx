@@ -144,19 +144,19 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
     setSaving(true)
     try {
       if (cc.loai === 'di_lam') {
-        if (!cc.gio_vao || !cc.gio_ra) {
-          showToast('Vui lòng nhập đầy đủ giờ vào và giờ ra', 'error')
+        if (!cc.gio_vao) {
+          showToast('Vui lòng nhập giờ vào', 'error')
           setSaving(false)
           return
         }
-        const heSo = tinhHeSo(cc.gio_vao, cc.gio_ra)
-        const tangCaGio = tinhTangCa(cc.gio_ra)
+        const heSo = cc.gio_ra ? tinhHeSo(cc.gio_vao, cc.gio_ra) : 0
+        const tangCaGio = cc.gio_ra ? tinhTangCa(cc.gio_ra) : 0
         const payload = {
           nhan_vien_id: nhanVien.id,
           ngay: cc.ngay,
           loai: 'di_lam',
           gio_vao: cc.gio_vao,
-          gio_ra: cc.gio_ra,
+          gio_ra: cc.gio_ra || null,
           he_so: cc.he_so_override !== undefined ? cc.he_so_override : heSo,
           tang_ca_gio: cc.tang_ca_override !== undefined ? cc.tang_ca_override : tangCaGio,
           he_so_tam: heSo,
@@ -275,6 +275,13 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
               </button>
             </div>
           </div>
+
+          {/* Toast trong edit form */}
+          {toast && (
+            <div style={{ margin: '0 20px', padding: '10px 14px', borderRadius: LUX.radiusSm, background: toast.type === 'error' ? '#FEF2F2' : '#F0FDF4', color: toast.type === 'error' ? '#C0392B' : '#2D7A4F', fontFamily: LUX.fontSans, fontSize: '13px', fontWeight: 600, flexShrink: 0 }}>
+              {toast.msg}
+            </div>
+          )}
 
           {/* Nội dung — có thể cuộn */}
           <div style={{ padding: '0 20px', overflowY: 'auto', flex: 1 }}>

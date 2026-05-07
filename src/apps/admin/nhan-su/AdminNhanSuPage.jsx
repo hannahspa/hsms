@@ -97,7 +97,7 @@ export default function AdminNhanSuPage() {
       supabase.from('nhan_vien').select('id', { count: 'exact' }).eq('trang_thai', 'dang_lam'),
       supabase.from('cham_cong').select('nhan_vien_id').eq('ngay', today).not('gio_vao', 'is', null),
       supabase.from('dang_ky_off').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet'),
-      supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet'),
+      supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet').in('loai_yeu_cau', ['sua', 'xoa', 'dung_ngay_le']),
     ]).then(([nv, cc, od, yc]) => {
       setStats({
         nvCount:  nv.count || 0,
