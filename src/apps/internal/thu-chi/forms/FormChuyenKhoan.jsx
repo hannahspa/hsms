@@ -26,7 +26,12 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
       return onSaved('error', 'Ví gửi và Ví nhận không được trùng nhau!')
 
     const soDuTu = tuVi?.so_du_hien_tai || 0
-    if (parseInt(soTien) > soDuTu) return onSaved('error', `Số dư ${tuVi?.ten || 'ví nguồn'} không đủ! Hiện có: ${formatCurrency(soDuTu)}`)
+    if (parseInt(soTien) > soDuTu) {
+      const isAdmin = user?.vai_tro === 'admin'
+      return onSaved('error', isAdmin
+        ? `Số dư ${tuVi?.ten || 'ví nguồn'} không đủ! Hiện có: ${formatCurrency(soDuTu)}`
+        : `Số Dư ${tuVi?.ten || 'Ví Nguồn'} không đủ để chuyển khoản tiền này.`)
+    }
 
     setSaving(true)
     try {

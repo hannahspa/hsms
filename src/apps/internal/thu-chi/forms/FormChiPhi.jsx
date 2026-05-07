@@ -70,7 +70,12 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
     if (!dienGiai?.trim()) return onSaved('error', 'Vui lòng nhập diễn giải!')
 
     const soDu = viSelected?.so_du_hien_tai || 0
-    if (parseInt(soTien) > soDu) return onSaved('error', `Số dư ${viSelected?.ten || 'ví'} không đủ! Hiện có: ${formatCurrency(soDu)}`)
+    if (parseInt(soTien) > soDu) {
+      const isAdmin = user?.vai_tro === 'admin'
+      return onSaved('error', isAdmin
+        ? `Số dư ${viSelected?.ten || 'ví'} không đủ! Hiện có: ${formatCurrency(soDu)}`
+        : `Số Dư ${viSelected?.ten || 'Ví'} không đủ để chi khoản tiền này.`)
+    }
 
     setSaving(true)
     try {

@@ -76,7 +76,7 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
   const loaiIcon  = giaoDich.loai === 'thu' ? '💰' : giaoDich.loai === 'chi' ? '💸' : '🔄'
 
   return (
-    <div style={{ background:'#FAF7F4',minHeight:'100vh',paddingBottom:'100px' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:300, background:'#FAF7F4', overflowY:'auto' }}>
 
       {/* Toast */}
       {toast && (
