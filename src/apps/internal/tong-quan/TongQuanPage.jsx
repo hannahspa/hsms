@@ -76,7 +76,6 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm }) {
   const [stats, setStats] = useState({ thucThu: 0, chi: 0, tongDoanhThu: 0, pendingCount: 0, insights: null })
   const [loading, setLoading] = useState(true)
   const [selectedGD, setSelectedGD] = useState(null)
-  const [insightData, setInsightData] = useState(null)
   const isAdmin = user?.vai_tro === 'admin';
 
   useEffect(() => {
@@ -140,7 +139,6 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm }) {
         setViList(viData || []);
         setHistory(historyData || []);
         setStats({ thucThu, chi: totalChi, tongDoanhThu: totalDT, pendingCount, insights });
-        setInsightData({ thuWeek, chiWeek, loiNhuanWeek, soDuThapNhat, tenViThap });
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
     }
@@ -196,7 +194,7 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm }) {
 
         {/* Thông báo yêu cầu chờ duyệt */}
         {isAdmin && stats.pendingCount > 0 && (
-          <div onClick={() => window.open('/admin', '_self')} style={{ background: 'linear-gradient(135deg,#FFF9F0,#FFF3E0)', borderRadius: LUX.radiusLg, padding: '16px 18px', marginBottom: '16px', boxShadow: LUX.shadow, border: '2px solid #F0C080', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div onClick={() => window.location.href = '/admin/nhan-su'} style={{ background: 'linear-gradient(135deg,#FFF9F0,#FFF3E0)', borderRadius: LUX.radiusLg, padding: '16px 18px', marginBottom: '16px', boxShadow: LUX.shadow, border: '2px solid #F0C080', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#F0C080', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
               🔔
             </div>
