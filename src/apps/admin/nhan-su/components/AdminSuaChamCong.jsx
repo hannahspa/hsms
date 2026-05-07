@@ -252,27 +252,32 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 2001, display: 'flex', alignItems: 'flex-end' }}
         onClick={() => setEditDay(null)}>
-        <div style={{ background: LUX.bg, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, width: '100%', maxWidth: '480px', margin: '0 auto', paddingBottom: '40px' }}
+        <div style={{ background: LUX.bg, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
           onClick={e => e.stopPropagation()}>
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-            <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: LUX.line2 }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px' }}>
-            <div>
-              <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '18px', color: LUX.espresso }}>
-                {editDay.isNew ? 'Thêm Chấm Công' : 'Sửa Chấm Công'}
-              </div>
-              <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', color: LUX.ink3, marginTop: '2px' }}>
-                {fmtNgay(cc.ngay)} — {nhanVien.ho_ten}
-              </div>
+
+          {/* Header — cố định */}
+          <div style={{ flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: LUX.line2 }} />
             </div>
-            <button onClick={() => setEditDay(null)}
-              style={{ background: LUX.line, border: 'none', borderRadius: '10px', padding: '6px 14px', fontSize: '13px', color: LUX.ink3, cursor: 'pointer', fontFamily: LUX.fontSans, fontWeight: 600 }}>
-              Huỷ
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px' }}>
+              <div>
+                <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '18px', color: LUX.espresso }}>
+                  {editDay.isNew ? 'Thêm Chấm Công' : 'Sửa Chấm Công'}
+                </div>
+                <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', color: LUX.ink3, marginTop: '2px' }}>
+                  {fmtNgay(cc.ngay)} — {nhanVien.ho_ten}
+                </div>
+              </div>
+              <button onClick={() => setEditDay(null)}
+                style={{ background: LUX.line, border: 'none', borderRadius: '10px', padding: '6px 14px', fontSize: '13px', color: LUX.ink3, cursor: 'pointer', fontFamily: LUX.fontSans, fontWeight: 600 }}>
+                Huỷ
+              </button>
+            </div>
           </div>
 
-          <div style={{ padding: '0 20px' }}>
+          {/* Nội dung — có thể cuộn */}
+          <div style={{ padding: '0 20px', overflowY: 'auto', flex: 1 }}>
             {/* Loại */}
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>Loại Chấm Công</label>
@@ -327,7 +332,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
                 </div>
 
                 {/* Manual override */}
-                <div style={{ marginBottom: '16px' }}>
+                <div style={{ marginBottom: '8px' }}>
                   <label style={{ ...labelStyle, color: LUX.danger }}>Ghi Đè Thủ Công (bỏ trống = dùng tự động)</label>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <div style={{ flex: 1 }}>
@@ -348,8 +353,11 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
                 </div>
               </>
             )}
+          </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+          {/* Nút Lưu — cố định ở dưới, luôn hiển thị */}
+          <div style={{ padding: '12px 20px 40px', flexShrink: 0, borderTop: `1px solid ${LUX.line}`, background: LUX.bg }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={handleSaveDay} disabled={saving}
                 style={{ flex: 1, background: saving ? LUX.champagne2 : LUX.goldGrad, color: 'white', border: 'none', borderRadius: LUX.radius, padding: '14px', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '15px', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: `0 4px 16px ${LUX.gold}50` }}>
                 {saving ? '⏳ Đang lưu...' : '💾 Lưu'}
