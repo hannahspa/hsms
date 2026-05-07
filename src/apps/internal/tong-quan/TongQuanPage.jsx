@@ -76,6 +76,7 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
   const [stats, setStats] = useState({ thucThu: 0, chi: 0, tongDoanhThu: 0, pendingCount: 0, insights: null })
   const [loading, setLoading] = useState(true)
   const [selectedGD, setSelectedGD] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
   const isAdmin = user?.vai_tro === 'admin';
 
   useEffect(() => {
@@ -143,7 +144,7 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
       finally { setLoading(false); }
     }
     fetchData();
-  }, []);
+  }, [refreshKey]);
 
   if (loading) return <div style={{ padding: '60px', textAlign: 'center', color: LUX.ink3, fontSize: '13px', fontFamily: LUX.fontSans }}>✨ Chào mừng bạn đến với Hannah Spa...</div>
 
@@ -249,7 +250,7 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
           giaoDich={selectedGD}
           user={user}
           onBack={() => setSelectedGD(null)}
-          onUpdated={() => { setSelectedGD(null); window.location.reload() }}
+          onUpdated={() => { setSelectedGD(null); setRefreshKey(k => k + 1) }}
         />
       )}
     </div>

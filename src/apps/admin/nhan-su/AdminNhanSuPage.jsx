@@ -204,11 +204,12 @@ export default function AdminNhanSuPage() {
         border: `1px solid ${LUX.line}`,
       }}>
         {[
-          { n: stats.nvCount, l: 'Nhân viên' },
-          { n: stats.diLam,   l: 'Đang làm'  },
-          { n: stats.choduyet, l: 'Chờ duyệt', highlight: stats.choduyet > 0 },
+          { n: stats.nvCount, l: 'Nhân viên', onClick: null },
+          { n: stats.diLam,   l: 'Đang làm',  onClick: null },
+          { n: stats.choduyet, l: 'Chờ duyệt', highlight: stats.choduyet > 0, onClick: () => setView('off') },
         ].map((s, i) => (
-          <div key={i} style={{ background: LUX.surface2, padding: '14px 12px', textAlign: 'center' }}>
+          <div key={i} onClick={s.onClick || undefined}
+            style={{ background: LUX.surface2, padding: '14px 12px', textAlign: 'center', cursor: s.onClick ? 'pointer' : 'default' }}>
             <div style={{ fontFamily: LUX.fontSerif, fontSize: 28, fontWeight: 600, lineHeight: 1, color: s.highlight ? LUX.gold : LUX.espresso }}>
               {s.n}
             </div>

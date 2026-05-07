@@ -19,17 +19,22 @@ export default function BaoCaoDongTien({ onBack }) {
         const lastDay = new Date(parseInt(year), parseInt(m), 0).getDate()
         const end = `${year}-${m}-${String(lastDay).padStart(2, '0')}`
 
-        const [{ data: dtData }, { data: cpData }] = await Promise.all([
+        const [{ data: dtData }, { data: cpData }, { data: dmData }] = await Promise.all([
           supabase.from('doanh_thu').select('so_tien, hinh_thuc').gte('ngay', start).lte('ngay', end),
           supabase.from('chi_phi').select('so_tien, danh_muc_id').gte('ngay', start).lte('ngay', end),
+          supabase.from('danh_muc_chi_phi').select('id, phan_loai_dong_tien'),
         ])
 
         const thucThu = (dtData || []).filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0)
 
-        // Group chi phí by phan_loai (default to 'hoat_dong')
+        // Build map danh_muc_id → phan_loai_dong_tien
+        const dmMap = {}
+        ;(dmData || []).forEach(dm => { dmMap[dm.id] = dm.phan_loai_dong_tien || 'hoat_dong' })
+
+        // Group chi phí by phan_loai từ danh_muc_chi_phi
         const groups = { hoat_dong: 0, dau_tu: 0, tai_chinh: 0 }
         ;(cpData || []).forEach(r => {
-          const loai = r.phan_loai_dong_tien || 'hoat_dong'
+          const loai = dmMap[r.danh_muc_id] || 'hoat_dong'
           if (groups[loai] !== undefined) groups[loai] += r.so_tien
           else groups.hoat_dong += r.so_tien
         })

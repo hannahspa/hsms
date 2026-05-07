@@ -9,6 +9,16 @@ export default function TabXetDuyet({ onUpdate }) {
   const [nvMap,       setNvMap]       = useState({})
   const [loading,     setLoading]     = useState(true)
   const [rejectModal, setRejectModal] = useState(null) // { type: 'off'|'le'|'sx', id, defaultReason }
+  const [rejectLyDo,  setRejectLyDo]  = useState('')
+
+  const openRejectModal = (type, id, defaultReason) => {
+    setRejectModal({ type, id, defaultReason })
+    setRejectLyDo(defaultReason)
+  }
+  const closeRejectModal = () => {
+    setRejectModal(null)
+    setRejectLyDo('')
+  }
 
   useEffect(() => { fetchData() }, [])
 
@@ -70,7 +80,7 @@ export default function TabXetDuyet({ onUpdate }) {
 
   const handleDuyetSuaXoa = async (ycId, duyet) => {
     if (!duyet) {
-      setRejectModal({ type: 'sx', id: ycId, defaultReason: 'Không đủ thông tin hoặc sai số liệu' })
+      openRejectModal('sx', ycId, 'Không đủ thông tin hoặc sai số liệu')
       return
     }
     const yc = suaXoaList.find(d => d.id === ycId)
@@ -101,7 +111,7 @@ export default function TabXetDuyet({ onUpdate }) {
 
   const handleDuyet = async (id, trangThaiMoi) => {
     if (trangThaiMoi === 'tu_choi') {
-      setRejectModal({ type: 'off', id, defaultReason: 'Không thể duyệt do thiếu người' })
+      openRejectModal('off', id, 'Không thể duyệt do thiếu người')
     } else {
       await supabase.from('dang_ky_off').update({ trang_thai: 'duoc_duyet', ghi_chu_duyet: 'OK' }).eq('id', id)
       fetchData()
@@ -111,7 +121,7 @@ export default function TabXetDuyet({ onUpdate }) {
 
   const handleDuyetDungLe = async (yeuCauId, duyet) => {
     if (!duyet) {
-      setRejectModal({ type: 'le', id: yeuCauId, defaultReason: 'Chưa đủ điều kiện' })
+      openRejectModal('le', yeuCauId, 'Chưa đủ điều kiện')
     } else {
       const yc = dungLeList.find(d => d.id === yeuCauId)
       if (!yc) return
@@ -439,26 +449,28 @@ export default function TabXetDuyet({ onUpdate }) {
       {/* Reject Modal */}
       {rejectModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'flex-end' }}
-          onClick={() => setRejectModal(null)}>
+          onClick={closeRejectModal}>
           <div style={{ background: LUX.surface2, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '480px', margin: '0 auto', padding: '24px 20px 40px' }}
             onClick={e => e.stopPropagation()}>
             <h3 style={{ fontFamily: LUX.fontSerif, fontSize: '17px', fontWeight: 700, color: LUX.ink, marginBottom: '4px' }}>Lý do từ chối</h3>
             <p style={{ fontFamily: LUX.fontSans, fontSize: '12px', color: LUX.ink3, marginBottom: '16px' }}>Nhân viên sẽ thấy lý do này</p>
-            <textarea id="reject-reason" defaultValue={rejectModal.defaultReason}
+            <textarea
+              value={rejectLyDo}
+              onChange={e => setRejectLyDo(e.target.value)}
               rows={3}
               style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${LUX.line}`, fontSize: '13px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: LUX.fontSans, marginBottom: '16px' }}
             />
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setRejectModal(null)}
+              <button onClick={closeRejectModal}
                 style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, background: LUX.surface, border: `1px solid ${LUX.line}`, color: LUX.ink2, fontWeight: 600, fontSize: '14px', cursor: 'pointer', fontFamily: LUX.fontSans }}>
                 Hủy
               </button>
               <button onClick={() => {
-                const lyDo = document.getElementById('reject-reason').value.trim() || rejectModal.defaultReason
+                const lyDo = rejectLyDo.trim() || rejectModal.defaultReason
                 if (rejectModal.type === 'off') executeRejectOff(rejectModal.id, lyDo)
                 else if (rejectModal.type === 'sx') executeRejectSuaXoa(rejectModal.id, lyDo)
                 else executeRejectLe(rejectModal.id, lyDo)
-                setRejectModal(null)
+                closeRejectModal()
               }}
                 style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, background: '#C0392B', border: 'none', color: 'white', fontWeight: 700, fontSize: '14px', cursor: 'pointer', fontFamily: LUX.fontSans }}>
                 Xác Nhận Từ Chối

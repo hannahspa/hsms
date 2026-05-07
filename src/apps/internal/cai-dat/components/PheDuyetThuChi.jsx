@@ -9,6 +9,9 @@ const BANG_LABEL = {
   chuyen_khoan_noi_bo: 'Chuyển Khoản',
 }
 
+// Dual-access: Component này cho Admin duyệt nhanh từ TongQuan (InternalApp).
+// TabXetDuyet trong AdminApp xử lý tương tự — cả hai cùng filter 'cho_duyet',
+// nên duyệt ở chỗ nào thì chỗ kia tự mất. Không có conflict.
 export default function PheDuyetThuChi({ onClose, onUpdated }) {
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(true)

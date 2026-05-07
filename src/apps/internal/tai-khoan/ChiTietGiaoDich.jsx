@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { LUX } from '../../../constants/lux'
 import { formatCurrency, formatDateInput } from '../../../lib/utils'
+import DatePicker from '../../../components/shared/DatePicker'
 
 const HINH_THUC_LABELS = {
   tien_mat:      '💵 Tiền Mặt',
@@ -203,10 +204,12 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
 
 // ── Sub-component: Form sửa ───────────────────────────────
 function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }) {
-  const [soTien,    setSoTien]    = useState(String(giaoDich.so_tien))
-  const [dienGiai,  setDienGiai]  = useState(giaoDich.dien_giai || '')
-  const [lyDo,      setLyDo]      = useState('')
-  const [loading,   setLoading]   = useState(false)
+  const [soTien,         setSoTien]         = useState(String(giaoDich.so_tien))
+  const [dienGiai,       setDienGiai]       = useState(giaoDich.dien_giai || '')
+  const [ngay,           setNgay]           = useState(giaoDich.ngay || '')
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [lyDo,           setLyDo]           = useState('')
+  const [loading,        setLoading]        = useState(false)
 
   const getLoaiBang = () => {
     if (giaoDich.loai === 'thu') return 'doanh_thu'
@@ -221,7 +224,7 @@ function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }
 
     setLoading(true)
     try {
-      const duLieuMoi = { so_tien: parsed, dien_giai: dienGiai }
+      const duLieuMoi = { so_tien: parsed, dien_giai: dienGiai, ngay }
 
       if (isAdmin) {
         const { error } = await supabase
@@ -259,6 +262,16 @@ function EditGiaoDich({ giaoDich, user, isAdmin, onClose, onUpdated, showToast }
 
   return (
     <div>
+      <div style={{ marginBottom:'16px' }}>
+        <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Ngày</div>
+        <button onClick={() => setShowDatePicker(true)}
+          style={{ width:'100%',padding:'14px',borderRadius:'12px',border:`1px solid ${LUX.line}`,background:LUX.surface2,textAlign:'left',fontSize:'14px',color:LUX.ink,cursor:'pointer',fontFamily:LUX.fontSans,display:'flex',alignItems:'center',gap:'8px' }}>
+          <span>📅</span> {formatDateInput(ngay)}
+        </button>
+        <DatePicker open={showDatePicker} selectedDate={ngay}
+          onClose={() => setShowDatePicker(false)}
+          onConfirm={d => { setNgay(d); setShowDatePicker(false) }} />
+      </div>
       <div style={{ marginBottom:'16px' }}>
         <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'6px',fontWeight:'600' }}>Số tiền (đ)</div>
         <input
