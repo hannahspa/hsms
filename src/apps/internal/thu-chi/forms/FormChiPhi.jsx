@@ -69,8 +69,10 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
     if (!viId)      return onSaved('error', 'Vui lòng chọn ví chi ra!')
     if (!dienGiai?.trim()) return onSaved('error', 'Vui lòng nhập diễn giải!')
 
-    // Kiểm tra số dư chỉ với Lễ Tân — Admin có thể nhập dữ liệu lịch sử không cần kiểm tra
-    if (user?.vai_tro !== 'admin') {
+    // Tiền Mặt được phép âm tạm thời — quy trình nộp quỹ hôm sau sẽ bù lại phần âm
+    // Chỉ kiểm tra số dư với MB Bank và TP Bank (tài khoản ngân hàng không thể âm)
+    const isTienMat = viSelected?.loai === 'tien_mat'
+    if (user?.vai_tro !== 'admin' && !isTienMat) {
       const { data: freshVi } = await supabase
         .from('so_du_vi_thuc_te')
         .select('so_du_hien_tai')
