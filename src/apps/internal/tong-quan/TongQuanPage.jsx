@@ -66,8 +66,17 @@ function HeaderTongQuan({ user, viList = [], stats }) {
         <div style={{ color: '#FFFBF5', fontSize: '38px', fontWeight: '700', letterSpacing: '-0.5px', textShadow: '0 2px 10px rgba(0,0,0,0.1)', fontFamily: LUX.fontSerif }}>{isAdmin ? formatCurrency(tongTS) : formatCurrencyHide()}</div>
       </div>
 
+      <div style={{ textAlign: 'center', marginBottom: '8px', position: 'relative' }}>
+        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px', fontFamily: LUX.fontSans, letterSpacing: '1px' }}>
+          — THÁNG {stats.thangHienTai || ''} —
+        </div>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', position: 'relative' }}>
-        {[ { label: 'Thực Thu', value: stats.thucThu, color: '#A3E635' }, { label: 'Doanh Thu', value: stats.tongDoanhThu, color: '#FDE047' }, { label: 'Lợi Nhuận', value: stats.thucThu - stats.chi, color: '#FFF' } ].map((item, idx) => (
+        {[
+          { label: 'Thực Thu', value: stats.thucThuMonth, color: '#A3E635' },
+          { label: 'Doanh Thu', value: stats.tongDTMonth, color: '#FDE047' },
+          { label: 'Lợi Nhuận', value: (stats.thucThuMonth || 0) - (stats.chiMonth || 0), color: ((stats.thucThuMonth || 0) - (stats.chiMonth || 0)) >= 0 ? '#A3E635' : '#FCA5A5' },
+        ].map((item, idx) => (
             <div key={idx} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '14px', padding: '10px 4px', border: '1px solid rgba(255,255,255,0.12)', textAlign: 'center', backdropFilter: 'blur(5px)' }}>
                 <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '9px', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.5px', fontFamily: LUX.fontSans }}>{item.label}</div>
                 <div style={{ color: item.color, fontWeight: '700', fontSize: '13px', fontFamily: LUX.fontMono }}>{formatCurrency(item.value)}</div>
@@ -92,12 +101,14 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
       try {
         const today = todayISO();
         const now = getNowVN();
-        const dayOfWeek = now.getDay(); // 0=CN, 1=T2...
+        const dayOfWeek = now.getDay();
         const startOfWeek = new Date(now);
         startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
         const monISO = startOfWeek.toISOString().split('T')[0];
+        const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        const thangHienTai = now.getMonth() + 1;
 
-        const [viRes, historyRes, dtTodayRes, cpTodayRes, ycRes, dtWeekRes, cpWeekRes] = await Promise.all([
+        const [viRes, historyRes, dtTodayRes, cpTodayRes, ycRes, dtWeekRes, cpWeekRes, dtMonthRes, cpMonthRes] = await Promise.all([
           supabase.from('so_du_vi_thuc_te').select('*'),
           supabase.from('lich_su_giao_dich_tong_hop').select('*').limit(8),
           supabase.from('doanh_thu').select('so_tien, hinh_thuc').eq('ngay', today),
@@ -105,6 +116,8 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
           supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet').in('loai_yeu_cau', ['sua', 'xoa']),
           supabase.from('doanh_thu').select('so_tien, hinh_thuc').gte('ngay', monISO).lte('ngay', today),
           supabase.from('chi_phi').select('so_tien, danh_muc_id').gte('ngay', monISO).lte('ngay', today),
+          supabase.from('doanh_thu').select('so_tien, hinh_thuc').gte('ngay', startOfMonth).lte('ngay', today),
+          supabase.from('chi_phi').select('so_tien').gte('ngay', startOfMonth).lte('ngay', today),
         ]);
         const { data: viData } = viRes;
         const { data: historyData } = historyRes;
@@ -112,13 +125,18 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
         const { data: cpToday } = cpTodayRes;
         const pendingCount = ycRes.count || 0;
 
+        // Hôm nay — dùng cho card "Số Liệu Hôm Nay"
         const thucThu = (dtToday || []).filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0) || 0;
         const totalDT = (dtToday || []).reduce((s, r) => s + r.so_tien, 0) || 0;
         const totalChi = (cpToday || []).reduce((s, r) => s + r.so_tien, 0) || 0;
 
-        // Weekly insights
+        // Tháng này — dùng cho 3 ô header
+        const thucThuMonth = (dtMonthRes.data || []).filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0) || 0;
+        const tongDTMonth = (dtMonthRes.data || []).reduce((s, r) => s + r.so_tien, 0) || 0;
+        const chiMonth = (cpMonthRes.data || []).reduce((s, r) => s + r.so_tien, 0) || 0;
+
+        // Tuần này — dùng cho insights
         const thuWeek = (dtWeekRes.data || []).filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0) || 0;
-        const totalDTWeek = (dtWeekRes.data || []).reduce((s, r) => s + r.so_tien, 0) || 0;
         const chiWeek = (cpWeekRes.data || []).reduce((s, r) => s + r.so_tien, 0) || 0;
         const loiNhuanWeek = thuWeek - chiWeek;
 
@@ -147,7 +165,7 @@ export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOp
 
         setViList(viData || []);
         setHistory(historyData || []);
-        setStats({ thucThu, chi: totalChi, tongDoanhThu: totalDT, pendingCount, insights, today });
+        setStats({ thucThu, chi: totalChi, tongDoanhThu: totalDT, thucThuMonth, chiMonth, tongDTMonth, thangHienTai, pendingCount, insights, today });
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
     }
