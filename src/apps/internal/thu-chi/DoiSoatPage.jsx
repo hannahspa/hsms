@@ -20,7 +20,7 @@ function getItemLabel(item) {
   return item.mo_ta || 'Giao dịch'
 }
 
-export default function DoiSoatPage({ user, onOpenForm, onSettings }) {
+export default function DoiSoatPage({ user, onOpenForm, onSettings, refreshKey }) {
   const [ngay, setNgay] = useState(todayISO())
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
@@ -46,7 +46,7 @@ export default function DoiSoatPage({ user, onOpenForm, onSettings }) {
     setLoading(false)
   }
 
-  useEffect(() => { fetchData(ngay) }, [ngay])
+  useEffect(() => { fetchData(ngay) }, [ngay, refreshKey])
 
   const stats = useMemo(() => {
     const thu = history.filter(h => h.loai === 'thu').length

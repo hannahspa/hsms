@@ -25,6 +25,9 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
     if (tuViId === denViId)
       return onSaved('error', 'Ví gửi và Ví nhận không được trùng nhau!')
 
+    const soDuTu = tuVi?.so_du_hien_tai || 0
+    if (parseInt(soTien) > soDuTu) return onSaved('error', `Số dư ${tuVi?.ten || 'ví nguồn'} không đủ! Hiện có: ${formatCurrency(soDuTu)}`)
+
     setSaving(true)
     try {
       const { error } = await supabase.from('chuyen_khoan_noi_bo').insert({

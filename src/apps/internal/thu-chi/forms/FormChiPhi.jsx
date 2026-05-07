@@ -68,6 +68,10 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
     if (!hangMucId) return onSaved('error', 'Vui lòng chọn hạng mục chi!')
     if (!viId)      return onSaved('error', 'Vui lòng chọn ví chi ra!')
     if (!dienGiai?.trim()) return onSaved('error', 'Vui lòng nhập diễn giải!')
+
+    const soDu = viSelected?.so_du_hien_tai || 0
+    if (parseInt(soTien) > soDu) return onSaved('error', `Số dư ${viSelected?.ten || 'ví'} không đủ! Hiện có: ${formatCurrency(soDu)}`)
+
     setSaving(true)
     try {
       const { error } = await supabase.from('chi_phi').insert({
@@ -174,7 +178,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
                   <div style={{ width: '44px', height: '44px', borderRadius: '13px', background: `linear-gradient(135deg,${LUX.surface},${LUX.line})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>{vi.icon}</div>
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontWeight: '600', fontSize: '15px', color: LUX.ink, fontFamily: LUX.fontSans }}>{vi.ten}</div>
-                    <div style={{ fontSize: '11px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{formatCurrency(vi.so_du_dau)}</div>
+                    <div style={{ fontSize: '11px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{user?.vai_tro === 'admin' ? formatCurrency(vi.so_du_hien_tai) : '••••••'}</div>
                   </div>
                 </div>
                 {viId === vi.id && <span style={{ color: LUX.taupe, fontSize: '20px' }}>✓</span>}

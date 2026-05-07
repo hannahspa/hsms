@@ -25,6 +25,12 @@ export default function InternalApp() {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= BREAKPOINT)
   const { viList, loading } = useVi()
   const { toast, showToast, form, openForm, closeForm } = useApp()
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const handleSaved = (type, msg) => {
+    showToast(type, msg)
+    if (type === 'success') setRefreshKey(k => k + 1)
+  }
 
   useEffect(() => {
     const onResize = () => setIsDesktop(window.innerWidth >= BREAKPOINT)
@@ -80,15 +86,14 @@ export default function InternalApp() {
         fontFamily: LUX.fontSans,
         position: 'relative',
         overflowX: 'hidden',
-        overflowY: 'auto',
         boxShadow: isDesktop ? LUX.shadowLg : 'none',
       }}>
         {splash && <SplashScreen onDone={() => setSplash(false)} />}
         {toast  && <Toast msg={toast.msg} type={toast.type} onClose={() => showToast(null)} />}
 
-        {form === 'thu' && <FormDoanhThu  viList={viList} user={user} onClose={closeForm} onSaved={showToast} />}
-        {form === 'chi' && <FormChiPhi    viList={viList} user={user} onClose={closeForm} onSaved={showToast} />}
-        {form === 'ck'  && <FormChuyenKhoan viList={viList} user={user} onClose={closeForm} onSaved={showToast} />}
+        {form === 'thu' && <FormDoanhThu  viList={viList} user={user} onClose={closeForm} onSaved={handleSaved} />}
+        {form === 'chi' && <FormChiPhi    viList={viList} user={user} onClose={closeForm} onSaved={handleSaved} />}
+        {form === 'ck'  && <FormChuyenKhoan viList={viList} user={user} onClose={closeForm} onSaved={handleSaved} />}
 
         <div style={{ paddingBottom: isLeTan ? '0px' : '80px' }}>
           {loading ? (
@@ -100,7 +105,7 @@ export default function InternalApp() {
             <>
               {effectiveTab === 'tong-quan' && <TongQuanPage viList={viList} user={user} onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
               {effectiveTab === 'tai-khoan' && <TaiKhoanPage viList={viList} user={user} isDesktop={isDesktop} />}
-              {effectiveTab === 'doi-soat'  && <DoiSoatPage user={user} onOpenForm={handleOpenForm} onSettings={() => setTab('cai-dat')} />}
+              {effectiveTab === 'doi-soat'  && <DoiSoatPage user={user} onOpenForm={handleOpenForm} onSettings={() => setTab('cai-dat')} refreshKey={refreshKey} />}
               {effectiveTab === 'nhap-lieu' && <NhapLieuPage onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
               {effectiveTab === 'bao-cao'   && <BaoCaoPage isDesktop={isDesktop} />}
               {effectiveTab === 'cai-dat'   && (
