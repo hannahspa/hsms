@@ -856,45 +856,99 @@ import-thang4.py: import Excel vào Supabase
 6. Email recipients: quocnam2201@gmail.com,
    diemmy241292@gmail.com, khanhduy100102@icloud.com
    (domain chưa verify, tạm dùng onboarding@resend.dev)
+
+7. Tài khoản Lễ Tân (đã tạo 06/05/2026):
+   - KhanhDuy@hannahspa.vn / HannahSpa2026 (Đỗ Thị Khánh Duy)
+   - NgocPhuong@hannahspa.vn / HannahSpa2026 (Hồ Ngọc Phương)
+   - Email cũ (kd/np.hannahspa@gmail.com) đã xoá khỏi Supabase Auth
 ═══════════════════════════════════════════════════════════
-## TRẠNG THÁI DỰ ÁN (Cập nhật 06/05/2026)
+## TRẠNG THÁI DỰ ÁN (Cập nhật 06/05/2026 — Cuối ngày)
 ═══════════════════════════════════════════════════════════
 
 ### PRODUCTION READY — ĐÃ HOÀN THÀNH
 
 ✅ Auth: Supabase Auth hoạt động, 3 tài khoản:
    - Admin:  quocnam2201@gmail.com (Cao Quốc Nam)
-   - Lễ Tân: kd.hannahspa@gmail.com (Đỗ Thị Khánh Duy) — pass: hannah2025
-   - Lễ Tân: np.hannahspa@gmail.com (Hồ Ngọc Phương) — pass: hannah2025
-
-✅ Phân quyền:
-   - Admin → Tổng Quan | Tài Khoản | + | Báo Cáo | Cài Đặt
-   - Lễ Tân → Đối Soát | Nhập Liệu | + | (trống) | Cài Đặt
+   - Lễ Tân: kd.hannahspa@gmail.com → đổi thành KhanhDuy@hannahspa.vn (pass: HannahSpa2026)
+   - Lễ Tân: np.hannahspa@gmail.com → đổi thành NgocPhuong@hannahspa.vn (pass: HannahSpa2026)
    - AuthContext đọc vai_tro từ profiles, KHÔNG auto-create profile
+   - KHÔNG hardcode email admin
 
-✅ Module Thu Chi:
-   - Form DoanhThu/ChiPhi/ChuyenKhoan có upload chứng từ
-   - Người nhập/người chi được lưu tự động
-   - DoiSoatPage cho Lễ Tân (ẩn số dư, chỉ thấy count)
+✅ Phân quyền 3 cấp (Supabase RLS):
+   - Admin → Tổng Quan | Tài Khoản | + | Báo Cáo | Cài Đặt
+   - Lễ Tân → Chỉ Đối Soát (không NavBar, giao diện sạch)
+   - KTV  → Checkin (không truy cập thu chi)
+
+✅ Module Thu Chi — HOÀN CHỈNH:
+   - Form DoanhThu/ChiPhi/ChuyenKhoan có upload chứng từ (bucket chung-tu)
+   - Người nhập/người chi tự động từ user đăng nhập
+   - Diễn Giải bắt buộc với Chi Phí, tùy chọn với Doanh Thu
+   - Kiểm tra số dư ví trước khi Chi/Chuyển Khoản (không cho chi vượt số dư)
+   - Realtime refresh danh sách giao dịch ngay sau khi nhập (refreshKey)
+   - DoiSoatPage cho Lễ Tân: giao diện sạch gọn, không NavBar
+     - Header compact: tên + nút ⚙️ Cài Đặt
+     - Quick action buttons (Thu/Chi/CK)
+     - Date selector với badge "HÔM NAY"
+     - Quick stats (count thu/chi/ck)
+     - Danh sách giao dịch → click mở ChiTietGiaoDich
+     - FAB (+) floating button với popup menu
+     - Ẩn số dư ví với Lễ Tân (hiện ••••••)
    - DoiSoatNgay: checklist cuối ngày (bảng doi_soat_ngay)
+   - ChiTietGiaoDich: xem/sửa/xóa với approval flow cho Lễ Tân
    - 7 báo cáo + BaoCaoDongTien (Cash Flow Statement)
 
-✅ Module Nhân Sự:
-   - Checkin/out, đăng ký OFF, lịch tháng
-   - Admin duyệt OFF + tăng ca (modal thay window.prompt)
-   - AdminTaoOff dùng user.ho_ten thay hardcode
-   - AvatarUpload tích hợp TabHoSo
+✅ Module Nhân Sự — HOÀN CHỈNH:
+   - Checkin/out, đăng ký OFF, lịch tháng, đổi PIN
+   - Admin duyệt OFF + tăng ca (modal RejectModal thay window.prompt)
+   - Admin duyệt yêu cầu sửa/xóa giao dịch (TabXetDuyet)
+   - AdminTaoOff lưu tên admin thật (user.ho_ten, không hardcode)
+   - AvatarUpload tích hợp TabHoSo (bucket avatars)
+   - Import data tháng 4/2026 từ Excel (243 records)
 
-✅ Storage:
-   - Bucket chung-tu (chứng từ thu chi)
-   - Bucket avatars (ảnh nhân viên)
+✅ Quản Lý User (Admin):
+   - QuanLyUser.jsx: CRUD user + profile từ giao diện Admin
+   - Tích hợp vào CaiDatPage → "Quản Lý User"
+   - Dùng Supabase Auth Admin API (service_role key)
+
+✅ Edit/Delete Approval Workflow:
+   - Lễ Tân gửi yêu cầu sửa/xóa → lưu bảng yeu_cau_chinh_sua
+   - Admin duyệt/từ chối trong TabXetDuyet (có modal lý do từ chối)
+   - So sánh dữ liệu cũ/mới side-by-side
+
+✅ Storage (Supabase):
+   - Bucket chung-tu (chứng từ thu chi) — public
+   - Bucket avatars (ảnh nhân viên) — public
    - DonChungTu.jsx: quản lý/xoá chứng từ cũ
+
+✅ UI/UX Fixes:
+   - Mobile layout: chống scroll ngang, viewport cố định
+   - Scroll mượt: bỏ overflowY:auto khỏi container (body scroll tự nhiên)
+   - BottomNav ẩn hoàn toàn với Lễ Tân (giao diện gọn, sạch)
+   - InternalApp container: max-width 520px desktop, 100% mobile
+
+✅ Database:
+   - Đã thêm cột chung_tu_url vào doanh_thu, chi_phi, chuyen_khoan_noi_bo
+   - Đã thêm cột nguoi_nhap vào doanh_thu, chi_phi
+   - Đã thêm cột nguoi_thuc_hien vào chuyen_khoan_noi_bo
+   - View so_du_vi_thuc_te: tính số dư thực tế (loại trừ the_tra_truoc)
+   - View lich_su_giao_dich_tong_hop: UNION ALL 3 bảng
+   - Bảng yeu_cau_chinh_sua: approval queue cho sửa/xóa
 
 ✅ Đã cleanup:
    - Xoá MOCK_USERS (enums.js)
    - Xoá AdminNhanSu.jsx (dead code)
-   - .env files đã git rm --cached
-   - .gitignore đã sửa
+   - .env files đã git rm --cached + rotate service_role key
+   - .gitignore đã sửa (pattern *.env)
+
+### LOGIC KẾ TOÁN — ĐÃ VERIFY
+
+✅ Doanh Thu: 4 hình thức (Tiền Mặt, Chuyển Khoản, Quẹt Thẻ, Thẻ Trả Trước)
+✅ Thực Thu = Doanh Thu - Thẻ Trả Trước (thẻ trả trước không vào cashflow)
+✅ Chi Phí: kiểm tra số dư ví ≥ số tiền chi (không cho chi vượt số dư)
+✅ Chuyển Khoản Nội Bộ: kiểm tra số dư ví nguồn ≥ số tiền chuyển
+✅ Tổng Tài Sản = sum(so_du_hien_tai) của 3 ví
+✅ Lợi Nhuận = Thực Thu - Tổng Chi (tính theo ngày)
+✅ Số dư ví tính từ view so_du_vi_thuc_te (real-time, lũy kế)
 
 ### CẦN LÀM
 
@@ -902,10 +956,12 @@ import-thang4.py: import Excel vào Supabase
 [ ] Tắt public sign-up trên Supabase
 [ ] Nhập data thật từ Google Sheets vào Supabase
 [ ] Test Lễ Tân nhập liệu thực tế
+[ ] Cập nhật so_du_dau sau khi chốt sổ
 
 ### URL
   Dev:  localhost:5173
   Live: hsms-weld.vercel.app → sẽ redirect về hannahspa.vn
   Repo: github.com/hannahspa/hsms
+  Supabase: HannahSpa-production (aqyemkfbjqxpegingoil)
 
 ═══════════════════════════════════════════════════════════
