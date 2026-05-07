@@ -3,6 +3,7 @@ import { AppProvider }  from './context/AppContext'
 import InternalApp from './apps/internal/InternalApp'
 import CheckinApp from './apps/checkin/CheckinApp'
 import AdminApp from './apps/admin/AdminApp'
+import LandingPage from './apps/website/LandingPage'
 import HomePage from './apps/website/HomePage'
 import LoginPage from './apps/auth/LoginPage'
 
@@ -59,13 +60,14 @@ export default function App() {
     return <CheckinApp />
   }
 
-  // Cổng Chính — public landing page
-  const isHome = path === '/' || path === ''
-  const isPublic = path.startsWith('/menu') || path.startsWith('/shop')
+  // Landing page công khai — hannahspa.vn
+  if (path === '/' || path === '') return <LandingPage />
 
-  if (isHome || isPublic) {
-    return <HomePage />
-  }
+  // Portal nội bộ nhân viên
+  if (path.startsWith('/portal')) return <HomePage />
+
+  // Menu & shop (sắp ra mắt)
+  if (path.startsWith('/menu') || path.startsWith('/shop')) return <LandingPage />
 
   return (
     <AuthProvider>
