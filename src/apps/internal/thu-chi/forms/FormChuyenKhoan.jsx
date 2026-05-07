@@ -25,12 +25,17 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
     if (tuViId === denViId)
       return onSaved('error', 'Ví gửi và Ví nhận không được trùng nhau!')
 
-    const soDuTu = tuVi?.so_du_hien_tai || 0
-    if (parseInt(soTien) > soDuTu) {
-      const isAdmin = user?.vai_tro === 'admin'
-      return onSaved('error', isAdmin
-        ? `Số dư ${tuVi?.ten || 'ví nguồn'} không đủ! Hiện có: ${formatCurrency(soDuTu)}`
-        : `Số Dư ${tuVi?.ten || 'Ví Nguồn'} không đủ để chuyển khoản tiền này.`)
+    // Kiểm tra số dư chỉ với Lễ Tân — Admin có thể nhập dữ liệu lịch sử không cần kiểm tra
+    if (user?.vai_tro !== 'admin') {
+      const { data: freshVi } = await supabase
+        .from('so_du_vi_thuc_te')
+        .select('so_du_hien_tai')
+        .eq('id', tuViId)
+        .single()
+      const soDuTu = freshVi?.so_du_hien_tai ?? tuVi?.so_du_hien_tai ?? 0
+      if (parseInt(soTien) > soDuTu) {
+        return onSaved('error', `Số Dư ${tuVi?.ten || 'Ví Nguồn'} không đủ để chuyển khoản tiền này.`)
+      }
     }
 
     setSaving(true)

@@ -69,18 +69,17 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
     if (!viId)      return onSaved('error', 'Vui lòng chọn ví chi ra!')
     if (!dienGiai?.trim()) return onSaved('error', 'Vui lòng nhập diễn giải!')
 
-    // Fetch fresh balance to avoid stale prop issue after Doanh Thu was entered in same session
-    const { data: freshVi } = await supabase
-      .from('so_du_vi_thuc_te')
-      .select('so_du_hien_tai')
-      .eq('id', viId)
-      .single()
-    const soDu = freshVi?.so_du_hien_tai ?? viSelected?.so_du_hien_tai ?? 0
-    if (parseInt(soTien) > soDu) {
-      const isAdmin = user?.vai_tro === 'admin'
-      return onSaved('error', isAdmin
-        ? `Số dư ${viSelected?.ten || 'ví'} không đủ! Hiện có: ${formatCurrency(soDu)}`
-        : `Số Dư ${viSelected?.ten || 'Ví'} không đủ để chi khoản tiền này.`)
+    // Kiểm tra số dư chỉ với Lễ Tân — Admin có thể nhập dữ liệu lịch sử không cần kiểm tra
+    if (user?.vai_tro !== 'admin') {
+      const { data: freshVi } = await supabase
+        .from('so_du_vi_thuc_te')
+        .select('so_du_hien_tai')
+        .eq('id', viId)
+        .single()
+      const soDu = freshVi?.so_du_hien_tai ?? viSelected?.so_du_hien_tai ?? 0
+      if (parseInt(soTien) > soDu) {
+        return onSaved('error', `Số Dư ${viSelected?.ten || 'Ví'} không đủ để chi khoản tiền này.`)
+      }
     }
 
     setSaving(true)
