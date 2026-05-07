@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase'
 import { LUX } from '../../../constants/lux'
 import { formatCurrency, formatCurrencyHide, todayISO, getNowVN, formatDateInput } from '../../../lib/utils'
 import ChiTietGiaoDich from './ChiTietGiaoDich'
+import DatePicker from '../../../components/shared/DatePicker'
 
 export default function TaiKhoanPage({ user }) {
   const [viList,         setViList]         = useState([])
@@ -10,7 +11,9 @@ export default function TaiKhoanPage({ user }) {
   const [selectedVi,     setSelectedVi]     = useState(null)
   const [selectedGD,     setSelectedGD]     = useState(null)
   const [loading,        setLoading]        = useState(true)
-  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [showDatePicker,  setShowDatePicker]  = useState(false)
+  const [showStartPicker, setShowStartPicker] = useState(false)
+  const [showEndPicker,   setShowEndPicker]   = useState(false)
 
   const today           = todayISO()
   const firstDayOfMonth = today.slice(0, 8) + '01'
@@ -107,41 +110,63 @@ export default function TaiKhoanPage({ user }) {
   // ── DatePicker modal ──
   if (showDatePicker) return (
     <div style={{ position:'fixed',inset:0,backgroundColor:'rgba(42,32,26,0.5)',display:'flex',alignItems:'flex-end',zIndex:999 }}
-      onClick={() => setShowDatePicker(false)}>
+      onClick={() => { setShowDatePicker(false); setShowStartPicker(false); setShowEndPicker(false) }}>
+
+      {/* Lịch Hannah Spa chuẩn — từ ngày */}
+      <DatePicker
+        open={showStartPicker}
+        selectedDate={startDate}
+        onClose={() => setShowStartPicker(false)}
+        onConfirm={(d) => { setStartDate(d); setShowStartPicker(false) }}
+      />
+      {/* Lịch Hannah Spa chuẩn — đến ngày */}
+      <DatePicker
+        open={showEndPicker}
+        selectedDate={endDate}
+        onClose={() => setShowEndPicker(false)}
+        onConfirm={(d) => { setEndDate(d); setShowEndPicker(false) }}
+      />
+
       <div style={{ background:LUX.surface,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'520px',margin:'0 auto',padding:'24px 20px 40px' }}
         onClick={e => e.stopPropagation()}>
         <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px' }}>
           <h3 style={{ fontSize:'18px',fontWeight:'700',color:LUX.ink,fontFamily:LUX.fontSerif }}>Chọn thời gian</h3>
           <button onClick={() => setShowDatePicker(false)} style={{ background:'none',border:'none',fontSize:'20px',color:LUX.ink3,cursor:'pointer' }}>✕</button>
         </div>
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'24px' }}>
+
+        {/* Quick buttons */}
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'20px' }}>
           {[
-            { label:'Hôm nay',    type:'hom_nay'     },
-            { label:'Hôm qua',    type:'hom_qua'     },
-            { label:'Tháng này',  type:'thang_nay'   },
-            { label:'Tháng trước',type:'thang_truoc' },
+            { label:'Hôm nay',     type:'hom_nay'     },
+            { label:'Hôm qua',     type:'hom_qua'     },
+            { label:'Tháng này',   type:'thang_nay'   },
+            { label:'Tháng trước', type:'thang_truoc' },
           ].map(item => (
             <button key={item.type} onClick={() => applyQuickDate(item.type)}
-              style={{ padding:'12px',borderRadius:LUX.radiusSm,border:`1px solid ${LUX.line}`,background:LUX.surface2,fontWeight:'600',color:LUX.ink,cursor:'pointer',fontFamily:LUX.fontSans }}>
+              style={{ padding:'14px 12px',borderRadius:LUX.radiusSm,border:`1px solid ${LUX.line}`,background:LUX.surface2,fontWeight:'600',color:LUX.ink,cursor:'pointer',fontFamily:LUX.fontSans,fontSize:'14px' }}>
               {item.label}
             </button>
           ))}
         </div>
+
+        {/* Custom range — dùng DatePicker chuẩn Hannah Spa */}
+        <div style={{ fontSize:'10px',color:LUX.ink3,fontWeight:'700',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'10px',fontFamily:LUX.fontSans }}>Khoảng tùy chọn</div>
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'20px' }}>
-          <div style={{ background:LUX.surface2,borderRadius:LUX.radiusSm,padding:'12px',border:`1px solid ${LUX.line}` }}>
-            <div style={{ fontSize:'10px',color:LUX.ink3,marginBottom:'4px',fontFamily:LUX.fontSans }}>Từ ngày</div>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-              style={{ width:'100%',border:'none',outline:'none',background:'transparent',fontWeight:'700',color:LUX.ink,fontFamily:LUX.fontSans }} />
-          </div>
-          <div style={{ background:LUX.surface2,borderRadius:LUX.radiusSm,padding:'12px',border:`1px solid ${LUX.line}` }}>
-            <div style={{ fontSize:'10px',color:LUX.ink3,marginBottom:'4px',fontFamily:LUX.fontSans }}>Đến ngày</div>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-              style={{ width:'100%',border:'none',outline:'none',background:'transparent',fontWeight:'700',color:LUX.ink,fontFamily:LUX.fontSans }} />
-          </div>
+          <button onClick={() => { setShowEndPicker(false); setShowStartPicker(true) }}
+            style={{ background:LUX.surface2,borderRadius:LUX.radiusSm,padding:'14px',border:`1.5px solid ${showStartPicker ? LUX.taupe : LUX.line}`,textAlign:'left',cursor:'pointer',transition:'border-color 0.15s' }}>
+            <div style={{ fontSize:'10px',color:LUX.ink3,marginBottom:'6px',fontFamily:LUX.fontSans }}>📅 Từ ngày</div>
+            <div style={{ fontWeight:'700',color:LUX.ink,fontSize:'15px',fontFamily:LUX.fontSans }}>{formatDateInput(startDate)}</div>
+          </button>
+          <button onClick={() => { setShowStartPicker(false); setShowEndPicker(true) }}
+            style={{ background:LUX.surface2,borderRadius:LUX.radiusSm,padding:'14px',border:`1.5px solid ${showEndPicker ? LUX.taupe : LUX.line}`,textAlign:'left',cursor:'pointer',transition:'border-color 0.15s' }}>
+            <div style={{ fontSize:'10px',color:LUX.ink3,marginBottom:'6px',fontFamily:LUX.fontSans }}>📅 Đến ngày</div>
+            <div style={{ fontWeight:'700',color:LUX.ink,fontSize:'15px',fontFamily:LUX.fontSans }}>{formatDateInput(endDate)}</div>
+          </button>
         </div>
+
         <button onClick={() => setShowDatePicker(false)}
           style={{ width:'100%',padding:'16px',borderRadius:LUX.radius,background:LUX.heroGrad,color:'white',fontWeight:'700',border:'none',fontSize:'15px',cursor:'pointer',fontFamily:LUX.fontSans }}>
-          Áp dụng
+          ✓ Áp dụng
         </button>
       </div>
     </div>
