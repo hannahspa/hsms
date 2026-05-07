@@ -5,9 +5,10 @@ import { LUX } from '../../../../constants/lux'
 export default function TabXetDuyet({ onUpdate }) {
   const [danhSachCho, setDanhSachCho] = useState([])
   const [dungLeList,  setDungLeList]  = useState([])
+  const [suaXoaList,  setSuaXoaList]  = useState([])
   const [nvMap,       setNvMap]       = useState({})
   const [loading,     setLoading]     = useState(true)
-  const [rejectModal, setRejectModal] = useState(null) // { type: 'off'|'le', id, defaultReason }
+  const [rejectModal, setRejectModal] = useState(null) // { type: 'off'|'le'|'sx', id, defaultReason }
 
   useEffect(() => { fetchData() }, [])
 
@@ -40,6 +41,15 @@ export default function TabXetDuyet({ onUpdate }) {
         .order('created_at', { ascending: false })
 
       setDungLeList(dungLeData || [])
+
+      // Fetch yêu cầu sửa/xóa giao dịch
+      const { data: sxData } = await supabase
+        .from('yeu_cau_chinh_sua').select('*')
+        .in('loai_yeu_cau', ['sua', 'xoa'])
+        .eq('trang_thai', 'cho_duyet')
+        .order('created_at', { ascending: false })
+
+      setSuaXoaList(sxData || [])
     } catch (e) { console.error('TabXetDuyet:', e) }
     finally { setLoading(false) }
   }
@@ -54,6 +64,37 @@ export default function TabXetDuyet({ onUpdate }) {
     await supabase.from('yeu_cau_chinh_sua').update({
       trang_thai: 'tu_choi', nguoi_duyet: 'Admin', ghi_chu_duyet: lyDo,
     }).eq('id', yeuCauId)
+    fetchData()
+    onUpdate?.()
+  }
+
+  const handleDuyetSuaXoa = async (ycId, duyet) => {
+    if (!duyet) {
+      setRejectModal({ type: 'sx', id: ycId, defaultReason: 'Không đủ thông tin hoặc sai số liệu' })
+      return
+    }
+    const yc = suaXoaList.find(d => d.id === ycId)
+    if (!yc) return
+
+    try {
+      if (yc.loai_yeu_cau === 'sua') {
+        await supabase.from(yc.loai_bang).update(yc.du_lieu_moi).eq('id', yc.ban_ghi_id)
+      } else if (yc.loai_yeu_cau === 'xoa') {
+        await supabase.from(yc.loai_bang).delete().eq('id', yc.ban_ghi_id)
+      }
+      await supabase.from('yeu_cau_chinh_sua').update({
+        trang_thai: 'da_duyet', nguoi_duyet: 'Admin',
+      }).eq('id', ycId)
+    } catch (e) { console.error('Duyet sua/xoa:', e) }
+
+    fetchData()
+    onUpdate?.()
+  }
+
+  const executeRejectSuaXoa = async (ycId, lyDo) => {
+    await supabase.from('yeu_cau_chinh_sua').update({
+      trang_thai: 'tu_choi', nguoi_duyet: 'Admin', ghi_chu_duyet: lyDo,
+    }).eq('id', ycId)
     fetchData()
     onUpdate?.()
   }
@@ -291,6 +332,110 @@ export default function TabXetDuyet({ onUpdate }) {
         </div>
       )}
 
+      {/* ── Yêu Cầu Sửa / Xóa Giao Dịch ── */}
+      {!loading && suaXoaList.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontFamily: LUX.fontSerif, fontSize: 22, fontWeight: 600, color: LUX.espresso }}>Sửa / Xóa Giao Dịch</div>
+              <div style={{ fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink3, marginTop: 2 }}>Lễ Tân yêu cầu chỉnh sửa hoặc xóa</div>
+            </div>
+            <div style={{ background: '#FFF9F0', color: LUX.taupe, padding: '5px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, fontFamily: LUX.fontSans }}>
+              {suaXoaList.length} yêu cầu
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {suaXoaList.map(yc => {
+              const loaiBangLabel = yc.loai_bang === 'doanh_thu' ? 'Doanh Thu' : yc.loai_bang === 'chi_phi' ? 'Chi Phí' : 'Chuyển Khoản'
+              const loaiBangIcon = yc.loai_bang === 'doanh_thu' ? '💰' : yc.loai_bang === 'chi_phi' ? '💸' : '🔄'
+              const isSua = yc.loai_yeu_cau === 'sua'
+
+              return (
+                <div key={yc.id} style={{
+                  background: LUX.surface, borderRadius: LUX.radius,
+                  border: `1px solid ${LUX.line}`, boxShadow: LUX.shadow, overflow: 'hidden',
+                }}>
+                  <div style={{ height: 3, background: isSua ? LUX.taupe : '#C0392B', opacity: 0.5 }} />
+
+                  <div style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 42, height: 42, borderRadius: 12, background: isSua ? '#fdf3e0' : '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+                          {isSua ? '✏️' : '🗑️'}
+                        </div>
+                        <div>
+                          <div style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 600, color: LUX.espresso }}>
+                            {isSua ? 'Sửa' : 'Xóa'} {loaiBangLabel} {loaiBangIcon}
+                          </div>
+                          <div style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, marginTop: 1 }}>
+                            {yc.nguoi_yeu_cau || 'Không rõ'}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ background: isSua ? '#fdf3e0' : '#FEF2F2', color: isSua ? LUX.taupe : '#C0392B', padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700, fontFamily: LUX.fontSans }}>
+                        {isSua ? 'Yêu Cầu Sửa' : 'Yêu Cầu Xóa'}
+                      </div>
+                    </div>
+
+                    <div style={{ background: LUX.bg, borderRadius: LUX.radiusSm, padding: '12px 14px', marginBottom: 14, border: `1px solid ${LUX.line}` }}>
+                      {isSua && yc.du_lieu_cu && yc.du_lieu_moi && (
+                        <div style={{ display: 'flex', gap: 10, marginBottom: 10, fontSize: 12 }}>
+                          <div style={{ flex: 1, background: '#FEF2F2', borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
+                            <div style={{ color: LUX.ink3, marginBottom: 2, fontFamily: LUX.fontSans }}>Cũ</div>
+                            <div style={{ fontWeight: 700, color: '#C0392B', fontFamily: LUX.fontMono }}>
+                              {Number(yc.du_lieu_cu.so_tien || 0).toLocaleString('vi-VN')}đ
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', color: LUX.ink3, fontSize: 16 }}>→</div>
+                          <div style={{ flex: 1, background: '#F0FDF4', borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
+                            <div style={{ color: LUX.ink3, marginBottom: 2, fontFamily: LUX.fontSans }}>Mới</div>
+                            <div style={{ fontWeight: 700, color: '#2D7A4F', fontFamily: LUX.fontMono }}>
+                              {Number(yc.du_lieu_moi.so_tien || 0).toLocaleString('vi-VN')}đ
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {isSua && yc.du_lieu_moi?.dien_giai !== yc.du_lieu_cu?.dien_giai && (
+                        <div style={{ fontSize: 12, color: LUX.ink2, marginBottom: 8, fontFamily: LUX.fontSans }}>
+                          Diễn giải: "{yc.du_lieu_cu?.dien_giai || ''}" → "{yc.du_lieu_moi?.dien_giai || ''}"
+                        </div>
+                      )}
+                      {!isSua && yc.du_lieu_cu && (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 11, color: LUX.ink3, marginBottom: 2 }}>Giao dịch sẽ bị xóa:</div>
+                          <div style={{ fontWeight: 700, color: '#C0392B', fontFamily: LUX.fontMono, fontSize: 15 }}>
+                            {Number(yc.du_lieu_cu.so_tien || 0).toLocaleString('vi-VN')}đ
+                          </div>
+                          <div style={{ fontSize: 12, color: LUX.ink3, fontFamily: LUX.fontSans, marginTop: 2 }}>
+                            {yc.du_lieu_cu.dien_giai || yc.du_lieu_cu.mo_ta || ''}
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, fontWeight: 600, marginBottom: 4 }}>Lý do:</div>
+                      <div style={{ fontFamily: LUX.fontSerif, fontSize: 14, color: LUX.ink2, fontStyle: 'italic', lineHeight: 1.6 }}>
+                        "{yc.ly_do}"
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button onClick={() => handleDuyetSuaXoa(yc.id, false)}
+                        style={{ flex: 1, padding: 12, borderRadius: LUX.radiusSm, background: '#f5e0da', color: LUX.danger, border: `1px solid ${LUX.danger}30`, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                        Từ Chối
+                      </button>
+                      <button onClick={() => handleDuyetSuaXoa(yc.id, true)}
+                        style={{ flex: 1, padding: 12, borderRadius: LUX.radiusSm, background: LUX.goldGrad, color: 'white', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans, boxShadow: `0 4px 14px ${LUX.gold}50` }}>
+                        Duyệt
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Reject Modal */}
       {rejectModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'flex-end' }}
@@ -311,6 +456,7 @@ export default function TabXetDuyet({ onUpdate }) {
               <button onClick={() => {
                 const lyDo = document.getElementById('reject-reason').value.trim() || rejectModal.defaultReason
                 if (rejectModal.type === 'off') executeRejectOff(rejectModal.id, lyDo)
+                else if (rejectModal.type === 'sx') executeRejectSuaXoa(rejectModal.id, lyDo)
                 else executeRejectLe(rejectModal.id, lyDo)
                 setRejectModal(null)
               }}

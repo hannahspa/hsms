@@ -4,6 +4,7 @@ import { LUX } from '../../../constants/lux'
 import { formatCurrency, todayISO, formatDateInput } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
 import DoiSoatNgay from './DoiSoatNgay'
+import ChiTietGiaoDich from '../tai-khoan/ChiTietGiaoDich'
 
 const HINH_THUC_LABEL = {
   tien_mat: 'Tiền Mặt',
@@ -25,6 +26,7 @@ export default function DoiSoatPage({ user, onOpenForm }) {
   const [loading, setLoading] = useState(true)
   const [showLich, setShowLich] = useState(false)
   const [showDoiSoat, setShowDoiSoat] = useState(false)
+  const [selectedGD, setSelectedGD] = useState(null)
 
   const fetchData = async (date) => {
     setLoading(true)
@@ -128,7 +130,7 @@ export default function DoiSoatPage({ user, onOpenForm }) {
           ) : (
             history.map((item, i) => (
               <div key={item.id || i}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
+                <div onClick={() => setSelectedGD(item)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', cursor: 'pointer' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
                     <div style={{ width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
                       background: item.loai === 'thu' ? '#F0FDF4' : item.loai === 'chi' ? '#FEF2F2' : '#F5F3FF',
@@ -171,6 +173,15 @@ export default function DoiSoatPage({ user, onOpenForm }) {
 
       {showDoiSoat && (
         <DoiSoatNgay user={user} onClose={() => setShowDoiSoat(false)} />
+      )}
+
+      {selectedGD && (
+        <ChiTietGiaoDich
+          giaoDich={selectedGD}
+          user={user}
+          onBack={() => setSelectedGD(null)}
+          onUpdated={() => { setSelectedGD(null); fetchData(ngay) }}
+        />
       )}
     </div>
   )
