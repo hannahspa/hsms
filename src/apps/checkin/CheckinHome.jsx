@@ -7,6 +7,7 @@ import CheckinDangKyOff from './CheckinDangKyOff'
 import CheckinDoiPin from './CheckinDoiPin'
 import CheckinLich from './CheckinLich'
 import CheckinLuong from './CheckinLuong'
+import CheckinDoiAvatar from './CheckinDoiAvatar'
 import './styles.css'
 
 const VI_TRI_LABEL = { ktv: 'Kỹ Thuật Viên', le_tan: 'Lễ Tân', tap_vu: 'Tạp Vụ' }
@@ -41,17 +42,19 @@ const ICN = {
 }
 
 const SHORTCUTS = [
-  { tab: 'lich', accent: '#7a8a6a', icnBg: '#eef2e7', title: 'Lịch Tháng', desc: 'Xem công tháng này', icon: ICN.calendar },
-  { tab: 'dang-ky-off', accent: '#b87a6a', icnBg: '#f1e3df', title: 'Đăng Ký OFF', desc: 'Xin nghỉ phép', icon: ICN.off },
-  { tab: 'luong', accent: '#c8a675', icnBg: '#f5e9d4', title: 'Lương Tháng', desc: 'Xem chi tiết lương', icon: ICN.wallet },
-  { tab: 'doi-pin', accent: '#8a6a52', icnBg: '#ece2d4', title: 'Đổi PIN', desc: 'Thay đổi mật khẩu', icon: ICN.lock },
+  { tab: 'lich',        accent: '#7a8a6a', icnBg: '#eef2e7', title: 'Lịch Tháng',    desc: 'Xem công tháng này',    icon: ICN.calendar },
+  { tab: 'dang-ky-off', accent: '#b87a6a', icnBg: '#f1e3df', title: 'Đăng Ký OFF',   desc: 'Xin nghỉ phép',         icon: ICN.off      },
+  { tab: 'luong',       accent: '#c8a675', icnBg: '#f5e9d4', title: 'Lương Tháng',   desc: 'Xem chi tiết lương',    icon: ICN.wallet   },
+  { tab: 'doi-pin',     accent: '#8a6a52', icnBg: '#ece2d4', title: 'Đổi PIN',        desc: 'Thay đổi mật khẩu',    icon: ICN.lock     },
+  { tab: 'doi-avatar',  accent: '#a07a5c', icnBg: '#f5e8d4', title: 'Ảnh Đại Diện',  desc: 'Thay ảnh, cắt tròn',   icon: <span style={{fontSize:20}}>📷</span> },
 ]
 
 export default function CheckinHome({ nhanVien, onLogout }) {
-  const [tab, setTab] = useState('home')
-  const [chamCong, setChamCong] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [time, setTime] = useState(getNowVN())
+  const [tab,       setTab]       = useState('home')
+  const [chamCong,  setChamCong]  = useState(null)
+  const [loading,   setLoading]   = useState(true)
+  const [time,      setTime]      = useState(getNowVN())
+  const [avatarUrl, setAvatarUrl] = useState(nhanVien.avatar_url || null)
 
   const today = todayISO()
 
@@ -89,26 +92,30 @@ export default function CheckinHome({ nhanVien, onLogout }) {
   if (tab === 'cham-cong') return <CheckinChamCong nhanVien={nhanVien} chamCong={chamCong} onBack={() => { setTab('home'); loadChamCong() }} onUpdated={loadChamCong} />
   if (tab === 'dang-ky-off') return <CheckinDangKyOff nhanVien={nhanVien} onBack={() => setTab('home')} />
   if (tab === 'lich') return <CheckinLich nhanVien={nhanVien} onBack={() => setTab('home')} />
-  if (tab === 'doi-pin') return <CheckinDoiPin nhanVien={nhanVien} onBack={() => setTab('home')} />
-  if (tab === 'luong') return <CheckinLuong nhanVien={nhanVien} onBack={() => setTab('home')} />
+  if (tab === 'doi-pin')    return <CheckinDoiPin    nhanVien={nhanVien} onBack={() => setTab('home')} />
+  if (tab === 'luong')      return <CheckinLuong      nhanVien={nhanVien} onBack={() => setTab('home')} />
+  if (tab === 'doi-avatar') return <CheckinDoiAvatar  nhanVien={{ ...nhanVien, avatar_url: avatarUrl }} onBack={() => setTab('home')} onUpdated={url => setAvatarUrl(url)} />
 
   return (
     <div style={{ minHeight: '100vh', background: LUX.bg, fontFamily: LUX.fontSans, backgroundImage: 'radial-gradient(circle at 20% 0%, rgba(200,166,117,0.10), transparent 50%), radial-gradient(circle at 80% 100%, rgba(138,106,82,0.08), transparent 50%)' }}>
 
       {/* ── Hero ── */}
       <header style={{ ...HERO, padding: '22px 22px 30px', display: 'flex', alignItems: 'center', gap: 14 }}>
-        {/* Avatar */}
-        <div style={{
-          width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
-          boxShadow: '0 4px 16px -4px rgba(212,165,116,0.5), inset 0 -2px 4px rgba(0,0,0,0.15)',
-        }}>
-          {nhanVien.avatar_url
-            ? <img src={nhanVien.avatar_url} alt={nhanVien.ho_ten} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <div style={{ width: '100%', height: '100%', background: getGrad(nhanVien.ho_ten), display: 'grid', placeItems: 'center' }}>
-              <span style={{ fontFamily: LUX.fontSerif, fontSize: 22, fontWeight: 600, color: '#f5ede0' }}>{getInitials(nhanVien.ho_ten)}</span>
-            </div>
-          }
-        </div>
+        {/* Avatar — bấm để đổi ảnh */}
+        <button onClick={() => setTab('doi-avatar')} style={{ position: 'relative', width: 56, height: 56, flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', boxShadow: '0 4px 16px -4px rgba(212,165,116,0.5), inset 0 -2px 4px rgba(0,0,0,0.15)' }}>
+            {avatarUrl
+              ? <img src={avatarUrl} alt={nhanVien.ho_ten} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <div style={{ width: '100%', height: '100%', background: getGrad(nhanVien.ho_ten), display: 'grid', placeItems: 'center' }}>
+                  <span style={{ fontFamily: LUX.fontSerif, fontSize: 22, fontWeight: 600, color: '#f5ede0' }}>{getInitials(nhanVien.ho_ten)}</span>
+                </div>
+            }
+          </div>
+          {/* Camera badge */}
+          <div style={{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: '50%', background: LUX.goldGrad, display: 'grid', placeItems: 'center', fontSize: 10, border: '1.5px solid rgba(42,32,26,0.8)', boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
+            📷
+          </div>
+        </button>
 
         {/* Greeting */}
         <div style={{ flex: 1, minWidth: 0 }}>
