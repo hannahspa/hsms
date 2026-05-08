@@ -6,6 +6,7 @@ import AdminHomepagePage from './trang-chu/AdminHomepagePage'
 import AdminKhoHangPage from './kho-hang/AdminKhoHangPage'
 import AdminCRMPage from './crm/AdminCRMPage'
 import AdminMarketingPage from './marketing/AdminMarketingPage'
+import AdminDashboardPage from './dashboard/AdminDashboardPage'
 import { supabase } from '../../lib/supabase'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -186,6 +187,7 @@ export default function AdminApp() {
   if (path.startsWith('/admin/kho-hang'))   return <AdminKhoHangPage />
   if (path.startsWith('/admin/crm'))        return <AdminCRMPage />
   if (path.startsWith('/admin/marketing'))  return <AdminMarketingPage />
+  if (path.startsWith('/admin/dashboard'))  return <AdminDashboardPage />
 
   const now = getNowVN()
   const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
@@ -365,9 +367,9 @@ export default function AdminApp() {
             href="/admin/marketing"
           />
           <ModuleCard
-            icon="📊" label="Dashboard Tổng Hợp" color="#7F8C8D"
-            desc="KPI · Biểu đồ · So sánh cùng kỳ"
-            soon
+            icon="📊" label="Dashboard Tổng Hợp" color="#2D7A4F"
+            desc="KPI · Biểu đồ · Cảnh báo · So sánh tháng"
+            href="/admin/dashboard"
           />
         </div>
       </div>
