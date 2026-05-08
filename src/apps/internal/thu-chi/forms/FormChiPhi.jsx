@@ -13,6 +13,14 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
   const [nguoiChiId,   setNguoiChiId]   = useState(null)
   const [ngay,         setNgay]         = useState(todayISO())
   const [dienGiai,     setDienGiai]     = useState('')
+
+  // Mapping ví → hinh_thuc_thanh_toan (theo tên ví, không phụ thuộc vi.loai)
+  const getHinhThucFromVi = (vi) => {
+    if (!vi) return 'tien_mat'
+    if (vi.ten === 'MB Bank') return 'chuyen_khoan'
+    if (vi.ten === 'TP Bank') return 'quet_the'
+    return 'tien_mat'
+  }
   const [saving,       setSaving]       = useState(false)
   const [step,         setStep]         = useState('main')
   const [nhomList,     setNhomList]     = useState([])
@@ -71,7 +79,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
 
     // Tiền Mặt được phép âm tạm thời — quy trình nộp quỹ hôm sau sẽ bù lại phần âm
     // Chỉ kiểm tra số dư với MB Bank và TP Bank (tài khoản ngân hàng không thể âm)
-    const isTienMat = viSelected?.loai === 'tien_mat'
+    const isTienMat = viSelected?.ten === 'Tiền Mặt'
     if (user?.vai_tro !== 'admin' && !isTienMat) {
       const { data: freshVi } = await supabase
         .from('so_du_vi_thuc_te')
@@ -90,7 +98,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
         ngay: ngay,
         danh_muc_id: hangMucId,
         so_tien: parseInt(soTien),
-        hinh_thuc_thanh_toan: viSelected?.loai || 'tien_mat',
+        hinh_thuc_thanh_toan: getHinhThucFromVi(viSelected),
         vi_id: viId,
         nguoi_nhap: nguoiChiSelected?.ho_ten || user?.ho_ten || null,
         chung_tu_url: chungTuUrl,
