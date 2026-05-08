@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, getNowVN } from '../../../../lib/utils'
+import { formatCurrency, getNowVN, hashPin } from '../../../../lib/utils'
 import AdminSuaChamCong from './AdminSuaChamCong'
 import AvatarUpload from '../../../../components/shared/AvatarUpload'
 import { KY_QUY_TONG, KY_QUY_MOIS, KY_QUY_THUONG } from '../../../../lib/luong'
@@ -188,7 +188,7 @@ export default function TabHoSo() {
 
       const [resNv, resChamCong, resOff, resQuy] = await Promise.all([
         supabase.from('nhan_vien')
-          .select('id, ho_ten, vi_tri, luong_cung, ngay_bat_dau, trang_thai, avatar_url, gioi_han_off_thang, ky_quy_trang_thai, ky_quy_so_thang, ky_quy_bat_dau, so_dien_thoai, pin')
+          .select('id, ho_ten, vi_tri, luong_cung, ngay_bat_dau, trang_thai, avatar_url, gioi_han_off_thang, ky_quy_trang_thai, ky_quy_so_thang, ky_quy_bat_dau, so_dien_thoai, pin_hash')
           .order('vi_tri').order('ho_ten'),
         supabase.from('cham_cong')
           .select('nhan_vien_id, he_so, tang_ca_gio')
@@ -227,7 +227,7 @@ export default function TabHoSo() {
 
   const openAdd = () => setEditSheet({
     mode: 'add',
-    nv: { ho_ten: '', vi_tri: 'ktv', luong_cung: 0, so_dien_thoai: '', ngay_bat_dau: '', gioi_han_off_thang: 3, trang_thai: 'dang_lam', ky_quy_trang_thai: 'dang_dong', ky_quy_so_thang: 0, ky_quy_bat_dau: '', pin: '1234' }
+    nv: { ho_ten: '', vi_tri: 'ktv', luong_cung: 0, so_dien_thoai: '', ngay_bat_dau: '', gioi_han_off_thang: 3, trang_thai: 'dang_lam', ky_quy_trang_thai: 'dang_dong', ky_quy_so_thang: 0, ky_quy_bat_dau: '', pin: '' }
   })
 
   const openEdit = (nv) => {
@@ -256,12 +256,16 @@ export default function TabHoSo() {
       }
       let error
       if (mode === 'add') {
-        payload.pin = nv.pin || '1234'
+        if (nv.pin && nv.pin.length === 4) {
+          payload.pin_hash = await hashPin(nv.pin)
+        }
         ;({ error } = await supabase.from('nhan_vien').insert(payload))
       } else {
         ;({ error } = await supabase.from('nhan_vien').update(payload).eq('id', nv.id))
-        if (!error && nv.pin && nv.pin.length === 4)
-          await supabase.from('nhan_vien').update({ pin: nv.pin }).eq('id', nv.id)
+        if (!error && nv.pin && nv.pin.length === 4) {
+          const hashed = await hashPin(nv.pin)
+          await supabase.from('nhan_vien').update({ pin_hash: hashed }).eq('id', nv.id)
+        }
       }
       if (error) throw error
 

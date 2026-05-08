@@ -307,7 +307,7 @@ export default function BaoCaoNgay({ onBack }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0 4px', borderTop: `2px solid ${LUX.line}`, marginTop: '4px' }}>
                 <span style={{ fontWeight: '800', fontSize: '14px', color: LUX.ink }}>Tổng Tài Sản</span>
                 <span style={{ fontWeight: '800', fontSize: '16px', color: '#1A5276' }}>
-                  {formatCurrency(viList.reduce((s, v) => s + (v.so_du_dau || 0), 0))}
+                  {formatCurrency(viList.reduce((s, v) => s + (v.so_du_hien_tai || 0), 0))}
                 </span>
               </div>
             </div>

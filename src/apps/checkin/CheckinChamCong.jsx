@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { LUX } from '../../constants/lux'
-import { todayISO } from '../../lib/utils'
+import { todayISO, getNowVN } from '../../lib/utils'
 import './styles.css'
 
 const CA_VAO_CHUAN = { h: 9, m: 15 }
@@ -92,11 +92,6 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
   const [lyDoVeSom, setLyDoVeSom] = useState('')
   const [pendingRa, setPendingRa] = useState(null)
   const [showResult, setShowResult] = useState(null)
-
-  function getNowVN() {
-    const now = new Date()
-    return new Date(now.getTime() + now.getTimezoneOffset() * 60000 + 7 * 60 * 60000)
-  }
 
   function toTimeStrVN(d) {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`

@@ -39,3 +39,35 @@ export const formatDateInput = (isoDate) => {
   const [y, m, dd] = isoDate.split('-')
   return `${dd}/${m}/${y}`
 }
+
+export async function hashPin(pin) {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(pin)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+const LOCKOUT_KEY = 'hsms_pin_lockout'
+
+export function getPinLockout() {
+  try {
+    const raw = localStorage.getItem(LOCKOUT_KEY)
+    if (!raw) return { attempts: 0, until: 0 }
+    const parsed = JSON.parse(raw)
+    if (Date.now() > parsed.until) { localStorage.removeItem(LOCKOUT_KEY); return { attempts: 0, until: 0 } }
+    return parsed
+  } catch { return { attempts: 0, until: 0 } }
+}
+
+export function recordPinFailure() {
+  const current = getPinLockout()
+  const attempts = current.attempts + 1
+  const until = attempts >= 5 ? Date.now() + 5 * 60 * 1000 : 0
+  localStorage.setItem(LOCKOUT_KEY, JSON.stringify({ attempts, until }))
+  return { attempts, until }
+}
+
+export function clearPinLockout() {
+  localStorage.removeItem(LOCKOUT_KEY)
+}

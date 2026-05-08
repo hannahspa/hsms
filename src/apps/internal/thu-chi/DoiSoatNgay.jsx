@@ -86,9 +86,18 @@ export default function DoiSoatNgay({ user, onClose }) {
           ghi_chu: ghiChu,
         }, { onConflict: 'ngay, nguoi_doi_soat, muc_kiem_tra' })
       }
+
+      // Chốt số dư ví: cập nhật so_du_dau = so_du_hien_tai
+      const { data: viList } = await supabase.from('so_du_vi_thuc_te').select('id,so_du_hien_tai')
+      if (viList) {
+        for (const vi of viList) {
+          await supabase.from('vi').update({ so_du_dau: vi.so_du_hien_tai || 0 }).eq('id', vi.id)
+        }
+      }
+
       setSubmitted(true)
-      setMsg({ type: 'success', text: 'Đã hoàn tất đối soát hôm nay!' })
-      setTimeout(() => onClose?.(), 1500)
+      setMsg({ type: 'success', text: `Đã hoàn tất đối soát & chốt số dư ${viList?.length || 0} ví!` })
+      setTimeout(() => onClose?.(), 2000)
     } catch (err) {
       setMsg({ type: 'error', text: 'Lỗi: ' + err.message })
     } finally {

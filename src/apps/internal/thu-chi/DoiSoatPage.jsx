@@ -37,13 +37,19 @@ export default function DoiSoatPage({ user, onOpenForm, onSettings, refreshKey }
 
   const fetchData = async (date) => {
     setLoading(true)
-    const { data } = await supabase
-      .from('lich_su_giao_dich_tong_hop')
-      .select('*')
-      .eq('ngay', date)
-      .order('created_at', { ascending: false })
-    setHistory(data || [])
-    setLoading(false)
+    try {
+      const { data } = await supabase
+        .from('lich_su_giao_dich_tong_hop')
+        .select('*')
+        .eq('ngay', date)
+        .order('created_at', { ascending: false })
+      setHistory(data || [])
+    } catch (e) {
+      console.error('DoiSoatPage fetchData error:', e)
+      setHistory([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchData(ngay) }, [ngay, refreshKey])

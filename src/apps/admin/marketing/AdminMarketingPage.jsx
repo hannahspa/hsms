@@ -280,21 +280,21 @@ function TabDashboard({ campaigns, chiPhiMarketing, danhMucMarketing }) {
     chiByDM[k] += c.so_tien || 0
   })
 
-  // Kênh → danh mục mapping (theo tên)
+  // Kênh → danh mục mapping (theo tên) — dùng mảng để không bị ghi đè
   const kenhDMMap = {}
   ;(danhMucMarketing || []).forEach(d => {
     const name = d.ten.toLowerCase()
-    if (name.includes('facebook')) kenhDMMap.facebook = d.id
-    else if (name.includes('zalo')) kenhDMMap.zalo = d.id
-    else if (name.includes('tiktok') || name.includes('tik tok')) kenhDMMap.tiktok = d.id
-    else if (name.includes('in ấn') || name.includes('in an')) kenhDMMap.in_an = d.id
-    else if (name.includes('google')) kenhDMMap.google = d.id
+    if (name.includes('facebook')) kenhDMMap.facebook = [...(kenhDMMap.facebook || []), d.id]
+    else if (name.includes('zalo')) kenhDMMap.zalo = [...(kenhDMMap.zalo || []), d.id]
+    else if (name.includes('tiktok') || name.includes('tik tok')) kenhDMMap.tiktok = [...(kenhDMMap.tiktok || []), d.id]
+    else if (name.includes('in ấn') || name.includes('in an')) kenhDMMap.in_an = [...(kenhDMMap.in_an || []), d.id]
+    else if (name.includes('google')) kenhDMMap.google = [...(kenhDMMap.google || []), d.id]
   })
 
-  // Chi theo kênh trong tháng
+  // Chi theo kênh trong tháng (hỗ trợ nhiều danh mục cùng kênh)
   const chiByKenh = {}
-  Object.entries(kenhDMMap).forEach(([kenh, dmId]) => {
-    chiByKenh[kenh] = chiByDM[dmId] || 0
+  Object.entries(kenhDMMap).forEach(([kenh, dmIds]) => {
+    chiByKenh[kenh] = dmIds.reduce((s, id) => s + (chiByDM[id] || 0), 0)
   })
   const tongChiKhac = tongChi - Object.values(chiByKenh).reduce((s, v) => s + v, 0)
   if (tongChiKhac > 0) chiByKenh['khac'] = tongChiKhac

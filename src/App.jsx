@@ -1,5 +1,6 @@
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppProvider }  from './context/AppContext'
+import ErrorBoundary from './components/shared/ErrorBoundary'
 import InternalApp from './apps/internal/InternalApp'
 import CheckinApp from './apps/checkin/CheckinApp'
 import AdminApp from './apps/admin/AdminApp'
@@ -58,33 +59,35 @@ export default function App() {
   const path = window.location.pathname
 
   if (path.startsWith('/checkin')) {
-    return <CheckinApp />
+    return <ErrorBoundary><CheckinApp /></ErrorBoundary>
   }
 
   // Landing page công khai — hannahspa.vn
-  if (path === '/' || path === '') return <LandingPage />
+  if (path === '/' || path === '') return <ErrorBoundary><LandingPage /></ErrorBoundary>
 
   // Portal nội bộ nhân viên
-  if (path.startsWith('/portal')) return <HomePage />
+  if (path.startsWith('/portal')) return <ErrorBoundary><HomePage /></ErrorBoundary>
 
   // Menu dịch vụ cho khách (iPad tại quầy)
-  if (path.startsWith('/menu')) return <CustomerMenuApp />
+  if (path.startsWith('/menu')) return <ErrorBoundary><CustomerMenuApp /></ErrorBoundary>
 
   // Shop (sắp ra mắt)
-  if (path.startsWith('/shop')) return <LandingPage />
+  if (path.startsWith('/shop')) return <ErrorBoundary><LandingPage /></ErrorBoundary>
 
   return (
     <AuthProvider>
       <AppProvider>
-        {path.startsWith('/admin') ? (
-          <RequireAuth requireAdmin={true}>
-            <AdminApp />
-          </RequireAuth>
-        ) : (
-          <RequireAuth requireAdmin={false}>
-            <InternalApp />
-          </RequireAuth>
-        )}
+        <ErrorBoundary>
+          {path.startsWith('/admin') ? (
+            <RequireAuth requireAdmin={true}>
+              <AdminApp />
+            </RequireAuth>
+          ) : (
+            <RequireAuth requireAdmin={false}>
+              <InternalApp />
+            </RequireAuth>
+          )}
+        </ErrorBoundary>
       </AppProvider>
     </AuthProvider>
   )

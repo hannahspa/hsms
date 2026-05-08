@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { LUX } from '../../constants/lux'
+import { hashPin } from '../../lib/utils'
 import './styles.css'
 
 const HERO = {
@@ -39,7 +40,8 @@ export default function CheckinDoiPin({ nhanVien, onBack }) {
     if (newPin.length === 4) {
       if (step === 1) {
         setLoading(true)
-        const { data } = await supabase.from('nhan_vien').select('id').eq('id', nhanVien.id).eq('pin', newPin).maybeSingle()
+        const hashedOld = await hashPin(newPin)
+        const { data } = await supabase.from('nhan_vien').select('id').eq('id', nhanVien.id).eq('pin_hash', hashedOld).maybeSingle()
         setLoading(false)
         if (data) { setStep(2) }
         else { setError('PIN cũ không đúng!'); setTimeout(() => setPinCu(''), 500) }
@@ -51,7 +53,8 @@ export default function CheckinDoiPin({ nhanVien, onBack }) {
           setTimeout(() => { setPinMoi(''); setPinXacNhan(''); setStep(2) }, 1000)
         } else {
           setLoading(true)
-          const { error: err } = await supabase.from('nhan_vien').update({ pin: pinMoi }).eq('id', nhanVien.id)
+          const hashedNew = await hashPin(pinMoi)
+          const { error: err } = await supabase.from('nhan_vien').update({ pin_hash: hashedNew }).eq('id', nhanVien.id)
           setLoading(false)
           if (!err) { setSuccess(true); setTimeout(() => onBack(), 2000) }
           else { setError('Lỗi lưu PIN, thử lại!') }

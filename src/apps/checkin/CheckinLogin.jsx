@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { LUX } from '../../constants/lux'
+import { hashPin, getPinLockout, recordPinFailure, clearPinLockout } from '../../lib/utils'
 import './styles.css'
 
 const VI_TRI_LABEL = { ktv: 'Kỹ Thuật Viên', le_tan: 'Lễ Tân', tap_vu: 'Tạp Vụ' }
@@ -71,12 +72,30 @@ export default function CheckinLogin({ onLogin }) {
 
   const verifyPin = async (inputPin) => {
     setPinLoading(true); setError('')
+
+    const lockout = getPinLockout()
+    if (lockout.until > 0) {
+      const mins = Math.ceil((lockout.until - Date.now()) / 60000)
+      setError(`Quá nhiều lần thử. Vui lòng đợi ${mins} phút.`)
+      setPin(''); setPinLoading(false)
+      return
+    }
+
     try {
+      const hashed = await hashPin(inputPin)
       const { data } = await supabase.from('nhan_vien')
-        .select('*').eq('id', selected.id).eq('pin', inputPin).single()
-      if (data) { onLogin(data) }
-      else { setError('PIN không đúng, thử lại!'); setPin('') }
-    } catch { setError('PIN không đúng, thử lại!'); setPin('') }
+        .select('*').eq('id', selected.id).eq('pin_hash', hashed).single()
+      if (data) { clearPinLockout(); onLogin(data) }
+      else {
+        const { attempts, until } = recordPinFailure()
+        if (until > 0) {
+          setError(`Sai PIN quá 5 lần. Vui lòng đợi 5 phút.`)
+        } else {
+          setError(`PIN không đúng, còn ${5 - attempts} lần thử!`)
+        }
+        setPin('')
+      }
+    } catch { setError('Lỗi kết nối, thử lại!'); setPin('') }
     finally { setPinLoading(false) }
   }
 
@@ -264,7 +283,7 @@ export default function CheckinLogin({ onLogin }) {
         </div>
 
         <div style={{ marginTop: 24, fontSize: 11, color: LUX.ink3, letterSpacing: '0.04em', textAlign: 'center' }}>
-          PIN mặc định: 1234
+          Nếu quên PIN, liên hệ quản lý
         </div>
       </div>
     </div>

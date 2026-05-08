@@ -988,6 +988,16 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
       await supabase.from('kho_san_pham')
         .update({ ton_kho: Math.max(0, tonHoanLai) }).eq('id', gd.san_pham_id)
     }
+
+    // Xoá chi_phi tự động tạo khi nhập kho (nếu có)
+    if (gd.loai === 'nhap_kho' && sp) {
+      const { error: cpErr } = await supabase.from('chi_phi')
+        .delete()
+        .eq('ngay', gd.ngay)
+        .ilike('dien_giai', `Nhập kho: ${sp.ten}%`)
+      if (cpErr) console.error('Xoá chi_phi nhập kho thất bại:', cpErr)
+    }
+
     showToast('🗑 Đã xóa giao dịch')
     onReload()
   }
@@ -1158,7 +1168,16 @@ function TabChietRot({ products, transactions, userId, onReload, showToast }) {
 
   const handleDeletePair = async (gd) => {
     if (!window.confirm('Xóa cặp chiết rót này? Tồn kho cả 2 sản phẩm sẽ được hoàn lại.')) return
-    const linked = transactions.find(t => t.loai === 'chiet_vao' && t.lien_quan_id === gd.lien_quan_id)
+
+    // Query trực tiếp Supabase thay vì tìm trong mảng transactions đã limit 500
+    const { data: linkedData } = await supabase
+      .from('kho_giao_dich')
+      .select('*')
+      .eq('lien_quan_id', gd.lien_quan_id)
+      .neq('id', gd.id)
+      .maybeSingle()
+
+    const linked = linkedData
     const nguon  = spMap[gd.san_pham_id]
     const dich   = linked ? spMap[linked.san_pham_id] : null
 

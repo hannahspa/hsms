@@ -406,9 +406,9 @@ export default function AdminDashboardPage() {
       supabase.from('danh_muc_chi_phi').select('id,ten,parent_id'),
       supabase.from('doanh_thu').select('ngay,so_tien,hinh_thuc').gte('ngay', r6s).lte('ngay', r6e),
       supabase.from('chi_phi').select('ngay,so_tien').gte('ngay', r6s).lte('ngay', r6e),
-      supabase.from('nhan_vien').select('id,ho_ten,vi_tri,luong_cung').eq('trang_thai', 'active'),
+      supabase.from('nhan_vien').select('id,ho_ten,vi_tri,luong_cung,ky_quy_trang_thai').eq('trang_thai', 'dang_lam'),
       supabase.from('cham_cong').select('nhan_vien_id,he_so,tang_ca_gio,loai').gte('ngay', m1).lte('ngay', mN),
-      supabase.from('san_pham').select('id,ten,ton_kho_hien_tai,canh_bao_het_hang,don_vi').eq('is_active', true),
+      supabase.from('kho_san_pham').select('id,ten,ton_kho,canh_bao_ton,don_vi'),
       supabase.from('the_lieu_trinh')
         .select('id,ten_dich_vu,ngay_het_han,so_buoi_con_lai,khach_hang:khach_hang_id(ho_ten)')
         .eq('trang_thai', 'active')
@@ -486,14 +486,15 @@ export default function AdminDashboardPage() {
       const ngayCong = Math.round(rows.filter(r => r.loai === 'di_lam').reduce((s, r) => s + (r.he_so || 1), 0) * 10) / 10
       const offCount = rows.filter(r => r.loai && r.loai.startsWith('off')).length
       const tangCaH  = Math.round(rows.reduce((s, r) => s + (r.tang_ca_gio || 0), 0) * 10) / 10
-      const duTinh   = Math.round((nv.luong_cung / mDays) * ngayCong) + Math.round(tangCaH * 25000) - 500000
+      const kyQuy    = nv.ky_quy_trang_thai === 'dang_dong' ? 500000 : 0
+      const duTinh   = Math.round((nv.luong_cung / mDays) * ngayCong) + Math.round(tangCaH * 25000) - kyQuy
       return { ...nv, ngayCong, offCount, tangCaH, duTinh }
     }).sort((a, b) => b.duTinh - a.duTinh))
 
     // ── Alerts ──
     const spAll = rSP.data || []
     setAlerts({
-      san_pham: spAll.filter(p => p.ton_kho_hien_tai != null && p.canh_bao_het_hang != null && p.ton_kho_hien_tai <= p.canh_bao_het_hang),
+      san_pham: spAll.filter(p => p.ton_kho != null && p.canh_bao_ton != null && p.ton_kho <= p.canh_bao_ton),
       the_lt:   (rTheLT.data || []).sort((a, b) => (a.ngay_het_han || '').localeCompare(b.ngay_het_han || '')),
       kh_lau:   (rKHLau.data || []).sort((a, b) => (a.lan_cuoi_den || '').localeCompare(b.lan_cuoi_den || '')),
       off_pend: offPendArr,
