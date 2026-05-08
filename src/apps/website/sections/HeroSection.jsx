@@ -1,173 +1,202 @@
-import { LUX } from '../../../constants/lux'
-import { HERO_BG } from '../../../constants/galleryImages'
-import LazyImage from '../../../components/shared/LazyImage'
+import { IMMERSION_SECTIONS } from '../../../constants/galleryImages'
 
-const ZALO_URL = 'https://zalo.me/0919868868'
-
-const SOCIALS = [
-  { label: 'Zalo',     href: ZALO_URL,                    char: 'Z', bg: '#0068FF' },
-  { label: 'Facebook', href: 'https://facebook.com',       char: 'f', bg: '#1877F2' },
-  { label: 'TikTok',   href: 'https://tiktok.com',         char: '▶', bg: '#010101' },
+const STATS = [
+  { num: '7',   sup: '+', label: 'Năm kinh nghiệm',    sub: 'years of dedication' },
+  { num: '9',   sup: '',  label: 'Chuyên viên tay nghề', sub: 'certified therapists' },
+  { num: '5K',  sup: '+', label: 'Khách hàng tin yêu',  sub: 'happy guests' },
+  { num: '5.0', sup: '',  label: 'Đánh giá trung bình', sub: 'average rating' },
 ]
 
-export default function HeroSection() {
-  const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+// Banner chính — sảnh đón sang trọng
+const BANNER = IMMERSION_SECTIONS[0].images[0]
 
+export default function HeroSection() {
   return (
-    <section style={{
-      minHeight: '100dvh',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      position: 'relative', overflow: 'hidden',
-      padding: '80px 24px 120px',
-    }}>
-      {/* Background image — priority = load ngay (above fold) */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-        <LazyImage
-          src={HERO_BG}
-          alt="Hannah Beauty & Spa — Mặt tiền"
-          aspectRatio="auto"
-          priority
-        />
-        {/* Dark overlay for text readability */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: `
-            linear-gradient(180deg, rgba(30,20,12,0.85) 0%, rgba(40,28,18,0.70) 40%, rgba(30,18,12,0.80) 100%),
-            radial-gradient(ellipse at 70% 0%, rgba(212,165,116,0.18) 0%, transparent 60%)
-          `,
-        }} />
+    <section id="top" className="lp-hero">
+      {/* Ambient grain overlay */}
+      <div className="lp-hero-grain"></div>
+
+      <div className="lp-hero-grid lp-container">
+        {/* Left column */}
+        <div className="lp-hero-side lp-hero-side-l">
+          <div className="lp-hero-meta">
+            <span className="lp-label">Est. 2019</span>
+            <span className="lp-hero-divider"></span>
+            <span className="lp-label">Cần Thơ · Việt Nam</span>
+          </div>
+          <div className="lp-hero-vert">
+            <span>Scroll</span>
+            <span className="lp-hero-vert-line"></span>
+            <span>↓</span>
+          </div>
+        </div>
+
+        {/* Center column */}
+        <div className="lp-hero-center">
+          <div className="lp-eyebrow lp-reveal" style={{ justifyContent: 'center' }}>
+            <span className="lp-dot"></span>Hannah Beauty &amp; Spa
+          </div>
+          <h1 className="lp-h-display lp-hero-title lp-reveal" style={{ transitionDelay: '.08s' }}>
+            Giữ mãi<br/>
+            <em>nét thanh xuân</em><br/>
+            của bạn
+          </h1>
+          <p className="lp-hero-bilingual lp-reveal" style={{ transitionDelay: '.16s' }}>
+            The art of timeless beauty, Cần Thơ
+          </p>
+          <div className="lp-hero-actions lp-reveal" style={{ transitionDelay: '.22s' }}>
+            <a href="#dat-lich" className="lp-btn lp-btn-primary">
+              Đặt lịch ngay <span className="lp-arrow"></span>
+            </a>
+            <a href="#dich-vu" className="lp-btn lp-btn-ghost">Khám phá dịch vụ</a>
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div className="lp-hero-side lp-hero-side-r">
+          <div className="lp-hero-quote">
+            <span className="lp-hero-quote-mark">"</span>
+            <p>
+              Đến với Hannah là trở về với chính mình — nơi mỗi buổi chăm sóc là một món quà bạn trao cho bản thân.
+            </p>
+            <span className="lp-hero-quote-author">— Khách hàng thân thiết từ 2020</span>
+          </div>
+        </div>
       </div>
 
-      {/* Social float bar */}
-      <div style={{
-        position: 'absolute', left: 20, top: '50%',
-        transform: 'translateY(-50%)',
-        display: 'flex', flexDirection: 'column', gap: 10, zIndex: 10,
-      }}>
-        {SOCIALS.map(s => (
-          <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer"
-            title={s.label}
-            style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: s.bg, color: 'white',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, fontWeight: 700, textDecoration: 'none',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
-              opacity: 0.8, transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.12)' }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = '0.8'; e.currentTarget.style.transform = 'scale(1)' }}
-          >
-            {s.char}
-          </a>
+      {/* Banner trung tâm */}
+      <div className="lp-hero-banner lp-container">
+        <div className="lp-hero-banner-wrap">
+          <img src={BANNER} alt="Hannah Beauty & Spa — Không gian sang trọng tại Cần Thơ" loading="eager" />
+          <div className="lp-hero-banner-overlay">
+            <span className="lp-label" style={{ color: 'rgba(250,246,238,0.75)', letterSpacing: '0.22em' }}>
+              39 Nam Kỳ Khởi Nghĩa · Ninh Kiều · Cần Thơ · Từ năm 2019
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="lp-hero-stats lp-container lp-stagger">
+        {STATS.map(s => (
+          <div key={s.label} className="lp-stat">
+            <div className="lp-stat-num">
+              {s.num}<span>{s.sup}</span>
+            </div>
+            <div className="lp-stat-label">
+              {s.label}<br />
+              <span className="lp-bilingual">{s.sub}</span>
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* Main content */}
-      <div style={{ textAlign: 'center', position: 'relative', zIndex: 1, maxWidth: 720, width: '100%' }}>
-        {/* Logo */}
-        <div className="hero-animate" style={{ animationDelay: '0s' }}>
-          <img src="/logo.png" alt="Hannah Beauty & Spa"
-            style={{
-              width: 'clamp(150px,28vw,230px)', height: 'auto', marginBottom: 22,
-              filter: 'brightness(1.1) drop-shadow(0 4px 28px rgba(212,165,116,0.40))',
-            }}
-          />
-        </div>
-
-        {/* Decorative divider */}
-        <div className="hero-animate" style={{
-          animationDelay: '0.12s',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 18,
-        }}>
-          <div style={{ width: 44, height: 1, background: `linear-gradient(to right,transparent,${LUX.gold}80)` }} />
-          <div style={{ width: 5, height: 5, borderRadius: '50%', background: LUX.gold, opacity: 0.7 }} />
-          <div style={{ width: 44, height: 1, background: `linear-gradient(to left,transparent,${LUX.gold}80)` }} />
-        </div>
-
-        {/* Tagline */}
-        <div className="hero-animate" style={{
-          animationDelay: '0.22s',
-          fontFamily: "'Dancing Script', cursive",
-          fontSize: 'clamp(22px,5.5vw,40px)',
-          color: LUX.gold,
-          letterSpacing: '0.5px',
-          marginBottom: 12,
-          lineHeight: 1.3,
-        }}>
-          Giữ Mãi Nét Thanh Xuân Của Bạn
-        </div>
-
-        {/* Sub */}
-        <div className="hero-animate" style={{
-          animationDelay: '0.32s',
-          fontFamily: LUX.fontSans, fontSize: 12,
-          color: 'rgba(255,255,255,0.38)',
-          letterSpacing: '3px', textTransform: 'uppercase',
-          marginBottom: 52,
-        }}>
-          Hannah Beauty &amp; Spa · Cần Thơ · Từ Năm 2019
-        </div>
-
-        {/* CTAs */}
-        <div className="hero-animate" style={{
-          animationDelay: '0.44s',
-          display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap',
-        }}>
-          <a href="#dat-lich"
-            onClick={e => { e.preventDefault(); scrollTo('dat-lich') }}
-            style={{
-              padding: '16px 40px',
-              background: LUX.goldGrad,
-              color: 'white', borderRadius: 50,
-              fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 15,
-              textDecoration: 'none',
-              boxShadow: `0 8px 32px ${LUX.gold}50`,
-              transition: 'all 0.25s',
-              letterSpacing: '0.3px',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 14px 40px ${LUX.gold}60` }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 8px 32px ${LUX.gold}50` }}
-          >
-            Đặt Lịch Ngay
-          </a>
-          <button onClick={() => scrollTo('dich-vu')}
-            style={{
-              padding: '16px 34px',
-              background: 'rgba(255,255,255,0.07)',
-              color: 'rgba(255,255,255,0.82)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              borderRadius: 50,
-              fontFamily: LUX.fontSans, fontWeight: 600, fontSize: 15,
-              cursor: 'pointer',
-              backdropFilter: 'blur(12px)',
-              transition: 'all 0.25s',
-              letterSpacing: '0.3px',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.38)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)' }}
-          >
-            Xem Dịch Vụ
-          </button>
-        </div>
-      </div>
-
-      {/* Scroll indicator */}
-      <div style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', zIndex: 1 }}>
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-          animation: 'lp-fade-pulse 2.2s ease-in-out infinite',
-        }}>
-          <span style={{
-            fontFamily: LUX.fontSans, fontSize: 10, letterSpacing: '2px',
-            textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)',
-          }}>
-            Cuộn xuống
-          </span>
-          <div style={{ width: 1, height: 36, background: 'linear-gradient(to bottom,rgba(255,255,255,0.4),transparent)' }} />
-        </div>
-      </div>
+      <style>{`
+        .lp-hero {
+          padding: 160px 0 100px;
+          min-height: 100vh;
+          position: relative;
+          overflow: hidden;
+        }
+        .lp-hero-grain {
+          position: absolute; inset: 0; pointer-events: none;
+          background:
+            radial-gradient(800px 500px at 10% 15%, rgba(212,184,150,0.22), transparent 70%),
+            radial-gradient(600px 400px at 90% 75%, rgba(168,126,92,0.10), transparent 70%);
+        }
+        .lp-hero-grid {
+          display: grid;
+          grid-template-columns: 1fr 2fr 1fr;
+          gap: 40px;
+          position: relative; z-index: 2;
+          align-items: stretch;
+        }
+        .lp-hero-side { display: flex; flex-direction: column; justify-content: space-between; }
+        .lp-hero-side-l { padding-top: 8px; }
+        .lp-hero-meta { display: flex; flex-direction: column; gap: 10px; }
+        .lp-hero-divider { width: 28px; height: 1px; background: var(--line); }
+        .lp-hero-vert {
+          writing-mode: vertical-rl; transform: rotate(180deg);
+          display: flex; align-items: center; gap: 14px;
+          font-family: var(--mono); font-size: 9px;
+          letter-spacing: 0.28em; text-transform: uppercase;
+          color: var(--ink-mute); align-self: flex-start;
+        }
+        .lp-hero-vert-line { width: 1px; height: 48px; background: var(--ink-mute); }
+        .lp-hero-center { text-align: center; padding-top: 12px; }
+        .lp-hero-title {
+          margin-top: 28px;
+          color: var(--ink);
+        }
+        .lp-hero-title em { color: var(--terracotta); }
+        .lp-hero-bilingual {
+          font-family: var(--serif); font-style: italic;
+          color: var(--ink-mute); margin-top: 20px; font-size: 17px;
+        }
+        .lp-hero-actions {
+          display: flex; gap: 14px; justify-content: center;
+          margin-top: 40px; flex-wrap: wrap;
+        }
+        .lp-hero-side-r { align-items: flex-end; }
+        .lp-hero-quote {
+          max-width: 240px; padding: 22px 0 0;
+          border-top: 1px solid var(--line);
+          position: relative; align-self: flex-end; margin-top: auto;
+        }
+        .lp-hero-quote-mark {
+          position: absolute; top: -40px; right: 0;
+          font-family: var(--display); font-size: 76px; line-height: 1;
+          color: var(--terracotta);
+        }
+        .lp-hero-quote p {
+          font-family: var(--serif); font-size: 15px;
+          font-style: italic; line-height: 1.5; color: var(--ink-soft);
+        }
+        .lp-hero-quote-author {
+          display: block; margin-top: 12px;
+          font-family: var(--mono); font-size: 9px;
+          letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-mute);
+        }
+        .lp-hero-banner {
+          margin-top: 72px; position: relative; z-index: 2;
+        }
+        .lp-hero-banner-wrap {
+          border-radius: 28px; overflow: hidden;
+          aspect-ratio: 16/7;
+          position: relative;
+          box-shadow: 0 32px 80px -20px rgba(31,27,23,0.28);
+        }
+        .lp-hero-banner-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .lp-hero-banner-overlay {
+          position: absolute; bottom: 0; left: 0; right: 0;
+          padding: 20px 32px;
+          background: linear-gradient(transparent, rgba(31,27,23,0.52));
+          display: flex; align-items: flex-end;
+        }
+        .lp-hero-stats {
+          display: grid; grid-template-columns: repeat(4, 1fr);
+          gap: 24px; margin-top: 80px;
+          padding-top: 40px; border-top: 1px solid var(--line);
+          position: relative; z-index: 2;
+        }
+        .lp-stat-num {
+          font-family: var(--serif); font-weight: 300;
+          font-size: 52px; line-height: 1; letter-spacing: -0.02em;
+        }
+        .lp-stat-num span { font-family: var(--display); color: var(--terracotta); font-size: 32px; margin-left: 3px; }
+        .lp-stat-label { font-size: 13px; color: var(--ink-soft); margin-top: 10px; line-height: 1.4; }
+        .lp-bilingual { color: var(--ink-mute); font-style: italic; font-family: var(--serif); font-size: 0.82em; }
+        @media (max-width: 900px) {
+          .lp-hero { padding: 120px 0 80px; min-height: auto; }
+          .lp-hero-grid { grid-template-columns: 1fr; }
+          .lp-hero-side { display: none; }
+          .lp-hero-banner-wrap { aspect-ratio: 4/3; border-radius: 20px; }
+          .lp-hero-stats { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+          .lp-hero-banner-wrap { aspect-ratio: 1/1; border-radius: 16px; }
+        }
+      `}</style>
     </section>
   )
 }

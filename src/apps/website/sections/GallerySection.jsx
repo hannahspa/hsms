@@ -1,212 +1,116 @@
-import { useState, useEffect } from 'react'
-import { LUX } from '../../../constants/lux'
-import { GALLERY_ROOMS, TOTAL_IMAGES } from '../../../constants/galleryImages'
-import LazyImage from '../../../components/shared/LazyImage'
+import { HERO_BG, IMMERSION_SECTIONS } from '../../../constants/galleryImages'
+
+// 6 ảnh ghép cặp (2/hàng) + 1 banner full-width
+const PAIRS = [
+  // Cặp 1
+  [
+    { src: IMMERSION_SECTIONS[0].images[0], alt: 'Sảnh đón Hannah Beauty & Spa' },
+    { src: IMMERSION_SECTIONS[1].images[0], alt: 'Phòng chăm sóc da mặt' },
+  ],
+  // Cặp 2
+  [
+    { src: IMMERSION_SECTIONS[2].images[0], alt: 'Phòng gội đầu 5 giường' },
+    { src: IMMERSION_SECTIONS[1].images[1], alt: 'Phòng điều trị da chuyên sâu' },
+  ],
+  // Cặp 3
+  [
+    { src: IMMERSION_SECTIONS[3].images[0], alt: 'Phòng triệt lông công nghệ cao' },
+    { src: IMMERSION_SECTIONS[4].images[0], alt: 'Khu sấy tóc chuyên nghiệp' },
+  ],
+]
+
+const BANNER = { src: HERO_BG, alt: 'Mặt tiền Hannah Beauty & Spa — 39 Nam Kỳ Khởi Nghĩa' }
 
 export default function GallerySection() {
-  const [lightbox, setLightbox] = useState(null)
-
-  const open = (roomIdx, imgIdx) => setLightbox({ roomIdx, imgIdx })
-  const close = () => setLightbox(null)
-
-  // Keyboard nav
-  useEffect(() => {
-    if (!lightbox) return
-    const room = GALLERY_ROOMS[lightbox.roomIdx]
-    const max = room.images.length
-    const handler = (e) => {
-      if (e.key === 'Escape') close()
-      if (e.key === 'ArrowRight') setLightbox(p => ({ ...p, imgIdx: (p.imgIdx + 1) % max }))
-      if (e.key === 'ArrowLeft')  setLightbox(p => ({ ...p, imgIdx: (p.imgIdx - 1 + max) % max }))
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [lightbox])
-
-  const currentImg = lightbox
-    ? GALLERY_ROOMS[lightbox.roomIdx].images[lightbox.imgIdx]
-    : null
-  const currentName = lightbox ? GALLERY_ROOMS[lightbox.roomIdx].name : null
-
   return (
-    <section style={{ background: '#2e1e14', padding: 'clamp(60px,10vw,100px) clamp(20px,5vw,60px)' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-
+    <section id="thu-vien" className="lp-gallery">
+      <div className="lp-container">
         {/* Header */}
-        <div className="lp-anim" style={{ textAlign: 'center', marginBottom: 'clamp(40px,6vw,60px)' }}>
-          <div style={{
-            display: 'inline-block',
-            fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700,
-            color: 'rgba(212,165,116,0.65)', letterSpacing: '3px', textTransform: 'uppercase',
-            border: '1px solid rgba(212,165,116,0.25)',
-            padding: '6px 20px', borderRadius: 50, marginBottom: 16,
-          }}>
-            Không Gian Hannah Spa
+        <div className="lp-section-head lp-reveal">
+          <div>
+            <div className="lp-eyebrow"><span className="lp-dot"></span>Thư viện · Gallery</div>
+            <h2 className="lp-h-section" style={{ marginTop: 24 }}>
+              Một thoáng <em>Hannah,</em><br />qua không gian và ánh sáng.
+            </h2>
           </div>
-          <h2 style={{
-            fontFamily: LUX.fontSerif, fontSize: 'clamp(28px,5vw,44px)',
-            fontWeight: 600, color: 'rgba(255,255,255,0.92)',
-            margin: '0 0 12px', lineHeight: 1.2,
-          }}>
-            Tham Quan Spa Của Chúng Tôi
-          </h2>
-          <p style={{
-            fontFamily: LUX.fontSans, fontSize: 15,
-            color: 'rgba(255,255,255,0.42)',
-            maxWidth: 520, margin: '0 auto', lineHeight: 1.7,
-          }}>
-            {TOTAL_IMAGES} ảnh thực tế — 3 tầng, 6 khu vực chuyên biệt, trang thiết bị hiện đại
+          <p className="lp-lede">
+            Ba tầng, mỗi tầng là một thế giới riêng — thiết kế tinh tế,
+            vật liệu cao cấp, ánh sáng ấm áp và sự bình yên tuyệt đối.
           </p>
         </div>
 
-        {/* Gallery by room */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(48px,7vw,80px)' }}>
-          {GALLERY_ROOMS.map((room, roomIdx) => (
-            <div key={room.id} className="lp-anim">
-              {/* Room header */}
-              <div style={{
-                display: 'flex', alignItems: 'baseline', gap: 16,
-                marginBottom: 20, paddingBottom: 14,
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
-              }}>
-                <h3 style={{
-                  fontFamily: LUX.fontSerif, fontSize: 'clamp(18px,2.5vw,24px)',
-                  fontWeight: 600, color: 'rgba(255,255,255,0.88)',
-                  margin: 0,
-                }}>
-                  {room.name}
-                </h3>
-                <span style={{
-                  fontFamily: LUX.fontSans, fontSize: 12,
-                  color: 'rgba(212,165,116,0.45)',
-                }}>
-                  {room.images.length} ảnh
-                </span>
-              </div>
-              <p style={{
-                fontFamily: LUX.fontSans, fontSize: 13,
-                color: 'rgba(255,255,255,0.32)',
-                margin: '0 0 18px',
-              }}>
-                {room.desc}
-              </p>
-
-              {/* Image grid — mỗi ảnh dùng LazyImage, chỉ load khi sắp vào viewport */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                gap: 10,
-              }}>
-                {room.images.map((src, imgIdx) => (
-                  <div
-                    key={`${room.id}-${imgIdx}`}
-                    onClick={() => open(roomIdx, imgIdx)}
-                    style={{
-                      cursor: 'pointer',
-                      borderRadius: LUX.radius,
-                      overflow: 'hidden',
-                      transition: 'transform 0.3s cubic-bezier(0.22,0.61,0.36,1)',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    <LazyImage
-                      src={src}
-                      alt={`${room.name} — ảnh ${imgIdx + 1}`}
-                      aspectRatio="4/3"
-                      rootMargin="200px"
-                    />
-                  </div>
-                ))}
-              </div>
+        {/* 3 cặp ảnh, mỗi cặp 2 ảnh/hàng */}
+        <div className="lp-gal-pairs lp-reveal">
+          {PAIRS.map((pair, pi) => (
+            <div key={pi} className="lp-gal-pair">
+              {pair.map((img, ii) => (
+                <div key={ii} className={`lp-gal-cell ${pi === 0 && ii === 0 ? 'lp-gal-tall' : ''}`}>
+                  <img src={img.src} alt={img.alt} loading="lazy" />
+                </div>
+              ))}
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Lightbox — chỉ load ảnh full khi mở */}
-      {lightbox && currentImg && (
-        <div
-          onClick={close}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            background: 'rgba(0,0,0,0.94)',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            padding: 20,
-          }}
-        >
-          {/* Close */}
-          <button onClick={close} style={{
-            position: 'absolute', top: 16, right: 20,
-            background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-            color: 'white', width: 40, height: 40, borderRadius: '50%',
-            fontSize: 20, cursor: 'pointer', zIndex: 10,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            ✕
-          </button>
-
-          {/* Prev */}
-          {GALLERY_ROOMS[lightbox.roomIdx].images.length > 1 && (
-            <button onClick={e => {
-              e.stopPropagation()
-              const max = GALLERY_ROOMS[lightbox.roomIdx].images.length
-              setLightbox(p => ({ ...p, imgIdx: (p.imgIdx - 1 + max) % max }))
-            }} style={{
-              position: 'absolute', left: 'clamp(8px, 3vw, 24px)', top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-              color: 'white', width: 44, height: 44, borderRadius: '50%',
-              fontSize: 22, cursor: 'pointer', zIndex: 10,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              ‹
-            </button>
-          )}
-
-          {/* Next */}
-          {GALLERY_ROOMS[lightbox.roomIdx].images.length > 1 && (
-            <button onClick={e => {
-              e.stopPropagation()
-              const max = GALLERY_ROOMS[lightbox.roomIdx].images.length
-              setLightbox(p => ({ ...p, imgIdx: (p.imgIdx + 1) % max }))
-            }} style={{
-              position: 'absolute', right: 'clamp(8px, 3vw, 24px)', top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-              color: 'white', width: 44, height: 44, borderRadius: '50%',
-              fontSize: 22, cursor: 'pointer', zIndex: 10,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              ›
-            </button>
-          )}
-
-          {/* Image — chỉ load khi lightbox mở */}
-          <img
-            src={currentImg}
-            alt={currentName || ''}
-            onClick={e => e.stopPropagation()}
-            decoding="async"
-            style={{
-              maxWidth: '90vw', maxHeight: '75vh',
-              objectFit: 'contain',
-              borderRadius: 8,
-              boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-            }}
-          />
-
-          {/* Caption */}
-          <div style={{
-            marginTop: 16, textAlign: 'center',
-            fontFamily: LUX.fontSans, fontSize: 13,
-            color: 'rgba(255,255,255,0.5)',
-          }} onClick={e => e.stopPropagation()}>
-            {currentName} — {lightbox.imgIdx + 1} / {GALLERY_ROOMS[lightbox.roomIdx].images.length}
+        {/* Banner full-width */}
+        <div className="lp-gal-banner lp-reveal">
+          <img src={BANNER.src} alt={BANNER.alt} loading="lazy" />
+          <div className="lp-gal-banner-caption">
+            <span className="lp-label" style={{ color: 'rgba(250,246,238,0.75)' }}>
+              39 Nam Kỳ Khởi Nghĩa · Ninh Kiều · Cần Thơ
+            </span>
           </div>
         </div>
-      )}
+      </div>
+
+      <style>{`
+        .lp-gallery { background: var(--bg-alt); }
+
+        /* Các cặp ảnh */
+        .lp-gal-pairs { display: flex; flex-direction: column; gap: 14px; }
+        .lp-gal-pair {
+          display: grid; grid-template-columns: 1fr 1fr;
+          gap: 14px; align-items: stretch;
+        }
+        .lp-gal-cell {
+          border-radius: 20px; overflow: hidden;
+          aspect-ratio: 4/3;
+          position: relative;
+        }
+        .lp-gal-tall { aspect-ratio: 3/4; }
+        .lp-gal-cell img {
+          width: 100%; height: 100%; object-fit: cover;
+          transition: transform .55s cubic-bezier(.2,.8,.2,1);
+          display: block;
+        }
+        .lp-gal-cell:hover img { transform: scale(1.05); }
+
+        /* Banner panoramic */
+        .lp-gal-banner {
+          margin-top: 14px;
+          border-radius: 20px; overflow: hidden;
+          aspect-ratio: 21/8; position: relative;
+        }
+        .lp-gal-banner img {
+          width: 100%; height: 100%; object-fit: cover;
+          transition: transform .55s cubic-bezier(.2,.8,.2,1);
+          display: block;
+        }
+        .lp-gal-banner:hover img { transform: scale(1.03); }
+        .lp-gal-banner-caption {
+          position: absolute; bottom: 0; left: 0; right: 0;
+          padding: 18px 28px;
+          background: linear-gradient(transparent, rgba(31,27,23,0.5));
+        }
+
+        @media (max-width: 900px) {
+          .lp-gal-cell { border-radius: 14px; aspect-ratio: 1/1; }
+          .lp-gal-tall { aspect-ratio: 1/1; }
+          .lp-gal-pair { gap: 10px; }
+          .lp-gal-pairs { gap: 10px; }
+          .lp-gal-banner { border-radius: 14px; aspect-ratio: 4/3; margin-top: 10px; }
+        }
+      `}</style>
     </section>
   )
 }

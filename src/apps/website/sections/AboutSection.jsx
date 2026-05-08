@@ -1,144 +1,135 @@
-import { LUX } from '../../../constants/lux'
-import { ABOUT_IMG } from '../../../constants/galleryImages'
-import LazyImage from '../../../components/shared/LazyImage'
+import { ABOUT_IMG, HERO_BG } from '../../../constants/galleryImages'
 
-const STATS = [
-  { num: '7+',    label: 'Năm Kinh Nghiệm'     },
-  { num: '10',    label: 'Chuyên Viên'          },
-  { num: '1000+', label: 'Khách Hàng Hài Lòng' },
+const PILLARS = [
+  {
+    no: '01',
+    vi: 'Chuyên nghiệp tận tâm',
+    en: 'Devoted professionals',
+    desc: 'Đội ngũ 9 chuyên viên được đào tạo bài bản, luôn chu đáo và cẩn thận trong từng thao tác kỹ thuật.',
+  },
+  {
+    no: '02',
+    vi: 'Sản phẩm cao cấp',
+    en: 'Premium products',
+    desc: 'Sử dụng mỹ phẩm nhập khẩu chính hãng, không paraben — an toàn cho mọi loại da, kể cả da nhạy cảm.',
+  },
+  {
+    no: '03',
+    vi: 'Không gian riêng tư',
+    en: 'Private sanctuary',
+    desc: 'Ba tầng với các phòng điều trị riêng biệt, cửa đóng kín — đảm bảo sự thoải mái và riêng tư tuyệt đối.',
+  },
 ]
-
-const BADGES = ['Chuyên nghiệp', 'Tận tâm', 'Cao cấp', 'Uy tín']
 
 export default function AboutSection() {
   return (
-    <section style={{ background: LUX.surface2, padding: 'clamp(60px,10vw,100px) clamp(20px,5vw,60px)' }}>
-      <div style={{
-        maxWidth: 1100, margin: '0 auto',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))',
-        gap: 'clamp(40px,6vw,80px)',
-        alignItems: 'center',
-      }}>
-
-        {/* Text column */}
-        <div>
-          <div className="lp-anim" style={{
-            display: 'inline-block',
-            fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700,
-            color: LUX.champagne, letterSpacing: '3px', textTransform: 'uppercase',
-            border: `1px solid ${LUX.gold}40`,
-            padding: '6px 20px', borderRadius: 50, marginBottom: 20,
-          }}>
-            Về Chúng Tôi
+    <section id="ve-chung-toi" className="lp-about">
+      <div className="lp-container">
+        <div className="lp-about-grid">
+          {/* Images column */}
+          <div className="lp-about-images">
+            <div className="lp-about-img-main">
+              <img src={ABOUT_IMG} alt="Sảnh đón Hannah Beauty & Spa" loading="lazy" />
+            </div>
+            <div className="lp-about-img-secondary">
+              <img src={HERO_BG} alt="Mặt tiền Hannah Beauty & Spa" loading="lazy" />
+            </div>
+            <div className="lp-about-badge">
+              <div className="lp-about-badge-num">2019</div>
+              <div className="lp-about-badge-label">Thành lập</div>
+            </div>
           </div>
 
-          <h2 className="lp-anim" style={{
-            fontFamily: LUX.fontSerif, fontSize: 'clamp(26px,4.5vw,38px)',
-            fontWeight: 600, color: LUX.espresso,
-            lineHeight: 1.25, margin: '0 0 20px',
-          }}>
-            Nơi Sắc Đẹp Và<br />Sự Thư Giãn Gặp Nhau
-          </h2>
+          {/* Content column */}
+          <div className="lp-about-content lp-reveal">
+            <div className="lp-eyebrow"><span className="lp-dot"></span>Câu chuyện · Our story</div>
+            <h2 className="lp-h-section" style={{ marginTop: 24 }}>
+              Không gian nhỏ,<br/>
+              <em>tâm huyết lớn,</em><br/>
+              nét xuân mãi xanh.
+            </h2>
+            <p className="lp-lede" style={{ marginTop: 28 }}>
+              Thành lập năm 2019 tại trung tâm Ninh Kiều, Hannah Beauty &amp; Spa
+              được xây dựng từ niềm tin rằng mỗi người phụ nữ đều xứng đáng
+              được chăm sóc trong không gian sang trọng và an toàn.
+            </p>
 
-          <p className="lp-anim" style={{
-            fontFamily: LUX.fontSans, fontSize: 15, color: LUX.ink2,
-            lineHeight: 1.8, marginBottom: 14,
-          }}>
-            Thành lập năm 2019, Hannah Beauty &amp; Spa là điểm đến chăm sóc sắc đẹp được yêu thích
-            tại trung tâm Cần Thơ. Chúng tôi mang đến những dịch vụ làm đẹp chuyên nghiệp trong
-            không gian sang trọng, ấm cúng.
-          </p>
-
-          <p className="lp-anim" style={{
-            fontFamily: LUX.fontSans, fontSize: 15, color: LUX.ink2,
-            lineHeight: 1.8, marginBottom: 36,
-          }}>
-            Đội ngũ chuyên viên được đào tạo bài bản, luôn tận tâm và chu đáo — đảm bảo mỗi
-            khách hàng đều được trải nghiệm dịch vụ tốt nhất với sản phẩm cao cấp.
-          </p>
-
-          {/* Stats row */}
-          <div className="lp-anim" style={{ display: 'flex', gap: 'clamp(20px,4vw,40px)', flexWrap: 'wrap' }}>
-            {STATS.map(s => (
-              <div key={s.label}>
-                <div style={{
-                  fontFamily: LUX.fontSerif, fontSize: 'clamp(32px,5vw,44px)',
-                  fontWeight: 700, color: LUX.champagne,
-                  lineHeight: 1, marginBottom: 4,
-                }}>
-                  {s.num}
+            {/* Pillars */}
+            <div className="lp-about-pillars">
+              {PILLARS.map(p => (
+                <div key={p.no} className="lp-pillar">
+                  <div className="lp-pillar-no">{p.no}</div>
+                  <div className="lp-pillar-body">
+                    <div className="lp-pillar-title">{p.vi}</div>
+                    <div className="lp-pillar-en">{p.en}</div>
+                    <p className="lp-pillar-desc">{p.desc}</p>
+                  </div>
                 </div>
-                <div style={{
-                  fontFamily: LUX.fontSans, fontSize: 12,
-                  color: LUX.ink3, fontWeight: 600, letterSpacing: '0.5px',
-                }}>
-                  {s.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Visual column — real spa photo, lazy loaded */}
-        <div className="lp-anim" style={{ position: 'relative' }}>
-          <div style={{
-            borderRadius: LUX.radiusLg,
-            overflow: 'hidden',
-            boxShadow: LUX.shadowLg,
-          }}>
-            <LazyImage
-              src={ABOUT_IMG}
-              alt="Sảnh đón Hannah Beauty & Spa"
-              aspectRatio="4/5"
-              rootMargin="250px"
-            />
-
-            {/* Badges overlay */}
-            <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0,
-              height: '50%',
-              background: 'linear-gradient(to top, rgba(45,30,20,0.80), transparent)',
-              pointerEvents: 'none',
-            }} />
-            <div style={{
-              position: 'absolute', bottom: 20, left: 20, right: 20,
-              display: 'flex', gap: 6, flexWrap: 'wrap',
-            }}>
-              {BADGES.map(b => (
-                <span key={b} style={{
-                  fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 600,
-                  color: 'rgba(255,255,255,0.9)',
-                  background: 'rgba(0,0,0,0.35)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  padding: '4px 12px', borderRadius: 50,
-                }}>
-                  {b}
-                </span>
               ))}
             </div>
-          </div>
 
-          {/* Floating rating card */}
-          <div style={{
-            position: 'absolute', bottom: -20, right: -16,
-            background: LUX.surface2,
-            borderRadius: LUX.radius,
-            padding: '14px 18px',
-            boxShadow: LUX.shadow,
-            border: `1px solid ${LUX.line}`,
-          }}>
-            <div style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, marginBottom: 4 }}>
-              Đánh giá trung bình
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontFamily: LUX.fontSerif, fontSize: 22, fontWeight: 700, color: LUX.espresso }}>5.0</span>
-              <span style={{ fontSize: 13 }}>⭐⭐⭐⭐⭐</span>
+            <div style={{ marginTop: 40 }}>
+              <a href="#dich-vu" className="lp-btn lp-btn-ghost">
+                Xem dịch vụ <span className="lp-arrow"></span>
+              </a>
             </div>
           </div>
         </div>
       </div>
+
+      <style>{`
+        .lp-about { background: var(--bg); }
+        .lp-about-grid {
+          display: grid; grid-template-columns: 1fr 1.1fr;
+          gap: 100px; align-items: start;
+        }
+        .lp-about-images { position: relative; height: 680px; }
+        .lp-about-img-main {
+          position: absolute; top: 0; left: 0;
+          width: 78%; height: 520px;
+          border-radius: 4px; overflow: hidden;
+        }
+        .lp-about-img-main img,
+        .lp-about-img-secondary img { width: 100%; height: 100%; object-fit: cover; }
+        .lp-about-img-secondary {
+          position: absolute; bottom: 0; right: 0;
+          width: 58%; height: 270px;
+          border-radius: 4px; overflow: hidden;
+        }
+        .lp-about-badge {
+          position: absolute; top: 460px; left: 0;
+          background: var(--ink); color: var(--cream);
+          width: 120px; height: 120px; border-radius: 50%;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center; z-index: 2;
+        }
+        .lp-about-badge-num { font-family: var(--display); font-size: 32px; }
+        .lp-about-badge-label {
+          font-family: var(--mono); font-size: 9px;
+          letter-spacing: 0.22em; text-transform: uppercase;
+          margin-top: 4px; color: var(--champagne);
+        }
+        .lp-about-content { padding-top: 20px; }
+        .lp-about-pillars { margin-top: 52px; display: grid; gap: 0; }
+        .lp-pillar {
+          display: grid; grid-template-columns: 56px 1fr;
+          gap: 20px; padding: 28px 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .lp-pillar:last-child { border-bottom: none; }
+        .lp-pillar-no { font-family: var(--display); font-size: 26px; color: var(--terracotta); line-height: 1; padding-top: 4px; }
+        .lp-pillar-title { font-family: var(--serif); font-size: 24px; font-weight: 400; line-height: 1.1; }
+        .lp-pillar-en { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-mute); margin-top: 4px; }
+        .lp-pillar-desc { color: var(--ink-soft); font-size: 14px; margin-top: 10px; line-height: 1.6; }
+        @media (max-width: 900px) {
+          .lp-about-grid { grid-template-columns: 1fr; gap: 60px; }
+          .lp-about-images { height: 480px; }
+          .lp-about-img-main { height: 340px; width: 80%; }
+          .lp-about-img-secondary { height: 190px; }
+          .lp-about-badge { top: 300px; width: 96px; height: 96px; }
+          .lp-about-badge-num { font-size: 24px; }
+        }
+      `}</style>
     </section>
   )
 }

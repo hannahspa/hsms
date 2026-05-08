@@ -1,158 +1,178 @@
-import { LUX } from '../../../constants/lux'
+import { useState } from 'react'
+import { IMMERSION_SECTIONS, ABOUT_IMG } from '../../../constants/galleryImages'
 
 const SERVICES = [
   {
-    emoji: '🌸', name: 'Chăm Sóc Da Mặt',
-    desc: 'Facial chuyên sâu, thải độc, dưỡng ẩm, trẻ hóa làn da hiệu quả',
-    price: 'Từ 200.000đ',
-    accent: '#c8956a', bg: 'linear-gradient(135deg,#f8ece0,#f2dcc8)',
+    no: '01',
+    vi: 'Gội đầu dưỡng sinh',
+    en: 'Scalp & Hair Therapy',
+    desc: '5 giường gội cao cấp — massage đầu dưỡng sinh kết hợp tinh dầu thảo mộc, thư giãn hệ thần kinh, phục hồi sức sống cho da đầu và tóc. Chỉ 60 phút, căng thẳng cả tuần tan biến.',
+    duration: '45 – 60 phút',
+    from: 'Liên hệ',
+    tags: ['Massage đầu', 'Tinh dầu', 'Thư giãn'],
+    img: IMMERSION_SECTIONS[2].images[0],
   },
   {
-    emoji: '💆', name: 'Massage Thư Giãn',
-    desc: 'Body massage toàn thân, đá nóng, giải tỏa căng thẳng mệt mỏi',
-    price: 'Từ 350.000đ',
-    accent: '#6a9a6a', bg: 'linear-gradient(135deg,#eef2e7,#ddecd5)',
+    no: '02',
+    vi: 'Massage body & đá nóng',
+    en: 'Body Massage & Hot Stone',
+    desc: 'Kết hợp kỹ thuật massage toàn thân với nhiệt đá bazan tự nhiên — thư giãn cơ sâu, kích thích tuần hoàn, giải phóng độc tố. Cảm giác nhẹ bẫng và tái sinh sau mỗi buổi.',
+    duration: '60 – 90 phút',
+    from: 'Liên hệ',
+    tags: ['Đá nóng', 'Thư giãn cơ', 'Detox'],
+    img: IMMERSION_SECTIONS[1].images[1],
   },
   {
-    emoji: '✨', name: 'Triệt Lông',
-    desc: 'Công nghệ laser hiện đại, an toàn, triệt lông lâu dài bền vững',
-    price: 'Từ 150.000đ',
-    accent: '#b87a6a', bg: 'linear-gradient(135deg,#f5e4e0,#ecccca)',
+    no: '03',
+    vi: 'Triệt lông công nghệ cao',
+    en: 'Advanced Laser Hair Removal',
+    desc: 'Công nghệ laser thế hệ mới — an toàn, không đau, hiệu quả vĩnh viễn sau 6–8 buổi. Phòng riêng tư, chuyên viên được đào tạo chuyên sâu, phù hợp mọi loại da.',
+    duration: '30 – 60 phút',
+    from: 'Liên hệ',
+    tags: ['Không đau', 'Vĩnh viễn', 'An toàn'],
+    img: IMMERSION_SECTIONS[3].images[0],
   },
   {
-    emoji: '🌿', name: 'Trị Mụn - Thâm',
-    desc: 'Liệu trình chuyên biệt, điều trị mụn viêm và vết thâm tối màu',
-    price: 'Từ 250.000đ',
-    accent: '#6a9a7a', bg: 'linear-gradient(135deg,#e5f0ea,#d2e8da)',
+    no: '04',
+    vi: 'Chăm sóc da công nghệ cao',
+    en: 'Advanced Skin Care',
+    desc: 'Phân tích da chuyên sâu kết hợp thiết bị hiện đại — điều trị mụn, trắng sáng, chống lão hóa, thu nhỏ lỗ chân lông. Liệu trình cá nhân hóa cho từng loại da.',
+    duration: '60 – 90 phút',
+    from: 'Liên hệ',
+    tags: ['Công nghệ', 'Cá nhân hóa', 'Hiệu quả'],
+    img: IMMERSION_SECTIONS[1].images[0],
   },
   {
-    emoji: '🛁', name: 'Tắm Trắng',
-    desc: 'Công thức dưỡng trắng toàn thân, da mịn màng và sáng hồng tự nhiên',
-    price: 'Từ 400.000đ',
-    accent: '#c8a675', bg: 'linear-gradient(135deg,#f5e9d4,#eeddb8)',
-  },
-  {
-    emoji: '💎', name: 'Liệu Trình Combo',
-    desc: 'Gói kết hợp đa dịch vụ, ưu đãi tiết kiệm lên đến 30% cho khách hàng',
-    price: 'Từ 1.500.000đ',
-    accent: '#8a6a52', bg: 'linear-gradient(135deg,#ece2d4,#ddd0bc)',
+    no: '05',
+    vi: 'Tắm trắng & giảm béo',
+    en: 'Whitening & Slimming Therapy',
+    desc: 'Liệu trình tắm trắng toàn thân với tinh chất thiên nhiên kết hợp công nghệ giảm béo không xâm lấn — da trắng sáng, săn chắc, vóc dáng thon gọn hiệu quả.',
+    duration: '60 – 120 phút',
+    from: 'Liên hệ',
+    tags: ['Trắng sáng', 'Săn chắc', 'Thon gọn'],
+    img: ABOUT_IMG,
   },
 ]
 
 export default function ServicesSection() {
+  const [active, setActive] = useState(0)
+  const cur = SERVICES[active]
+
   return (
-    <section id="dich-vu" style={{ background: LUX.bg, padding: 'clamp(60px,10vw,100px) clamp(20px,5vw,60px)' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-
-        {/* Section header */}
-        <div className="lp-anim" style={{ textAlign: 'center', marginBottom: 'clamp(40px,6vw,64px)' }}>
-          <div style={{
-            display: 'inline-block',
-            fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700,
-            color: LUX.champagne, letterSpacing: '3px', textTransform: 'uppercase',
-            background: `linear-gradient(135deg,${LUX.gold}20,${LUX.champagne}15)`,
-            border: `1px solid ${LUX.gold}40`,
-            padding: '6px 20px', borderRadius: 50, marginBottom: 16,
-          }}>
-            Dịch Vụ Của Chúng Tôi
+    <section id="dich-vu" className="lp-svc-section">
+      <div className="lp-container">
+        {/* Header */}
+        <div className="lp-section-head lp-reveal">
+          <div>
+            <div className="lp-eyebrow"><span className="lp-dot"></span>Menu dịch vụ · Treatments</div>
+            <h2 className="lp-h-section" style={{ marginTop: 24 }}>
+              Năm liệu trình<br/>
+              <em>được thiết kế</em><br/>
+              cho từng bạn.
+            </h2>
           </div>
-          <h2 style={{
-            fontFamily: LUX.fontSerif, fontSize: 'clamp(28px,5vw,44px)',
-            fontWeight: 600, color: LUX.espresso,
-            margin: '0 0 14px', lineHeight: 1.2,
-          }}>
-            Dịch Vụ Nổi Bật
-          </h2>
-          <p style={{
-            fontFamily: LUX.fontSans, fontSize: 15,
-            color: LUX.ink3, maxWidth: 500, margin: '0 auto', lineHeight: 1.75,
-          }}>
-            Trải nghiệm làm đẹp cao cấp với đội ngũ chuyên viên tận tâm tại trung tâm Cần Thơ
+          <p className="lp-lede">
+            Mỗi dịch vụ là một hành trình riêng — bắt đầu bằng nụ cười
+            đón tiếp, kết thúc trong cảm giác nhẹ bẫng và tươi mới.
           </p>
         </div>
 
-        {/* Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))',
-          gap: 20,
-        }}>
-          {SERVICES.map((svc, i) => (
-            <div key={svc.name} className="lp-anim" style={{ transitionDelay: `${i * 0.07}s` }}>
-              <div
-                style={{
-                  background: LUX.surface2, borderRadius: LUX.radius,
-                  padding: '28px 24px',
-                  border: `1px solid ${LUX.line}`,
-                  boxShadow: LUX.shadowSm,
-                  transition: 'all 0.3s cubic-bezier(0.22,0.61,0.36,1)',
-                  position: 'relative', overflow: 'hidden',
-                  height: '100%', boxSizing: 'border-box',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.boxShadow = LUX.shadow
-                  e.currentTarget.style.transform = 'translateY(-5px)'
-                  e.currentTarget.style.borderColor = svc.accent + '40'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.boxShadow = LUX.shadowSm
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.borderColor = LUX.line
-                }}
+        {/* Body */}
+        <div className="lp-svc-body">
+          {/* List */}
+          <ul className="lp-svc-list">
+            {SERVICES.map((s, i) => (
+              <li
+                key={s.no}
+                className={`lp-svc-row ${i === active ? 'active' : ''}`}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => setActive(i)}
               >
-                {/* Top accent */}
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: svc.accent, borderRadius: '18px 18px 0 0' }} />
+                <span className="lp-svc-no">{s.no}</span>
+                <div className="lp-svc-name">
+                  <div className="lp-svc-vi">{s.vi}</div>
+                  <div className="lp-svc-en">{s.en}</div>
+                </div>
+                <span className="lp-svc-duration">{s.duration}</span>
+                <span className="lp-svc-arrow">→</span>
+              </li>
+            ))}
+          </ul>
 
-                {/* Icon */}
-                <div style={{
-                  width: 56, height: 56, borderRadius: 16,
-                  background: svc.bg,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 28, marginBottom: 16,
-                  boxShadow: `0 4px 14px ${svc.accent}25`,
-                }}>
-                  {svc.emoji}
-                </div>
-
-                <div style={{ fontFamily: LUX.fontSerif, fontSize: 20, fontWeight: 600, color: LUX.espresso, marginBottom: 8 }}>
-                  {svc.name}
-                </div>
-                <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3, lineHeight: 1.65, marginBottom: 18 }}>
-                  {svc.desc}
-                </div>
-                <div style={{
-                  display: 'inline-block',
-                  fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700,
-                  color: svc.accent,
-                  background: `${svc.accent}18`,
-                  border: `1px solid ${svc.accent}30`,
-                  padding: '5px 14px', borderRadius: 50,
-                }}>
-                  {svc.price}
-                </div>
-              </div>
+          {/* Preview */}
+          <div className="lp-svc-preview">
+            <div className="lp-svc-preview-img">
+              <img src={cur.img} alt={cur.vi} key={cur.no} />
             </div>
-          ))}
-        </div>
-
-        {/* CTA */}
-        <div className="lp-anim" style={{ textAlign: 'center', marginTop: 52 }}>
-          <p style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3, marginBottom: 16 }}>
-            Liên hệ để được tư vấn miễn phí và nhận ưu đãi đặc biệt
-          </p>
-          <a href="tel:0919868868" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '14px 36px',
-            background: LUX.goldGrad,
-            color: 'white', textDecoration: 'none',
-            borderRadius: 50,
-            fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14,
-            boxShadow: `0 6px 24px ${LUX.gold}40`,
-          }}>
-            Gọi Tư Vấn — 0919 868 868
-          </a>
+            <div className="lp-svc-preview-info">
+              <div className="lp-label">{cur.no} / 05</div>
+              <h3 className="lp-svc-preview-title">{cur.vi}</h3>
+              <p className="lp-svc-preview-en">{cur.en}</p>
+              <p className="lp-svc-preview-desc">{cur.desc}</p>
+              <div className="lp-svc-preview-tags">
+                {cur.tags.map(t => <span key={t}>{t}</span>)}
+              </div>
+              <a href="https://www.facebook.com/hannahspact" target="_blank" rel="noopener noreferrer"
+                className="lp-btn lp-btn-primary" style={{ marginTop: 28 }}>
+                Đặt dịch vụ này <span className="lp-arrow"></span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
+
+      <style>{`
+        .lp-svc-section { background: var(--bg-alt); }
+        .lp-svc-body {
+          display: grid;
+          grid-template-columns: 1.1fr 1fr;
+          gap: 60px; align-items: start;
+        }
+        .lp-svc-list { list-style: none; border-top: 1px solid var(--line); }
+        .lp-svc-row {
+          display: grid;
+          grid-template-columns: 56px 1fr auto 24px;
+          gap: 20px; padding: 24px 0;
+          border-bottom: 1px solid var(--line);
+          align-items: center; cursor: pointer;
+          transition: padding .35s ease;
+        }
+        .lp-svc-row.active {
+          padding-left: 14px; padding-right: 14px;
+          background: rgba(250,246,238,0.6);
+        }
+        .lp-svc-no { font-family: var(--display); font-size: 20px; color: var(--terracotta); }
+        .lp-svc-vi { font-family: var(--serif); font-size: 24px; font-weight: 400; line-height: 1.1; }
+        .lp-svc-en { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-mute); margin-top: 4px; }
+        .lp-svc-duration { font-size: 12px; color: var(--ink-soft); }
+        .lp-svc-from { font-size: 12px; color: var(--ink-soft); }
+        .lp-svc-from em { font-family: var(--serif); font-style: normal; font-size: 20px; font-weight: 400; color: var(--ink); margin-left: 6px; }
+        .lp-svc-arrow { color: var(--ink-mute); transition: transform .3s, color .3s; }
+        .lp-svc-row.active .lp-svc-arrow { color: var(--terracotta); transform: translateX(4px); }
+        .lp-svc-preview {
+          position: sticky; top: 100px;
+          background: var(--bg); border-radius: 16px; overflow: hidden;
+        }
+        .lp-svc-preview-img { aspect-ratio: 4/3; width: 100%; overflow: hidden; }
+        .lp-svc-preview-img img { width: 100%; height: 100%; object-fit: cover; transition: opacity .4s; }
+        .lp-svc-preview-info { padding: 32px; }
+        .lp-svc-preview-title { font-family: var(--serif); font-size: 34px; font-weight: 400; line-height: 1.05; margin-top: 10px; }
+        .lp-svc-preview-en { font-family: var(--display); font-style: italic; color: var(--terracotta); margin-top: 6px; font-size: 17px; }
+        .lp-svc-preview-desc { color: var(--ink-soft); margin-top: 16px; font-size: 14px; line-height: 1.65; }
+        .lp-svc-preview-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+        .lp-svc-preview-tags span {
+          font-family: var(--mono); font-size: 9px;
+          letter-spacing: 0.16em; text-transform: uppercase;
+          padding: 5px 10px; border: 1px solid var(--line);
+          border-radius: 999px; color: var(--ink-soft);
+        }
+        @media (max-width: 900px) {
+          .lp-svc-body { grid-template-columns: 1fr; }
+          .lp-svc-row { grid-template-columns: 40px 1fr 24px; }
+          .lp-svc-row .lp-svc-duration { display: none; }
+          .lp-svc-preview { position: static; }
+        }
+      `}</style>
     </section>
   )
 }

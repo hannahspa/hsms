@@ -1,107 +1,141 @@
-import { LUX } from '../../../constants/lux'
+import { useState } from 'react'
 
-// TODO: Thay bằng review thật từ khách hàng
 const REVIEWS = [
   {
-    name: 'Nguyễn Thị Lan Anh', initials: 'LA',
-    service: 'Chăm Sóc Da Mặt', time: '2 tuần trước',
-    bg: 'linear-gradient(135deg,#c8956a,#a0714f)',
-    text: 'Mình đã đến Hannah Spa được 6 tháng, da mình thay đổi rõ rệt! Các bạn kỹ thuật viên rất tận tâm, giải thích kỹ từng bước điều trị. Không gian spa ấm cúng, sạch sẽ. Chắc chắn sẽ tiếp tục ủng hộ!',
+    name: 'Nguyễn Thị Lan Anh',
+    role: 'Giáo viên · Ninh Kiều',
+    rating: 5,
+    text: 'Tôi đến Hannah đã hơn 2 năm và không nơi nào khác có thể thay thế được. Các chị ở đây không chỉ làm đẹp mà còn biết lắng nghe — mỗi lần đến là một lần được nạp lại năng lượng.',
   },
   {
-    name: 'Trần Minh Châu', initials: 'MC',
-    service: 'Massage Thư Giãn', time: '1 tháng trước',
-    bg: 'linear-gradient(135deg,#7a9a6a,#5a7a4a)',
-    text: 'Sau một tuần làm việc căng thẳng, được massage tại Hannah Spa là điều tuyệt vời nhất. Kỹ thuật massage rất chuyên nghiệp, tinh dầu thơm dịu, nhạc nhẹ nhàng thư giãn. Cảm giác hoàn toàn được "sạc lại năng lượng"!',
+    name: 'Trần Minh Châu',
+    role: 'Kinh doanh · Bình Thuỷ',
+    rating: 5,
+    text: 'Phòng triệt lông sạch sẽ, riêng tư và chuyên viên rất chuyên nghiệp. Sau 3 lần điều trị đã thấy rõ kết quả. Giá cả hợp lý, không bị ép mua thêm — rất tin tưởng.',
   },
   {
-    name: 'Phạm Hoàng My', initials: 'HM',
-    service: 'Liệu Trình Combo', time: '3 tuần trước',
-    bg: 'linear-gradient(135deg,#b87a6a,#8a5040)',
-    text: 'Đăng ký gói combo 3 tháng, tiết kiệm được khá nhiều mà chất lượng dịch vụ rất tốt. Đặc biệt dịch vụ triệt lông rất ít đau, hiệu quả cao. Nhân viên nhiệt tình, luôn tư vấn phù hợp với từng người.',
+    name: 'Lê Hương Giang',
+    role: 'Nội trợ · Cần Thơ',
+    rating: 5,
+    text: 'Lần đầu tôi đến chỉ định làm móng, nhưng được tư vấn thêm về da miễn phí. Chị chuyên viên phân tích rất tận tình, không hề cảm thấy bị ép buộc. Từ đó trở thành khách quen.',
+  },
+  {
+    name: 'Phạm Thu Hiền',
+    role: 'Kế toán · Ô Môn',
+    rating: 5,
+    text: 'Không gian 3 tầng của Hannah rất đẹp và thoáng. Tôi hay đặt gói gội đầu kết hợp massage — chỉ 60 phút mà căng thẳng cả tuần tan biến hết. Sẽ tiếp tục ủng hộ mãi!',
   },
 ]
 
 export default function TestimonialsSection() {
+  const [idx, setIdx] = useState(0)
+  const cur = REVIEWS[idx]
+  const initials = cur.name.split(' ').slice(-2).map(w => w[0]).join('')
+
   return (
-    <section style={{ background: LUX.surface, padding: 'clamp(60px,10vw,100px) clamp(20px,5vw,60px)' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-
-        {/* Header */}
-        <div className="lp-anim" style={{ textAlign: 'center', marginBottom: 'clamp(36px,5vw,56px)' }}>
-          <div style={{
-            display: 'inline-block',
-            fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700,
-            color: LUX.champagne, letterSpacing: '3px', textTransform: 'uppercase',
-            background: `linear-gradient(135deg,${LUX.gold}20,${LUX.champagne}15)`,
-            border: `1px solid ${LUX.gold}40`,
-            padding: '6px 20px', borderRadius: 50, marginBottom: 16,
-          }}>
-            Đánh Giá
-          </div>
-          <h2 style={{
-            fontFamily: LUX.fontSerif, fontSize: 'clamp(28px,5vw,44px)',
-            fontWeight: 600, color: LUX.espresso,
-            margin: '0 0 12px', lineHeight: 1.2,
-          }}>
-            Khách Hàng Nói Gì
-          </h2>
-          <p style={{
-            fontFamily: LUX.fontSans, fontSize: 15, color: LUX.ink3,
-            maxWidth: 460, margin: '0 auto', lineHeight: 1.7,
-          }}>
-            Hơn 1000 khách hàng đã tin tưởng và yêu thích dịch vụ tại Hannah Spa
-          </p>
-        </div>
-
-        {/* Review cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 20 }}>
-          {REVIEWS.map((r, i) => (
-            <div key={r.name} className="lp-anim" style={{ transitionDelay: `${i * 0.1}s` }}>
-              <div style={{
-                background: LUX.surface2, borderRadius: LUX.radius,
-                padding: '28px 24px',
-                border: `1px solid ${LUX.line}`,
-                boxShadow: LUX.shadowSm,
-                height: '100%', boxSizing: 'border-box',
-                display: 'flex', flexDirection: 'column',
-              }}>
-                {/* Stars */}
-                <div style={{ fontSize: 14, marginBottom: 16, letterSpacing: 2 }}>⭐⭐⭐⭐⭐</div>
-
-                {/* Review text */}
-                <div style={{
-                  fontFamily: LUX.fontSans, fontSize: 14, color: LUX.ink2,
-                  lineHeight: 1.75, flex: 1, marginBottom: 20, fontStyle: 'italic',
-                }}>
-                  "{r.text}"
-                </div>
-
-                {/* Author */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 16, borderTop: `1px solid ${LUX.line}` }}>
-                  <div style={{
-                    width: 42, height: 42, borderRadius: '50%',
-                    background: r.bg,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: LUX.fontSans, fontSize: 14, fontWeight: 700, color: 'white',
-                    flexShrink: 0,
-                  }}>
-                    {r.initials}
-                  </div>
-                  <div>
-                    <div style={{ fontFamily: LUX.fontSans, fontSize: 14, fontWeight: 700, color: LUX.espresso }}>
-                      {r.name}
-                    </div>
-                    <div style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, marginTop: 2 }}>
-                      {r.service} · {r.time}
-                    </div>
-                  </div>
-                </div>
+    <section id="danh-gia" className="lp-tt">
+      <div className="lp-container">
+        <div className="lp-tt-grid">
+          {/* Left */}
+          <div className="lp-tt-side lp-reveal">
+            <div className="lp-eyebrow"><span className="lp-dot"></span>Cảm nhận · Voices</div>
+            <h2 className="lp-h-section" style={{ marginTop: 24 }}>
+              5.0<span className="lp-tt-star">★</span><br />
+              <em>từ những người</em><br />chọn quay lại.
+            </h2>
+            <div className="lp-tt-meta">
+              <div>
+                <strong>500+</strong>
+                <span>đánh giá Google</span>
+              </div>
+              <div>
+                <strong>95%</strong>
+                <span>khách hàng quay lại</span>
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* Right — card */}
+          <div className="lp-tt-card lp-reveal" style={{ transitionDelay: '.1s' }}>
+            <div className="lp-tt-mark">"</div>
+            <p className="lp-tt-text">{cur.text}</p>
+            <div className="lp-tt-stars">{'★'.repeat(cur.rating)}</div>
+            <div className="lp-tt-author">
+              <div className="lp-tt-avatar">{initials}</div>
+              <div>
+                <div className="lp-tt-name">{cur.name}</div>
+                <div className="lp-tt-role">{cur.role}</div>
+              </div>
+            </div>
+            <div className="lp-tt-controls">
+              <button onClick={() => setIdx((idx - 1 + REVIEWS.length) % REVIEWS.length)} aria-label="Trước">←</button>
+              <span className="lp-tt-count">
+                {String(idx + 1).padStart(2, '0')} / {String(REVIEWS.length).padStart(2, '0')}
+              </span>
+              <button onClick={() => setIdx((idx + 1) % REVIEWS.length)} aria-label="Sau">→</button>
+            </div>
+          </div>
         </div>
       </div>
+
+      <style>{`
+        .lp-tt { background: var(--bg); }
+        .lp-tt-grid {
+          display: grid; grid-template-columns: 1fr 1.1fr;
+          gap: 80px; align-items: center;
+        }
+        .lp-tt-star { color: var(--terracotta); font-family: var(--display); }
+        .lp-tt-meta {
+          margin-top: 48px; display: flex; gap: 40px;
+          padding-top: 28px; border-top: 1px solid var(--line);
+        }
+        .lp-tt-meta div { font-size: 13px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 4px; }
+        .lp-tt-meta strong {
+          font-family: var(--serif); font-weight: 400;
+          font-size: 32px; color: var(--ink);
+        }
+        .lp-tt-card {
+          background: var(--bg-alt); padding: 52px 52px 36px;
+          border-radius: 4px; position: relative;
+        }
+        .lp-tt-mark {
+          font-family: var(--display); font-size: 110px; line-height: 0.8;
+          color: var(--terracotta); position: absolute; top: 18px; left: 32px;
+        }
+        .lp-tt-text {
+          font-family: var(--serif); font-size: 24px; font-weight: 300;
+          font-style: italic; line-height: 1.45; color: var(--ink);
+          margin-top: 56px;
+        }
+        .lp-tt-stars { color: var(--terracotta); font-size: 13px; letter-spacing: 4px; margin-top: 24px; }
+        .lp-tt-author {
+          display: flex; align-items: center; gap: 14px;
+          margin-top: 16px; padding-top: 22px;
+          border-top: 1px solid var(--line);
+        }
+        .lp-tt-avatar {
+          width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0;
+          background: var(--ink); color: var(--cream);
+          display: flex; align-items: center; justify-content: center;
+          font-family: var(--serif); font-size: 18px;
+        }
+        .lp-tt-name { font-family: var(--serif); font-size: 19px; }
+        .lp-tt-role { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-mute); margin-top: 2px; }
+        .lp-tt-controls { display: flex; align-items: center; gap: 20px; margin-top: 28px; }
+        .lp-tt-controls button {
+          width: 42px; height: 42px; border-radius: 50%;
+          border: 1px solid var(--line); font-size: 16px;
+          transition: background .2s, color .2s, border-color .2s;
+        }
+        .lp-tt-controls button:hover { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+        .lp-tt-count { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: var(--ink-mute); }
+        @media (max-width: 900px) {
+          .lp-tt-grid { grid-template-columns: 1fr; gap: 48px; }
+          .lp-tt-card { padding: 36px 28px 28px; }
+          .lp-tt-text { font-size: 19px; margin-top: 40px; }
+          .lp-tt-mark { font-size: 80px; left: 20px; top: 14px; }
+        }
+      `}</style>
     </section>
   )
 }

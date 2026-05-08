@@ -965,3 +965,157 @@ import-thang4.py: import Excel vào Supabase
   Supabase: HannahSpa-production (aqyemkfbjqxpegingoil)
 
 ═══════════════════════════════════════════════════════════
+## TRẠNG THÁI DỰ ÁN (Cập nhật 07/05/2026)
+═══════════════════════════════════════════════════════════
+
+### MODULE 7: WEBSITE CÔNG KHAI — ĐANG LÀM
+
+#### Landing Page (hannahspa.vn)
+  File chính: src/apps/website/LandingPage.jsx
+  Sections (12):
+    NavBar, HeroSection, MarqueeSection, AboutSection,
+    ServicesSection, GallerySection, TestimonialsSection,
+    ContactSection, FaqSection, LocationSection,
+    FooterSection, StickyCTA
+  Fonts: Cormorant Garamond + Italiana + Inter + JetBrains Mono
+         → load qua <link> trong index.html (KHÔNG dùng @import)
+  CSS tokens: :root { --bg, --bg-alt, --bg-deep, --terracotta,
+              --champagne, --cream, --ink, --serif, --display,
+              --sans, --mono } — inject 1 lần qua document.head
+  Ảnh thật: src/apps/website/galleryImages.js (paths từ public/)
+
+#### Trạng thái Landing Page
+  ✅ Build pass: 146 modules, 677ms, 0 errors
+  ✅ Fonts load đúng (weight 300 + Italiana)
+  ✅ CSS vars đặt trên :root (không phải .lp-root)
+  ✅ FooterSection: key={item.label} (tránh duplicate key #)
+  ✅ StickyCTA: scroll threshold 1200px, mobile bottom:20px
+  ⏳ Đang hoàn thiện UI/UX landing page (ưu tiên hiện tại)
+  [ ] Kết nối dịch vụ thật từ Supabase (Phase 1)
+  [ ] Hiển thị khuyến mãi active trên landing page (Phase 3)
+
+#### Sections cần review/polish (ưu tiên làm trước):
+  - HeroSection: kiểm tra layout mobile + ảnh spa thật
+  - ServicesSection: kết nối DB dich_vu (Phase 1)
+  - GallerySection: ảnh thật từ public/images/gallery/
+  - TestimonialsSection: nội dung thật
+  - FaqSection: kiểm tra accordion animation CSS
+  - ContactSection: form đặt lịch → Zalo (đang hoạt động)
+
+### KẾ HOẠCH 5 PHASE — WEBSITE + MENU + KHUYẾN MÃI
+
+#### Phase 1: Dịch Vụ Database (ưu tiên: CAO)
+  Mục tiêu: Seed bảng dich_vu với 20+ dịch vụ thật
+  
+  SQL migration (thêm vào dich_vu hiện có):
+    danh_muc TEXT          -- 'Chăm Sóc Da'|'Massage'|'Triệt Lông'|'Waxing'|'Làm Móng'
+    hinh_anh TEXT          -- Supabase Storage URL
+    thoi_gian_phut INTEGER -- 60/90/120
+    mo_ta_ngan TEXT        -- 1 dòng ngắn cho card
+    mo_ta_day_du TEXT      -- paragraph đầy đủ cho modal
+    thu_tu INTEGER
+    hien_tren_menu BOOLEAN DEFAULT TRUE
+    la_hot BOOLEAN DEFAULT FALSE
+  
+  Seed data: ~20 dịch vụ phân theo 5 danh mục
+  Thời gian ước tính: 1-2h
+
+#### Phase 2: Menu iPad /menu (ưu tiên: CAO)
+  Mục tiêu: Khách tại quầy tự xem dịch vụ + giá trên iPad
+  Route: hannahspa.vn/menu (public, không cần auth)
+  File: src/apps/customer/CustomerMenuApp.jsx
+  
+  Layout iPad (1024×768 landscape):
+    Header: logo + "Đang mở cửa" indicator
+    Filter bar: tabs danh mục (Tất Cả / Da Mặt / Massage / ...)
+    Grid 3 cột: card [ảnh + tên + thời gian + giá + badge KM]
+    Click card → modal chi tiết + nút "Đặt lịch qua Zalo"
+    Footer sticky: "Đặt lịch ngay → 0919 868 868"
+  
+  Đặc điểm kỹ thuật:
+    - Đọc từ Supabase: SELECT * FROM dich_vu WHERE hien_tren_menu=true
+    - JOIN khuyen_mai WHERE trang_thai='active' AND NOW() BETWEEN ngay_bat_dau AND ngay_ket_thuc
+    - Tối ưu touch: card lớn, font to, không cần scroll nhiều
+    - Landscape-first design
+  Thời gian ước tính: 3-4h
+
+#### Phase 3: Khuyến Mãi CRUD (ưu tiên: TRUNG)
+  Mục tiêu: Admin tạo/quản lý đợt khuyến mãi tháng
+  
+  Bảng mới khuyen_mai:
+    id UUID PK
+    ten TEXT NOT NULL
+    mo_ta TEXT
+    dich_vu_id UUID FK → dich_vu
+    gia_goc INTEGER NOT NULL      -- giá gốc (VNĐ)
+    gia_km INTEGER NOT NULL       -- giá khuyến mãi
+    phan_tram_giam NUMERIC GENERATED  -- tự tính = (gia_goc-gia_km)/gia_goc*100
+    ngay_bat_dau DATE NOT NULL
+    ngay_ket_thuc DATE NOT NULL
+    trang_thai TEXT DEFAULT 'active'  -- active/expired/draft
+    hinh_anh TEXT
+    so_luot_dat INTEGER DEFAULT 0
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  
+  Admin UI (/admin tab "Khuyến Mãi"):
+    Danh sách: tên / dịch vụ / % giảm / ngày hết hạn / trạng thái
+    Form tạo/sửa KM
+    Badge đỏ tự động xuất hiện trên menu + landing page
+  Thời gian ước tính: 2-3h
+
+#### Phase 4: ROI & Phân Tích Khuyến Mãi (ưu tiên: THẤP)
+  Mục tiêu: Biết mỗi đợt KM lời/lỗ bao nhiêu
+  
+  Logic tính:
+    Doanh thu KM = SUM(doanh_thu) WHERE ngay BETWEEN ngay_bat_dau AND ngay_ket_thuc
+                   AND dien_giai LIKE '%[tên dịch vụ]%'  (hoặc gắn tag)
+    Chi phí marketing kỳ = SUM(chi_phi) WHERE danh_muc = 'Marketing'
+                           AND ngay BETWEEN ngay_bat_dau AND ngay_ket_thuc
+    Lợi nhuận ròng = Doanh thu KM - Chi phí marketing
+    ROI % = Lợi nhuận ròng / Chi phí marketing × 100
+    Margin = (Giá KM - Chi phí NVL) / Giá KM × 100
+  
+  UI: So sánh chart doanh thu dịch vụ trước/trong/sau đợt KM
+  Thời gian ước tính: 2h
+
+#### Phase 5: Admin Homepage CMS (ưu tiên: THẤP)
+  Mục tiêu: Anh Nam chỉnh nội dung trang chủ không cần code
+  
+  Bảng homepage_config (key-value JSONB):
+    key TEXT PK | value JSONB | mo_ta TEXT | updated_at TIMESTAMPTZ
+  
+  Các key:
+    hero          → {headline, tagline, cta_text}
+    about_text    → {heading, body}
+    testimonials  → [{name, role, text, rating, avatar_url}]
+    gallery_order → [url1, url2, ...]
+    marquee_items → [service1, service2, ...]
+    contact_info  → {phone, email, address}
+  
+  Landing page: useEffect đọc từ Supabase, fallback về static nếu lỗi
+  Admin UI (/admin tab "Trang Chủ"): form edit từng section
+  Thời gian ước tính: 3h
+
+### LỊCH TRÌNH
+
+  HIỆN TẠI    → Hoàn thiện Landing Page (UI/UX polish)
+  Tiếp theo   → Phase 1: Seed dich_vu + SQL migration
+  Tiếp theo   → Phase 2: CustomerMenu /menu (iPad)
+  Sau đó      → Phase 3: Khuyến mãi CRUD
+  Sau đó      → Phase 4: ROI Analytics
+  Cuối cùng   → Phase 5: Homepage CMS
+
+### GHI CHÚ KỸ THUẬT LANDING PAGE
+
+  Accordion FAQ: dùng CSS grid-template-rows: 0fr → 1fr
+                 Inner div cần overflow:hidden để animation hoạt động
+  Scroll reveal: IntersectionObserver trong LandingPage useEffect
+                 threshold: 0.06, rootMargin: '0px 0px -32px 0px'
+  Ảnh gallery:   public/images/gallery/ (đã có folder)
+  galleryImages: src/apps/website/galleryImages.js
+  Route /menu:   cần thêm vào App.jsx (hoặc router chính)
+  Route /admin:  đã có AdminApp.jsx
+
+═══════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════

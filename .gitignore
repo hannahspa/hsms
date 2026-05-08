@@ -27,3 +27,14 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# macOS metadata
+._*
+.DS_Store
+**/.DS_Store
+
+# Supabase temp
+supabase/.temp/
+
+# Ảnh gốc chưa tối ưu (dùng gallery-opt thay thế)
+public/images/gallery/

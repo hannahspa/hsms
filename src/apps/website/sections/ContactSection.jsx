@@ -1,264 +1,162 @@
-import { LUX } from '../../../constants/lux'
+import { useState } from 'react'
 
-const ZALO_URL = 'https://zalo.me/0919868868'
-
-const INFO = [
-  {
-    icon: '📍', label: 'Địa Chỉ',
-    value: '39 Nam Kỳ Khởi Nghĩa, P.Tân An\nNinh Kiều, Cần Thơ',
-  },
-  {
-    icon: '⏰', label: 'Giờ Mở Cửa',
-    value: '9:15 – 20:00 hàng ngày\n(Ngưng nhận khách lúc 19:30)',
-  },
-  {
-    icon: '📞', label: 'Điện Thoại',
-    value: '0919 868 868', href: 'tel:0919868868',
-  },
-  {
-    icon: '✉️', label: 'Email',
-    value: 'hannahspa.nm@gmail.com', href: 'mailto:hannahspa.nm@gmail.com',
-  },
-]
-
-const SOCIALS = [
-  { label: 'Zalo',     href: ZALO_URL,               char: 'Z', bg: '#0068FF' },
-  { label: 'Facebook', href: 'https://facebook.com',  char: 'f', bg: '#1877F2' },
-  { label: 'TikTok',   href: 'https://tiktok.com',    char: '▶', bg: '#010101' },
+const SERVICES = [
+  'Gội Đầu Dưỡng Sinh',
+  'Massage Body & Đá Nóng',
+  'Triệt Lông Công Nghệ Cao',
+  'Chăm Sóc Da Công Nghệ Cao',
+  'Tắm Trắng & Giảm Béo',
+  'Tư vấn da (miễn phí)',
 ]
 
 export default function ContactSection() {
+  const [form, setForm] = useState({ name: '', phone: '', service: SERVICES[0], note: '' })
+  const [sent, setSent] = useState(false)
+  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const msg = encodeURIComponent(
+      `Xin chào Hannah Spa! Tôi muốn đặt lịch:\nTên: ${form.name}\nSĐT: ${form.phone}\nDịch vụ: ${form.service}${form.note ? `\nGhi chú: ${form.note}` : ''}`
+    )
+    window.open(`https://www.facebook.com/hannahspact`, '_blank')
+    setSent(true)
+  }
+
   return (
-    <section id="dat-lich" style={{
-      background: `linear-gradient(180deg, ${LUX.bg} 0%, #f0e9d8 100%)`,
-      padding: 'clamp(60px,10vw,100px) clamp(20px,5vw,60px)',
-      position: 'relative', overflow: 'hidden',
-    }}>
-      {/* Ambient decoration */}
-      <div style={{ position:'absolute', top:'-10%', right:'-5%', width:'45%', height:'80%',
-        background:'radial-gradient(ellipse, rgba(212,165,116,0.08) 0%, transparent 65%)',
-        borderRadius:'50%', pointerEvents:'none' }} />
+    <section id="dat-lich" className="lp-booking">
+      <div className="lp-container">
+        <div className="lp-booking-grid">
+          {/* Left */}
+          <div className="lp-booking-side lp-reveal">
+            <div className="lp-eyebrow"><span className="lp-dot"></span>Đặt lịch · Reservation</div>
+            <h2 className="lp-h-section" style={{ marginTop: 24 }}>
+              Giữ chỗ <em>cho chính mình.</em>
+            </h2>
+            <p className="lp-lede" style={{ marginTop: 24 }}>
+              Điền thông tin bên cạnh — chúng tôi sẽ xác nhận qua Facebook trong vòng 30 phút trong giờ làm việc.
+            </p>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-
-        {/* Header */}
-        <div className="lp-anim" style={{ textAlign: 'center', marginBottom: 'clamp(40px,6vw,64px)' }}>
-          <div style={{
-            display: 'inline-block',
-            fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700,
-            color: LUX.champagne, letterSpacing: '3px', textTransform: 'uppercase',
-            background: `linear-gradient(135deg,${LUX.gold}20,${LUX.champagne}15)`,
-            border: `1px solid ${LUX.gold}40`,
-            padding: '6px 20px', borderRadius: 50, marginBottom: 16,
-          }}>
-            Liên Hệ &amp; Đặt Lịch
-          </div>
-          <h2 style={{
-            fontFamily: LUX.fontSerif, fontSize: 'clamp(28px,5vw,44px)',
-            fontWeight: 600, color: LUX.espresso,
-            margin: '0 0 12px', lineHeight: 1.2,
-          }}>
-            Đặt Lịch Hôm Nay
-          </h2>
-          <p style={{
-            fontFamily: LUX.fontSans, fontSize: 15, color: LUX.ink3,
-            maxWidth: 480, margin: '0 auto', lineHeight: 1.7,
-          }}>
-            Liên hệ ngay qua Zalo hoặc điện thoại để được tư vấn và đặt lịch dịch vụ
-          </p>
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))',
-          gap: 'clamp(32px,5vw,60px)',
-          alignItems: 'start',
-        }}>
-          {/* Info column */}
-          <div className="lp-anim">
-            <h3 style={{
-              fontFamily: LUX.fontSerif, fontSize: 24, fontWeight: 600,
-              color: LUX.espresso, margin: '0 0 28px',
-            }}>
-              Thông Tin Liên Hệ
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginBottom: 32 }}>
-              {INFO.map(item => (
-                <div key={item.label} style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 12,
-                    background: `linear-gradient(135deg,${LUX.gold}20,${LUX.champagne}15)`,
-                    border: `1px solid ${LUX.gold}30`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 20, flexShrink: 0,
-                  }}>
-                    {item.icon}
-                  </div>
-                  <div>
-                    <div style={{
-                      fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700,
-                      color: LUX.champagne, letterSpacing: '1.5px', textTransform: 'uppercase',
-                      marginBottom: 4,
-                    }}>
-                      {item.label}
-                    </div>
-                    {item.href ? (
-                      <a href={item.href} style={{
-                        fontFamily: LUX.fontSans, fontSize: 15, color: LUX.espresso,
-                        fontWeight: 600, textDecoration: 'none',
-                        transition: 'color 0.2s',
-                      }}
-                        onMouseEnter={e => e.currentTarget.style.color = LUX.champagne}
-                        onMouseLeave={e => e.currentTarget.style.color = LUX.espresso}
-                      >
-                        {item.value}
-                      </a>
-                    ) : (
-                      <div style={{
-                        fontFamily: LUX.fontSans, fontSize: 14, color: LUX.ink2,
-                        lineHeight: 1.6, whiteSpace: 'pre-line',
-                      }}>
-                        {item.value}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Social */}
-            <div style={{ paddingTop: 24, borderTop: `1px solid ${LUX.line}` }}>
-              <div style={{
-                fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700,
-                color: LUX.ink3, letterSpacing: '1.5px', textTransform: 'uppercase',
-                marginBottom: 14,
-              }}>
-                Theo Dõi Chúng Tôi
+            <div className="lp-booking-info">
+              <div>
+                <div className="lp-label">Hotline</div>
+                <div className="lp-booking-val">0379 080 909</div>
               </div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {SOCIALS.map(s => (
-                  <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer"
-                    title={s.label}
-                    style={{
-                      width: 40, height: 40, borderRadius: '50%',
-                      background: s.bg, color: 'white',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 14, fontWeight: 700, textDecoration: 'none',
-                      boxShadow: `0 4px 12px ${s.bg}40`,
-                      transition: 'transform 0.2s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1) translateY(-2px)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1) translateY(0)'}
-                  >
-                    {s.char}
+              <div>
+                <div className="lp-label">Facebook</div>
+                <div className="lp-booking-val">
+                  <a href="https://www.facebook.com/hannahspact" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
+                    Hannah Spa Cần Thơ
                   </a>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* CTA card */}
-          <div className="lp-anim" style={{ transitionDelay: '0.1s' }}>
-            <div style={{
-              background: 'linear-gradient(160deg, #4a3528 0%, #3d2c20 50%, #2e1e14 100%)',
-              borderRadius: LUX.radiusLg,
-              padding: 'clamp(28px,5vw,48px)',
-              boxShadow: LUX.shadowLg,
-              position: 'relative', overflow: 'hidden',
-            }}>
-              {/* Gold glow */}
-              <div style={{
-                position: 'absolute', top: '-40%', right: '-30%',
-                width: '80%', height: '80%',
-                background: 'radial-gradient(circle, rgba(212,165,116,0.18) 0%, transparent 65%)',
-                borderRadius: '50%', pointerEvents: 'none',
-              }} />
-              <div style={{
-                position: 'absolute', bottom: '-20%', left: '-20%',
-                width: '60%', height: '60%',
-                background: 'radial-gradient(circle, rgba(212,165,116,0.08) 0%, transparent 60%)',
-                borderRadius: '50%', pointerEvents: 'none',
-              }} />
-
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <div style={{
-                  fontFamily: LUX.fontSerif,
-                  fontSize: 'clamp(20px,3.5vw,28px)',
-                  fontWeight: 600, color: 'rgba(255,255,255,0.92)',
-                  marginBottom: 10, lineHeight: 1.3,
-                }}>
-                  Sẵn Sàng Trải Nghiệm?
                 </div>
-                <p style={{
-                  fontFamily: LUX.fontSans, fontSize: 14,
-                  color: 'rgba(255,255,255,0.48)',
-                  lineHeight: 1.75, marginBottom: 36,
-                }}>
-                  Đặt lịch qua Zalo để được ưu tiên phục vụ. Tư vấn miễn phí, không ràng buộc.
-                </p>
-
-                {/* Primary — Zalo */}
-                <a href={ZALO_URL} target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    padding: '18px 24px',
-                    background: LUX.goldGrad,
-                    color: 'white', textDecoration: 'none',
-                    borderRadius: 14,
-                    fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 15,
-                    boxShadow: `0 8px 32px ${LUX.gold}45`,
-                    marginBottom: 12, transition: 'all 0.25s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-2px)'
-                    e.currentTarget.style.boxShadow = `0 14px 40px ${LUX.gold}55`
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = `0 8px 32px ${LUX.gold}45`
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>💬</span>
-                  Đặt Lịch Qua Zalo
-                </a>
-
-                {/* Secondary — Call */}
-                <a href="tel:0919868868"
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    padding: '16px 24px',
-                    background: 'rgba(255,255,255,0.07)',
-                    color: 'rgba(255,255,255,0.8)', textDecoration: 'none',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 14,
-                    fontFamily: LUX.fontSans, fontWeight: 600, fontSize: 14,
-                    transition: 'all 0.25s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.13)'
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.07)'
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-                  }}
-                >
-                  <span style={{ fontSize: 16 }}>📞</span>
-                  Gọi Ngay — 0919 868 868
-                </a>
-
-                <p style={{
-                  fontFamily: LUX.fontSans, fontSize: 11,
-                  color: 'rgba(255,255,255,0.25)', textAlign: 'center',
-                  marginTop: 20, lineHeight: 1.5,
-                }}>
-                  9:15 – 20:00 · 39 Nam Kỳ Khởi Nghĩa, Ninh Kiều, Cần Thơ
-                </p>
               </div>
             </div>
+
+            <div className="lp-booking-hours">
+              <div className="lp-bk-row"><span>Thứ 2 – Thứ 6</span><span>9:15 – 20:00</span></div>
+              <div className="lp-bk-row"><span>Thứ 7 – Chủ Nhật</span><span>9:15 – 20:00</span></div>
+              <div className="lp-bk-row lp-bk-note"><span>Ngưng nhận khách</span><span>19:30</span></div>
+            </div>
           </div>
+
+          {/* Right — form */}
+          <form className="lp-booking-form lp-reveal" style={{ transitionDelay: '.1s' }} onSubmit={handleSubmit}>
+            {sent ? (
+              <div className="lp-booking-thanks">
+                <div className="lp-thanks-mark">✦</div>
+                <h3>Cảm ơn {form.name || 'bạn'}!</h3>
+                <p>Trang Facebook đã mở — vui lòng nhắn tin để xác nhận lịch. Chúng tôi sẽ phản hồi sớm nhất có thể.</p>
+                <button type="button" className="lp-btn lp-btn-ghost" onClick={() => setSent(false)} style={{ marginTop: 24 }}>
+                  Đặt lịch khác
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="lp-form-row">
+                  <div className="lp-field">
+                    <label>Họ và tên</label>
+                    <input type="text" required value={form.name} onChange={e => upd('name', e.target.value)} placeholder="Nguyễn Thị Lan" />
+                  </div>
+                  <div className="lp-field">
+                    <label>Số điện thoại</label>
+                    <input type="tel" required value={form.phone} onChange={e => upd('phone', e.target.value)} placeholder="0909 ..." />
+                  </div>
+                </div>
+                <div className="lp-field">
+                  <label>Dịch vụ mong muốn</label>
+                  <select value={form.service} onChange={e => upd('service', e.target.value)}>
+                    {SERVICES.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="lp-field">
+                  <label>Ghi chú thêm (tuỳ chọn)</label>
+                  <textarea rows="3" value={form.note} onChange={e => upd('note', e.target.value)} placeholder="Thời gian mong muốn, yêu cầu đặc biệt..."></textarea>
+                </div>
+                <button type="submit" className="lp-btn lp-btn-primary lp-form-submit">
+                  Nhắn tin Facebook <span className="lp-arrow"></span>
+                </button>
+              </>
+            )}
+          </form>
         </div>
       </div>
+
+      <style>{`
+        .lp-booking { background: var(--bg-alt); }
+        .lp-booking-grid {
+          display: grid; grid-template-columns: 1fr 1.2fr;
+          gap: 80px; align-items: start;
+        }
+        .lp-booking-info { margin-top: 48px; display: grid; gap: 22px; }
+        .lp-booking-val { font-family: var(--serif); font-size: 21px; margin-top: 4px; color: var(--ink); }
+        .lp-booking-hours {
+          margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line);
+        }
+        .lp-bk-row {
+          display: flex; justify-content: space-between;
+          padding: 9px 0; font-size: 13px; color: var(--ink-soft);
+          border-bottom: 1px dotted var(--line);
+        }
+        .lp-bk-row:last-child { border-bottom: none; }
+        .lp-bk-row span:last-child { font-family: var(--serif); font-size: 16px; color: var(--ink); }
+        .lp-bk-note { color: var(--ink-mute); }
+        .lp-bk-note span:last-child { color: #C0392B; font-size: 14px; }
+
+        .lp-booking-form {
+          background: var(--bg); padding: 48px; border-radius: 4px;
+          display: flex; flex-direction: column; gap: 22px;
+        }
+        .lp-form-row {
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 22px;
+        }
+        .lp-field { display: flex; flex-direction: column; gap: 8px; }
+        .lp-field label {
+          font-family: var(--mono); font-size: 10px;
+          letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-mute);
+        }
+        .lp-field input, .lp-field select, .lp-field textarea {
+          font-family: var(--serif); font-size: 18px;
+          padding: 12px 0; border: none;
+          border-bottom: 1px solid var(--line);
+          background: transparent; color: var(--ink); outline: none;
+          transition: border-color .2s; width: 100%;
+        }
+        .lp-field input:focus, .lp-field select:focus, .lp-field textarea:focus {
+          border-bottom-color: var(--terracotta);
+        }
+        .lp-field textarea { resize: vertical; font-family: var(--sans); font-size: 14px; }
+        .lp-form-submit { align-self: flex-start; margin-top: 8px; }
+
+        .lp-booking-thanks { text-align: center; padding: 48px 20px; }
+        .lp-thanks-mark { font-family: var(--display); font-size: 48px; color: var(--terracotta); }
+        .lp-booking-thanks h3 { font-family: var(--serif); font-size: 32px; font-weight: 400; margin-top: 14px; }
+        .lp-booking-thanks p { color: var(--ink-soft); margin-top: 12px; line-height: 1.6; font-size: 14px; }
+
+        @media (max-width: 900px) {
+          .lp-booking-grid { grid-template-columns: 1fr; gap: 48px; }
+          .lp-booking-form { padding: 28px; }
+        }
+      `}</style>
     </section>
   )
 }
