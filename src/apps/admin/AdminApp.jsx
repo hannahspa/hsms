@@ -4,6 +4,7 @@ import AdminNhanSuPage from './nhan-su/AdminNhanSuPage'
 import AdminKhuyenMaiPage from './khuyen-mai/AdminKhuyenMaiPage'
 import AdminHomepagePage from './trang-chu/AdminHomepagePage'
 import AdminKhoHangPage from './kho-hang/AdminKhoHangPage'
+import AdminCRMPage from './crm/AdminCRMPage'
 import { supabase } from '../../lib/supabase'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -182,6 +183,7 @@ export default function AdminApp() {
   if (path.startsWith('/admin/khuyen-mai')) return <AdminKhuyenMaiPage />
   if (path.startsWith('/admin/trang-chu'))  return <AdminHomepagePage />
   if (path.startsWith('/admin/kho-hang'))   return <AdminKhoHangPage />
+  if (path.startsWith('/admin/crm'))        return <AdminCRMPage />
 
   const now = getNowVN()
   const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
@@ -351,9 +353,9 @@ export default function AdminApp() {
             href="/admin/kho-hang"
           />
           <ModuleCard
-            icon="👤" label="CRM Khách Hàng" color="#7F8C8D"
-            desc="Hồ sơ KH · Thẻ liệu trình · Lịch sử"
-            soon
+            icon="👤" label="CRM Khách Hàng" color="#8E44AD"
+            desc="Hồ sơ · Thẻ liệu trình · Nhắc tái khám"
+            href="/admin/crm"
           />
           <ModuleCard
             icon="📊" label="Dashboard Tổng Hợp" color="#7F8C8D"
