@@ -1,27 +1,25 @@
 """
 Import danh sách dịch vụ từ Excel vào Supabase
+File Excel: DanhSachDichVu.xlsx (Desktop)
 Chạy: python import_dich_vu.py
 
 Yêu cầu: pip install openpyxl python-dotenv requests
 """
 
-import os
-import json
-import math
-import requests
-import openpyxl
+import os, json, sys, io, requests, openpyxl
 from pathlib import Path
 from dotenv import load_dotenv
 
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 # ── Config ────────────────────────────────────────────────────────────────────
 load_dotenv(".env.import")
-
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://aqyemkfbjqxpegingoil.supabase.co")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")  # service_role key
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 if not SUPABASE_KEY:
     print("❌ Thiếu SUPABASE_KEY trong .env.import")
-    exit(1)
+    sys.exit(1)
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -30,187 +28,154 @@ HEADERS = {
     "Prefer": "return=representation",
 }
 
-# ── Đường dẫn file Excel ──────────────────────────────────────────────────────
-# Anh đặt đúng đường dẫn file Excel của mình ở đây:
-EXCEL_FILE = Path(r"C:\Users\Quoc Nam\Desktop\danh_sach_commission_tat_ca_chi_nhanh_1777703001.xlsx")
-
-# Nếu file không tìm thấy, thử tìm trong thư mục project:
+EXCEL_FILE = Path(r"C:\Users\Quoc Nam\Desktop\DanhSachDichVu.xlsx")
 if not EXCEL_FILE.exists():
-    for f in Path(".").glob("*.xlsx"):
-        if "dich_vu" in f.name.lower() or "commission" in f.name.lower() or "dich" in f.name.lower():
-            EXCEL_FILE = f
-            break
+    print(f"❌ Không tìm thấy: {EXCEL_FILE}")
+    sys.exit(1)
 
-print(f"📂 File Excel: {EXCEL_FILE}")
-if not EXCEL_FILE.exists():
-    print("❌ Không tìm thấy file Excel. Anh sửa đường dẫn EXCEL_FILE ở trên.")
-    exit(1)
+# ── Mapping danh mục POS → nhóm hiển thị trên menu ───────────────────────────
+# Danh mục gốc từ myspa.vn → nhóm chuẩn của Hannah Spa
+NHOM_MAP = {
+    "Gội Đầu":                  "Gội Đầu Dưỡng Sinh",
+    "Massage Body":             "Massage Body",
+    "Triệt Lông":               "Triệt Lông",
+    "lASER":                    "Triệt Lông",          # typo trong POS
+    "Công Nghệ Cao - Laser":    "Triệt Lông",
+    "Chăm Sóc Da Mặt":          "Chăm Sóc Da",
+    "PEEL DA SINH HỌC":         "Chăm Sóc Da",
+    "Đắp Mặt Nạ":               "Chăm Sóc Da",
+    "Tẩy Tế Bào Chết":          "Chăm Sóc Da",
+    "Tắm Trắng Toàn Thân":      "Tắm Trắng & Giảm Béo",
+    "Combo Khuyến Mãi":         "Combo",
+    "Dịch Vụ Đồng GIá 29k":     "Combo",
+    "Phụ Thu Dịch Vụ":          "Phụ Thu",
+    "Phun Xăm":                 "Phun Xăm",
+}
+
+# Danh mục nào là phụ thu (add-on) → không hiển thị nổi bật trên menu
+PHU_THU_CATEGORIES = {"Phụ Thu Dịch Vụ"}
+
+# Danh mục nào ẩn khỏi menu khách (chỉ dùng nội bộ POS)
+AN_KHOI_MENU = {"Phụ Thu Dịch Vụ", "Dịch Vụ Đồng GIá 29k", "Phun Xăm"}
 
 # ── Đọc Excel ─────────────────────────────────────────────────────────────────
 wb = openpyxl.load_workbook(EXCEL_FILE, data_only=True)
+ws = wb.active
+print(f"📂 File: {EXCEL_FILE.name}")
+print(f"📊 Sheet: {ws.title} — {ws.max_row - 1} dịch vụ")
 
-# Tìm sheet chứa dịch vụ
-sheet = None
-for name in wb.sheetnames:
-    print(f"   Sheet: {name}")
-    ws = wb[name]
-    # Tìm sheet có header "Tên dịch vụ"
-    for row in ws.iter_rows(min_row=1, max_row=3, values_only=True):
-        for cell in row:
-            if cell and "tên dịch vụ" in str(cell).lower():
-                sheet = ws
-                print(f"   ✅ Dùng sheet: {name}")
-                break
-        if sheet:
-            break
-    if sheet:
-        break
-
-if not sheet:
-    # Dùng sheet đầu tiên nếu không tìm được
-    sheet = wb.active
-    print(f"   ⚠️  Dùng sheet mặc định: {sheet.title}")
-
-# ── Xác định header ───────────────────────────────────────────────────────────
-headers_row = None
-col_map = {}  # tên_cột → index (1-based)
-
-for row_idx, row in enumerate(sheet.iter_rows(min_row=1, max_row=5, values_only=True), 1):
-    row_str = [str(c).lower().strip() if c else "" for c in row]
-    # Tìm dòng có "tên dịch vụ"
-    for col_idx, cell in enumerate(row_str, 1):
-        if "tên dịch vụ" in cell or "ten dich vu" in cell:
-            headers_row = row_idx
-            col_map["ten"] = col_idx
-        elif "thời lượng" in cell or "thoi luong" in cell or "phút" in cell:
-            col_map["thoi_gian_phut"] = col_idx
-        elif "danh mục" in cell or "danh muc" in cell:
-            col_map["danh_muc"] = col_idx
-        elif "số tiền" in cell or "so tien" in cell or "giá" in cell or "gia" in cell:
-            col_map["gia_co_ban"] = col_idx
-    if headers_row:
-        break
-
-# Fallback: cột A=ten, B=thoi_gian, C=danh_muc, D=gia
-if not headers_row:
-    print("   ⚠️  Không tìm được header, dùng mặc định A=Tên, B=Phút, C=Danh mục, D=Giá")
-    headers_row = 1
-    col_map = {"ten": 1, "thoi_gian_phut": 2, "danh_muc": 3, "gia_co_ban": 4}
-
-print(f"\n📋 Header row: {headers_row}")
-print(f"   Mapping cột: {col_map}")
-
-# ── Parse data ────────────────────────────────────────────────────────────────
-def get_cell(row, col_1based):
-    """Lấy giá trị cell theo index 1-based"""
-    idx = col_1based - 1
-    if idx < len(row):
-        return row[idx]
-    return None
-
-def parse_int(val):
-    """Convert giá trị sang integer VNĐ"""
-    if val is None:
-        return 0
-    try:
-        f = float(str(val).replace(",", "").replace(".", "").strip())
-        # Nếu có dấu thập phân trong số gốc, nhân lại
-        s = str(val).strip()
-        if "." in s:
-            f = float(s)
-            if f < 10000:  # Có thể là dạng 1500000.00 đã parse sai
-                f = f * 1  # giữ nguyên
-        return int(f)
-    except:
-        return 0
-
-def parse_minutes(val):
-    """Convert thời lượng sang integer phút"""
-    if val is None:
-        return 0
-    try:
-        return int(float(str(val).strip()))
-    except:
-        return 0
-
+# ── Parse từng dòng ───────────────────────────────────────────────────────────
 services = []
-thu_tu = 1
+duplicates = []
+seen_names = {}
 
-for row in sheet.iter_rows(min_row=headers_row + 1, values_only=True):
-    ten = get_cell(row, col_map.get("ten", 1))
-    if not ten or str(ten).strip() == "":
+for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+    ten = str(row[0]).strip() if row[0] else ""
+    if not ten or ten == "None":
         continue
 
-    ten = str(ten).strip()
-    thoi_gian = parse_minutes(get_cell(row, col_map.get("thoi_gian_phut", 2)))
-    danh_muc = get_cell(row, col_map.get("danh_muc", 3))
-    danh_muc = str(danh_muc).strip() if danh_muc else None
-    if danh_muc in ("None", "", "nan"):
-        danh_muc = None
+    # Thời lượng
+    try:
+        phut = int(float(str(row[1]))) if row[1] else 0
+    except:
+        phut = 0
 
-    gia_raw = get_cell(row, col_map.get("gia_co_ban", 4))
-    gia = parse_int(gia_raw)
+    # Danh mục gốc
+    danh_muc = str(row[2]).strip() if row[2] else ""
+    if danh_muc in ("None", "", "nan"):
+        danh_muc = ""
+
+    # Nhóm hiển thị
+    nhom = NHOM_MAP.get(danh_muc, "Khác") if danh_muc else "Khác"
+
+    # Giá
+    try:
+        gia = int(float(str(row[3]))) if row[3] else 0
+    except:
+        gia = 0
+
+    # Flags
+    la_phu_thu = danh_muc in PHU_THU_CATEGORIES
+    hien_menu  = danh_muc not in AN_KHOI_MENU
+
+    # Kiểm tra trùng tên
+    ten_lower = ten.lower()
+    if ten_lower in seen_names:
+        duplicates.append(f"  Dòng {idx}: '{ten}' (trùng dòng {seen_names[ten_lower]})")
+    seen_names[ten_lower] = idx
 
     services.append({
-        "ten": ten,
-        "thoi_gian_phut": thoi_gian,
-        "danh_muc": danh_muc,
-        "gia_co_ban": gia,
-        "mo_ta": "",
-        "mo_ta_ngan": "",
+        "ten":            ten,
+        "mo_ta":          "",
+        "mo_ta_ngan":     "",
+        "gia_co_ban":     gia,
         "ti_le_hoa_hong": 0,
-        "thu_tu": thu_tu,
-        "hien_tren_menu": True,
-        "la_hot": False,
-        "is_active": True,
+        "is_active":      True,
+        "danh_muc":       danh_muc if danh_muc else None,
+        "nhom_hien_thi":  nhom,
+        "la_phu_thu":     la_phu_thu,
+        "thoi_gian_phut": phut,
+        "thu_tu":         len(services) + 1,
+        "hien_tren_menu": hien_menu,
+        "la_hot":         False,
+        "hinh_anh":       None,
     })
-    thu_tu += 1
 
-print(f"\n📊 Đọc được {len(services)} dịch vụ từ Excel")
-print("\nMẫu 5 dịch vụ đầu:")
+# ── Báo cáo trước khi import ──────────────────────────────────────────────────
+print(f"\n📋 Tổng: {len(services)} dịch vụ")
+
+# Thống kê theo nhóm
+from collections import Counter
+nhom_count = Counter(s["nhom_hien_thi"] for s in services)
+print("\nTheo nhóm hiển thị:")
+for nhom, cnt in sorted(nhom_count.items()):
+    hien = sum(1 for s in services if s["nhom_hien_thi"] == nhom and s["hien_tren_menu"])
+    print(f"  {nhom:<30} {cnt:>3} dịch vụ  ({hien} hiện trên menu)")
+
+if duplicates:
+    print(f"\n⚠️  {len(duplicates)} tên trùng:")
+    for d in duplicates:
+        print(d)
+
+print("\nMẫu 5 dịch vụ:")
 for s in services[:5]:
-    print(f"   {s['thu_tu']:3}. {s['ten'][:40]:<40} | {s['thoi_gian_phut']:3}p | {s['danh_muc'] or '—':<25} | {s['gia_co_ban']:>10,}đ")
+    print(f"  {s['thu_tu']:3}. {s['ten'][:38]:<38} | {s['nhom_hien_thi']:<22} | {s['gia_co_ban']:>10,}đ")
 
 # ── Xác nhận ──────────────────────────────────────────────────────────────────
-print(f"\n⚠️  Sắp insert {len(services)} dịch vụ vào bảng dich_vu")
+print(f"\n⚠️  Sắp insert {len(services)} dịch vụ vào Supabase (bảng dich_vu)")
 ans = input("Tiếp tục? (y/n): ").strip().lower()
 if ans != "y":
     print("Đã hủy.")
-    exit(0)
+    sys.exit(0)
 
-# ── Xóa data cũ (optional) ────────────────────────────────────────────────────
 ans2 = input("Xóa toàn bộ dịch vụ cũ trước khi import? (y/n): ").strip().lower()
 if ans2 == "y":
     r = requests.delete(
         f"{SUPABASE_URL}/rest/v1/dich_vu?id=neq.00000000-0000-0000-0000-000000000000",
         headers=HEADERS,
     )
-    if r.status_code in (200, 204):
-        print("   ✅ Đã xóa dịch vụ cũ")
-    else:
-        print(f"   ⚠️  Xóa cũ status: {r.status_code} — {r.text[:200]}")
+    print(f"   {'✅ Đã xóa cũ' if r.status_code in (200,204) else f'⚠️ {r.status_code} {r.text[:100]}'}")
 
-# ── Insert theo batch 50 ──────────────────────────────────────────────────────
+# ── Insert theo batch ─────────────────────────────────────────────────────────
 BATCH = 50
-ok = 0
-fail = 0
+ok = fail = 0
 
 for i in range(0, len(services), BATCH):
     batch = services[i:i+BATCH]
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/dich_vu",
         headers=HEADERS,
-        data=json.dumps(batch),
+        data=json.dumps(batch, ensure_ascii=False).encode("utf-8"),
     )
     if r.status_code in (200, 201):
         ok += len(batch)
-        print(f"   ✅ Batch {i//BATCH + 1}: insert {len(batch)} dịch vụ OK")
+        print(f"   ✅ Batch {i//BATCH+1}: {len(batch)} dịch vụ OK")
     else:
         fail += len(batch)
-        print(f"   ❌ Batch {i//BATCH + 1}: lỗi {r.status_code} — {r.text[:300]}")
+        print(f"   ❌ Batch {i//BATCH+1}: {r.status_code} — {r.text[:200]}")
 
 print(f"\n{'='*50}")
-print(f"✅ Thành công: {ok} dịch vụ")
+print(f"✅ Thành công: {ok}")
 if fail:
-    print(f"❌ Thất bại:  {fail} dịch vụ")
+    print(f"❌ Thất bại:  {fail}")
 print("Done!")

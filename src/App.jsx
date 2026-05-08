@@ -6,6 +6,7 @@ import AdminApp from './apps/admin/AdminApp'
 import LandingPage from './apps/website/LandingPage'
 import HomePage from './apps/website/HomePage'
 import LoginPage from './apps/auth/LoginPage'
+import CustomerMenuApp from './apps/customer/CustomerMenuApp'
 
 function RequireAuth({ children, requireAdmin }) {
   const { user, loading, logout } = useAuth()
@@ -66,8 +67,11 @@ export default function App() {
   // Portal nội bộ nhân viên
   if (path.startsWith('/portal')) return <HomePage />
 
-  // Menu & shop (sắp ra mắt)
-  if (path.startsWith('/menu') || path.startsWith('/shop')) return <LandingPage />
+  // Menu dịch vụ cho khách (iPad tại quầy)
+  if (path.startsWith('/menu')) return <CustomerMenuApp />
+
+  // Shop (sắp ra mắt)
+  if (path.startsWith('/shop')) return <LandingPage />
 
   return (
     <AuthProvider>
