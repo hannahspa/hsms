@@ -4,6 +4,7 @@ import { LUX } from '../../../constants/lux'
 import { formatCurrency, todayISO, formatDateInput } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
 import DoiSoatNgay from './DoiSoatNgay'
+import NopTienMat from './NopTienMat'
 import ChiTietGiaoDich from '../tai-khoan/ChiTietGiaoDich'
 
 const HINH_THUC_LABEL = {
@@ -176,6 +177,11 @@ export default function DoiSoatPage({ user, onOpenForm, onSettings, refreshKey }
               </div>
             ))
           )}
+        </div>
+
+        {/* ── Nộp Tiền Mặt Tự Động ── */}
+        <div style={{ marginTop: '12px' }}>
+          <NopTienMat ngay={ngay} user={user} onDone={() => fetchData(ngay)} />
         </div>
 
         {/* ── Bottom Actions ── */}
