@@ -1,4 +1,4 @@
-const ITEMS = [
+const DEFAULT_ITEMS = [
   'Gội Đầu Dưỡng Sinh',
   'Massage Body · Massage Đá Nóng',
   'Triệt Lông Công Nghệ Cao',
@@ -6,9 +6,9 @@ const ITEMS = [
   'Tắm Trắng & Giảm Béo',
 ]
 
-const DOUBLE = [...ITEMS, ...ITEMS]
-
-export default function MarqueeSection() {
+export default function MarqueeSection({ items }) {
+  const ITEMS = (items && items.length > 0) ? items : DEFAULT_ITEMS
+  const DOUBLE = [...ITEMS, ...ITEMS]
   return (
     <div className="lp-marquee-wrap">
       <div className="lp-marquee-track">

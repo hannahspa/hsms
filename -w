@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Hannah Beauty &amp; Spa — Chăm Sóc Sắc Đẹp Cao Cấp Cần Thơ</title>
+    <meta name="description" content="Hannah Beauty & Spa — trung tâm chăm sóc sắc đẹp cao cấp tại Cần Thơ từ năm 2019. Dịch vụ: facial, massage, triệt lông, trị mụn, tắm trắng. Đặt lịch: 0919 868 868." />
+    <meta name="keywords" content="spa cần thơ, chăm sóc da, massage, triệt lông, trị mụn, tắm trắng, hannah spa" />
+    <meta property="og:title" content="Hannah Beauty &amp; Spa — Cần Thơ" />
+    <meta property="og:description" content="Giữ Mãi Nét Thanh Xuân Của Bạn. Trung tâm làm đẹp cao cấp tại 39 Nam Kỳ Khởi Nghĩa, Cần Thơ." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hannahspa.vn" />
+    <meta name="theme-color" content="#3d2c20" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Dancing+Script:wght@500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      html { overflow-y: auto; overflow-x: hidden; }
+      body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; }
+      #root { width: 100%; min-height: 100dvh; overflow-x: hidden; }
+    </style>
+    <script type="module" crossorigin src="/assets/index-B0p9Qljz.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DQNLdoFt.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

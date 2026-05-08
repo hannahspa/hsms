@@ -1,6 +1,7 @@
 import { useAuth } from '../../context/AuthContext'
 import AdminNhanSuPage from './nhan-su/AdminNhanSuPage'
 import AdminKhuyenMaiPage from './khuyen-mai/AdminKhuyenMaiPage'
+import AdminHomepagePage from './trang-chu/AdminHomepagePage'
 import { COLORS } from '../../constants/colors'
 
 export default function AdminApp() {
@@ -14,6 +15,7 @@ export default function AdminApp() {
 
   if (path.startsWith('/admin/nhan-su'))    return <AdminNhanSuPage />
   if (path.startsWith('/admin/khuyen-mai')) return <AdminKhuyenMaiPage />
+  if (path.startsWith('/admin/trang-chu'))  return <AdminHomepagePage />
 
   return (
     <div style={{ minHeight: '100vh', background: COLORS.bg, fontFamily: 'sans-serif' }}>
@@ -61,6 +63,17 @@ export default function AdminApp() {
               <div>Quản Lý Khuyến Mãi</div>
               <div style={{ fontSize: '12px', fontWeight: '500', color: COLORS.textMute, marginTop: '2px' }}>
                 Tạo đợt KM · Badge giảm giá · Quản lý
+              </div>
+            </div>
+          </button>
+
+          <button onClick={() => window.location.href = '/admin/trang-chu'}
+            style={{ padding: '20px', background: COLORS.card, color: COLORS.text, border: `1px solid ${COLORS.border}`, borderRadius: '18px', fontWeight: '800', fontSize: '15px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '14px', boxShadow: COLORS.shadow }}>
+            <span style={{ fontSize: '28px' }}>🌐</span>
+            <div>
+              <div>Nội Dung Trang Chủ</div>
+              <div style={{ fontSize: '12px', fontWeight: '500', color: COLORS.textMute, marginTop: '2px' }}>
+                Hero · Liên hệ · FAQ · Đánh giá
               </div>
             </div>
           </button>

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { COLORS } from '../../../constants/colors'
+import ROITab from './ROITab'
 
 const STATUS_LABEL = { active: 'Đang chạy', draft: 'Nháp', expired: 'Hết hạn' }
 const STATUS_COLOR = {
@@ -311,6 +312,7 @@ export default function AdminKhuyenMaiPage() {
   const [showForm, setShowForm]   = useState(false)
   const [editing, setEditing]     = useState(null)
   const [toast, setToast]         = useState('')
+  const [tab, setTab]             = useState('list') // 'list' | 'roi'
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
@@ -401,45 +403,64 @@ export default function AdminKhuyenMaiPage() {
         </div>
       </div>
 
-      {/* Filter + Tạo mới */}
-      <div style={{ padding: '16px 20px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '6px', flex: 1, flexWrap: 'wrap' }}>
-          {[['all', 'Tất Cả'], ['active', '✅ Đang chạy'], ['draft', '⏸ Nháp'], ['expired', '⏹ Hết hạn']].map(([k, l]) => (
-            <button key={k} onClick={() => setFilter(k)}
-              style={{ padding: '7px 14px', borderRadius: '999px', border: 'none', cursor: 'pointer',
-                fontWeight: '700', fontSize: '12px',
-                background: filter === k ? COLORS.primary : 'white',
-                color: filter === k ? 'white' : COLORS.textSub,
-                boxShadow: COLORS.shadow }}>
-              {l}
-            </button>
-          ))}
-        </div>
-        <button onClick={handleCreate}
-          style={{ padding: '10px 18px', background: COLORS.grad, color: 'white', border: 'none',
-            borderRadius: '12px', fontWeight: '800', fontSize: '13px', cursor: 'pointer',
-            whiteSpace: 'nowrap', boxShadow: COLORS.shadow }}>
-          + Tạo mới
-        </button>
+      {/* Tab switcher */}
+      <div style={{ display: 'flex', gap: '0', margin: '16px 20px 0', background: 'white',
+        borderRadius: '12px', padding: '4px', border: `1px solid ${COLORS.border}`, boxShadow: COLORS.shadow }}>
+        {[['list', '🏷️ Danh Sách'], ['roi', '📊 Phân Tích ROI']].map(([k, l]) => (
+          <button key={k} onClick={() => setTab(k)}
+            style={{ flex: 1, padding: '10px', border: 'none', cursor: 'pointer', fontWeight: '700',
+              fontSize: '13px', borderRadius: '9px', transition: 'all .2s',
+              background: tab === k ? COLORS.grad : 'transparent',
+              color: tab === k ? 'white' : COLORS.textSub }}>
+            {l}
+          </button>
+        ))}
       </div>
 
-      {/* List */}
-      <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: COLORS.textMute }}>Đang tải...</div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: COLORS.textMute }}>
-            <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏷️</div>
-            <div style={{ fontWeight: '700' }}>Chưa có khuyến mãi nào</div>
-            <div style={{ fontSize: '13px', marginTop: '6px' }}>Nhấn "+ Tạo mới" để bắt đầu</div>
+      {/* ROI Tab */}
+      {tab === 'roi' && <ROITab list={list} />}
+
+      {/* Filter + List — chỉ hiện khi tab = list */}
+      {tab === 'list' && (
+        <>
+          <div style={{ padding: '16px 20px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '6px', flex: 1, flexWrap: 'wrap' }}>
+              {[['all', 'Tất Cả'], ['active', '✅ Đang chạy'], ['draft', '⏸ Nháp'], ['expired', '⏹ Hết hạn']].map(([k, l]) => (
+                <button key={k} onClick={() => setFilter(k)}
+                  style={{ padding: '7px 14px', borderRadius: '999px', border: 'none', cursor: 'pointer',
+                    fontWeight: '700', fontSize: '12px',
+                    background: filter === k ? COLORS.primary : 'white',
+                    color: filter === k ? 'white' : COLORS.textSub,
+                    boxShadow: COLORS.shadow }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <button onClick={handleCreate}
+              style={{ padding: '10px 18px', background: COLORS.grad, color: 'white', border: 'none',
+                borderRadius: '12px', fontWeight: '800', fontSize: '13px', cursor: 'pointer',
+                whiteSpace: 'nowrap', boxShadow: COLORS.shadow }}>
+              + Tạo mới
+            </button>
           </div>
-        ) : (
-          filtered.map(km => (
-            <KMRow key={km.id} km={km} dichVuMap={dichVuMap}
-              onEdit={handleEdit} onDelete={handleDelete} onToggle={handleToggle} />
-          ))
-        )}
-      </div>
+          <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: COLORS.textMute }}>Đang tải...</div>
+            ) : filtered.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: COLORS.textMute }}>
+                <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏷️</div>
+                <div style={{ fontWeight: '700' }}>Chưa có khuyến mãi nào</div>
+                <div style={{ fontSize: '13px', marginTop: '6px' }}>Nhấn "+ Tạo mới" để bắt đầu</div>
+              </div>
+            ) : (
+              filtered.map(km => (
+                <KMRow key={km.id} km={km} dichVuMap={dichVuMap}
+                  onEdit={handleEdit} onDelete={handleDelete} onToggle={handleToggle} />
+              ))
+            )}
+          </div>
+        </>
+      )}
 
       {/* Form modal */}
       {showForm && (

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useCMS } from '../../hooks/useCMS'
 import NavBar from './sections/NavBar'
 import HeroSection from './sections/HeroSection'
 import MarqueeSection from './sections/MarqueeSection'
@@ -159,6 +160,12 @@ const LP_CSS = `
 `
 
 export default function LandingPage() {
+  const { cms } = useCMS()
+  const cmsContact      = cms.contact      || {}
+  const cmsMarquee      = Array.isArray(cms.marquee)      ? cms.marquee      : null
+  const cmsTestimonials = Array.isArray(cms.testimonials) ? cms.testimonials : null
+  const cmsFaq          = Array.isArray(cms.faq)          ? cms.faq          : null
+
   useEffect(() => {
     // Inject global LP CSS
     if (!document.getElementById('lp-global')) {
@@ -193,18 +200,18 @@ export default function LandingPage() {
 
   return (
     <div className="lp-root">
-      <NavBar />
-      <HeroSection />
-      <MarqueeSection />
+      <NavBar cmsContact={cmsContact} />
+      <HeroSection cmsContact={cmsContact} />
+      <MarqueeSection items={cmsMarquee} />
       <AboutSection />
       <ServicesSection />
       <GallerySection />
-      <TestimonialsSection />
-      <ContactSection />
-      <FaqSection />
-      <LocationSection />
-      <FooterSection />
-      <StickyCTA />
+      <TestimonialsSection items={cmsTestimonials} />
+      <ContactSection cmsContact={cmsContact} />
+      <FaqSection items={cmsFaq} />
+      <LocationSection cmsContact={cmsContact} />
+      <FooterSection cmsContact={cmsContact} />
+      <StickyCTA cmsContact={cmsContact} />
     </div>
   )
 }

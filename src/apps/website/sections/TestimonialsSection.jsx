@@ -27,9 +27,13 @@ const REVIEWS = [
   },
 ]
 
-export default function TestimonialsSection() {
+export default function TestimonialsSection({ items }) {
+  const ACTIVE = (items && items.length > 0)
+    ? items.map(r => ({ name: r.name, role: r.role, rating: r.rating || 5, text: r.text }))
+    : REVIEWS
   const [idx, setIdx] = useState(0)
-  const cur = REVIEWS[idx]
+  const safeIdx = Math.min(idx, ACTIVE.length - 1)
+  const cur = ACTIVE[safeIdx]
   const initials = cur.name.split(' ').slice(-2).map(w => w[0]).join('')
 
   return (
@@ -68,11 +72,11 @@ export default function TestimonialsSection() {
               </div>
             </div>
             <div className="lp-tt-controls">
-              <button onClick={() => setIdx((idx - 1 + REVIEWS.length) % REVIEWS.length)} aria-label="Trước">←</button>
+              <button onClick={() => setIdx((safeIdx - 1 + ACTIVE.length) % ACTIVE.length)} aria-label="Trước">←</button>
               <span className="lp-tt-count">
-                {String(idx + 1).padStart(2, '0')} / {String(REVIEWS.length).padStart(2, '0')}
+                {String(safeIdx + 1).padStart(2, '0')} / {String(ACTIVE.length).padStart(2, '0')}
               </span>
-              <button onClick={() => setIdx((idx + 1) % REVIEWS.length)} aria-label="Sau">→</button>
+              <button onClick={() => setIdx((safeIdx + 1) % ACTIVE.length)} aria-label="Sau">→</button>
             </div>
           </div>
         </div>

@@ -49,11 +49,15 @@ function FaqItem({ faq, isOpen, onToggle }) {
   )
 }
 
-export default function FaqSection() {
+export default function FaqSection({ items }) {
+  const ACTIVE = (items && items.length > 0)
+    ? items.map(f => ({ q: f.q, a: f.a }))
+    : FAQS
   const [openIdx, setOpenIdx] = useState(0)
   const toggle = i => setOpenIdx(openIdx === i ? -1 : i)
-  const col1 = FAQS.slice(0, 4)
-  const col2 = FAQS.slice(4)
+  const mid = Math.ceil(ACTIVE.length / 2)
+  const col1 = ACTIVE.slice(0, mid)
+  const col2 = ACTIVE.slice(mid)
 
   return (
     <section id="faq" className="lp-faq">

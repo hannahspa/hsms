@@ -9,7 +9,7 @@ const SERVICES = [
   'Tư vấn da (miễn phí)',
 ]
 
-export default function ContactSection() {
+export default function ContactSection({ cmsContact = {} }) {
   const [form, setForm] = useState({ name: '', phone: '', service: SERVICES[0], note: '' })
   const [sent, setSent] = useState(false)
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -40,12 +40,12 @@ export default function ContactSection() {
             <div className="lp-booking-info">
               <div>
                 <div className="lp-label">Hotline</div>
-                <div className="lp-booking-val">0379 080 909</div>
+                <div className="lp-booking-val">{cmsContact.phone || '0379 080 909'}</div>
               </div>
               <div>
                 <div className="lp-label">Facebook</div>
                 <div className="lp-booking-val">
-                  <a href="https://www.facebook.com/hannahspact" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
+                  <a href={cmsContact.facebook || 'https://www.facebook.com/hannahspact'} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
                     Hannah Spa Cần Thơ
                   </a>
                 </div>
@@ -53,9 +53,15 @@ export default function ContactSection() {
             </div>
 
             <div className="lp-booking-hours">
-              <div className="lp-bk-row"><span>Thứ 2 – Thứ 6</span><span>9:15 – 20:00</span></div>
-              <div className="lp-bk-row"><span>Thứ 7 – Chủ Nhật</span><span>9:15 – 20:00</span></div>
-              <div className="lp-bk-row lp-bk-note"><span>Ngưng nhận khách</span><span>19:30</span></div>
+              {cmsContact.hours ? (
+                <div className="lp-bk-row"><span>Giờ làm việc</span><span>{cmsContact.hours}</span></div>
+              ) : (
+                <>
+                  <div className="lp-bk-row"><span>Thứ 2 – Thứ 6</span><span>9:15 – 20:00</span></div>
+                  <div className="lp-bk-row"><span>Thứ 7 – Chủ Nhật</span><span>9:15 – 20:00</span></div>
+                  <div className="lp-bk-row lp-bk-note"><span>Ngưng nhận khách</span><span>19:30</span></div>
+                </>
+              )}
             </div>
           </div>
 
