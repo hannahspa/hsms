@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import AdminNhanSuPage from './nhan-su/AdminNhanSuPage'
 import AdminKhuyenMaiPage from './khuyen-mai/AdminKhuyenMaiPage'
 import AdminHomepagePage from './trang-chu/AdminHomepagePage'
+import AdminKhoHangPage from './kho-hang/AdminKhoHangPage'
 import { supabase } from '../../lib/supabase'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -180,6 +181,7 @@ export default function AdminApp() {
   if (path.startsWith('/admin/nhan-su'))    return <AdminNhanSuPage />
   if (path.startsWith('/admin/khuyen-mai')) return <AdminKhuyenMaiPage />
   if (path.startsWith('/admin/trang-chu'))  return <AdminHomepagePage />
+  if (path.startsWith('/admin/kho-hang'))   return <AdminKhoHangPage />
 
   const now = getNowVN()
   const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
@@ -344,9 +346,9 @@ export default function AdminApp() {
             href="/checkin"
           />
           <ModuleCard
-            icon="📦" label="Kho Hàng" color="#7F8C8D"
-            desc="Nhập xuất · Tồn kho · Cảnh báo hết"
-            soon
+            icon="📦" label="Kho Hàng" color="#16A085"
+            desc="Nhập xuất · Tồn kho · Chiết rót · Cảnh báo"
+            href="/admin/kho-hang"
           />
           <ModuleCard
             icon="👤" label="CRM Khách Hàng" color="#7F8C8D"
