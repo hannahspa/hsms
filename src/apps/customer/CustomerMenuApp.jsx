@@ -64,12 +64,18 @@ function isOpen() {
 }
 
 // ── Service Card ───────────────────────────────────────────────────────────────
-function ServiceCard({ service, nhomColor, onClick }) {
+function ServiceCard({ service, km, nhomColor, onClick }) {
   const color = nhomColor || '#A0714F'
+  const hasKM = !!km
   return (
-    <button className="mn-card" onClick={() => onClick(service)}>
+    <button className="mn-card" onClick={() => onClick(service, km)}>
       {/* Color bar top */}
-      <div className="mn-card-bar" style={{ background: color }} />
+      <div className="mn-card-bar" style={{ background: hasKM ? '#C0392B' : color }} />
+
+      {/* Badge KM góc phải trên */}
+      {hasKM && (
+        <div className="mn-km-badge">-{Math.round(km.phan_tram_giam)}%</div>
+      )}
 
       {/* Body */}
       <div className="mn-card-body">
@@ -94,17 +100,24 @@ function ServiceCard({ service, nhomColor, onClick }) {
       </div>
 
       {/* Footer giá */}
-      <div className="mn-card-footer" style={{ borderTop: `1px solid ${color}22` }}>
-        {service.la_hot && <span className="mn-card-hot">🔥 HOT</span>}
-        <span className="mn-card-gia" style={{ color }}>{fmt(service.gia_co_ban)}</span>
+      <div className="mn-card-footer" style={{ borderTop: `1px solid ${(hasKM ? '#C0392B' : color)}22` }}>
+        {service.la_hot && !hasKM && <span className="mn-card-hot">🔥 HOT</span>}
+        {hasKM ? (
+          <div className="mn-card-gia-km">
+            <span className="mn-gia-goc">{fmt(km.gia_goc)}</span>
+            <span className="mn-gia-moi" style={{ color: '#C0392B' }}>{fmt(km.gia_km)}</span>
+          </div>
+        ) : (
+          <span className="mn-card-gia" style={{ color }}>{fmt(service.gia_co_ban)}</span>
+        )}
       </div>
     </button>
   )
 }
 
 // ── Modal Chi Tiết ─────────────────────────────────────────────────────────────
-function ServiceModal({ service, onClose }) {
-  const color = NHOM_COLOR[service.nhom_hien_thi] || '#A0714F'
+function ServiceModal({ service, km, onClose }) {
+  const color = km ? '#C0392B' : (NHOM_COLOR[service.nhom_hien_thi] || '#A0714F')
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
@@ -160,10 +173,26 @@ function ServiceModal({ service, onClose }) {
           )}
 
           {/* Giá */}
-          <div className="mn-modal-gia-block" style={{ borderColor: color + '33' }}>
-            <span className="mn-modal-gia-label">Giá dịch vụ</span>
-            <span className="mn-modal-gia" style={{ color }}>{fmt(service.gia_co_ban)}</span>
-          </div>
+          {km ? (
+            <div className="mn-modal-gia-block" style={{ borderColor: '#C0392B33', background: '#FFF5F5' }}>
+              <div>
+                <div className="mn-modal-gia-label">Giá khuyến mãi · Tiết kiệm {fmt(km.gia_goc - km.gia_km)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+                  <span style={{ fontSize: '14px', color: '#B8A898', textDecoration: 'line-through' }}>{fmt(km.gia_goc)}</span>
+                  <span className="mn-modal-gia" style={{ color: '#C0392B' }}>{fmt(km.gia_km)}</span>
+                </div>
+              </div>
+              <span style={{ background: '#C0392B', color: 'white', borderRadius: '8px',
+                padding: '4px 10px', fontSize: '14px', fontWeight: '800', flexShrink: 0 }}>
+                -{Math.round(km.phan_tram_giam)}%
+              </span>
+            </div>
+          ) : (
+            <div className="mn-modal-gia-block" style={{ borderColor: color + '33' }}>
+              <span className="mn-modal-gia-label">Giá dịch vụ</span>
+              <span className="mn-modal-gia" style={{ color }}>{fmt(service.gia_co_ban)}</span>
+            </div>
+          )}
         </div>
 
         {/* Footer CTA */}
@@ -186,9 +215,15 @@ function ServiceModal({ service, onClose }) {
   )
 }
 
+function todayISO() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+    .toISOString().slice(0, 10)
+}
+
 // ── Main App ───────────────────────────────────────────────────────────────────
 export default function CustomerMenuApp() {
   const [services, setServices]   = useState([])
+  const [kmMap, setKmMap]         = useState({}) // dich_vu_id → km object
   const [loading, setLoading]     = useState(true)
   const [nhom, setNhom]           = useState('all')
   const [search, setSearch]       = useState('')
@@ -197,16 +232,27 @@ export default function CustomerMenuApp() {
   const open = isOpen()
 
   useEffect(() => {
-    supabase
-      .from('dich_vu')
-      .select('*')
-      .eq('is_active', true)
-      .eq('hien_tren_menu', true)
-      .order('thu_tu')
-      .then(({ data, error }) => {
-        if (!error) setServices(data || [])
-        setLoading(false)
+    const today = todayISO()
+    Promise.all([
+      supabase.from('dich_vu').select('*')
+        .eq('is_active', true).eq('hien_tren_menu', true).order('thu_tu'),
+      supabase.from('khuyen_mai').select('*')
+        .eq('trang_thai', 'active')
+        .lte('ngay_bat_dau', today)
+        .gte('ngay_ket_thuc', today),
+    ]).then(([{ data: dvs }, { data: kms }]) => {
+      setServices(dvs || [])
+      // Map dich_vu_id → km (lấy KM giảm nhiều nhất nếu có nhiều)
+      const map = {}
+      ;(kms || []).forEach(km => {
+        if (!km.dich_vu_id) return
+        if (!map[km.dich_vu_id] || km.phan_tram_giam > map[km.dich_vu_id].phan_tram_giam) {
+          map[km.dich_vu_id] = km
+        }
       })
+      setKmMap(map)
+      setLoading(false)
+    })
   }, [])
 
   // Filter
@@ -219,7 +265,7 @@ export default function CustomerMenuApp() {
   // Nhóm nào có dữ liệu
   const activeNhoms = new Set(services.map(s => s.nhom_hien_thi))
 
-  const handleSelect = useCallback((s) => setSelected(s), [])
+  const handleSelect = useCallback((s, km) => setSelected({ ...s, _km: km || null }), [])
   const handleClose  = useCallback(() => setSelected(null), [])
 
   return (
@@ -287,6 +333,7 @@ export default function CustomerMenuApp() {
               <ServiceCard
                 key={s.id}
                 service={s}
+                km={kmMap[s.id] || null}
                 nhomColor={NHOM_COLOR[s.nhom_hien_thi]}
                 onClick={handleSelect}
               />
@@ -313,7 +360,7 @@ export default function CustomerMenuApp() {
       </footer>
 
       {/* ── Modal ──────────────────────────────────────────────── */}
-      {selected && <ServiceModal service={selected} onClose={handleClose} />}
+      {selected && <ServiceModal service={selected} km={selected._km} onClose={handleClose} />}
 
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -481,6 +528,24 @@ export default function CustomerMenuApp() {
           font-family: 'Cormorant Garamond', Georgia, serif;
           font-size: 20px; font-weight: 600;
           margin-left: auto;
+        }
+        .mn-km-badge {
+          position: absolute; top: 10px; right: 10px;
+          background: #C0392B; color: white;
+          border-radius: 6px; padding: 3px 8px;
+          font-size: 11px; font-weight: 800;
+          box-shadow: 0 2px 8px rgba(192,57,43,0.35);
+        }
+        .mn-card { position: relative; }
+        .mn-card-gia-km {
+          display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; gap: 1px;
+        }
+        .mn-gia-goc {
+          font-size: 11px; color: #B8A898; text-decoration: line-through;
+        }
+        .mn-gia-moi {
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          font-size: 20px; font-weight: 700;
         }
 
         /* ── Loading / Empty ── */
