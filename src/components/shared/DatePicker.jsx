@@ -26,7 +26,9 @@ export default function DatePicker({ open, selectedDate, onClose, onConfirm }) {
     if (!day) return;
     const newD = new Date(year, month, day);
     newD.setMinutes(newD.getMinutes() - newD.getTimezoneOffset());
-    setTempDate(newD.toISOString().split('T')[0]);
+    const iso = newD.toISOString().split('T')[0];
+    setTempDate(iso);
+    onConfirm(iso);
   };
 
   const handleChonHnay = () => {

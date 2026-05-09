@@ -75,6 +75,7 @@ export default function PhanTichDoanhThu({ onBack }) {
   const [loading, setLoading]       = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [pickerTarget, setPickerTarget] = useState(null)
+  const [expandedDay, setExpandedDay] = useState(null)
 
   const range = useMemo(() => getDateRange(tab, currentDate), [tab, currentDate])
 
@@ -246,7 +247,7 @@ export default function PhanTichDoanhThu({ onBack }) {
               </div>
             </div>
 
-            {/* Danh sách theo ngày */}
+            {/* Danh sách theo ngày — click để xem chi tiết PTTT */}
             {byNgay.length === 0 ? (
               <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '40px 20px', textAlign: 'center', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
                 <div style={{ fontSize: '32px', marginBottom: '8px' }}>📊</div>
@@ -254,9 +255,21 @@ export default function PhanTichDoanhThu({ onBack }) {
               </div>
             ) : (
               <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '4px 0', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
-                {byNgay.map((item, i) => (
+                {byNgay.map((item, i) => {
+                  const isExpanded = expandedDay === item.ngay
+                  const dayRecords = data.filter(r => r.ngay === item.ngay)
+                  const pttt = [
+                    { id: 'tien_mat', label: 'Tiền Mặt', icon: '💵' },
+                    { id: 'chuyen_khoan', label: 'Chuyển Khoản', icon: '🏦' },
+                    { id: 'quet_the', label: 'Quẹt Thẻ', icon: '💳' },
+                    { id: 'the_tra_truoc', label: 'Thẻ Trả Trước', icon: '🎫' },
+                  ]
+                  return (
                   <div key={item.ngay}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px' }}>
+                    <button
+                      onClick={() => setExpandedDay(isExpanded ? null : item.ngay)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', width: '100%', border: 'none', background: isExpanded ? '#FAF7F4' : 'transparent', cursor: 'pointer', textAlign: 'left' }}
+                    >
                       <div>
                         <div style={{ fontWeight: '600', fontSize: '14px', color: LUX.ink }}>
                           {formatDateFull(item.ngay)}
@@ -266,14 +279,28 @@ export default function PhanTichDoanhThu({ onBack }) {
                         <span style={{ fontWeight: '700', fontSize: '15px', color: '#2D7A4F' }}>
                           {formatCurrency(item.value)}
                         </span>
-                        <span style={{ color: LUX.ink3, fontSize: '16px' }}>›</span>
+                        <span style={{ color: LUX.ink3, fontSize: '16px' }}>{isExpanded ? '▲' : '›'}</span>
                       </div>
-                    </div>
+                    </button>
+                    {isExpanded && (
+                      <div style={{ padding: '8px 20px 14px 32px', borderLeft: '3px solid #A0714F20', marginLeft: '20px' }}>
+                        {pttt.map(ht => {
+                          const htTotal = dayRecords.filter(r => r.hinh_thuc === ht.id).reduce((s, r) => s + r.so_tien, 0)
+                          if (htTotal === 0) return null
+                          return (
+                            <div key={ht.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0', color: LUX.ink2 }}>
+                              <span>{ht.icon} {ht.label}</span>
+                              <span style={{ fontWeight: '600', color: '#2D7A4F' }}>{formatCurrency(htTotal)}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                     {i < byNgay.length - 1 && (
                       <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(160,113,79,0.1),transparent)', margin: '0 20px' }} />
                     )}
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </>
