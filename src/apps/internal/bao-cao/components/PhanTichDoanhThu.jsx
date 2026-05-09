@@ -7,14 +7,12 @@ import DatePicker from '../../../../components/shared/DatePicker'
 function getDateRange(tab, currentDate) {
   const now = new Date(currentDate)
   if (tab === 'ngay') {
-    // 30 ngày gần nhất
-    const end = new Date(now)
-    const start = new Date(now)
-    start.setDate(start.getDate() - 29)
+    // 1 ngày duy nhất
+    const iso = now.toISOString().split('T')[0]
     return {
-      start: start.toISOString().split('T')[0],
-      end:   end.toISOString().split('T')[0],
-      label: `${formatDateInput(start.toISOString().split('T')[0])} - ${formatDateInput(end.toISOString().split('T')[0])}`
+      start: iso,
+      end:   iso,
+      label: formatDateFull(iso)
     }
   }
   if (tab === 'thang') {
@@ -118,12 +116,15 @@ export default function PhanTichDoanhThu({ onBack }) {
   // Chart data (30 ngày)
   const chartData = useMemo(() => {
     if (tab === 'ngay') {
-      return Array.from({ length: 30 }, (_, i) => {
-        const d = new Date(range.end + 'T00:00:00')
-        d.setDate(d.getDate() - (29 - i))
+      // 7 ngày xung quanh ngày đã chọn để có context
+      const center = new Date(range.start + 'T00:00:00')
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(center)
+        d.setDate(d.getDate() - 3 + i)
         const iso = d.toISOString().split('T')[0]
         const found = byNgay.find(b => b.ngay === iso)
-        return { label: String(d.getDate()), value: found?.value || 0 }
+        const isCenter = iso === range.start
+        return { label: String(d.getDate()), value: found?.value || 0, isCenter }
       })
     }
     if (tab === 'thang') {
@@ -151,14 +152,14 @@ export default function PhanTichDoanhThu({ onBack }) {
   // Navigation
   const prevPeriod = () => {
     const d = new Date(currentDate)
-    if (tab === 'ngay')   d.setDate(d.getDate() - 30)
+    if (tab === 'ngay')   d.setDate(d.getDate() - 1)
     if (tab === 'thang')  d.setMonth(d.getMonth() - 1)
     if (tab === 'nam')    d.setFullYear(d.getFullYear() - 1)
     setCurrentDate(d)
   }
   const nextPeriod = () => {
     const d = new Date(currentDate)
-    if (tab === 'ngay')   d.setDate(d.getDate() + 30)
+    if (tab === 'ngay')   d.setDate(d.getDate() + 1)
     if (tab === 'thang')  d.setMonth(d.getMonth() + 1)
     if (tab === 'nam')    d.setFullYear(d.getFullYear() + 1)
     setCurrentDate(d)

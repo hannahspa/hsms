@@ -7,14 +7,8 @@ import DatePicker from '../../../../components/shared/DatePicker'
 function getDateRange(tab, currentDate) {
   const now = new Date(currentDate)
   if (tab === 'ngay') {
-    const end   = new Date(now)
-    const start = new Date(now)
-    start.setDate(start.getDate() - 29)
-    return {
-      start: start.toISOString().split('T')[0],
-      end:   end.toISOString().split('T')[0],
-      label: `${formatDateInput(start.toISOString().split('T')[0])} - ${formatDateInput(end.toISOString().split('T')[0])}`
-    }
+    const iso = now.toISOString().split('T')[0]
+    return { start: iso, end: iso, label: formatDateFull ? formatDateFull(iso) : iso }
   }
   if (tab === 'thang') {
     const start = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -135,9 +129,10 @@ export default function PhanTichChiPhi({ onBack }) {
 
   const chartData = useMemo(() => {
     if (tab === 'ngay') {
-      return Array.from({ length: 30 }, (_, i) => {
-        const d = new Date(range.end + 'T00:00:00')
-        d.setDate(d.getDate() - (29 - i))
+      const center = new Date(range.start + 'T00:00:00')
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(center)
+        d.setDate(d.getDate() - 3 + i)
         const iso = d.toISOString().split('T')[0]
         return { label: String(d.getDate()), value: data.filter(r => r.ngay === iso).reduce((s, r) => s + r.so_tien, 0) }
       })
@@ -175,14 +170,14 @@ export default function PhanTichChiPhi({ onBack }) {
 
   const prevPeriod = () => {
     const d = new Date(currentDate)
-    if (tab === 'ngay')  d.setDate(d.getDate() - 30)
+    if (tab === 'ngay')  d.setDate(d.getDate() - 1)
     if (tab === 'thang') d.setMonth(d.getMonth() - 1)
     if (tab === 'nam')   d.setFullYear(d.getFullYear() - 1)
     setCurrentDate(d)
   }
   const nextPeriod = () => {
     const d = new Date(currentDate)
-    if (tab === 'ngay')  d.setDate(d.getDate() + 30)
+    if (tab === 'ngay')  d.setDate(d.getDate() + 1)
     if (tab === 'thang') d.setMonth(d.getMonth() + 1)
     if (tab === 'nam')   d.setFullYear(d.getFullYear() + 1)
     setCurrentDate(d)
