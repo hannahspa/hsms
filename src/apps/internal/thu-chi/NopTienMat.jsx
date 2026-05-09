@@ -54,8 +54,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
 
   const handleSubmit = async () => {
     if (soDuTienMat <= 0) return
-    if (!isToday) { alert('Chỉ được nộp tiền mặt cho ngày hôm nay.'); return }
-    if (!window.confirm(`Xác nhận nộp ${formatCurrency(soDuTienMat)} vào MB Bank?`)) return
+    if (!window.confirm(`Xác nhận nộp ${formatCurrency(soDuTienMat)} vào MB Bank cho ngày ${ngay.split('-').reverse().join('/')}?`)) return
 
     setSubmitting(true)
     try {
@@ -90,12 +89,12 @@ export default function NopTienMat({ ngay, user, onDone }) {
     )
   }
 
-  if (soDuTienMat <= 0 && isToday) {
+  if (soDuTienMat <= 0) {
     return (
       <div style={{ background: '#FFF8F0', borderRadius: '14px', padding: '14px 16px', border: '1px solid #FED7AA', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
         <span style={{ fontSize: '20px' }}>💡</span>
         <div>
-          <div style={{ fontWeight: '600', fontSize: '13px', color: '#9A3412', fontFamily: LUX.fontSans }}>Hôm nay không có tiền mặt cần nộp</div>
+          <div style={{ fontWeight: '600', fontSize: '13px', color: '#9A3412', fontFamily: LUX.fontSans }}>Không có tiền mặt cần nộp{isToday ? '' : ` (ngày ${ngay.split('-').reverse().join('/')})`}</div>
           <div style={{ fontSize: '12px', color: '#B85C38', fontFamily: LUX.fontSans }}>Thu: {formatCurrency(cashIn)} • Chi: {formatCurrency(cashOut)}</div>
         </div>
       </div>
@@ -137,7 +136,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
       </button>
 
       <div style={{ marginTop: '6px', textAlign: 'center', fontSize: '10px', color: LUX.ink3, fontFamily: LUX.fontSans }}>
-        Hệ thống tự tính từ doanh thu & chi phí tiền mặt hôm nay
+        Hệ thống tự tính từ doanh thu & chi phí tiền mặt ngày {ngay.split('-').reverse().join('/')}
       </div>
     </div>
   )
