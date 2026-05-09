@@ -20,7 +20,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
     setLoading(true)
     try {
       const [rVi, rDT, rCP, rCK] = await Promise.all([
-        supabase.from('vi').select('id,ten,loai').eq('is_active', true).order('thu_tu'),
+        supabase.from('so_du_vi_thuc_te').select('id,ten,loai').order('thu_tu'),
         supabase.from('doanh_thu').select('hinh_thuc,so_tien').eq('ngay', ngay).eq('hinh_thuc', 'tien_mat'),
         supabase.from('chi_phi').select('hinh_thuc_thanh_toan,so_tien').eq('ngay', ngay).eq('hinh_thuc_thanh_toan', 'tien_mat'),
         supabase.from('chuyen_khoan_noi_bo').select('tu_vi_id,so_tien').eq('ngay', ngay),
