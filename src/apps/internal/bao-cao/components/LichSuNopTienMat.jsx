@@ -69,37 +69,42 @@ export default function LichSuNopTienMat({ onBack }) {
     for (const d of (dtData || [])) dtByDay[d.ngay] = (dtByDay[d.ngay] || 0) + (d.so_tien || 0)
     for (const d of (cpData || [])) cpByDay[d.ngay] = (cpByDay[d.ngay] || 0) + (d.so_tien || 0)
 
-    // Build rows from CK noi bo
-    const rows = (ckData || []).map(c => {
-      const dt = dtByDay[c.ngay] || 0
-      const cp = cpByDay[c.ngay] || 0
-      const phaiNop = dt - cp
-      return {
-        id: c.id, ngay: c.ngay, soTien: c.so_tien || 0,
-        dienGiai: c.dien_giai || 'Nộp tiền mặt',
-        dtTm: dt, cpTm: cp, phaiNop,
-        match: (c.so_tien || 0) === phaiNop,
-        type: 'co-nop',
-      }
-    })
-
-    // Find days with cash to deposit but NO CK noi bo record
-    const ckDays = new Set((ckData || []).map(c => c.ngay))
-    const allDays = new Set([...Object.keys(dtByDay), ...Object.keys(cpByDay)])
-    for (const day of allDays) {
-      if (ckDays.has(day)) continue
-      const phaiNop = (dtByDay[day] || 0) - (cpByDay[day] || 0)
-      if (phaiNop > 0) {
-        rows.push({
-          id: `missing-${day}`, ngay: day, soTien: 0,
-          dienGiai: 'CHƯA NỘP — cần kiểm tra!',
-          dtTm: dtByDay[day] || 0, cpTm: cpByDay[day] || 0, phaiNop,
-          match: false, type: 'thieu-nop',
-        })
-      }
+    // Get actual CK amounts by day
+    const ckByDay = {}
+    for (const c of (ckData || [])) {
+      ckByDay[c.ngay] = (ckByDay[c.ngay] || 0) + (c.so_tien || 0)
     }
 
-    // Sort by date desc
+    // All days sorted chronologically
+    const allDays = [...new Set([...Object.keys(dtByDay), ...Object.keys(cpByDay)])].sort()
+
+    // Running balance logic
+    const rows = []
+    let luyKe = 0
+    for (const day of allDays) {
+      const thu = dtByDay[day] || 0
+      const chi = cpByDay[day] || 0
+      const net = thu - chi
+      const luyKeTruoc = luyKe
+      luyKe += net
+      const daNop = luyKe > 0 ? luyKe : 0
+      const luyKeSau = luyKe > 0 ? 0 : luyKe
+
+      // Only show days with activity
+      if (thu > 0 || chi > 0 || ckByDay[day]) {
+        rows.push({
+          id: day, ngay: day,
+          thuTm: thu, chiTm: chi, net,
+          luyKeTruoc, luyKeSau: luyKe > 0 ? 0 : luyKe,
+          daNop,
+          coNop: daNop > 0,
+          canBao: luyKeTruoc < 0, // This day had to cover previous deficit
+        })
+      }
+      if (luyKe > 0) luyKe = 0
+    }
+
+    // Sort descending
     rows.sort((a, b) => b.ngay.localeCompare(a.ngay))
     setData(rows)
     setLoading(false)
@@ -108,11 +113,9 @@ export default function LichSuNopTienMat({ onBack }) {
   useEffect(() => { loadData() }, [loadData])
 
   // Stats
-  const ckNop = data.filter(r => r.type === 'co-nop')
-  const thieuNop = data.filter(r => r.type === 'thieu-nop')
-  const totalNop = ckNop.reduce((s, r) => s + r.soTien, 0)
-  const matchCount = ckNop.filter(r => r.match).length
-  const mismatchCount = ckNop.filter(r => !r.match).length
+  const ngayCoNop = data.filter(r => r.coNop)
+  const ngayCanBao = data.filter(r => r.canBao)
+  const totalNop = ngayCoNop.reduce((s, r) => s + r.daNop, 0)
 
   const formatDate = (iso) => {
     if (!iso) return ''
@@ -165,29 +168,26 @@ export default function LichSuNopTienMat({ onBack }) {
       </div>
 
       {/* Summary cards */}
-      <div style={{ padding: '0 16px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+      <div style={{ padding: '0 16px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
         {[
-          { label: 'Đã nộp', val: ckNop.length, sub: `${formatCurrency(totalNop)}`, color: '#1A5276' },
-          { label: 'Khớp', val: matchCount, color: '#2D7A4F' },
-          { label: 'Lệch', val: mismatchCount, color: mismatchCount > 0 ? '#C0392B' : '#2D7A4F' },
-          { label: 'Thiếu', val: thieuNop.length, color: thieuNop.length > 0 ? '#E67E22' : '#2D7A4F' },
+          { label: 'Số ngày', val: data.length, color: '#1A5276' },
+          { label: 'Tổng đã nộp NH', val: formatCurrency(totalNop), color: '#2D7A4F' },
+          { label: 'Ngày bù âm', val: ngayCanBao.length, color: ngayCanBao.length > 0 ? '#E67E22' : '#2D7A4F' },
         ].map(s => (
           <div key={s.label} style={{ background: 'white', borderRadius: '12px', padding: '12px 8px', border: '1px solid rgba(160,113,79,0.1)', textAlign: 'center' }}>
             <div style={{ fontSize: '18px', fontWeight: '800', color: s.color }}>{s.val}</div>
-            {s.sub && <div style={{ fontSize: '10px', color: LUX.ink3, marginTop: '1px' }}>{s.sub}</div>}
-            <div style={{ fontSize: '10px', color: LUX.ink3, marginTop: s.sub ? '1px' : '4px' }}>{s.label}</div>
+            <div style={{ fontSize: '10px', color: LUX.ink3, marginTop: '4px' }}>{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Alert banner for thieu */}
-      {thieuNop.length > 0 && (
-        <div style={{ padding: '0 16px 12px' }}>
-          <div style={{ background: '#FFF8F0', borderRadius: '12px', padding: '12px 16px', border: '1px solid #FED7AA', fontSize: '12px', color: '#9A3412', fontWeight: '600' }}>
-            ⚠️ Có {thieuNop.length} ngày có tiền mặt phải nộp nhưng chưa có bút toán CK nội bộ!
-          </div>
+      {/* Logic explanation */}
+      <div style={{ padding: '0 16px 12px' }}>
+        <div style={{ background: '#EFF6FF', borderRadius: '12px', padding: '12px 16px', border: '1px solid #BFDBFE', fontSize: '11px', color: '#1E40AF', lineHeight: 1.5 }}>
+          <b>Logic lũy kế:</b> Mỗi ngày, Thu TM − Chi TM được cộng dồn. Khi số dư dương → nộp hết vào NH. Khi âm → giữ lại, ngày hôm sau bù tiếp.
+          <span style={{ color: '#E67E22', fontWeight: '600' }}> 🟠 Ngày bù âm</span> = ngày có nộp ít hơn Thu-Chi vì phải trừ khoản âm ngày trước.
         </div>
-      )}
+      </div>
 
       {/* Table */}
       <div style={{ padding: '0 16px' }}>
@@ -216,43 +216,44 @@ export default function LichSuNopTienMat({ onBack }) {
           <div style={{ textAlign: 'center', padding: '40px', color: LUX.ink3, background: 'white', borderRadius: '16px' }}>Không có dữ liệu trong khoảng này</div>
         ) : (
           <div style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(160,113,79,0.1)', overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '105px 1fr 110px', padding: '10px 14px', background: '#FAF7F4', borderBottom: '1px solid rgba(160,113,79,0.1)', fontSize: '10px', fontWeight: '700', color: LUX.ink3, textTransform: 'uppercase' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '90px 80px 80px 70px 80px', padding: '10px 8px', background: '#FAF7F4', borderBottom: '1px solid rgba(160,113,79,0.1)', fontSize: '9px', fontWeight: '700', color: LUX.ink3, textTransform: 'uppercase' }}>
               <div>Ngày</div>
-              <div>Diễn Giải / Thu-Chi TM</div>
-              <div style={{ textAlign: 'right' }}>Đã Nộp / Phải Nộp</div>
+              <div style={{ textAlign: 'right' }}>Thu TM</div>
+              <div style={{ textAlign: 'right' }}>Chi TM</div>
+              <div style={{ textAlign: 'right' }}>Lũy kế</div>
+              <div style={{ textAlign: 'right' }}>Đã Nộp NH</div>
             </div>
             {data.map((row, i) => {
-              const isMissing = row.type === 'thieu-nop'
-              const isMismatch = !row.match && !isMissing
+              const isCanBao = row.canBao
               return (
                 <div key={row.id} style={{
-                  display: 'grid', gridTemplateColumns: '105px 1fr 110px', padding: '10px 14px', alignItems: 'center',
+                  display: 'grid', gridTemplateColumns: '90px 80px 80px 70px 80px', padding: '8px 8px', alignItems: 'center',
                   borderBottom: i < data.length - 1 ? '1px solid rgba(160,113,79,0.04)' : 'none',
-                  fontSize: '12px',
-                  background: isMissing ? '#FFF9F0' : isMismatch ? '#FFF5F5' : 'transparent',
+                  fontSize: '11px',
+                  background: isCanBao ? '#FFF8F0' : 'transparent',
                 }}>
                   <div>
                     <div style={{ fontWeight: '600', color: LUX.ink, fontSize: '11px' }}>{formatDate(row.ngay)}</div>
                   </div>
-                  <div>
-                    <div style={{ color: isMissing ? '#E67E22' : LUX.ink, fontWeight: isMissing ? '700' : '500', fontSize: '12px' }}>
-                      {isMissing ? '⚠️ ' : ''}{row.dienGiai}
-                    </div>
-                    <div style={{ fontSize: '10px', color: LUX.ink3, marginTop: '1px' }}>
-                      Thu {formatCurrency(row.dtTm)} · Chi {formatCurrency(row.cpTm)}
-                      {row.phaiNop > 0 && <span style={{ color: '#1A5276', fontWeight: '600' }}> → Phải nộp {formatCurrency(row.phaiNop)}</span>}
-                    </div>
+                  <div style={{ textAlign: 'right', color: row.thuTm > 0 ? '#2D7A4F' : LUX.ink3 }}>
+                    {row.thuTm > 0 ? formatCurrency(row.thuTm) : '—'}
+                  </div>
+                  <div style={{ textAlign: 'right', color: row.chiTm > 0 ? '#C0392B' : LUX.ink3 }}>
+                    {row.chiTm > 0 ? formatCurrency(row.chiTm) : '—'}
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: '700', color: isMissing ? '#E67E22' : '#1A5276', fontSize: '12px' }}>
-                      {isMissing ? '—' : formatCurrency(row.soTien)}
-                    </div>
-                    <div style={{
-                      fontSize: '10px', fontWeight: '600',
-                      color: row.match ? '#2D7A4F' : '#C0392B',
-                    }}>
-                      {isMissing ? 'THIẾU' : row.match ? 'OK' : `Lệch ${formatCurrency(Math.abs(row.soTien - row.phaiNop))}`}
-                    </div>
+                    {row.luyKeTruoc < 0 && (
+                      <span style={{ fontSize: '9px', color: '#E67E22', display: 'block' }}>
+                        {formatCurrency(row.luyKeTruoc)}
+                      </span>
+                    )}
+                    <span style={{ fontWeight: '600', color: row.net >= 0 ? '#2D7A4F' : '#C0392B', fontSize: '10px' }}>
+                      {row.net >= 0 ? '+' : ''}{formatCurrency(row.net)}
+                    </span>
+                  </div>
+                  <div style={{ textAlign: 'right', fontWeight: '700', color: row.daNop > 0 ? '#1A5276' : LUX.ink3 }}>
+                    {row.daNop > 0 ? formatCurrency(row.daNop) : '—'}
+                    {isCanBao && <span style={{ fontSize: '9px', color: '#E67E22', display: 'block' }}>🟠 bù âm</span>}
                   </div>
                 </div>
               )
@@ -262,7 +263,7 @@ export default function LichSuNopTienMat({ onBack }) {
       </div>
 
       <div style={{ padding: '12px 16px', fontSize: '10px', color: LUX.ink3 }}>
-        * Phải Nộp = Doanh Thu Tiền Mặt trong ngày − Chi Phí Tiền Mặt trong ngày
+        * Lũy kế = số dư tiền mặt tích lũy. Khi dương → nộp hết vào NH, reset về 0. Khi âm → giữ lại chờ ngày sau bù.
       </div>
     </div>
   )
