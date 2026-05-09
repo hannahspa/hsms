@@ -54,6 +54,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
 
   const handleSubmit = async () => {
     if (soDuTienMat <= 0) return
+    if (!isToday) { alert('Chỉ được nộp tiền mặt cho ngày hôm nay.'); return }
     if (!window.confirm(`Xác nhận nộp ${formatCurrency(soDuTienMat)} vào MB Bank?`)) return
 
     setSubmitting(true)
@@ -77,7 +78,6 @@ export default function NopTienMat({ ngay, user, onDone }) {
   }
 
   if (loading) return null
-  if (!isToday) return null
   if (done) {
     return (
       <div style={{ background: '#F0FDF4', borderRadius: '14px', padding: '14px 16px', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -90,12 +90,12 @@ export default function NopTienMat({ ngay, user, onDone }) {
     )
   }
 
-  if (soDuTienMat <= 0) {
+  if (soDuTienMat <= 0 && isToday) {
     return (
-      <div style={{ background: '#FFF8F0', borderRadius: '14px', padding: '14px 16px', border: '1px solid #FED7AA', display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ background: '#FFF8F0', borderRadius: '14px', padding: '14px 16px', border: '1px solid #FED7AA', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
         <span style={{ fontSize: '20px' }}>💡</span>
         <div>
-          <div style={{ fontWeight: '600', fontSize: '13px', color: '#9A3412', fontFamily: LUX.fontSans }}>Không có tiền mặt cần nộp</div>
+          <div style={{ fontWeight: '600', fontSize: '13px', color: '#9A3412', fontFamily: LUX.fontSans }}>Hôm nay không có tiền mặt cần nộp</div>
           <div style={{ fontSize: '12px', color: '#B85C38', fontFamily: LUX.fontSans }}>Thu: {formatCurrency(cashIn)} • Chi: {formatCurrency(cashOut)}</div>
         </div>
       </div>
@@ -103,7 +103,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
   }
 
   return (
-    <div style={{ background: '#FFFBF0', borderRadius: '14px', padding: '14px 16px', border: '1px solid #FDE68A' }}>
+    <div style={{ background: '#FFFBF0', borderRadius: '14px', padding: '14px 16px', border: '1px solid #FDE68A', marginBottom: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <div>
           <div style={{ fontWeight: '700', fontSize: '13px', color: LUX.ink, fontFamily: LUX.fontSans, marginBottom: '2px' }}>
