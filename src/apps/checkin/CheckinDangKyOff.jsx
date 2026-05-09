@@ -116,9 +116,12 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
 
     setLoading(true)
     try {
-      const { error } = await supabase.from('dang_ky_off').insert({
-        nhan_vien_id: nhanVien.id, ngay_off: ngayOff, loai_off: loaiOff,
-        ly_do: lyDo, trang_thai: 'cho_duyet', bat_kha_khang: batKhaKhang,
+      const { error } = await supabase.rpc('insert_dang_ky_off', {
+        p_nhan_vien_id: nhanVien.id,
+        p_ngay_off: ngayOff,
+        p_loai_off: loaiOff,
+        p_ly_do: lyDo,
+        p_bat_kha_khang: batKhaKhang,
       })
       if (error) throw error
       showToast('Đã gửi đơn — chờ Cao Quốc Nam duyệt!')
