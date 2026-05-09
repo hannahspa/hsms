@@ -101,13 +101,9 @@ dt_by_vi = {}
 for d in (r.data or []):
     if d['hinh_thuc'] == 'the_tra_truoc':
         continue  # không vào cashflow
-    if d['hinh_thuc'] == 'tien_mat':
-        vid = vi_map.get('tien_mat', {}).get('id')
-    elif d['hinh_thuc'] == 'chuyen_khoan':
-        vid = vi_map.get('mb_bank', {}).get('id')
-    elif d['hinh_thuc'] == 'quet_the':
-        vid = vi_map.get('tp_bank', {}).get('id')
-    else:
+    # Match doanh_thu.hinh_thuc -> vi.loai directly (tien_mat/chuyen_khoan/quet_the)
+    vid = vi_map.get(d['hinh_thuc'], {}).get('id')
+    if not vid:
         continue
     dt_by_vi[vid] = dt_by_vi.get(vid, 0) + (d['so_tien'] or 0)
 

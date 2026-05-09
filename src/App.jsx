@@ -8,6 +8,7 @@ import LandingPage from './apps/website/LandingPage'
 import HomePage from './apps/website/HomePage'
 import LoginPage from './apps/auth/LoginPage'
 import CustomerMenuApp from './apps/customer/CustomerMenuApp'
+import PosApp from './apps/pos/PosApp'
 
 function RequireAuth({ children, requireAdmin }) {
   const { user, loading, logout } = useAuth()
@@ -73,6 +74,21 @@ export default function App() {
 
   // Shop (sắp ra mắt)
   if (path.startsWith('/shop')) return <ErrorBoundary><LandingPage /></ErrorBoundary>
+
+  // POS — Lễ Tân & Admin
+  if (path.startsWith('/pos')) {
+    return (
+      <AuthProvider>
+        <AppProvider>
+          <ErrorBoundary>
+            <RequireAuth requireAdmin={false}>
+              <PosApp />
+            </RequireAuth>
+          </ErrorBoundary>
+        </AppProvider>
+      </AuthProvider>
+    )
+  }
 
   return (
     <AuthProvider>

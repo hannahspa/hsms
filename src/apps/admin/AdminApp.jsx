@@ -7,6 +7,7 @@ import AdminKhoHangPage from './kho-hang/AdminKhoHangPage'
 import AdminCRMPage from './crm/AdminCRMPage'
 import AdminMarketingPage from './marketing/AdminMarketingPage'
 import AdminDashboardPage from './dashboard/AdminDashboardPage'
+import AdminLichSuNopTienMat from './bao-cao/AdminLichSuNopTienMat'
 import { supabase } from '../../lib/supabase'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -188,6 +189,7 @@ export default function AdminApp() {
   if (path.startsWith('/admin/crm'))        return <AdminCRMPage />
   if (path.startsWith('/admin/marketing'))  return <AdminMarketingPage />
   if (path.startsWith('/admin/dashboard'))  return <AdminDashboardPage />
+  if (path.startsWith('/admin/lich-su-nop-tien-mat')) return <AdminLichSuNopTienMat />
 
   const now = getNowVN()
   const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
@@ -332,6 +334,11 @@ export default function AdminApp() {
             href="/app"
           />
           <ModuleCard
+            icon="🛒" label="POS Bán Hàng" color="#E74C3C"
+            desc="Tạo đơn · Thanh toán · Checkout thẻ · Hoa hồng"
+            href="/pos" badge="Mới"
+          />
+          <ModuleCard
             icon="👥" label="Nhân Sự" color="#A0714F"
             desc="Chấm công · Duyệt OFF · Bảng lương"
             href="/admin/nhan-su"
@@ -370,6 +377,11 @@ export default function AdminApp() {
             icon="📊" label="Dashboard Tổng Hợp" color="#2D7A4F"
             desc="KPI · Biểu đồ · Cảnh báo · So sánh tháng"
             href="/admin/dashboard"
+          />
+          <ModuleCard
+            icon="🏦" label="Lịch Sử Nộp TM" color="#1A5276"
+            desc="Theo dõi các lần nộp tiền mặt vào MB Bank"
+            href="/admin/lich-su-nop-tien-mat"
           />
         </div>
       </div>

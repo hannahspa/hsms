@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
@@ -6,7 +6,13 @@ import { HINH_THUC_THU } from '../../../../constants/enums'
 import DatePicker from '../../../../components/shared/DatePicker'
 import ImageUpload from '../../../../components/shared/ImageUpload'
 
-export default function FormDoanhThu({ user, onClose, onSaved }) {
+function getViName(loaiVi, viList) {
+  if (!loaiVi) return 'Thẻ Trả Trước (không vào ví)'
+  const vi = viList.find(v => v.loai === loaiVi)
+  return vi ? vi.ten : loaiVi
+}
+
+export default function FormDoanhThu({ user, onClose, onSaved, viList = [] }) {
   const [soTien,      setSoTien]      = useState('')
   const [hinhThuc,    setHinhThuc]    = useState(null)
   const [ngay,        setNgay]        = useState(todayISO())
@@ -71,7 +77,7 @@ export default function FormDoanhThu({ user, onClose, onSaved }) {
                 </button>
               ))}
             </div>
-            {hinhThuc && <div style={{ marginTop: '12px', padding: '10px', background: `${LUX.taupe}08`, borderRadius: '10px', fontSize: '12px', color: LUX.ink2, textAlign: 'center', fontWeight: '500', fontFamily: LUX.fontSans }}>💡 Tiền sẽ tự động cập nhật vào: <b style={{color: LUX.taupe}}>{hinhThuc.vi}</b></div>}
+            {hinhThuc && <div style={{ marginTop: '12px', padding: '10px', background: `${LUX.taupe}08`, borderRadius: '10px', fontSize: '12px', color: LUX.ink2, textAlign: 'center', fontWeight: '500', fontFamily: LUX.fontSans }}>💡 Tiền sẽ tự động cập nhật vào: <b style={{color: LUX.taupe}}>{getViName(hinhThuc.loaiVi, viList)}</b></div>}
           </div>
 
           <div onClick={() => setShowLich(true)} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`, cursor: 'pointer' }}>

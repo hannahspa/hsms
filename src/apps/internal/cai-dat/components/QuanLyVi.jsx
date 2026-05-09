@@ -48,7 +48,8 @@ export default function QuanLyVi({ onClose }) {
 
   const getViDesc = (loai) => {
     if (loai === 'tien_mat') return 'Tiền mặt tại quầy'
-    if (loai === 'ngan_hang') return 'Tài khoản ngân hàng'
+    if (loai === 'chuyen_khoan' || loai === 'ngan_hang') return 'Tài khoản ngân hàng'
+    if (loai === 'quet_the') return 'Quẹt thẻ'
     return loai || ''
   }
 

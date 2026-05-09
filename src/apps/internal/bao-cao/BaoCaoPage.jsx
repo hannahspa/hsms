@@ -8,6 +8,7 @@ import BaoCaoNam from './components/BaoCaoNam'
 import PhanTichDoanhThu from './components/PhanTichDoanhThu'
 import PhanTichChiPhi from './components/PhanTichChiPhi'
 import BaoCaoDongTien from './components/BaoCaoDongTien'
+import LichSuNopTienMat from './components/LichSuNopTienMat'
 import { getNowVN } from '../../../lib/utils'
 
 function MiniBarChart({ data }) {
@@ -46,6 +47,7 @@ function Dashboard({ onNavigate }) {
     { id: 'bao-cao-dong-tien',     icon: '💵', label: 'Báo Cáo Dòng Tiền',  desc: 'Lưu chuyển tiền tệ chuẩn quốc tế', bg: '#FDF4FF', border: '#B87ABA' },
     { id: 'phan-tich-chi-phi',    icon: '📉', label: 'Phân Tích Chi Phí',   desc: 'Theo nhóm & hạng mục', bg: '#FEF2F2', border: '#E59898' },
     { id: 'phan-tich-doanh-thu',  icon: '📈', label: 'Phân Tích Doanh Thu', desc: 'Theo hình thức thu',   bg: '#F0FDF4', border: '#7ABA8A' },
+    { id: 'lich-su-nop-tien-mat', icon: '🏦', label: 'Lịch Sử Nộp Tiền Mặt', desc: 'TM → MB Bank từng ngày', bg: '#EFF6FF', border: '#7FA9D0' },
   ]
 
   return (
@@ -155,6 +157,7 @@ export default function BaoCaoPage() {
       {view === 'phan-tich-doanh-thu' && <PhanTichDoanhThu onBack={handleBack} />}
       {view === 'phan-tich-chi-phi'  && <PhanTichChiPhi  onBack={handleBack} />}
       {view === 'bao-cao-dong-tien'   && <BaoCaoDongTien  onBack={handleBack} />}
+      {view === 'lich-su-nop-tien-mat' && <LichSuNopTienMat onBack={handleBack} />}
     </div>
   )
 }

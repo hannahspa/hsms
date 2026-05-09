@@ -49,7 +49,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
   const soDuTienMat = cashIn - cashOut
   const isToday = ngay === todayISO()
   const tienMatVi = viList.find(v => v.loai === 'tien_mat')
-  const mbVi = viList.find(v => v.loai === 'mb_bank')
+  const mbVi = viList.find(v => v.loai === 'chuyen_khoan')
 
   const handleSubmit = async () => {
     if (soDuTienMat <= 0) return

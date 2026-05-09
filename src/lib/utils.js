@@ -3,6 +3,8 @@ export const DAYS = ['CN','T2','T3','T4','T5','T6','T7']
 export const formatCurrency = (n) =>
   new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ'
 
+export const parseVND = (s) => parseInt(String(s).replace(/\D/g, ''), 10) || 0
+
 export const formatCurrencyHide = () => '••••••••'
 
 export const formatDate = (isoDate) => {

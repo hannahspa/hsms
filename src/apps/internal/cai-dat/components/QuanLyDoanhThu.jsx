@@ -1,7 +1,22 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { HINH_THUC_THU } from '../../../../constants/enums'
 
+function getViName(loaiVi, viList) {
+  if (!loaiVi) return 'Thẻ Trả Trước (không vào ví)'
+  const vi = viList.find(v => v.loai === loaiVi)
+  return vi ? vi.ten : loaiVi
+}
+
 export default function QuanLyDoanhThu({ onClose }) {
+  const [viList, setViList] = useState([])
+
+  useEffect(() => {
+    supabase.from('vi').select('id,ten,loai').eq('is_active', true).order('thu_tu').then(({ data }) => {
+      if (data) setViList(data)
+    })
+  }, [])
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'flex-end', zIndex: 600 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -25,7 +40,7 @@ export default function QuanLyDoanhThu({ onClose }) {
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: '600', fontSize: '15px', color: LUX.ink, fontFamily: LUX.fontSans }}>{ht.label}</div>
                 <div style={{ fontSize: '12px', color: LUX.ink3, fontFamily: LUX.fontSans }}>
-                  Vào ví: <b style={{ color: LUX.taupe }}>{ht.vi}</b>
+                  Vào ví: <b style={{ color: LUX.taupe }}>{getViName(ht.loaiVi, viList)}</b>
                 </div>
               </div>
               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2D7A4F', fontSize: '14px' }}>✓</div>

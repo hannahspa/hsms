@@ -1,0 +1,10 @@
+{
+  "name": "hsms-mcp-server",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "MCP Knowledge Server for Hannah Spa Management System",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
+}

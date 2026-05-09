@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "hsms": {
+      "command": "node",
+      "args": ["mcp-server/index.js"]
+    }
+  }
+}

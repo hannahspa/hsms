@@ -293,7 +293,7 @@ export default function BaoCaoNgay({ onBack }) {
                       <div>
                         <div style={{ fontSize: '14px', fontWeight: '600', color: LUX.ink }}>{vi.ten}</div>
                         <div style={{ fontSize: '11px', color: LUX.ink3 }}>
-                          {vi.loai === 'tien_mat' ? 'Tiền mặt tại quầy' : vi.loai === 'ngan_hang' ? 'Tài khoản ngân hàng' : 'Ví điện tử'}
+                          {vi.loai === 'tien_mat' ? 'Tiền mặt tại quầy' : (vi.loai === 'chuyen_khoan' || vi.loai === 'ngan_hang') ? 'Tài khoản ngân hàng' : vi.loai === 'quet_the' ? 'Quẹt thẻ' : 'Ví điện tử'}
                         </div>
                       </div>
                     </div>

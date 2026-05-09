@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Read(//c/Users/Quoc Nam/**)",
-      "Bash(ssh -T git@github.com)"
+      "Bash(ssh -T git@github.com)",
+      "Bash(npm run *)"
     ]
   }
 }

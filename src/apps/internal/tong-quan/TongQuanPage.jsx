@@ -35,7 +35,8 @@ function formatVNDate(isoStr) {
 
 function getViDesc(vi) {
   if (vi.loai === 'tien_mat') return 'Tiền mặt tại quầy'
-  if (vi.loai === 'ngan_hang') return 'Ngân hàng'
+  if (vi.loai === 'chuyen_khoan' || vi.loai === 'ngan_hang') return 'Ngân hàng'
+  if (vi.loai === 'quet_the') return 'Quẹt thẻ'
   return vi.loai || ''
 }
 
