@@ -70,6 +70,8 @@ export default function PhanTichChiPhi({ onBack }) {
   const [danhMuc, setDanhMuc]         = useState([])
   const [loading, setLoading]         = useState(false)
   const [showPicker, setShowPicker]   = useState(false)
+  const [expandedItem, setExpandedItem] = useState(null)
+  const [itemDetails, setItemDetails]   = useState([])
 
   const range = useMemo(() => getDateRange(tab, currentDate), [tab, currentDate])
 
@@ -155,6 +157,21 @@ export default function PhanTichChiPhi({ onBack }) {
     }
     return []
   }, [data, tab, range, currentDate])
+
+  const handleExpandItem = async (nhomId, hmTen) => {
+    if (expandedItem === `${nhomId}-${hmTen}`) {
+      setExpandedItem(null)
+      setItemDetails([])
+      return
+    }
+    setExpandedItem(`${nhomId}-${hmTen}`)
+    // Lấy các chi_phi records của hạng mục này
+    const hmRecords = data.filter(cp => {
+      const child = danhMuc.find(d => d.id === cp.danh_muc_id)
+      return (child?.ten || 'Khác') === hmTen
+    })
+    setItemDetails(hmRecords.sort((a, b) => b.ngay.localeCompare(a.ngay)))
+  }
 
   const prevPeriod = () => {
     const d = new Date(currentDate)
@@ -265,8 +282,11 @@ export default function PhanTichChiPhi({ onBack }) {
                     return (
                       <div key={`${nhom.id}-${i}`} style={{
                         background: LUX.surface2, borderRadius: '16px', padding: '14px 16px',
-                        boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`
-                      }}>
+                        boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`,
+                        cursor: 'pointer', transition: 'all 0.15s',
+                      }}
+                        onClick={() => handleExpandItem(nhom.id, hm.ten)}
+                      >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                           {/* Icon nhóm cha */}
                           <div style={{
@@ -304,7 +324,29 @@ export default function PhanTichChiPhi({ onBack }) {
                           <span style={{ fontSize: '11px', color: LUX.ink3, fontWeight: '600', minWidth: '36px', textAlign: 'right' }}>
                             {percent.toFixed(1)}%
                           </span>
+                          <span style={{ fontSize: '12px', color: LUX.ink3 }}>{expandedItem === `${nhom.id}-${hm.ten}` ? '▲' : '▼'}</span>
                         </div>
+
+                        {/* Expanded: individual transactions */}
+                        {expandedItem === `${nhom.id}-${hm.ten}` && (
+                          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(160,113,79,0.1)' }}>
+                            {itemDetails.length === 0 ? (
+                              <div style={{ fontSize: '11px', color: LUX.ink3, textAlign: 'center', padding: '8px' }}>Không có giao dịch chi tiết</div>
+                            ) : (
+                              itemDetails.map(cp => (
+                                <div key={cp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(160,113,79,0.04)', fontSize: '12px' }}>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ color: LUX.ink, fontWeight: '500' }}>{cp.dien_giai || 'Không diễn giải'}</div>
+                                    <div style={{ fontSize: '10px', color: LUX.ink3 }}>
+                                      {cp.ngay?.split('-').reverse().join('/')} · {cp.hinh_thuc_thanh_toan === 'tien_mat' ? '💵 TM' : cp.hinh_thuc_thanh_toan === 'chuyen_khoan' ? '🏦 CK' : cp.hinh_thuc_thanh_toan || '?'}
+                                    </div>
+                                  </div>
+                                  <span style={{ fontWeight: '700', color: '#C0392B', marginLeft: '12px' }}>{formatCurrency(cp.so_tien)}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
                     )
                   })
