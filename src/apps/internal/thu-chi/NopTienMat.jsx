@@ -80,11 +80,11 @@ export default function NopTienMat({ ngay, user, onDone }) {
   if (loading) return null
   if (done) {
     return (
-      <div style={{ background: '#F0FDF4', borderRadius: '14px', padding: '14px 16px', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div style={{ background: '#F0FDF4', borderRadius: '14px', padding: '14px 16px', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', opacity: 0.85 }}>
         <span style={{ fontSize: '20px' }}>✅</span>
         <div>
-          <div style={{ fontWeight: '700', fontSize: '13px', color: '#2D7A4F', fontFamily: LUX.fontSans }}>Đã nộp tiền mặt hôm nay</div>
-          <div style={{ fontSize: '12px', color: '#4A8A5F', fontFamily: LUX.fontSans }}>{formatCurrency(cashIn - cashOut)} → MB Bank</div>
+          <div style={{ fontWeight: '700', fontSize: '13px', color: '#2D7A4F', fontFamily: LUX.fontSans }}>Đã nộp tiền mặt — hoàn tất</div>
+          <div style={{ fontSize: '12px', color: '#4A8A5F', fontFamily: LUX.fontSans }}>{formatCurrency(cashIn - cashOut + (viList.find(v => v.loai === 'tien_mat') ? 0 : 0))} → MB Bank</div>
         </div>
       </div>
     )
