@@ -109,7 +109,7 @@ export default function InternalApp() {
               {effectiveTab === 'tong-quan' && <TongQuanPage viList={viList} user={user} onOpenForm={handleOpenForm} isDesktop={isDesktop} onOpenPheDuyet={() => setPheDuyetOpen(true)} />}
               {effectiveTab === 'tai-khoan' && <TaiKhoanPage viList={viList} user={user} isDesktop={isDesktop} />}
               {effectiveTab === 'doi-soat'  && <DoiSoatPage user={user} onOpenForm={handleOpenForm} onSettings={() => setTab('cai-dat')} refreshKey={refreshKey} />}
-              {effectiveTab === 'nhap-lieu' && <NhapLieuPage onOpenForm={handleOpenForm} isDesktop={isDesktop} />}
+              {effectiveTab === 'nhap-lieu' && <NhapLieuPage onOpenForm={handleOpenForm} isDesktop={isDesktop} user={user} />}
               {effectiveTab === 'bao-cao'   && <BaoCaoPage isDesktop={isDesktop} />}
               {effectiveTab === 'cai-dat'   && (
                 <>

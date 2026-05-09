@@ -4,6 +4,7 @@ import { LUX } from '../../../constants/lux'
 import { formatCurrency, todayISO } from '../../../lib/utils'
 
 export default function NopTienMat({ ngay, user, onDone }) {
+  ngay = ngay || todayISO()
   const [viList, setViList] = useState([])
   const [cashIn, setCashIn] = useState(0)
   const [cashOut, setCashOut] = useState(0)

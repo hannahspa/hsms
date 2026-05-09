@@ -216,7 +216,7 @@ export default function LichSuNopTienMat({ onBack }) {
           <div style={{ textAlign: 'center', padding: '40px', color: LUX.ink3, background: 'white', borderRadius: '16px' }}>Không có dữ liệu trong khoảng này</div>
         ) : (
           <div style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(160,113,79,0.1)', overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '90px 80px 80px 70px 80px', padding: '10px 8px', background: '#FAF7F4', borderBottom: '1px solid rgba(160,113,79,0.1)', fontSize: '9px', fontWeight: '700', color: LUX.ink3, textTransform: 'uppercase' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '85px 75px 75px 70px 1fr', padding: '10px 6px', background: '#FAF7F4', borderBottom: '1px solid rgba(160,113,79,0.1)', fontSize: '9px', fontWeight: '700', color: LUX.ink3, textTransform: 'uppercase' }}>
               <div>Ngày</div>
               <div style={{ textAlign: 'right' }}>Thu TM</div>
               <div style={{ textAlign: 'right' }}>Chi TM</div>
@@ -227,7 +227,7 @@ export default function LichSuNopTienMat({ onBack }) {
               const isCanBao = row.canBao
               return (
                 <div key={row.id} style={{
-                  display: 'grid', gridTemplateColumns: '90px 80px 80px 70px 80px', padding: '8px 8px', alignItems: 'center',
+                  display: 'grid', gridTemplateColumns: '85px 75px 75px 70px 1fr', padding: '8px 6px', alignItems: 'center',
                   borderBottom: i < data.length - 1 ? '1px solid rgba(160,113,79,0.04)' : 'none',
                   fontSize: '11px',
                   background: isCanBao ? '#FFF8F0' : 'transparent',

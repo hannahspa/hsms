@@ -1,12 +1,17 @@
 import { LUX } from '../../../constants/lux'
+import NopTienMat from './NopTienMat'
 
-export default function NhapLieuPage({ onOpenForm }) {
+export default function NhapLieuPage({ onOpenForm, user }) {
   return (
     <div style={{ padding: '24px 16px' }}>
       <div style={{ marginBottom: '22px' }}>
         <h2 style={{ fontSize: '22px', fontWeight: '700', color: LUX.ink, marginBottom: '4px', fontFamily: LUX.fontSerif }}>Nhập Liệu</h2>
         <p style={{ fontSize: '13px', color: LUX.ink3, fontFamily: LUX.fontSans }}>Chọn loại giao dịch để nhập</p>
       </div>
+
+      {/* Nộp Tiền Mặt — hiển thị nổi bật ngay đầu trang */}
+      <NopTienMat user={user} />
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '100px' }}>
         {[
           { icon: '💰', label: 'Nhập Doanh Thu',        sub: 'Tiền mặt • Chuyển khoản • Quẹt thẻ • Thẻ trả trước', accent: '#2D7A4F', bg: '#F0FDF4', action: 'thu' },
