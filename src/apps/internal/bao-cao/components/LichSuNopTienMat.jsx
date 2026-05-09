@@ -14,27 +14,56 @@ export default function LichSuNopTienMat({ onBack }) {
   const [denNgay, setDenNgay] = useState(todayISO())
   const [showTuNgay, setShowTuNgay] = useState(false)
   const [showDenNgay, setShowDenNgay] = useState(false)
-  const [viReady, setViReady] = useState(false)
+  const [viReady, setViReady] = useState(false) // false=loading, true=ok, 'error'=fail
   const [viIds, setViIds] = useState({ tmId: null, mbId: null })
+  const [loadStart, setLoadStart] = useState(Date.now())
+  const [elapsed, setElapsed] = useState(0)
 
-  // Load vi IDs once
+  // Load vi IDs once (with fallback)
   useEffect(() => {
-    supabase.from('vi').select('id,ten,loai').eq('is_active', true).then(({ data }) => {
-      if (data) {
-        const tm = data.find(v => v.loai === 'tien_mat')
-        const mb = data.find(v => v.loai === 'chuyen_khoan')
-        if (tm && mb) {
-          setViIds({ tmId: tm.id, mbId: mb.id })
-          setViReady(true)
-        }
+    supabase.from('vi').select('id,ten,loai').eq('is_active', true).then(({ data, error }) => {
+      if (error || !data || data.length === 0) {
+        console.warn('LichSuNopTienMat: vi query failed, retrying...')
+        // Retry once
+        setTimeout(() => {
+          supabase.from('vi').select('id,ten,loai').eq('is_active', true).then(({ data: d2 }) => {
+            if (d2) {
+              const tm2 = d2.find(v => v.loai === 'tien_mat')
+              const mb2 = d2.find(v => v.loai === 'chuyen_khoan') || d2.find(v => v.ten === 'MB Bank')
+              if (tm2 && mb2) { setViIds({ tmId: tm2.id, mbId: mb2.id }); setViReady(true); return }
+            }
+            setViReady('error')
+          })
+        }, 3000)
+        return
+      }
+      let tm = data.find(v => v.loai === 'tien_mat')
+      let mb = data.find(v => v.loai === 'chuyen_khoan')
+      // Fallback: find by name
+      if (!mb) mb = data.find(v => v.ten === 'MB Bank')
+      if (tm && mb) {
+        setViIds({ tmId: tm.id, mbId: mb.id })
+        setViReady(true)
+      } else {
+        console.error('LichSuNopTienMat: cannot find wallets', { tm: !!tm, mb: !!mb, data })
+        setViReady('error')
       }
     })
   }, [])
 
+  // Elapsed timer
+  useEffect(() => {
+    if (!loading) return
+    const t = setInterval(() => setElapsed(Math.round((Date.now() - loadStart) / 1000)), 500)
+    return () => clearInterval(t)
+  }, [loading, loadStart])
+
   // Load data when vi ready or dates change
   const loadData = useCallback(async () => {
-    if (!viReady) return
+    if (viReady !== true) return
     setLoading(true)
+    setLoadStart(Date.now())
+    setElapsed(0)
     const { tmId, mbId } = viIds
 
     const [{ data: ckData }, { data: dtData }, { data: cpData }] = await Promise.all([
@@ -174,8 +203,27 @@ export default function LichSuNopTienMat({ onBack }) {
 
       {/* Table */}
       <div style={{ padding: '0 16px' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: LUX.ink3 }}>Đang tải...</div>
+        {viReady === 'error' ? (
+          <div style={{ textAlign: 'center', padding: '40px', background: '#FFF5F5', borderRadius: '16px', border: '1px solid #FECACA' }}>
+            <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
+            <div style={{ fontWeight: '700', color: '#C0392B', marginBottom: '8px' }}>Không thể tải dữ liệu ví</div>
+            <div style={{ fontSize: '12px', color: LUX.ink3, marginBottom: '16px' }}>Vui lòng kiểm tra bảng vi trong database</div>
+            <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', borderRadius: '10px', background: '#C0392B', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}>Thử lại</button>
+          </div>
+        ) : loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: '16px', border: '1px solid rgba(160,113,79,0.08)' }}>
+            <div style={{ width: '48px', height: '48px', margin: '0 auto 16px', borderRadius: '50%', border: '4px solid #EDE8E3', borderTopColor: '#A0714F', animation: 'spin 0.8s linear infinite' }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <div style={{ fontWeight: '700', color: LUX.ink, marginBottom: '4px' }}>Đang tải dữ liệu...</div>
+            <div style={{ fontSize: '12px', color: LUX.ink3 }}>
+              {viReady !== true ? 'Đang kết nối...' : `Đã ${elapsed}s — đang truy vấn ${tuNgay.split('-').reverse().join('/')} → ${denNgay.split('-').reverse().join('/')}`}
+            </div>
+            {elapsed > 10 && (
+              <div style={{ marginTop: '12px', fontSize: '11px', color: '#E67E22' }}>
+                Đang tải hơi lâu... vui lòng đợi thêm giây lát
+              </div>
+            )}
+          </div>
         ) : data.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: LUX.ink3, background: 'white', borderRadius: '16px' }}>Không có dữ liệu trong khoảng này</div>
         ) : (
