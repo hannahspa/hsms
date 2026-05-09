@@ -35,6 +35,7 @@ export default function BaoCaoThang({ onBack }) {
   const [danhMuc,  setDanhMuc]        = useState([])
   const [loading,  setLoading]        = useState(false)
   const [showPicker, setShowPicker]   = useState(false)
+  const [expandedDay, setExpandedDay] = useState(null)
 
   const year  = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
@@ -172,7 +173,7 @@ export default function BaoCaoThang({ onBack }) {
             {/* Phân tích chi phí */}
             {chiPhiNhom.length > 0 && (
               <div style={{ background:LUX.surface2,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}` }}>
-                <div style={{ fontWeight:'800',fontSize:'14px',color:LUX.ink,marginBottom:'16px' }}>Phân Tích Chi Phí</div>
+                <div style={{ fontWeight:'800',fontSize:'14px',color:LUX.ink,marginBottom:'16px' }}>📊 Phân Tích Chi Phí Theo Nhóm</div>
                 {chiPhiNhom.map((item,i) => {
                   const pct = tongChi > 0 ? (item.tong/tongChi)*100 : 0
                   return (
@@ -195,6 +196,99 @@ export default function BaoCaoThang({ onBack }) {
                 })}
               </div>
             )}
+
+            {/* ── Chi Tiết Từng Ngày (click để mở rộng) ── */}
+            <div style={{ background:LUX.surface2,borderRadius:'24px',padding:'20px',marginBottom:'14px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}` }}>
+              <div style={{ fontWeight:'800',fontSize:'14px',color:LUX.ink,marginBottom:'4px' }}>📋 Chi Tiết Từng Ngày</div>
+              <div style={{ fontSize:'11px',color:LUX.ink3,marginBottom:'16px' }}>Bấm vào từng ngày để xem chi tiết doanh thu & chi phí</div>
+              {Array.from({length: daysInMonth}, (_, i) => {
+                const day = i + 1
+                const iso = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+                const dtDay = doanhThu.filter(r => r.ngay === iso)
+                const cpDay = chiPhi.filter(r => r.ngay === iso)
+                const thuDay = dtDay.filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0)
+                const chiDay = cpDay.reduce((s, r) => s + r.so_tien, 0)
+                const lnDay = thuDay - chiDay
+                const hasData = dtDay.length > 0 || cpDay.length > 0
+                const isExpanded = expandedDay === iso
+
+                return (
+                  <div key={iso}>
+                    <button
+                      onClick={() => setExpandedDay(isExpanded ? null : iso)}
+                      style={{
+                        display: 'grid', gridTemplateColumns: '40px 1fr 90px 90px 70px',
+                        width: '100%', padding: '10px 0', alignItems: 'center',
+                        background: isExpanded ? '#FAF7F4' : 'transparent',
+                        border: 'none', cursor: 'pointer', textAlign: 'left',
+                        borderRadius: isExpanded ? '10px' : '0',
+                        margin: isExpanded ? '2px -8px' : '0',
+                        paddingLeft: isExpanded ? '8px' : '0',
+                        paddingRight: isExpanded ? '8px' : '0',
+                      }}
+                    >
+                      <span style={{ fontWeight: '600', fontSize: '13px', color: hasData ? LUX.ink : LUX.ink3 }}>{day}</span>
+                      <span style={{ fontSize: '11px', color: hasData ? LUX.ink : LUX.ink3 }}>
+                        {['CN','T2','T3','T4','T5','T6','T7'][new Date(year, month-1, day).getDay()]}
+                      </span>
+                      <span style={{ fontWeight: '600', fontSize: '12px', color: thuDay > 0 ? '#2D7A4F' : LUX.ink3, textAlign: 'right' }}>
+                        {thuDay > 0 ? formatCurrency(thuDay) : '—'}
+                      </span>
+                      <span style={{ fontWeight: '600', fontSize: '12px', color: chiDay > 0 ? '#C0392B' : LUX.ink3, textAlign: 'right' }}>
+                        {chiDay > 0 ? formatCurrency(chiDay) : '—'}
+                      </span>
+                      <span style={{ fontWeight: '700', fontSize: '12px', color: hasData ? (lnDay >= 0 ? '#2D7A4F' : '#C0392B') : LUX.ink3, textAlign: 'right' }}>
+                        {hasData ? formatCurrency(lnDay) : '—'}
+                      </span>
+                    </button>
+
+                    {/* Expanded detail */}
+                    {isExpanded && (
+                      <div style={{ padding: '10px 0 14px 20px', borderLeft: '3px solid #A0714F20', marginLeft: '8px' }}>
+                        {/* Doanh thu detail */}
+                        {dtDay.length > 0 && (
+                          <div style={{ marginBottom: '10px' }}>
+                            <div style={{ fontSize: '10px', fontWeight: '700', color: '#2D7A4F', marginBottom: '6px', letterSpacing: '0.5px' }}>DOANH THU</div>
+                            {['tien_mat','chuyen_khoan','quet_the','the_tra_truoc'].map(ht => {
+                              const htTotal = dtDay.filter(r => r.hinh_thuc === ht).reduce((s, r) => s + r.so_tien, 0)
+                              if (htTotal === 0) return null
+                              const labels = { tien_mat: '💵 Tiền Mặt', chuyen_khoan: '🏦 Chuyển Khoản', quet_the: '💳 Quẹt Thẻ', the_tra_truoc: '🎫 Thẻ TT' }
+                              return (
+                                <div key={ht} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '3px 0', color: LUX.ink2 }}>
+                                  <span>{labels[ht]}</span>
+                                  <span style={{ fontWeight: '600', color: '#2D7A4F' }}>{formatCurrency(htTotal)}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {/* Chi phi detail */}
+                        {cpDay.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '10px', fontWeight: '700', color: '#C0392B', marginBottom: '6px', letterSpacing: '0.5px' }}>CHI PHÍ</div>
+                            {cpDay.map(cp => {
+                              const child = danhMuc.find(d => d.id === cp.danh_muc_id)
+                              const parent = child ? danhMuc.find(d => d.id === child.parent_id) : null
+                              return (
+                                <div key={cp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '3px 0', color: LUX.ink2 }}>
+                                  <span>{(parent?.icon || '') + ' ' + (child?.ten || cp.dien_giai || 'Chi phí')}</span>
+                                  <span style={{ fontWeight: '600', color: '#C0392B' }}>{formatCurrency(cp.so_tien)}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {dtDay.length === 0 && cpDay.length === 0 && (
+                          <div style={{ fontSize: '11px', color: LUX.ink3 }}>Không có giao dịch</div>
+                        )}
+                      </div>
+                    )}
+
+                    {day < daysInMonth && <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(160,113,79,0.08),transparent)' }} />}
+                  </div>
+                )
+              })}
+            </div>
           </>
         )}
       </div>
