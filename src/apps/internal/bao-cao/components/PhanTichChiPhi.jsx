@@ -8,7 +8,8 @@ function getDateRange(tab, currentDate) {
   const now = new Date(currentDate)
   if (tab === 'ngay') {
     const iso = now.toISOString().split('T')[0]
-    return { start: iso, end: iso, label: formatDateFull ? formatDateFull(iso) : iso }
+    const [y, m, d] = iso.split('-')
+    return { start: iso, end: iso, label: `${d}/${m}/${y}` }
   }
   if (tab === 'thang') {
     const start = new Date(now.getFullYear(), now.getMonth(), 1)
