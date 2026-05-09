@@ -1,31 +1,29 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency } from '../../../../lib/utils'
+import { formatCurrency, todayISO } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
+
+const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+const thisMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+const todayStr = todayISO()
 
 export default function LichSuNopTienMat({ onBack }) {
   const [data, setData] = useState([])
   const [viList, setViList] = useState([])
   const [loading, setLoading] = useState(true)
-  const [tuNgay, setTuNgay] = useState('2025-11-26')
-  const [denNgay, setDenNgay] = useState('2026-04-30')
+  const [tuNgay, setTuNgay] = useState(thisMonthStart)
+  const [denNgay, setDenNgay] = useState(todayStr)
   const [showTuNgay, setShowTuNgay] = useState(false)
   const [showDenNgay, setShowDenNgay] = useState(false)
 
   useEffect(() => { loadVi() }, [])
-  useEffect(() => { if (viList.length > 0) loadData() }, [viList, tuNgay, denNgay])
 
-  const loadVi = async () => {
-    const { data } = await supabase.from('vi').select('id,ten,loai').eq('is_active', true)
-    if (data) setViList(data)
-  }
-
-  const loadData = async () => {
-    setLoading(true)
+  const loadData = useCallback(async () => {
     const tmId = viList.find(v => v.loai === 'tien_mat')?.id
     const mbId = viList.find(v => v.loai === 'chuyen_khoan')?.id
-    if (!tmId || !mbId) { setLoading(false); return }
+    if (!tmId || !mbId) return
+    setLoading(true)
 
     const [{ data: ckData }, { data: dtData }, { data: cpData }] = await Promise.all([
       supabase.from('chuyen_khoan_noi_bo').select('*').eq('tu_vi_id', tmId).eq('den_vi_id', mbId).gte('ngay', tuNgay).lte('ngay', denNgay).order('ngay', { ascending: false }),
@@ -37,16 +35,16 @@ export default function LichSuNopTienMat({ onBack }) {
     for (const d of (dtData || [])) dtByDay[d.ngay] = (dtByDay[d.ngay] || 0) + (d.so_tien || 0)
     for (const d of (cpData || [])) cpByDay[d.ngay] = (cpByDay[d.ngay] || 0) + (d.so_tien || 0)
 
-    const rows = (ckData || []).map(c => ({
+    setData((ckData || []).map(c => ({
       id: c.id, ngay: c.ngay, soTien: c.so_tien || 0,
       dienGiai: c.dien_giai || '', nguoiThucHien: c.nguoi_thuc_hien || '',
       dtTm: dtByDay[c.ngay] || 0, cpTm: cpByDay[c.ngay] || 0,
       phaiNop: (dtByDay[c.ngay] || 0) - (cpByDay[c.ngay] || 0),
-    }))
-
-    setData(rows)
+    })))
     setLoading(false)
-  }
+  }, [viList, tuNgay, denNgay])
+
+  useEffect(() => { if (viList.length > 0) loadData() }, [loadData])
 
   const totalNop = data.reduce((s, r) => s + r.soTien, 0)
   const matchCount = data.filter(r => r.soTien === r.phaiNop).length
@@ -74,7 +72,25 @@ export default function LichSuNopTienMat({ onBack }) {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Quick filters */}
+      <div style={{ padding: '0 16px 6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {[
+          { label: 'Tháng này', tu: thisMonthStart, den: todayStr },
+          { label: '3 tháng', tu: `${now.getFullYear()}-${String(Math.max(1, now.getMonth() - 1)).padStart(2, '0')}-01`, den: todayStr },
+          { label: 'Tất cả', tu: '2025-11-26', den: todayStr },
+        ].map(p => (
+          <button key={p.label} onClick={() => { setTuNgay(p.tu); setDenNgay(p.den) }}
+            style={{
+              padding: '8px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+              border: tuNgay === p.tu && denNgay === p.den ? '2px solid #A0714F' : '1px solid rgba(160,113,79,0.2)',
+              background: tuNgay === p.tu && denNgay === p.den ? '#A0714F12' : 'white',
+              color: tuNgay === p.tu && denNgay === p.den ? '#A0714F' : LUX.ink3,
+            }}
+          >{p.label}</button>
+        ))}
+      </div>
+
+      {/* Date pickers */}
       <div style={{ padding: '0 16px 16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button onClick={() => setShowTuNgay(true)} style={{ padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(160,113,79,0.2)', background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: LUX.ink }}>
           📅 Từ: {tuNgay.split('-').reverse().join('/')}
