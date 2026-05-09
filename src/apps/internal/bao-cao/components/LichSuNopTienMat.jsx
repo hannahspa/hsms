@@ -19,28 +19,16 @@ export default function LichSuNopTienMat({ onBack }) {
   const [loadStart, setLoadStart] = useState(Date.now())
   const [elapsed, setElapsed] = useState(0)
 
-  // Load vi IDs once (with fallback)
+  // Load vi IDs — dùng so_du_vi_thuc_te (không bị RLS chặn như bảng vi)
   useEffect(() => {
-    supabase.from('vi').select('id,ten,loai').eq('is_active', true).then(({ data, error }) => {
+    supabase.from('so_du_vi_thuc_te').select('id,ten,loai').order('thu_tu').then(({ data, error }) => {
       if (error || !data || data.length === 0) {
-        console.warn('LichSuNopTienMat: vi query failed, retrying...')
-        // Retry once
-        setTimeout(() => {
-          supabase.from('vi').select('id,ten,loai').eq('is_active', true).then(({ data: d2 }) => {
-            if (d2) {
-              const tm2 = d2.find(v => v.loai === 'tien_mat')
-              const mb2 = d2.find(v => v.loai === 'chuyen_khoan') || d2.find(v => v.ten === 'MB Bank')
-              if (tm2 && mb2) { setViIds({ tmId: tm2.id, mbId: mb2.id }); setViReady(true); return }
-            }
-            setViReady('error')
-          })
-        }, 3000)
+        console.error('LichSuNopTienMat: cannot load vi from view', error)
+        setViReady('error')
         return
       }
-      let tm = data.find(v => v.loai === 'tien_mat')
-      let mb = data.find(v => v.loai === 'chuyen_khoan')
-      // Fallback: find by name
-      if (!mb) mb = data.find(v => v.ten === 'MB Bank')
+      const tm = data.find(v => v.loai === 'tien_mat')
+      const mb = data.find(v => v.loai === 'chuyen_khoan')
       if (tm && mb) {
         setViIds({ tmId: tm.id, mbId: mb.id })
         setViReady(true)
