@@ -121,7 +121,6 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
         p_ngay_off: ngayOff,
         p_loai_off: loaiOff,
         p_ly_do: lyDo,
-        p_bat_kha_khang: batKhaKhang,
       })
       if (error) throw error
       showToast('Đã gửi đơn — chờ Cao Quốc Nam duyệt!')
