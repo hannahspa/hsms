@@ -9,6 +9,7 @@ import HomePage from './apps/website/HomePage'
 import LoginPage from './apps/auth/LoginPage'
 import CustomerMenuApp from './apps/customer/CustomerMenuApp'
 import PosApp from './apps/pos/PosApp'
+import AdminShell from './components/layout/AdminShell'
 
 function RequireAuth({ children, requireAdmin }) {
   const { user, loading, logout } = useAuth()
@@ -96,7 +97,9 @@ export default function App() {
         <ErrorBoundary>
           {path.startsWith('/admin') ? (
             <RequireAuth requireAdmin={true}>
-              <AdminApp />
+              <AdminShell title="Dashboard" subtitle="Tổng Quan · Hệ Thống Quản Trị">
+                <AdminApp />
+              </AdminShell>
             </RequireAuth>
           ) : (
             <RequireAuth requireAdmin={false}>
