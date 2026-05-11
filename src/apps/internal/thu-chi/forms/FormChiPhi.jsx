@@ -74,7 +74,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
   const handleSave = async () => {
     if (!soTien || parseInt(soTien) <= 0) return onSaved('error', 'Vui lòng nhập số tiền!')
     if (!hangMucId) return onSaved('error', 'Vui lòng chọn hạng mục chi!')
-    if (!viId)      return onSaved('error', 'Vui lòng chọn ví chi ra!')
+    if (!viId)      return onSaved('error', 'Vui lòng chọn nguồn tiền chi (Tiền Mặt/MB Bank/TP Bank)!')
     if (!dienGiai?.trim()) return onSaved('error', 'Vui lòng nhập diễn giải!')
 
     // Tiền Mặt được phép âm tạm thời — quy trình nộp quỹ hôm sau sẽ bù lại phần âm
@@ -188,7 +188,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
       <div style={{ position: 'fixed', inset: 0, backgroundColor: overlayBg, display: 'flex', alignItems: 'flex-end', zIndex: 500 }}>
         <div style={{ background: LUX.surface2, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '520px', margin: '0 auto', padding: '24px 20px 40px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '17px', fontWeight: '700', color: LUX.ink, fontFamily: LUX.fontSerif }}>Chọn Ví Chi Ra</h3>
+            <h3 style={{ fontSize: '17px', fontWeight: '700', color: LUX.ink, fontFamily: LUX.fontSerif }}>Chọn Nguồn Tiền Chi</h3>
             <button onClick={() => setStep('main')} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: LUX.ink3 }}>✕</button>
           </div>
           {viList.map((vi, i) => (
@@ -289,10 +289,10 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
             )}
           </div>
 
-          <button onClick={() => setStep('chon_vi')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`, cursor: 'pointer' }}>
+          <button onClick={() => setStep('chon_vi')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: viId ? `1px solid ${LUX.line}` : '2px solid #E57373', cursor: 'pointer' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: `linear-gradient(135deg,${LUX.surface},${LUX.line})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{viSelected ? viSelected.icon : '💳'}</div>
-              <div style={{ textAlign: 'left' }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Ví Chi Ra</div><div style={{ fontWeight: '600', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSans }}>{viSelected ? viSelected.ten : 'Chọn tài khoản'}</div></div>
+              <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: `linear-gradient(135deg,${LUX.surface},${LUX.line})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{viSelected ? viSelected.icon : '⚠️'}</div>
+              <div style={{ textAlign: 'left' }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Nguồn Tiền Chi <span style={{color:'#C0392B'}}>*</span></div><div style={{ fontWeight: '600', fontSize: '14px', color: viSelected ? LUX.ink : '#C0392B', fontFamily: LUX.fontSans }}>{viSelected ? viSelected.ten + ' (' + getHinhThucFromVi(viSelected).replace('_',' ') + ')' : 'Bắt buộc chọn nguồn tiền!'}</div></div>
             </div>
             <span style={{ color: LUX.gold, fontSize: '18px' }}>›</span>
           </button>
