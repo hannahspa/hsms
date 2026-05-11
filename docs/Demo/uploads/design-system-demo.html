@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hannah Spa — Giao Diện Thống Nhất (Demo)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cormorant+Garamond:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #f5f0e8;
+    --surface:  #fbf8f3;
+    --surface2: #ffffff;
+    --ink:      #2a201a;
+    --ink2:     #5a4a3e;
+    --ink3:     #8a7868;
+    --line:     #e8dfd2;
+    --line2:    #d9cdb9;
+    --espresso: #3d2c20;
+    --espresso2:#5a4030;
+    --taupe:    #8a6a52;
+    --champagne:#c8a675;
+    --champagne2:#b08a55;
+    --gold:     #d4a574;
+    --rose:     #b87a6a;
+    --sage:     #7a8a6a;
+    --danger:   #b85a4a;
+    --primary:  #A0714F;
+    --grad:     linear-gradient(135deg, #C9A96E 0%, #A0714F 45%, #7D5A3C 100%);
+    --goldGrad: linear-gradient(180deg, #d4a574 0%, #b88a55 100%);
+    --radius:   18px;
+    --radiusSm: 12px;
+    --radiusLg: 28px;
+    --shadowSm: 0 2px 8px -2px rgba(60,40,25,0.08);
+    --shadow:   0 8px 32px -8px rgba(60,40,25,0.12), 0 2px 6px -2px rgba(60,40,25,0.06);
+    --shadowLg: 0 24px 60px -16px rgba(60,40,25,0.22), 0 4px 12px -4px rgba(60,40,25,0.08);
+    --fontSerif: 'Cormorant Garamond', serif;
+    --fontSans:  'Inter', -apple-system, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--fontSans);
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  /* ═══════════════ ADMIN LAYOUT ═══════════════ */
+  .admin-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, var(--espresso) 0%, #2e2018 100%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+    overflow-y: auto;
+  }
+
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .sidebar-logo h1 {
+    font-family: var(--fontSerif);
+    font-size: 24px;
+    font-weight: 700;
+    background: var(--goldGrad);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.5px;
+  }
+
+  .sidebar-logo span {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: var(--fontSans);
+    font-weight: 500;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .nav-section {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.3);
+    padding: 16px 12px 6px;
+    font-weight: 600;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.65);
+    text-decoration: none;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: var(--fontSans);
+  }
+
+  .nav-item:hover {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.9);
+  }
+
+  .nav-item.active {
+    background: rgba(212,165,116,0.2);
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  .nav-item .icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .nav-item .badge {
+    margin-left: auto;
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+
+  .sidebar-user {
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sidebar-user .avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--goldGrad);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: #fff;
+  }
+
+  .sidebar-user .info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sidebar-user .name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .sidebar-user .role {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+  }
+
+  /* ── MAIN CONTENT ── */
+  .main-content {
+    flex: 1;
+    margin-left: 260px;
+    min-height: 100vh;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--line);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .topbar-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .topbar-breadcrumb {
+    font-size: 12px;
+    color: var(--ink3);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .topbar-date {
+    font-size: 13px;
+    color: var(--ink2);
+    font-weight: 500;
+  }
+
+  .topbar-clock {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── PAGE CONTENT ── */
+  .page-content {
+    padding: 28px 32px;
+  }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .kpi-card {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadowSm);
+    transition: all 0.2s;
+  }
+
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+
+  .kpi-card .kpi-label {
+    font-size: 12px;
+    color: var(--ink3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .kpi-card .kpi-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kpi-card .kpi-sub {
+    font-size: 12px;
+    color: var(--ink3);
+    margin-top: 4px;
+  }
+
+  .kpi-card.revenue .kpi-value { color: #2D7A4F; }
+  .kpi-card.expense .kpi-value { color: #C0392B; }
+  .kpi-card.assets .kpi-value { color: #1A5276; }
+  .kpi-card.orders .kpi-value { color: var(--primary); }
+
+  /* ── CONTENT GRID ── */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 20px;
+  }
+
+  .card {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadowSm);
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .card-body {
+    padding: 20px 24px;
+  }
+
+  /* ── TABLE ── */
+  .table-mini {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .table-mini th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--ink3);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--line);
+  }
+
+  .table-mini td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink2);
+  }
+
+  .table-mini .amount {
+    font-weight: 600;
+    color: var(--ink);
+    text-align: right;
+  }
+
+  .table-mini .method {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .method.cash { background: #E8F5E9; color: #2D7A4F; }
+  .method.transfer { background: #E3F2FD; color: #1A5276; }
+  .method.card { background: #F3E5F5; color: #6C3483; }
+
+  /* ── TABS ── */
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--bg);
+    border-radius: var(--radiusSm);
+    margin-bottom: 20px;
+  }
+
+  .tab {
+    padding: 8px 20px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink3);
+    font-family: var(--fontSans);
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: var(--shadowSm);
+  }
+
+  /* ── ALERT ── */
+  .alert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .alert-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: var(--radiusSm);
+    font-size: 13px;
+  }
+
+  .alert-item.warning {
+    background: #FFF8E1;
+    color: #7D5A0E;
+    border-left: 3px solid #F39C12;
+  }
+
+  .alert-item.danger {
+    background: #FDEDEC;
+    color: #7B241C;
+    border-left: 3px solid #C0392B;
+  }
+
+  .alert-item.info {
+    background: #E8F6F3;
+    color: #0E6655;
+    border-left: 3px solid #1ABC9C;
+  }
+
+  /* ═══════════════ MOBILE VIEW (under 768px) ═══════════════ */
+  @media (max-width: 768px) {
+    .sidebar {
+      width: 100%;
+      height: auto;
+      position: relative;
+      flex-direction: row;
+      align-items: center;
+      padding: 12px 16px;
+    }
+
+    .sidebar-logo { padding: 0; border: none; }
+    .sidebar-logo h1 { font-size: 18px; }
+    .sidebar-logo span { display: none; }
+    .sidebar-nav { display: none; }
+    .sidebar-user { display: none; }
+
+    .main-content { margin-left: 0; }
+
+    .topbar { padding: 12px 16px; }
+    .topbar-title { font-size: 15px; }
+
+    .page-content { padding: 16px; }
+
+    .kpi-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .content-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .kpi-card { padding: 14px 16px; }
+    .kpi-card .kpi-value { font-size: 22px; }
+  }
+
+  /* ── MOBILE BOTTOM NAV ── */
+  .mobile-nav {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .mobile-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--surface2);
+      border-top: 1px solid var(--line);
+      padding: 8px 4px;
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+      z-index: 100;
+      justify-content: space-around;
+    }
+
+    .mobile-nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-family: var(--fontSans);
+      font-size: 10px;
+      color: var(--ink3);
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .mobile-nav-item.active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .mobile-nav-item .icon {
+      font-size: 20px;
+    }
+
+    .page-content {
+      padding-bottom: 80px;
+    }
+  }
+
+  /* ── Toggle view button ── */
+  .view-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 200;
+    display: flex;
+    gap: 8px;
+  }
+
+  .view-toggle button {
+    padding: 10px 18px;
+    border-radius: 20px;
+    border: 2px solid var(--line2);
+    background: var(--surface2);
+    cursor: pointer;
+    font-family: var(--fontSans);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink2);
+    box-shadow: var(--shadow);
+    transition: all 0.2s;
+  }
+
+  .view-toggle button.active {
+    background: var(--grad);
+    color: #fff;
+    border-color: transparent;
+  }
+
+  @media (min-width: 769px) {
+    .view-toggle { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="admin-layout" id="app">
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <h1>Hannah Beauty & Spa</h1>
+      <span>Management System</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">Tổng Quan</div>
+      <a href="#" class="nav-item active" onclick="setActive(this)">
+        <span class="icon">📊</span> Dashboard
+      </a>
+
+      <div class="nav-section">Vận Hành</div>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="icon">🛒</span> POS Bán Hàng
+        <span class="badge">Mới</span>
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="icon">💰</span> Thu Chi & Báo Cáo
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="icon">📋</span> Đối Soát Ngày
+      </a>
+
+      <div class="nav-section">Quản Lý</div>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="icon">👥</span> Nhân Sự
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="icon">👤</span> CRM Khách Hàng
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="icon">📦</span> Kho Hàng
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="icon">🏷️</span> Khuyến Mãi
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="icon">📣</span> Marketing
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="icon">🌐</span> Nội Dung Web
+      </a>
+
+      <div class="nav-section">Hệ Thống</div>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="icon">⚙️</span> Cài Đặt
+      </a>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="avatar">CN</div>
+      <div class="info">
+        <div class="name">Cao Quốc Nam</div>
+        <div class="role">Quản Trị Viên</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════ MAIN CONTENT ═══════════ -->
+  <main class="main-content">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div>
+          <div class="topbar-title">Dashboard Tổng Hợp</div>
+          <div class="topbar-breadcrumb">
+            <span>🏠</span> <span>/</span> <span>Dashboard</span>
+          </div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-date" id="dateDisplay"></span>
+        <span class="topbar-clock" id="clockDisplay"></span>
+        <span style="font-size:11px;color:var(--ink3);background:var(--bg);padding:4px 10px;border-radius:10px;">
+          🟢 Online
+        </span>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <div class="page-content">
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card revenue">
+          <div class="kpi-label">💰 Doanh Thu Hôm Nay</div>
+          <div class="kpi-value">5,200,000đ</div>
+          <div class="kpi-sub">↑ 12% so với hôm qua</div>
+        </div>
+        <div class="kpi-card expense">
+          <div class="kpi-label">📤 Chi Phí Hôm Nay</div>
+          <div class="kpi-value">1,850,000đ</div>
+          <div class="kpi-sub">3 khoản chi</div>
+        </div>
+        <div class="kpi-card orders">
+          <div class="kpi-label">📋 Đơn Hàng Hôm Nay</div>
+          <div class="kpi-value">8</div>
+          <div class="kpi-sub">6 khách lẻ + 2 thẻ liệu trình</div>
+        </div>
+        <div class="kpi-card assets">
+          <div class="kpi-label">🏦 Tổng Tài Sản</div>
+          <div class="kpi-value">95,850,235đ</div>
+          <div class="kpi-sub">3 ví · Đã đối soát hôm qua</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab active" onclick="switchTab(this)">📊 Tổng Quan</button>
+        <button class="tab" onclick="switchTab(this)">💰 Tài Chính</button>
+        <button class="tab" onclick="switchTab(this)">👥 Nhân Sự</button>
+        <button class="tab" onclick="switchTab(this)">⚠️ Cảnh Báo</button>
+      </div>
+
+      <!-- Content Grid -->
+      <div class="content-grid">
+        <!-- Doanh Thu Gần Đây -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📊 Doanh Thu Gần Đây</span>
+            <span style="font-size:12px;color:var(--ink3)">5 giao dịch mới nhất</span>
+          </div>
+          <div class="card-body">
+            <table class="table-mini">
+              <thead>
+                <tr><th>Thời Gian</th><th>Mô Tả</th><th>PTTT</th><th class="amount">Số Tiền</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>14:30</td>
+                  <td>RF Trẻ Hóa Bắp Tay</td>
+                  <td><span class="method transfer">Chuyển Khoản</span></td>
+                  <td class="amount">1,000,000đ</td>
+                </tr>
+                <tr>
+                  <td>13:15</td>
+                  <td>Massage Cổ Vai Gáy</td>
+                  <td><span class="method cash">Tiền Mặt</span></td>
+                  <td class="amount">350,000đ</td>
+                </tr>
+                <tr>
+                  <td>11:00</td>
+                  <td>Combo Body Thư Giãn</td>
+                  <td><span class="method card">Quẹt Thẻ</span></td>
+                  <td class="amount">500,000đ</td>
+                </tr>
+                <tr>
+                  <td>10:20</td>
+                  <td>Gội Đầu Dưỡng Sinh</td>
+                  <td><span class="method cash">Tiền Mặt</span></td>
+                  <td class="amount">80,000đ</td>
+                </tr>
+                <tr>
+                  <td>09:45</td>
+                  <td>AQUA SKIN (thẻ liệu trình)</td>
+                  <td><span class="method transfer">Thẻ LT</span></td>
+                  <td class="amount">400,000đ</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Cảnh Báo -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⚠️ Cảnh Báo</span>
+          </div>
+          <div class="card-body">
+            <div class="alert-list">
+              <div class="alert-item warning">
+                <span>📦</span>
+                <span><strong>Kem Dưỡng Da XYZ</strong> — Sắp hết hàng (còn 2 hộp)</span>
+              </div>
+              <div class="alert-item info">
+                <span>👤</span>
+                <span><strong>12 khách</strong> chưa quay lại trên 30 ngày</span>
+              </div>
+              <div class="alert-item warning">
+                <span>🎫</span>
+                <span><strong>3 thẻ liệu trình</strong> sắp hết hạn trong 7 ngày</span>
+              </div>
+              <div class="alert-item danger">
+                <span>📋</span>
+                <span><strong>Chưa đối soát</strong> ngày hôm qua</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════ MOBILE BOTTOM NAV ═══════════ -->
+<nav class="mobile-nav" id="mobileNav">
+  <button class="mobile-nav-item active" onclick="switchMobile(this)"><span class="icon">📊</span>Dashboard</button>
+  <button class="mobile-nav-item" onclick="switchMobile(this)"><span class="icon">🛒</span>POS</button>
+  <button class="mobile-nav-item" onclick="switchMobile(this)"><span class="icon">💰</span>Thu Chi</button>
+  <button class="mobile-nav-item" onclick="switchMobile(this)"><span class="icon">👤</span>CRM</button>
+  <button class="mobile-nav-item" onclick="switchMobile(this)"><span class="icon">⚙️</span>Thêm</button>
+</nav>
+
+<script>
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clockDisplay').textContent =
+      now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+    document.getElementById('dateDisplay').textContent =
+      days[now.getDay()] + ', ' + now.getDate() + '/' + (now.getMonth()+1) + '/' + now.getFullYear();
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  function setActive(el) {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function switchTab(el) {
+    el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function switchMobile(el) {
+    document.querySelectorAll('.mobile-nav-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+  }
+</script>
+
+</body>
+</html>

@@ -31,7 +31,7 @@ UPDATE chi_phi cp
 SET hinh_thuc_thanh_toan = v.loai
 FROM vi v
 WHERE cp.vi_id = v.id
-  AND cp.hinh_thuc_thanh_toan != v.loai
+  AND cp.hinh_thuc_thanh_toan != v.loai::text
   AND v.loai IN ('tien_mat', 'chuyen_khoan', 'quet_the');
 
 -- BƯỚC 4: Tạo lại view với logic ghép bằng v.loai (bản cuối)

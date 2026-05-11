@@ -3,7 +3,11 @@
 # Cập nhật: 08/05/2026 | Tổng hợp từ: CLAUDE.md + DeepSeek session + MySpa analysis
 
 ---
-
+Trước khi viết bất kỳ UI nào, đọc src/DESIGN_SYSTEM.md
+## 🇻🇳 NGÔN NGỮ — BẮT BUỘC
+- Toàn bộ phản hồi PHẢI bằng tiếng Việt: giải thích, phân tích, câu hỏi, thông báo lỗi
+- Khi đọc file, chạy lệnh, debug → tóm tắt kết quả bằng tiếng Việt
+- KHÔNG dùng tiếng Anh dù chỉ 1 câu, trừ: code, tên biến, tên file, terminal output
 ## MỤC LỤC
 
 1. [Thông tin dự án & doanh nghiệp](#1-thông-tin-dự-án--doanh-nghiệp)
