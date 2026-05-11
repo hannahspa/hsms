@@ -6,13 +6,13 @@ import { formatCurrency, todayISO } from '../../../lib/utils'
 export default function NopTienMat({ ngay, user, onDone }) {
   ngay = ngay || todayISO()
   const [viList, setViList] = useState([])
-  const [cashIn, setCashIn] = useState(0)
-  const [cashOut, setCashOut] = useState(0)
-  const [cumulativeDeposited, setCumulativeDeposited] = useState(0)
-  const [cumulativeCP, setCumulativeCP] = useState(0)
+  const [todayDT, setTodayDT] = useState(0)
+  const [todayCP, setTodayCP] = useState(0)
+  const [yesterdayDeficit, setYesterdayDeficit] = useState(0)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [soDuTienMat, setSoDuTienMat] = useState(0)
 
   useEffect(() => {
     loadData()
@@ -21,39 +21,54 @@ export default function NopTienMat({ ngay, user, onDone }) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [rVi, rDT, rCP, rCK, rCKToday] = await Promise.all([
+      const yesterday = new Date(ngay)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const yesterdayISO = yesterday.toISOString().slice(0, 10)
+
+      const [rVi, rDTAll, rCPAll, rCKAll, rDTToday, rCPToday, rCKToday] = await Promise.all([
         supabase.from('so_du_vi_thuc_te').select('id,ten,loai').order('thu_tu'),
-        // Luỹ kế doanh thu tiền mặt từ đầu kỳ đến ngày hiện tại
-        supabase.from('doanh_thu').select('hinh_thuc,so_tien').lte('ngay', ngay).eq('hinh_thuc', 'tien_mat'),
-        // Luỹ kế chi phí tiền mặt từ đầu kỳ đến ngày hiện tại
-        supabase.from('chi_phi').select('hinh_thuc_thanh_toan,so_tien').lte('ngay', ngay).eq('hinh_thuc_thanh_toan', 'tien_mat'),
-        // Luỹ kế tiền mặt đã nộp NH từ đầu kỳ đến ngày hiện tại
+        // Luỹ kế DT tiền mặt đến hôm nay
+        supabase.from('doanh_thu').select('so_tien').lte('ngay', ngay).eq('hinh_thuc', 'tien_mat'),
+        // Luỹ kế CP tiền mặt đến hôm nay
+        supabase.from('chi_phi').select('so_tien').lte('ngay', ngay).eq('hinh_thuc_thanh_toan', 'tien_mat'),
+        // Luỹ kế đã nộp NH đến hôm nay
         supabase.from('chuyen_khoan_noi_bo').select('tu_vi_id,so_tien').lte('ngay', ngay),
-        // Riêng hôm nay đã nộp chưa — để check done
+        // DT tiền mặt hôm nay
+        supabase.from('doanh_thu').select('so_tien').eq('ngay', ngay).eq('hinh_thuc', 'tien_mat'),
+        // CP tiền mặt hôm nay
+        supabase.from('chi_phi').select('so_tien').eq('ngay', ngay).eq('hinh_thuc_thanh_toan', 'tien_mat'),
+        // Đã nộp hôm nay chưa
         supabase.from('chuyen_khoan_noi_bo').select('tu_vi_id,so_tien').eq('ngay', ngay),
       ])
 
       setViList(rVi.data || [])
 
-      const dt = (rDT.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
-      const cp = (rCP.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
+      const cumDT = (rDTAll.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
+      const cumCP = (rCPAll.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
 
       const tmVi = (rVi.data || []).find(v => v.loai === 'tien_mat')
 
-      // Lũy kế đã nộp
-      const alreadyDeposited = (rCK.data || [])
+      const cumDeposited = (rCKAll.data || [])
         .filter(ck => ck.tu_vi_id === tmVi?.id)
         .reduce((s, ck) => s + (ck.so_tien || 0), 0)
 
-      // Hôm nay đã nộp chưa
+      const dtToday = (rDTToday.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
+      const cpToday = (rCPToday.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
+
       const todayDeposited = (rCKToday.data || [])
         .filter(ck => ck.tu_vi_id === tmVi?.id)
         .reduce((s, ck) => s + (ck.so_tien || 0), 0)
 
-      setCashIn(dt)
-      setCashOut(cp + alreadyDeposited)
-      setCumulativeDeposited(alreadyDeposited)
-      setCumulativeCP(cp)
+      // Lũy kế đến hôm qua
+      const cumDT_yesterday = cumDT - dtToday
+      const cumCP_yesterday = cumCP - cpToday
+      const cumDep_yesterday = cumDeposited - todayDeposited
+      const yesterdayBalance = cumDT_yesterday - cumCP_yesterday - cumDep_yesterday
+
+      setTodayDT(dtToday)
+      setTodayCP(cpToday)
+      setYesterdayDeficit(yesterdayBalance < 0 ? -yesterdayBalance : 0)
+      setSoDuTienMat(yesterdayBalance + dtToday - cpToday)
       setDone(todayDeposited > 0)
     } catch (e) {
       console.error('NopTienMat load error:', e)
@@ -61,24 +76,23 @@ export default function NopTienMat({ ngay, user, onDone }) {
       setLoading(false)
     }
   }
-
-  const soDuTienMat = cashIn - cashOut
-  const isToday = ngay === todayISO()
   const tienMatVi = viList.find(v => v.loai === 'tien_mat')
   const mbVi = viList.find(v => v.loai === 'chuyen_khoan')
 
   const handleSubmit = async () => {
     if (soDuTienMat <= 0) return
-    if (!window.confirm(`Xác nhận nộp ${formatCurrency(soDuTienMat)} vào MB Bank cho ngày ${ngay.split('-').reverse().join('/')}?`)) return
+    const confirmMsg = `Xác nhận nộp ${formatCurrency(soDuTienMat)} vào MB Bank?`
+    if (!window.confirm(confirmMsg)) return
 
     setSubmitting(true)
     try {
+      const dienGiai = `Nộp tiền mặt ngày ${ngay.split('-').reverse().join('/')} (Thu ${(todayDT || 0).toLocaleString('vi-VN')} - Chi ${(todayCP || 0).toLocaleString('vi-VN')}${yesterdayDeficit > 0 ? ' - Am ' + yesterdayDeficit.toLocaleString('vi-VN') : ''} = ${soDuTienMat.toLocaleString('vi-VN')})`
       const { error } = await supabase.from('chuyen_khoan_noi_bo').insert({
         ngay,
         tu_vi_id: tienMatVi?.id,
         den_vi_id: mbVi?.id,
         so_tien: soDuTienMat,
-        dien_giai: `Nộp tiền mặt lũy kế đến ${ngay.split('-').reverse().join('/')} (Thu ${(cashIn || 0).toLocaleString('vi-VN')} - Chi ${(cumulativeCP || 0).toLocaleString('vi-VN')} = ${soDuTienMat.toLocaleString('vi-VN')})`,
+        dien_giai: dienGiai,
         nguoi_thuc_hien: user?.ho_ten || null,
       })
       if (error) throw error
@@ -98,7 +112,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
         <span style={{ fontSize: '20px' }}>✅</span>
         <div>
           <div style={{ fontWeight: '700', fontSize: '13px', color: '#2D7A4F', fontFamily: LUX.fontSans }}>Đã nộp tiền mặt — hoàn tất</div>
-          <div style={{ fontSize: '12px', color: '#4A8A5F', fontFamily: LUX.fontSans }}>{formatCurrency(cashIn - cashOut + (viList.find(v => v.loai === 'tien_mat') ? 0 : 0))} → MB Bank</div>
+          <div style={{ fontSize: '12px', color: '#4A8A5F', fontFamily: LUX.fontSans }}>{formatCurrency(soDuTienMat)} → MB Bank</div>
         </div>
       </div>
     )
@@ -109,8 +123,10 @@ export default function NopTienMat({ ngay, user, onDone }) {
       <div style={{ background: '#FFF8F0', borderRadius: '14px', padding: '14px 16px', border: '1px solid #FED7AA', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
         <span style={{ fontSize: '20px' }}>💡</span>
         <div>
-          <div style={{ fontWeight: '600', fontSize: '13px', color: '#9A3412', fontFamily: LUX.fontSans }}>Không có tiền mặt cần nộp{isToday ? '' : ` (ngày ${ngay.split('-').reverse().join('/')})`}</div>
-          <div style={{ fontSize: '12px', color: '#B85C38', fontFamily: LUX.fontSans }}>Thu: {formatCurrency(cashIn)} • Chi: {formatCurrency(cashOut)}</div>
+          <div style={{ fontWeight: '600', fontSize: '13px', color: '#9A3412', fontFamily: LUX.fontSans }}>Không có tiền mặt cần nộp</div>
+          <div style={{ fontSize: '12px', color: '#B85C38', fontFamily: LUX.fontSans }}>
+            Tổng Thu TM: {formatCurrency(todayDT)} — Tổng Chi TM: {formatCurrency(todayCP)}{yesterdayDeficit > 0 ? ' — Âm hôm qua: ' + formatCurrency(yesterdayDeficit) : ''}
+          </div>
         </div>
       </div>
     )
@@ -118,18 +134,18 @@ export default function NopTienMat({ ngay, user, onDone }) {
 
   return (
     <div style={{ background: '#FFFBF0', borderRadius: '14px', padding: '14px 16px', border: '1px solid #FDE68A', marginBottom: '12px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-        <div>
-          <div style={{ fontWeight: '700', fontSize: '13px', color: LUX.ink, fontFamily: LUX.fontSans, marginBottom: '2px' }}>
-            💵 Tiền Mặt Cần Nộp Vào MB Bank
-          </div>
-          <div style={{ fontSize: '11px', color: LUX.ink3, fontFamily: LUX.fontSans }}>
-            Lũy kế đến {ngay.split('-').reverse().join('/')}: Thu {formatCurrency(cashIn)} — Chi TM {formatCurrency(cumulativeCP)} — Đã nộp {formatCurrency(cumulativeDeposited)}
-          </div>
+      <div style={{ marginBottom: '10px' }}>
+        <div style={{ fontWeight: '700', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSans, marginBottom: '6px' }}>
+          💵 Tiền Mặt Cần Nộp Vào MB Bank
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontWeight: '800', fontSize: '20px', color: '#1A5276', fontFamily: LUX.fontMono }}>
-            {formatCurrency(soDuTienMat)}
+        <div style={{ fontSize: '13px', color: LUX.ink2, fontFamily: LUX.fontSans, lineHeight: '1.6' }}>
+          <div>Tổng Thu TM: <span style={{ fontWeight: '600' }}>{formatCurrency(todayDT)}</span></div>
+          <div>Tổng Chi TM: <span style={{ fontWeight: '600' }}>{formatCurrency(todayCP)}</span></div>
+          {yesterdayDeficit > 0 && (
+            <div style={{ color: '#C0392B' }}>Âm hôm qua: <span style={{ fontWeight: '600' }}>-{formatCurrency(yesterdayDeficit)}</span></div>
+          )}
+          <div style={{ borderTop: '1px solid ' + LUX.line, marginTop: '4px', paddingTop: '4px', fontWeight: '700', color: '#1A5276' }}>
+            = Số tiền cần nộp: <span style={{ fontSize: '16px' }}>{formatCurrency(soDuTienMat)}</span>
           </div>
         </div>
       </div>
@@ -138,21 +154,17 @@ export default function NopTienMat({ ngay, user, onDone }) {
         onClick={handleSubmit}
         disabled={submitting}
         style={{
-          width: '100%', padding: '14px', borderRadius: '12px',
+          width: '100%', padding: '16px', borderRadius: '12px',
           background: submitting ? '#94A3B8' : 'linear-gradient(135deg, #1A5276, #2C7AAD)',
-          border: 'none', color: 'white', fontWeight: '700', fontSize: '15px',
+          border: 'none', color: 'white', fontWeight: '700', fontSize: '16px',
           cursor: submitting ? 'not-allowed' : 'pointer',
           fontFamily: LUX.fontSans,
           boxShadow: '0 4px 16px rgba(26,82,118,0.25)',
           opacity: submitting ? 0.7 : 1,
         }}
       >
-        {submitting ? '⏳ Đang xử lý...' : `🏦 Nộp ${formatCurrency(soDuTienMat)} Vào MB Bank`}
+        {submitting ? '⏳ Đang xử lý...' : '🏦 Nộp ' + formatCurrency(soDuTienMat) + ' Vào MB Bank'}
       </button>
-
-      <div style={{ marginTop: '6px', textAlign: 'center', fontSize: '10px', color: LUX.ink3, fontFamily: LUX.fontSans }}>
-        Hệ thống tự tính từ doanh thu & chi phí tiền mặt ngày {ngay.split('-').reverse().join('/')}
-      </div>
     </div>
   )
 }
