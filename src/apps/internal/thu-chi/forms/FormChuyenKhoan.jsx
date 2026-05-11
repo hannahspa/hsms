@@ -71,7 +71,7 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
             <h3 style={{ fontSize:'17px',fontWeight:'700',color:LUX.ink,fontFamily:LUX.fontSerif }}>{title}</h3>
             <button onClick={() => setStep('main')} style={{ background:'none',border:'none',fontSize:'20px',cursor:'pointer',color:LUX.ink3 }}>✕</button>
           </div>
-          {viList?.filter(v => v.id !== excludeId).map((vi, i, arr) => (
+          {viList?.filter(v => v.id !== excludeId && (step === 'chon_den_vi' || v.loai !== 'tien_mat')).map((vi, i, arr) => (
             <div key={vi.id}>
               <button
                 onClick={() => {
@@ -115,7 +115,7 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
             <div style={{ width:'36px',height:'36px',borderRadius:'10px',background:'#EFF6FF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px' }}>🔄</div>
             <div>
               <div style={{ fontWeight:'700',fontSize:'16px',color:LUX.ink,fontFamily:LUX.fontSerif }}>Chuyển Khoản Nội Bộ</div>
-              <div style={{ fontSize:'11px',color:LUX.ink3,fontFamily:LUX.fontSans }}>Chuyển giữa các ví</div>
+              <div style={{ fontSize:'11px',color:LUX.ink3,fontFamily:LUX.fontSans }}>Quẹt thẻ về MB hoặc rút tiền mặt</div>
             </div>
           </div>
           <button onClick={onClose} style={{ background:'none',border:'none',fontSize:'20px',color:LUX.ink3,cursor:'pointer' }}>✕</button>

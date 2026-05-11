@@ -8,6 +8,8 @@ export default function NopTienMat({ ngay, user, onDone }) {
   const [viList, setViList] = useState([])
   const [cashIn, setCashIn] = useState(0)
   const [cashOut, setCashOut] = useState(0)
+  const [cumulativeDeposited, setCumulativeDeposited] = useState(0)
+  const [cumulativeCP, setCumulativeCP] = useState(0)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
@@ -19,10 +21,15 @@ export default function NopTienMat({ ngay, user, onDone }) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [rVi, rDT, rCP, rCK] = await Promise.all([
+      const [rVi, rDT, rCP, rCK, rCKToday] = await Promise.all([
         supabase.from('so_du_vi_thuc_te').select('id,ten,loai').order('thu_tu'),
-        supabase.from('doanh_thu').select('hinh_thuc,so_tien').eq('ngay', ngay).eq('hinh_thuc', 'tien_mat'),
-        supabase.from('chi_phi').select('hinh_thuc_thanh_toan,so_tien').eq('ngay', ngay).eq('hinh_thuc_thanh_toan', 'tien_mat'),
+        // Luỹ kế doanh thu tiền mặt từ đầu kỳ đến ngày hiện tại
+        supabase.from('doanh_thu').select('hinh_thuc,so_tien').lte('ngay', ngay).eq('hinh_thuc', 'tien_mat'),
+        // Luỹ kế chi phí tiền mặt từ đầu kỳ đến ngày hiện tại
+        supabase.from('chi_phi').select('hinh_thuc_thanh_toan,so_tien').lte('ngay', ngay).eq('hinh_thuc_thanh_toan', 'tien_mat'),
+        // Luỹ kế tiền mặt đã nộp NH từ đầu kỳ đến ngày hiện tại
+        supabase.from('chuyen_khoan_noi_bo').select('tu_vi_id,so_tien').lte('ngay', ngay),
+        // Riêng hôm nay đã nộp chưa — để check done
         supabase.from('chuyen_khoan_noi_bo').select('tu_vi_id,so_tien').eq('ngay', ngay),
       ])
 
@@ -31,15 +38,23 @@ export default function NopTienMat({ ngay, user, onDone }) {
       const dt = (rDT.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
       const cp = (rCP.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
 
-      // Trừ đi tiền mặt đã nộp vào ngân hàng hôm nay
       const tmVi = (rVi.data || []).find(v => v.loai === 'tien_mat')
+
+      // Lũy kế đã nộp
       const alreadyDeposited = (rCK.data || [])
+        .filter(ck => ck.tu_vi_id === tmVi?.id)
+        .reduce((s, ck) => s + (ck.so_tien || 0), 0)
+
+      // Hôm nay đã nộp chưa
+      const todayDeposited = (rCKToday.data || [])
         .filter(ck => ck.tu_vi_id === tmVi?.id)
         .reduce((s, ck) => s + (ck.so_tien || 0), 0)
 
       setCashIn(dt)
       setCashOut(cp + alreadyDeposited)
-      setDone(alreadyDeposited > 0)
+      setCumulativeDeposited(alreadyDeposited)
+      setCumulativeCP(cp)
+      setDone(todayDeposited > 0)
     } catch (e) {
       console.error('NopTienMat load error:', e)
     } finally {
@@ -63,7 +78,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
         tu_vi_id: tienMatVi?.id,
         den_vi_id: mbVi?.id,
         so_tien: soDuTienMat,
-        dien_giai: `Nộp tiền mặt cuối ngày ${ngay}`,
+        dien_giai: `Nộp tiền mặt lũy kế đến ${ngay.split('-').reverse().join('/')} (Thu ${(cashIn || 0).toLocaleString('vi-VN')} - Chi ${(cumulativeCP || 0).toLocaleString('vi-VN')} = ${soDuTienMat.toLocaleString('vi-VN')})`,
         nguoi_thuc_hien: user?.ho_ten || null,
       })
       if (error) throw error
@@ -109,7 +124,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
             💵 Tiền Mặt Cần Nộp Vào MB Bank
           </div>
           <div style={{ fontSize: '11px', color: LUX.ink3, fontFamily: LUX.fontSans }}>
-            Thu tiền mặt: {formatCurrency(cashIn)} — Chi tiền mặt: {formatCurrency(cashOut)}
+            Lũy kế đến {ngay.split('-').reverse().join('/')}: Thu {formatCurrency(cashIn)} — Chi TM {formatCurrency(cumulativeCP)} — Đã nộp {formatCurrency(cumulativeDeposited)}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
