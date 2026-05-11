@@ -71,7 +71,7 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
             <h3 style={{ fontSize:'17px',fontWeight:'700',color:LUX.ink,fontFamily:LUX.fontSerif }}>{title}</h3>
             <button onClick={() => setStep('main')} style={{ background:'none',border:'none',fontSize:'20px',cursor:'pointer',color:LUX.ink3 }}>✕</button>
           </div>
-          {viList?.filter(v => v.id !== excludeId && (step === 'chon_den_vi' || v.loai !== 'tien_mat')).map((vi, i, arr) => (
+          {viList?.filter(v => v.id !== excludeId && (step === 'chon_den_vi' || v.loai === 'quet_the')).map((vi, i, arr) => (
             <div key={vi.id}>
               <button
                 onClick={() => {
