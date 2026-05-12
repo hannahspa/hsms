@@ -32,7 +32,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
         // Luỹ kế CP tiền mặt đến hôm nay (cả NULL — phòng khi FormChiPhi lỗi)
         supabase.from('chi_phi').select('so_tien').lte('ngay', ngay).or('hinh_thuc_thanh_toan.eq.tien_mat,hinh_thuc_thanh_toan.is.null'),
         // Luỹ kế CP NULL riêng (để hiển thị cảnh báo)
-        supabase.from('chi_phi').select('so_tien').lte('ngay', ngay).is_('hinh_thuc_thanh_toan', null),
+        supabase.from('chi_phi').select('so_tien').lte('ngay', ngay).is('hinh_thuc_thanh_toan', null),
         // Luỹ kế đã nộp NH đến hôm nay
         supabase.from('chuyen_khoan_noi_bo').select('tu_vi_id,so_tien').lte('ngay', ngay),
         // DT tiền mặt hôm nay
@@ -40,7 +40,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
         // CP tiền mặt hôm nay (cả NULL)
         supabase.from('chi_phi').select('so_tien').eq('ngay', ngay).or('hinh_thuc_thanh_toan.eq.tien_mat,hinh_thuc_thanh_toan.is.null'),
         // CP NULL hôm nay (để cảnh báo)
-        supabase.from('chi_phi').select('so_tien').eq('ngay', ngay).is_('hinh_thuc_thanh_toan', null),
+        supabase.from('chi_phi').select('so_tien').eq('ngay', ngay).is('hinh_thuc_thanh_toan', null),
         // Đã nộp hôm nay chưa
         supabase.from('chuyen_khoan_noi_bo').select('tu_vi_id,so_tien').eq('ngay', ngay),
       ])
