@@ -25,18 +25,22 @@ export default function NopTienMat({ ngay, user, onDone }) {
       yesterday.setDate(yesterday.getDate() - 1)
       const yesterdayISO = yesterday.toISOString().slice(0, 10)
 
-      const [rVi, rDTAll, rCPAll, rCKAll, rDTToday, rCPToday, rCKToday] = await Promise.all([
+      const [rVi, rDTAll, rCPAll, rCPNullAll, rCKAll, rDTToday, rCPToday, rCPNullToday, rCKToday] = await Promise.all([
         supabase.from('so_du_vi_thuc_te').select('id,ten,loai').order('thu_tu'),
         // Luỹ kế DT tiền mặt đến hôm nay
         supabase.from('doanh_thu').select('so_tien').lte('ngay', ngay).eq('hinh_thuc', 'tien_mat'),
-        // Luỹ kế CP tiền mặt đến hôm nay
-        supabase.from('chi_phi').select('so_tien').lte('ngay', ngay).eq('hinh_thuc_thanh_toan', 'tien_mat'),
+        // Luỹ kế CP tiền mặt đến hôm nay (cả NULL — phòng khi FormChiPhi lỗi)
+        supabase.from('chi_phi').select('so_tien').lte('ngay', ngay).or('hinh_thuc_thanh_toan.eq.tien_mat,hinh_thuc_thanh_toan.is.null'),
+        // Luỹ kế CP NULL riêng (để hiển thị cảnh báo)
+        supabase.from('chi_phi').select('so_tien').lte('ngay', ngay).is_('hinh_thuc_thanh_toan', null),
         // Luỹ kế đã nộp NH đến hôm nay
         supabase.from('chuyen_khoan_noi_bo').select('tu_vi_id,so_tien').lte('ngay', ngay),
         // DT tiền mặt hôm nay
         supabase.from('doanh_thu').select('so_tien').eq('ngay', ngay).eq('hinh_thuc', 'tien_mat'),
-        // CP tiền mặt hôm nay
-        supabase.from('chi_phi').select('so_tien').eq('ngay', ngay).eq('hinh_thuc_thanh_toan', 'tien_mat'),
+        // CP tiền mặt hôm nay (cả NULL)
+        supabase.from('chi_phi').select('so_tien').eq('ngay', ngay).or('hinh_thuc_thanh_toan.eq.tien_mat,hinh_thuc_thanh_toan.is.null'),
+        // CP NULL hôm nay (để cảnh báo)
+        supabase.from('chi_phi').select('so_tien').eq('ngay', ngay).is_('hinh_thuc_thanh_toan', null),
         // Đã nộp hôm nay chưa
         supabase.from('chuyen_khoan_noi_bo').select('tu_vi_id,so_tien').eq('ngay', ngay),
       ])
@@ -45,6 +49,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
 
       const cumDT = (rDTAll.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
       const cumCP = (rCPAll.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
+      const cumCPNull = (rCPNullAll.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
 
       const tmVi = (rVi.data || []).find(v => v.loai === 'tien_mat')
 
@@ -54,6 +59,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
 
       const dtToday = (rDTToday.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
       const cpToday = (rCPToday.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
+      const cpNullToday = (rCPNullToday.data || []).reduce((s, d) => s + (d.so_tien || 0), 0)
 
       const todayDeposited = (rCKToday.data || [])
         .filter(ck => ck.tu_vi_id === tmVi?.id)
@@ -70,6 +76,9 @@ export default function NopTienMat({ ngay, user, onDone }) {
       setYesterdayDeficit(yesterdayBalance < 0 ? -yesterdayBalance : 0)
       setSoDuTienMat(yesterdayBalance + dtToday - cpToday)
       setDone(todayDeposited > 0)
+      if (cpNullToday > 0 && !todayDeposited) {
+        alert('Cảnh báo: Có ' + cpNullToday.toLocaleString('vi-VN') + 'đ chi phí chưa phân loại nguồn tiền. Vui lòng vào Chi Phí để sửa lại.')
+      }
     } catch (e) {
       console.error('NopTienMat load error:', e)
     } finally {
