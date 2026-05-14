@@ -311,6 +311,11 @@ function KMRow({ km, dichVuMap, onEdit, onDelete, onToggle }) {
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
+const KM_PATH_TAB = {
+  '/admin/khuyen-mai':      'list',
+  '/admin/khuyen-mai/roi':  'roi',
+}
+
 export default function AdminKhuyenMaiPage() {
   const [list, setList]           = useState([])
   const [dichVuList, setDichVuList] = useState([])
@@ -319,7 +324,7 @@ export default function AdminKhuyenMaiPage() {
   const [showForm, setShowForm]   = useState(false)
   const [editing, setEditing]     = useState(null)
   const [toast, setToast]         = useState('')
-  const [tab, setTab]             = useState('list') // 'list' | 'roi'
+  const [tab, setTab]             = useState(() => KM_PATH_TAB[window.location.pathname] || 'list')
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
 

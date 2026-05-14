@@ -58,7 +58,7 @@ export default function AdminShell({ children }) {
     const next = { ...openMenus }
     navItems.forEach(n => {
       if (n.children) {
-        const matched = n.children.some(c => path === c.path || (c.path !== '/SoThuChi' && path.startsWith(c.path + '/')))
+        const matched = n.children.some(c => path === c.path)
         if (matched) next[n.id] = true
       }
     })
@@ -89,7 +89,7 @@ export default function AdminShell({ children }) {
   }
 
   const isChildActive = (children) => {
-    return children?.some(c => path === c.path || (c.path !== '/SoThuChi' && path.startsWith(c.path + '/')))
+    return children?.some(c => path === c.path)
   }
 
   return (
@@ -140,7 +140,7 @@ export default function AdminShell({ children }) {
                   {isOpen && !collapsed && (
                     <div className="nav-children">
                       {n.children.map((child, ci) => {
-                        const isActive = path === child.path || (child.path !== '/SoThuChi' && path.startsWith(child.path + '/'))
+                        const isActive = path === child.path
                         const childIcon = ICON_MAP[child.id]
                         return (
                           <button
@@ -164,7 +164,7 @@ export default function AdminShell({ children }) {
             return (
               <button
                 key={i}
-                className={`nav-item${path === n.path || (n.path !== '/SoThuChi' && path.startsWith(n.path + '/')) ? ' active' : ''}`}
+                className={`nav-item${path === n.path ? ' active' : ''}`}
                 onClick={() => handleNav(n.path)}
               >
                 {icon

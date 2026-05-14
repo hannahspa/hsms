@@ -72,12 +72,28 @@ function LuxSubHeader({ title, crumb, onBack, action, onAction }) {
   )
 }
 
+// ════════════════ PATH → VIEW ════════════════
+const PATH_VIEW = {
+  '/admin/nhan-su':             null,
+  '/admin/nhan-su/tong-quan':   'status',
+  '/admin/nhan-su/ho-so':       'employees',
+  '/admin/nhan-su/lich-ca':     'schedule',
+  '/admin/nhan-su/xet-duyet':   'off',
+  '/admin/nhan-su/bang-luong':  'salary',
+}
+const VIEW_PATH = Object.fromEntries(
+  Object.entries(PATH_VIEW).map(([p, v]) => [v ?? '__root__', p])
+)
+
+function navigate(v) {
+  window.location.href = VIEW_PATH[v ?? '__root__'] ?? '/admin/nhan-su'
+}
+
 // ════════════════ MAIN ════════════════
 export default function AdminNhanSuPage() {
   const { user } = useAuth()
-  const initialTab = new URLSearchParams(window.location.search).get('tab') || null
-  const [view, setView] = useState(initialTab)
-  const [stats, setStats] = useState({ nvCount: 0, diLam: 0, choduyet: 0 })
+  const view = PATH_VIEW[window.location.pathname] ?? null
+  const [stats, setStats]   = useState({ nvCount: 0, diLam: 0, choduyet: 0 })
   const [nvList, setNvList] = useState([])
   const [showTaoOff, setShowTaoOff] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -110,7 +126,7 @@ export default function AdminNhanSuPage() {
         <LuxSubHeader
           title={cfg?.title || ''}
           crumb={view === 'off' ? `${stats.choduyet} đơn chờ · ${MONTHS[now.getMonth()+1]} ${now.getFullYear()}` : `${MONTHS[now.getMonth()+1]} ${now.getFullYear()}`}
-          onBack={() => setView(null)}
+          onBack={() => navigate(null)}
           action={view === 'off' ? '＋ Tạo đơn' : null}
           onAction={() => setShowTaoOff(true)}
         />
@@ -137,9 +153,9 @@ export default function AdminNhanSuPage() {
         <div className="acts">
           <div className="subtabs">
             <div className="st active">Danh Sách</div>
-            <div className="st" onClick={() => setView('schedule')}>Lịch Ca</div>
-            <div className="st" onClick={() => setView('off')}>Xét Duyệt</div>
-            <div className="st" onClick={() => setView('salary')}>Bảng Lương</div>
+            <div className="st" onClick={() => navigate('schedule')}>Lịch Ca</div>
+            <div className="st" onClick={() => navigate('off')}>Xét Duyệt</div>
+            <div className="st" onClick={() => navigate('salary')}>Bảng Lương</div>
           </div>
           <button className="btn"><I.Filter style={{ width: 13, height: 13 }} /> Lọc</button>
           <button className="btn gold" onClick={() => setShowTaoOff(true)}><I.Plus style={{ width: 13, height: 13 }} /> Tạo OFF</button>
@@ -149,7 +165,7 @@ export default function AdminNhanSuPage() {
       <div className="strip" style={{ gridTemplateColumns: 'repeat(5,1fr)', marginBottom: 16 }}>
         <div className="it"><div className="l">Tổng Nhân Sự</div><div className="v">{stats.nvCount}</div><div className="d">đang làm việc</div></div>
         <div className="it"><div className="l">Đang Trực</div><div className="v">{stats.diLam}</div><div className="d">hôm nay</div></div>
-        <div className="it"><div className="l">Chờ Duyệt</div><div className="v" style={{ color: stats.choduyet > 0 ? '#b08a55' : 'var(--ink)' }}>{stats.choduyet}</div><div className="d up" onClick={() => setView('off')} style={{ cursor: 'pointer' }}>đơn OFF + sửa</div></div>
+        <div className="it"><div className="l">Chờ Duyệt</div><div className="v" style={{ color: stats.choduyet > 0 ? '#b08a55' : 'var(--ink)' }}>{stats.choduyet}</div><div className="d up" onClick={() => navigate('off')} style={{ cursor: 'pointer' }}>đơn OFF + sửa</div></div>
         <div className="it"><div className="l">Tháng</div><div className="v">{MONTHS[now.getMonth()+1]}</div><div className="d">{now.getFullYear()}</div></div>
         <div className="it"><div className="l">Bảng Lương</div><div className="v">Kỳ {now.getDate() >= 15 ? '2' : '1'}</div><div className="d">{now.getDate() >= 15 ? 'Lương KD' : 'Lương Cứng'}</div></div>
       </div>
@@ -157,7 +173,7 @@ export default function AdminNhanSuPage() {
       {/* Staff Grid — 100% mẫu Demo */}
       <div className="staff-grid">
         {nvList.map(nv => (
-          <StaffCard key={nv.id} nv={nv} onClick={() => setView('employees')} />
+          <StaffCard key={nv.id} nv={nv} onClick={() => navigate('employees')} />
         ))}
       </div>
 

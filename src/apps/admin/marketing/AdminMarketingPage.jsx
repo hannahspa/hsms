@@ -772,8 +772,14 @@ function TabChiPhi({ chiPhiMarketing, danhMucMarketing }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════════════════
+const MKT_PATH_TAB = {
+  '/admin/marketing':            'dashboard',
+  '/admin/marketing/chien-dich': 'chien-dich',
+  '/admin/marketing/chi-phi':    'chi-phi',
+}
+
 export default function AdminMarketingPage() {
-  const [tab, setTab]                     = useState('dashboard')
+  const [tab, setTab]                     = useState(() => MKT_PATH_TAB[window.location.pathname] || 'dashboard')
   const [campaigns, setCampaigns]         = useState([])
   const [khuyenMaiList, setKhuyenMaiList] = useState([])
   const [chiPhiMarketing, setChiPhi]      = useState([])

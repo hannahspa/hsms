@@ -1489,9 +1489,17 @@ function TabBaoCao({ products }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════════════════
+const KHO_PATH_TAB = {
+  '/admin/kho-hang':           'tong-quan',
+  '/admin/kho-hang/san-pham':  'san-pham',
+  '/admin/kho-hang/giao-dich': 'giao-dich',
+  '/admin/kho-hang/chiet-rot': 'chiet-rot',
+  '/admin/kho-hang/bao-cao':   'bao-cao',
+}
+
 export default function AdminKhoHangPage() {
   const { user } = useAuth()
-  const [tab, setTab]                   = useState('tong-quan')
+  const [tab, setTab]                   = useState(() => KHO_PATH_TAB[window.location.pathname] || 'tong-quan')
   const [products, setProducts]         = useState([])
   const [transactions, setTransactions] = useState([])
   const [danhMucKho, setDanhMucKho]     = useState([])
