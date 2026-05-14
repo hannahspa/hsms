@@ -23,8 +23,8 @@ export const ADMIN_NAV = [
 
   // ── NHÂN SỰ ──
   { id: 'nhansu', icon: '👥', label: 'Nhân Sự', children: [
-    { id: 'ns-danhsach',  label: 'Danh Sách NV', path: '/admin/nhan-su' },
     { id: 'ns-tongquan',  label: 'Tổng Quan',    path: '/admin/nhan-su/tong-quan' },
+    { id: 'ns-danhsach',  label: 'Danh Sách NV', path: '/admin/nhan-su' },
     { id: 'ns-hosonv',    label: 'Hồ Sơ NV',     path: '/admin/nhan-su/ho-so' },
     { id: 'ns-lichca',    label: 'Lịch Ca',       path: '/admin/nhan-su/lich-ca' },
     { id: 'ns-xetduyet',  label: 'Xét Duyệt',    path: '/admin/nhan-su/xet-duyet' },

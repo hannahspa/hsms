@@ -21,7 +21,7 @@ function useStats() {
     Promise.all([
       supabase.from('doanh_thu').select('so_tien, hinh_thuc').eq('ngay', today),
       supabase.from('cham_cong').select('id').eq('ngay', today).not('gio_vao', 'is', null),
-      supabase.from('nhan_vien').select('id').eq('trang_thai', 'active'),
+      supabase.from('nhan_vien').select('id').eq('trang_thai', 'dang_lam'),
       supabase.from('so_du_vi_thuc_te').select('so_du_hien_tai'),
       supabase.from('dang_ky_off').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet'),
     ]).then(([rDT, rCC, rNV, rVi, rOff]) => {
@@ -128,7 +128,7 @@ export default function AdminApp() {
           <div className="v" style={{ color: stats?.offPending > 0 ? 'var(--champagne)' : 'var(--ink3)' }}>
             {stats ? stats.offPending : '...'}
           </div>
-          <div className="d up" onClick={() => window.location.href='/admin/nhan-su?tab=off'} style={{ cursor: 'pointer' }}>
+          <div className="d up" onClick={() => window.location.href='/admin/nhan-su/xet-duyet'} style={{ cursor: 'pointer' }}>
             {stats?.offPending > 0 ? 'Duyệt ngay →' : 'Không có đơn'}
           </div>
         </div>
@@ -211,7 +211,7 @@ export default function AdminApp() {
             { label: '+ Nhập doanh thu', href: '/SoThuChi/nhap-lieu' },
             { label: '+ Nhập chi phí',   href: '/SoThuChi/nhap-lieu' },
             { label: 'Báo cáo hôm nay',  href: '/SoThuChi/doi-soat' },
-            { label: 'Duyệt OFF NV',      href: '/admin/nhan-su?tab=off' },
+            { label: 'Duyệt OFF NV',      href: '/admin/nhan-su/xet-duyet' },
             { label: '+ Tạo khuyến mãi', href: '/admin/khuyen-mai' },
           ].map(q => (
             <a key={q.label} href={q.href} style={{
