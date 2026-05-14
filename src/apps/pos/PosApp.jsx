@@ -3,6 +3,7 @@ import { posService } from '../../services/posService'
 import { formatCurrency, todayISO, getNowVN } from '../../lib/utils'
 import { useAuth } from '../../context/AuthContext'
 import I from '../../components/shared/Icons'
+import PosOrderHistory from './PosOrderHistory'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PTTT_CFG = [
@@ -191,6 +192,7 @@ function CartLine({ item, onRemove, onQtyChange }) {
 // ─── Main PosApp ──────────────────────────────────────────────────────────────
 export default function PosApp() {
   const { user } = useAuth()
+  const [posTab, setPosTab] = useState('pos')
   const [currentOrder, setCurrentOrder] = useState(null)
   const [lineItems, setLineItems] = useState([])
   const [selectedCustomer, setSelectedCustomer] = useState(null)
@@ -353,36 +355,64 @@ export default function PosApp() {
     return true
   })
 
+  const handleResumeOrder = (order) => {
+    setCurrentOrder(order)
+    setPosTab('pos')
+  }
+
   return (
     <div>
-      {/* ── Today Strip ── */}
+      {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
-          <div style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 700, letterSpacing: '-.005em', color: 'var(--ink)' }}>
-            POS Bán Hàng
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div>
+            <div style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 700, letterSpacing: '-.005em', color: 'var(--ink)' }}>
+              POS Bán Hàng
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>
+              {user?.ho_ten || 'Thu Ngân'} · Hôm nay: {todayStats.soDon} đơn · {formatCurrency(todayStats.tongThu)}
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>
-            {user?.ho_ten || 'Thu Ngân'} · Hôm nay: {todayStats.soDon} đơn · {formatCurrency(todayStats.tongThu)}
+          {/* Tab switcher */}
+          <div style={{ display: 'flex', gap: 4, background: 'var(--bg)', borderRadius: 20, padding: 4, border: '1px solid var(--bord)' }}>
+            {[
+              { key: 'pos',     label: '🛒 Bán Hàng' },
+              { key: 'history', label: '📋 Danh Sách' },
+            ].map(t => (
+              <button key={t.key} onClick={() => setPosTab(t.key)}
+                style={{
+                  padding: '5px 16px', borderRadius: 16, border: 'none',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  background: posTab === t.key ? 'linear-gradient(135deg,#C9A96E,#A0714F)' : 'transparent',
+                  color: posTab === t.key ? '#fff' : 'var(--ink3)',
+                  transition: 'all .15s',
+                }}>
+                {t.label}
+              </button>
+            ))}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {orderId && (
+          {orderId && posTab === 'pos' && (
             <div style={{ fontSize: 12, color: 'var(--champagne)', fontWeight: 600, background: 'rgba(201,169,110,.12)', padding: '5px 12px', borderRadius: 999, border: '1px solid rgba(201,169,110,.25)' }}>
               Đơn {currentOrder?.ma_don || '#—'}
             </div>
           )}
-          {!orderId
+          {posTab === 'pos' && (!orderId
             ? <button className="btn gold" onClick={handleNewOrder} disabled={loading}>
                 <I.Plus style={{ width: 13, height: 13 }} /> Tạo Đơn Mới
               </button>
             : <button className="btn" onClick={handleNewOrder} disabled={loading}>
                 <I.Plus style={{ width: 13, height: 13 }} /> Đơn Mới
               </button>
-          }
+          )}
         </div>
       </div>
 
-      {/* ── POS Layout ── */}
+      {/* ── Content ── */}
+      {posTab === 'history' ? (
+        <PosOrderHistory onResumeOrder={handleResumeOrder} />
+      ) : (
       <div className="pos">
         {/* LEFT — Catalog */}
         <div className="pos-left">
@@ -629,6 +659,7 @@ export default function PosApp() {
           </div>
         </aside>
       </div>
+      )}
     </div>
   )
 }

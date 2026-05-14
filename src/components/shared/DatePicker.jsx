@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { COLORS } from '../../constants/colors'
 import { todayISO , getNowVN} from '../../lib/utils'
 
@@ -48,8 +49,8 @@ export default function DatePicker({ open, selectedDate, onClose, onConfirm }) {
     onConfirm(iso);
   };
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={onClose}>
+  return createPortal(
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }} onClick={onClose}>
       <div style={{ background: COLORS.card, width: '90%', maxWidth: '360px', borderRadius: '24px', padding: '20px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', animation: 'popIn 0.2s ease' }} onClick={e => e.stopPropagation()}>
         <style>{`@keyframes popIn{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}`}</style>
         
@@ -81,6 +82,7 @@ export default function DatePicker({ open, selectedDate, onClose, onConfirm }) {
           <button onClick={() => onConfirm(tempDate)} style={{ padding: '12px 0', borderRadius: '12px', border: 'none', background: COLORS.grad, color: 'white', fontWeight: '700', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(160,113,79,0.3)' }}>Xong ✓</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
