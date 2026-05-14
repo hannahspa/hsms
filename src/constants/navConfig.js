@@ -23,6 +23,7 @@ export const ADMIN_NAV = [
   { id: 'nhansu', icon: '👥', label: 'Nhân Sự', path: '/admin/nhan-su' },
   { id: 'crm', icon: '💝', label: 'CRM Khách Hàng', path: '/admin/crm' },
   { id: 'the-lieu-trinh', icon: '🎫', label: 'Thẻ Liệu Trình', path: '/admin/the-lieu-trinh' },
+  { id: 'commission', icon: '💹', label: 'Hoa Hồng KTV', path: '/admin/commission' },
   { id: 'kho', icon: '📦', label: 'Kho Hàng', path: '/admin/kho-hang' },
   { id: 'khuyenmai', icon: '🏷️', label: 'Khuyến Mãi', path: '/admin/khuyen-mai' },
   { id: 'marketing', icon: '📣', label: 'Marketing', path: '/admin/marketing' },
