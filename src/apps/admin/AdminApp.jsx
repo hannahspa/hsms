@@ -8,6 +8,7 @@ import AdminCRMPage from './crm/AdminCRMPage'
 import AdminMarketingPage from './marketing/AdminMarketingPage'
 import AdminDashboardPage from './dashboard/AdminDashboardPage'
 import AdminLichSuNopTienMat from './bao-cao/AdminLichSuNopTienMat'
+import AdminTheLieuTrinhPage from './the-lieu-trinh/AdminTheLieuTrinhPage'
 import { supabase } from '../../lib/supabase'
 import { todayISO, getNowVN, fmtCompact } from '../../lib/utils'
 
@@ -51,6 +52,7 @@ const MODULES = [
   { icon: '🛒', label: 'POS Bán Hàng',   href: '/pos',                   badge: 'Mới',   group: 'nb',  color: '#e74c3c', desc: 'Tạo đơn · Thanh toán · Hoa hồng' },
   { icon: '👥', label: 'Nhân Sự',         href: '/admin/nhan-su',         badge: null,    group: 'nb',  color: '#a0714f', desc: 'Chấm công · Duyệt OFF · Bảng lương' },
   { icon: '👤', label: 'CRM Khách Hàng', href: '/admin/crm',             badge: null,    group: 'nb',  color: '#8e44ad', desc: 'Hồ sơ · Thẻ liệu trình · Công nợ' },
+  { icon: '🎫', label: 'Thẻ Liệu Trình', href: '/admin/the-lieu-trinh', badge: null,    group: 'nb',  color: '#6c3483', desc: 'Danh sách thẻ · Tiến độ · Hết hạn' },
   { icon: '📦', label: 'Kho Hàng',        href: '/admin/kho-hang',        badge: null,    group: 'nb',  color: '#16a085', desc: 'Nhập xuất · Tồn kho · Cảnh báo' },
   { icon: '🏷️', label: 'Khuyến Mãi',     href: '/admin/khuyen-mai',      badge: null,    group: 'nb',  color: '#c0392b', desc: 'CRUD KM · Badge giảm giá · ROI' },
   { icon: '📣', label: 'Marketing',       href: '/admin/marketing',       badge: null,    group: 'nb',  color: '#e67e22', desc: 'Chiến dịch · Phân tích kênh' },
@@ -79,6 +81,7 @@ export default function AdminApp() {
   if (path.startsWith('/admin/marketing'))  return <AdminMarketingPage />
   if (path.startsWith('/admin/dashboard'))  return <AdminDashboardPage />
   if (path.startsWith('/admin/lich-su-nop-tien-mat')) return <AdminLichSuNopTienMat />
+  if (path.startsWith('/admin/the-lieu-trinh'))      return <AdminTheLieuTrinhPage />
 
   const now = getNowVN()
   const DAYS = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy']
