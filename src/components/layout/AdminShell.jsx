@@ -22,6 +22,8 @@ const ICON_MAP = {
   doisoat: I.Receipt,
   nhansu: I.Users,
   crm: I.Heart,
+  'the-lieu-trinh': I.CreditCard,
+  commission: I.Award,
   kho: I.Box,
   khuyenmai: I.Tag,
   marketing: I.Speaker,
