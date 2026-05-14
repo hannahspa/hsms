@@ -71,8 +71,40 @@ export default function AdminCRMPage() {
   const [activeSeg, setActiveSeg] = useState('all')
   const [sortBy, setSortBy] = useState('chi_tieu')
   const [selected, setSelected] = useState(null)
+  const [showNew, setShowNew] = useState(false)
+  const [newForm, setNewForm] = useState({ ho_ten: '', so_dien_thoai: '', ngay_sinh: '', ghi_chu_da_lieu: '' })
+  const [saving, setSaving] = useState(false)
+  const [cards, setCards] = useState([])
+  const [loadingCards, setLoadingCards] = useState(false)
 
   useEffect(() => { loadCustomers() }, [])
+
+  useEffect(() => {
+    if (!selected?.id) { setCards([]); return }
+    setLoadingCards(true)
+    supabase.from('the_lieu_trinh')
+      .select('*')
+      .eq('khach_hang_id', selected.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setCards(data || []); setLoadingCards(false) })
+  }, [selected?.id])
+
+  const handleCreate = async () => {
+    if (!newForm.ho_ten.trim() || !newForm.so_dien_thoai.trim()) return
+    setSaving(true)
+    const { error } = await supabase.from('khach_hang').insert({
+      ho_ten: newForm.ho_ten.trim(),
+      so_dien_thoai: newForm.so_dien_thoai.trim(),
+      ngay_sinh: newForm.ngay_sinh || null,
+      ghi_chu_da_lieu: newForm.ghi_chu_da_lieu || null,
+    })
+    setSaving(false)
+    if (!error) {
+      setShowNew(false)
+      setNewForm({ ho_ten: '', so_dien_thoai: '', ngay_sinh: '', ghi_chu_da_lieu: '' })
+      loadCustomers()
+    }
+  }
 
   const loadCustomers = async () => {
     setLoading(true)
@@ -128,7 +160,60 @@ export default function AdminCRMPage() {
     { k: 'slp', l: 'Ngủ đông', n: slpN },
   ]
 
+  const INP = {
+    width: '100%', padding: '10px 12px', borderRadius: 10,
+    border: '1px solid var(--bord)', fontSize: 14,
+    background: 'var(--surface)', color: 'var(--ink)',
+    fontFamily: 'var(--sans)', outline: 'none', boxSizing: 'border-box',
+  }
+
   return (
+    <>
+    {/* ── Modal Khách Mới ── */}
+    {showNew && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        onClick={() => setShowNew(false)}>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-lg)', padding: 28, width: '100%', maxWidth: 420, boxShadow: 'var(--sh-3)', animation: 'viewIn .25s var(--ease-out) both' }}
+          onClick={e => e.stopPropagation()}>
+          <div style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>Thêm Khách Hàng</div>
+          <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 22 }}>Nhập thông tin để tạo hồ sơ mới</div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Họ Tên *</div>
+              <input style={INP} placeholder="Nguyễn Thị Lan" value={newForm.ho_ten}
+                onChange={e => setNewForm(s => ({ ...s, ho_ten: e.target.value }))} autoFocus />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Số Điện Thoại *</div>
+              <input style={INP} placeholder="0901234567" value={newForm.so_dien_thoai}
+                onChange={e => setNewForm(s => ({ ...s, so_dien_thoai: e.target.value }))} inputMode="tel" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Ngày Sinh</div>
+                <input type="date" style={INP} value={newForm.ngay_sinh}
+                  onChange={e => setNewForm(s => ({ ...s, ngay_sinh: e.target.value }))} />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Ghi Chú Da</div>
+                <input style={INP} placeholder="Nhạy cảm, mụn..." value={newForm.ghi_chu_da_lieu}
+                  onChange={e => setNewForm(s => ({ ...s, ghi_chu_da_lieu: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
+            <button onClick={() => setShowNew(false)} className="btn ghost" style={{ flex: 1, justifyContent: 'center' }}>Hủy</button>
+            <button onClick={handleCreate} disabled={saving || !newForm.ho_ten.trim() || !newForm.so_dien_thoai.trim()}
+              className="btn gold" style={{ flex: 2, justifyContent: 'center', opacity: saving ? .7 : 1 }}>
+              {saving ? 'Đang lưu...' : 'Tạo Hồ Sơ'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
 
       {/* ── MAIN ── */}
@@ -149,7 +234,7 @@ export default function AdminCRMPage() {
             <button className="btn ghost">
               <I.Filter style={{ width: 13, height: 13 }} /> Lọc Nâng Cao
             </button>
-            <button className="btn gold">
+            <button className="btn gold" onClick={() => setShowNew(true)}>
               <I.Plus style={{ width: 13, height: 13 }} /> Khách Mới
             </button>
           </div>
@@ -426,6 +511,44 @@ export default function AdminCRMPage() {
               </div>
             </div>
 
+            {/* Thẻ Liệu Trình */}
+            {loadingCards ? (
+              <div style={{ textAlign: 'center', padding: '12px', fontSize: 12, color: 'var(--ink3)', marginBottom: 14 }}>Đang tải thẻ...</div>
+            ) : cards.length > 0 ? (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 8 }}>
+                  Thẻ Liệu Trình ({cards.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {cards.map(card => {
+                    const pct = card.so_buoi_tong > 0 ? Math.round((card.so_buoi_da_dung / card.so_buoi_tong) * 100) : 0
+                    const con = (card.so_buoi_tong || 0) - (card.so_buoi_da_dung || 0)
+                    const expired = card.ngay_het_han && new Date(card.ngay_het_han) < new Date()
+                    return (
+                      <div key={card.id} style={{
+                        background: expired ? 'var(--bg)' : 'linear-gradient(135deg,rgba(201,169,110,.08),rgba(160,113,79,.04))',
+                        border: `1px solid ${expired ? 'var(--line)' : 'rgba(201,169,110,.25)'}`,
+                        borderRadius: 10, padding: '10px 12px',
+                      }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: expired ? 'var(--ink3)' : 'var(--ink)', marginBottom: 4 }}>
+                          {card.ten_dich_vu}
+                        </div>
+                        <div className="bar-h" style={{ height: 4, marginBottom: 5 }}>
+                          <i style={{ width: pct + '%', background: expired ? 'var(--ink3)' : 'var(--grad-gold)', borderRadius: 2 }} />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--ink3)' }}>
+                          <span style={{ color: expired ? 'var(--danger)' : 'var(--thu)', fontWeight: 600 }}>
+                            {expired ? 'Hết hạn' : `Còn ${con} buổi`}
+                          </span>
+                          <span>{card.so_buoi_da_dung}/{card.so_buoi_tong}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
+
             {/* Action buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <button
@@ -433,9 +556,6 @@ export default function AdminCRMPage() {
                 style={{ justifyContent: 'center', width: '100%' }}
                 onClick={() => window.open(`tel:${selected.so_dien_thoai}`)}>
                 <I.Phone style={{ width: 13, height: 13 }} /> Gọi Điện
-              </button>
-              <button className="btn" style={{ justifyContent: 'center', width: '100%' }}>
-                <I.Heart style={{ width: 13, height: 13 }} /> Thẻ Liệu Trình
               </button>
               <button className="btn ghost" style={{ justifyContent: 'center', width: '100%' }}>
                 <I.Calendar style={{ width: 13, height: 13 }} /> Đặt Lịch Hẹn
@@ -448,5 +568,6 @@ export default function AdminCRMPage() {
         )
       })()}
     </div>
+    </>
   )
 }
