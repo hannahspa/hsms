@@ -1,45 +1,35 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { COLORS } from '../../../constants/colors'
 
-// ── Helper ─────────────────────────────────────────────────────────────────────
-const inputStyle = {
-  width: '100%', padding: '10px 14px', border: `1px solid ${COLORS.border}`,
-  borderRadius: '10px', fontSize: '14px', background: COLORS.bg, color: COLORS.text,
-  outline: 'none', boxSizing: 'border-box', fontFamily: 'sans-serif',
+// ── Input helpers ───────────────────────────────────────────────────────────────
+const inp = {
+  width: '100%', padding: '9px 13px',
+  border: '1px solid var(--line)', borderRadius: 10,
+  fontSize: 13, background: 'var(--surface)', color: 'var(--ink)',
+  outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--sans)',
+  transition: 'border-color .15s',
 }
-const labelStyle = {
-  fontSize: '12px', fontWeight: '700', color: COLORS.textSub,
-  marginBottom: '6px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em',
-}
-const cardStyle = {
-  background: 'white', borderRadius: '16px', padding: '20px',
-  border: `1px solid ${COLORS.border}`, boxShadow: COLORS.shadow,
+const lbl = {
+  fontSize: 11, fontWeight: 600, color: 'var(--ink3)',
+  marginBottom: 5, display: 'block',
+  textTransform: 'uppercase', letterSpacing: '0.08em',
 }
 
-// ── Section editors ────────────────────────────────────────────────────────────
+// ── Section Editors ─────────────────────────────────────────────────────────────
 
 function HeroEditor({ data, onChange }) {
   const d = data || {}
   const set = (k, v) => onChange({ ...d, [k]: v })
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div>
-        <label style={labelStyle}>TIÊU ĐỀ CHÍNH (Headline)</label>
-        <input style={inputStyle} value={d.headline || ''} onChange={e => set('headline', e.target.value)} />
-      </div>
-      <div>
-        <label style={labelStyle}>TAGLINE (Dòng phụ)</label>
-        <input style={inputStyle} value={d.tagline || ''} onChange={e => set('tagline', e.target.value)} />
-      </div>
-      <div>
-        <label style={labelStyle}>NÚT CTA</label>
-        <input style={inputStyle} value={d.cta_text || ''} onChange={e => set('cta_text', e.target.value)} />
-      </div>
-      <div>
-        <label style={labelStyle}>SỐ ĐIỆN THOẠI (hiển thị trên hero)</label>
-        <input style={inputStyle} value={d.phone || ''} onChange={e => set('phone', e.target.value)} />
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div><label style={lbl}>Tiêu đề chính (Headline)</label>
+        <input style={inp} value={d.headline || ''} onChange={e => set('headline', e.target.value)} /></div>
+      <div><label style={lbl}>Tagline (dòng phụ)</label>
+        <input style={inp} value={d.tagline || ''} onChange={e => set('tagline', e.target.value)} /></div>
+      <div><label style={lbl}>Nút CTA</label>
+        <input style={inp} value={d.cta_text || ''} onChange={e => set('cta_text', e.target.value)} /></div>
+      <div><label style={lbl}>Số điện thoại (trên hero)</label>
+        <input style={inp} value={d.phone || ''} onChange={e => set('phone', e.target.value)} /></div>
     </div>
   )
 }
@@ -48,31 +38,23 @@ function ContactEditor({ data, onChange }) {
   const d = data || {}
   const set = (k, v) => onChange({ ...d, [k]: v })
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div>
-        <label style={labelStyle}>SỐ ĐIỆN THOẠI</label>
-        <input style={inputStyle} value={d.phone || ''} onChange={e => set('phone', e.target.value)} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div><label style={lbl}>Số điện thoại</label>
+          <input style={inp} value={d.phone || ''} onChange={e => set('phone', e.target.value)} /></div>
+        <div><label style={lbl}>Email</label>
+          <input style={inp} value={d.email || ''} onChange={e => set('email', e.target.value)} /></div>
       </div>
-      <div>
-        <label style={labelStyle}>EMAIL</label>
-        <input style={inputStyle} value={d.email || ''} onChange={e => set('email', e.target.value)} />
+      <div><label style={lbl}>Địa chỉ</label>
+        <input style={inp} value={d.address || ''} onChange={e => set('address', e.target.value)} /></div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div><label style={lbl}>Giờ mở cửa</label>
+          <input style={inp} value={d.hours || ''} onChange={e => set('hours', e.target.value)} /></div>
+        <div><label style={lbl}>Link Facebook</label>
+          <input style={inp} value={d.facebook || ''} onChange={e => set('facebook', e.target.value)} /></div>
       </div>
-      <div>
-        <label style={labelStyle}>ĐỊA CHỈ</label>
-        <input style={inputStyle} value={d.address || ''} onChange={e => set('address', e.target.value)} />
-      </div>
-      <div>
-        <label style={labelStyle}>GIỜ MỞ CỬA</label>
-        <input style={inputStyle} value={d.hours || ''} onChange={e => set('hours', e.target.value)} />
-      </div>
-      <div>
-        <label style={labelStyle}>LINK FACEBOOK</label>
-        <input style={inputStyle} value={d.facebook || ''} onChange={e => set('facebook', e.target.value)} />
-      </div>
-      <div>
-        <label style={labelStyle}>LINK GOOGLE MAPS</label>
-        <input style={inputStyle} value={d.maps_url || ''} onChange={e => set('maps_url', e.target.value)} />
-      </div>
+      <div><label style={lbl}>Link Google Maps</label>
+        <input style={inp} value={d.maps_url || ''} onChange={e => set('maps_url', e.target.value)} /></div>
     </div>
   )
 }
@@ -81,16 +63,12 @@ function AboutEditor({ data, onChange }) {
   const d = data || {}
   const set = (k, v) => onChange({ ...d, [k]: v })
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div>
-        <label style={labelStyle}>TIÊU ĐỀ</label>
-        <input style={inputStyle} value={d.heading || ''} onChange={e => set('heading', e.target.value)} />
-      </div>
-      <div>
-        <label style={labelStyle}>NỘI DUNG</label>
-        <textarea style={{ ...inputStyle, height: '100px', resize: 'vertical' }}
-          value={d.body || ''} onChange={e => set('body', e.target.value)} />
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div><label style={lbl}>Tiêu đề</label>
+        <input style={inp} value={d.heading || ''} onChange={e => set('heading', e.target.value)} /></div>
+      <div><label style={lbl}>Nội dung</label>
+        <textarea style={{ ...inp, height: 100, resize: 'vertical' }}
+          value={d.body || ''} onChange={e => set('body', e.target.value)} /></div>
     </div>
   )
 }
@@ -101,21 +79,19 @@ function MarqueeEditor({ data, onChange }) {
   const addItem = () => onChange([...items, 'Dịch vụ mới'])
   const removeItem = (i) => onChange(items.filter((_, idx) => idx !== i))
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {items.map((item, i) => (
-        <div key={i} style={{ display: 'flex', gap: '8px' }}>
-          <input style={{ ...inputStyle, flex: 1 }} value={item}
-            onChange={e => setItem(i, e.target.value)} />
-          <button onClick={() => removeItem(i)}
-            style={{ padding: '8px 12px', background: '#FDECEA', border: '1px solid #FADBD8',
-              borderRadius: '8px', color: '#C0392B', cursor: 'pointer', fontWeight: '700', flexShrink: 0 }}>
+        <div key={i} style={{ display: 'flex', gap: 8 }}>
+          <input style={{ ...inp, flex: 1 }} value={item} onChange={e => setItem(i, e.target.value)} />
+          <button onClick={() => removeItem(i)} className="icon-btn"
+            style={{ background: '#fdecea', border: '1px solid #fadbd8', color: '#c0392b', borderRadius: 8, width: 34, height: 34, flexShrink: 0 }}>
             ✕
           </button>
         </div>
       ))}
       <button onClick={addItem}
-        style={{ padding: '10px', background: COLORS.bg, border: `1.5px dashed ${COLORS.border}`,
-          borderRadius: '10px', color: COLORS.textSub, cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}>
+        style={{ padding: 10, background: 'var(--surface)', border: '1.5px dashed var(--line2)',
+          borderRadius: 10, color: 'var(--ink3)', cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'var(--sans)' }}>
         + Thêm item
       </button>
     </div>
@@ -128,36 +104,30 @@ function TestimonialsEditor({ data, onChange }) {
   const addItem = () => onChange([...items, { name: '', role: 'Khách hàng thân thiết', text: '', rating: 5 }])
   const removeItem = (i) => onChange(items.filter((_, idx) => idx !== i))
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((item, i) => (
-        <div key={i} style={{ background: COLORS.bg, borderRadius: '12px', padding: '14px',
-          border: `1px solid ${COLORS.border}`, position: 'relative' }}>
+        <div key={i} style={{ background: 'var(--surface)', borderRadius: 10, padding: 14,
+          border: '1px solid var(--line)', position: 'relative' }}>
           <button onClick={() => removeItem(i)}
-            style={{ position: 'absolute', top: '10px', right: '10px', background: '#FDECEA',
-              border: '1px solid #FADBD8', borderRadius: '6px', color: '#C0392B', cursor: 'pointer',
-              fontWeight: '700', fontSize: '11px', padding: '3px 8px' }}>✕</button>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <div>
-                <label style={labelStyle}>TÊN</label>
-                <input style={inputStyle} value={item.name || ''} onChange={e => setField(i, 'name', e.target.value)} />
-              </div>
-              <div>
-                <label style={labelStyle}>VAI TRÒ</label>
-                <input style={inputStyle} value={item.role || ''} onChange={e => setField(i, 'role', e.target.value)} />
-              </div>
+            style={{ position: 'absolute', top: 10, right: 10, background: '#fdecea',
+              border: '1px solid #fadbd8', borderRadius: 6, color: '#c0392b', cursor: 'pointer',
+              fontWeight: 700, fontSize: 11, padding: '3px 8px', fontFamily: 'var(--sans)' }}>✕</button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div><label style={lbl}>Tên</label>
+                <input style={inp} value={item.name || ''} onChange={e => setField(i, 'name', e.target.value)} /></div>
+              <div><label style={lbl}>Vai trò</label>
+                <input style={inp} value={item.role || ''} onChange={e => setField(i, 'role', e.target.value)} /></div>
             </div>
-            <div>
-              <label style={labelStyle}>NỘI DUNG ĐÁNH GIÁ</label>
-              <textarea style={{ ...inputStyle, height: '72px', resize: 'vertical' }}
-                value={item.text || ''} onChange={e => setField(i, 'text', e.target.value)} />
-            </div>
+            <div><label style={lbl}>Nội dung đánh giá</label>
+              <textarea style={{ ...inp, height: 72, resize: 'vertical' }}
+                value={item.text || ''} onChange={e => setField(i, 'text', e.target.value)} /></div>
           </div>
         </div>
       ))}
       <button onClick={addItem}
-        style={{ padding: '10px', background: COLORS.bg, border: `1.5px dashed ${COLORS.border}`,
-          borderRadius: '10px', color: COLORS.textSub, cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}>
+        style={{ padding: 10, background: 'var(--surface)', border: '1.5px dashed var(--line2)',
+          borderRadius: 10, color: 'var(--ink3)', cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'var(--sans)' }}>
         + Thêm đánh giá
       </button>
     </div>
@@ -170,54 +140,50 @@ function FaqEditor({ data, onChange }) {
   const addItem = () => onChange([...items, { q: '', a: '' }])
   const removeItem = (i) => onChange(items.filter((_, idx) => idx !== i))
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {items.map((item, i) => (
-        <div key={i} style={{ background: COLORS.bg, borderRadius: '12px', padding: '14px',
-          border: `1px solid ${COLORS.border}`, position: 'relative' }}>
+        <div key={i} style={{ background: 'var(--surface)', borderRadius: 10, padding: 14,
+          border: '1px solid var(--line)', position: 'relative' }}>
           <button onClick={() => removeItem(i)}
-            style={{ position: 'absolute', top: '10px', right: '10px', background: '#FDECEA',
-              border: '1px solid #FADBD8', borderRadius: '6px', color: '#C0392B', cursor: 'pointer',
-              fontWeight: '700', fontSize: '11px', padding: '3px 8px' }}>✕</button>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div>
-              <label style={labelStyle}>CÂU HỎI</label>
-              <input style={inputStyle} value={item.q || ''} onChange={e => setField(i, 'q', e.target.value)} />
-            </div>
-            <div>
-              <label style={labelStyle}>TRẢ LỜI</label>
-              <textarea style={{ ...inputStyle, height: '72px', resize: 'vertical' }}
-                value={item.a || ''} onChange={e => setField(i, 'a', e.target.value)} />
-            </div>
+            style={{ position: 'absolute', top: 10, right: 10, background: '#fdecea',
+              border: '1px solid #fadbd8', borderRadius: 6, color: '#c0392b', cursor: 'pointer',
+              fontWeight: 700, fontSize: 11, padding: '3px 8px', fontFamily: 'var(--sans)' }}>✕</button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div><label style={lbl}>Câu hỏi</label>
+              <input style={inp} value={item.q || ''} onChange={e => setField(i, 'q', e.target.value)} /></div>
+            <div><label style={lbl}>Trả lời</label>
+              <textarea style={{ ...inp, height: 72, resize: 'vertical' }}
+                value={item.a || ''} onChange={e => setField(i, 'a', e.target.value)} /></div>
           </div>
         </div>
       ))}
       <button onClick={addItem}
-        style={{ padding: '10px', background: COLORS.bg, border: `1.5px dashed ${COLORS.border}`,
-          borderRadius: '10px', color: COLORS.textSub, cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}>
+        style={{ padding: 10, background: 'var(--surface)', border: '1.5px dashed var(--line2)',
+          borderRadius: 10, color: 'var(--ink3)', cursor: 'pointer', fontWeight: 600, fontSize: 13, fontFamily: 'var(--sans)' }}>
         + Thêm câu hỏi
       </button>
     </div>
   )
 }
 
-// ── Sections config ────────────────────────────────────────────────────────────
+// ── Sections config ─────────────────────────────────────────────────────────────
 const SECTIONS = [
-  { key: 'hero',         icon: '🎯', label: 'Hero — Tiêu Đề Trang Chủ',  Editor: HeroEditor },
-  { key: 'contact',      icon: '📞', label: 'Liên Hệ & Địa Chỉ',          Editor: ContactEditor },
-  { key: 'about',        icon: '💬', label: 'Giới Thiệu Spa',              Editor: AboutEditor },
-  { key: 'marquee',      icon: '📜', label: 'Dải Chữ Chạy Ngang',         Editor: MarqueeEditor },
-  { key: 'testimonials', icon: '⭐', label: 'Đánh Giá Khách Hàng',        Editor: TestimonialsEditor },
-  { key: 'faq',          icon: '❓', label: 'Câu Hỏi Thường Gặp (FAQ)',   Editor: FaqEditor },
+  { key: 'hero',         emoji: '🎯', label: 'Hero', sub: 'Tiêu đề & CTA trang chủ',       Editor: HeroEditor },
+  { key: 'contact',      emoji: '📞', label: 'Liên Hệ', sub: 'Địa chỉ, SĐT, giờ mở cửa',  Editor: ContactEditor },
+  { key: 'about',        emoji: '💬', label: 'Giới Thiệu', sub: 'Nội dung về spa',          Editor: AboutEditor },
+  { key: 'marquee',      emoji: '📜', label: 'Marquee', sub: 'Dải chữ chạy ngang',          Editor: MarqueeEditor },
+  { key: 'testimonials', emoji: '⭐', label: 'Đánh Giá', sub: 'Review từ khách hàng',       Editor: TestimonialsEditor },
+  { key: 'faq',          emoji: '❓', label: 'FAQ', sub: 'Câu hỏi thường gặp',              Editor: FaqEditor },
 ]
 
-// ── Main Page ──────────────────────────────────────────────────────────────────
+// ── Main Page ───────────────────────────────────────────────────────────────────
 export default function AdminHomepagePage() {
-  const [configs, setConfigs]   = useState({})    // key → value (parsed json)
-  const [dirty, setDirty]       = useState({})    // key → true nếu đã sửa
-  const [saving, setSaving]     = useState({})    // key → true khi đang lưu
-  const [open, setOpen]         = useState('hero')
-  const [toast, setToast]       = useState('')
-  const [loading, setLoading]   = useState(true)
+  const [configs, setConfigs] = useState({})
+  const [dirty,   setDirty]   = useState({})
+  const [saving,  setSaving]  = useState({})
+  const [open,    setOpen]    = useState('hero')
+  const [toast,   setToast]   = useState('')
+  const [loading, setLoading] = useState(true)
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
@@ -246,103 +212,142 @@ export default function AdminHomepagePage() {
     showToast('✅ Đã lưu!')
   }
 
-  return (
-    <div style={{ minHeight: '100vh', background: COLORS.bg, fontFamily: 'sans-serif', paddingBottom: '40px' }}>
+  const dirtyCount = Object.values(dirty).filter(Boolean).length
 
-      {/* Header */}
-      <div style={{ background: COLORS.grad, padding: '40px 20px 24px' }}>
-        <button onClick={() => window.location.href = '/admin'}
-          style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white',
-            padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', marginBottom: '12px' }}>
-          ← Admin
-        </button>
-        <div style={{ color: 'white', fontWeight: '800', fontSize: '22px' }}>
-          🌐 Nội Dung Trang Chủ
+  return (
+    <>
+      {/* ── Header ── */}
+      <div className="mod-head" style={{ marginBottom: 16 }}>
+        <div>
+          <div className="ttl">Nội Dung Web</div>
+          <div className="sub">
+            Chỉnh sửa hannahspa.vn không cần code
+            {dirtyCount > 0 && <span style={{ color: 'var(--champagne)', marginLeft: 8 }}>· {dirtyCount} section chưa lưu</span>}
+          </div>
         </div>
-        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', marginTop: '4px' }}>
-          Chỉnh sửa nội dung hannahspa.vn không cần code
-        </div>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap' }}>
-          <a href="/" target="_blank" rel="noopener noreferrer"
-            style={{ background: 'rgba(255,255,255,0.15)', color: 'white', borderRadius: '8px',
-              padding: '6px 14px', fontSize: '12px', fontWeight: '700', textDecoration: 'none' }}>
-            🌐 Xem trang chủ ↗
+        <div className="acts">
+          <a href="/" target="_blank" rel="noopener noreferrer" className="btn">
+            🌐 Trang chủ ↗
           </a>
-          <a href="/menu" target="_blank" rel="noopener noreferrer"
-            style={{ background: 'rgba(255,255,255,0.15)', color: 'white', borderRadius: '8px',
-              padding: '6px 14px', fontSize: '12px', fontWeight: '700', textDecoration: 'none' }}>
-            📋 Xem menu ↗
+          <a href="/menu" target="_blank" rel="noopener noreferrer" className="btn">
+            📋 Menu ↗
           </a>
+          {dirtyCount > 0 && (
+            <button className="btn gold" onClick={async () => {
+              const keys = Object.keys(dirty).filter(k => dirty[k])
+              for (const key of keys) await handleSave(key)
+            }}>
+              💾 Lưu tất cả ({dirtyCount})
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Accordion sections */}
-      <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: COLORS.textMute }}>Đang tải...</div>
-        ) : (
-          SECTIONS.map(({ key, icon, label, Editor }) => {
-            const isOpen = open === key
+      {/* ── Strip KPIs ── */}
+      <div className="strip" style={{ gridTemplateColumns: 'repeat(6,1fr)', marginBottom: 16 }}>
+        {SECTIONS.map(s => (
+          <div key={s.key} className="it" onClick={() => setOpen(s.key)}
+            style={{ cursor: 'pointer', borderBottom: open === s.key ? '2px solid var(--champagne)' : '2px solid transparent', transition: 'border-color .2s' }}>
+            <div className="l">{s.emoji} {s.label}</div>
+            <div className="v" style={{ fontSize: 13 }}>{dirty[s.key] ? '●' : '✓'}</div>
+            <div className="d" style={{ color: dirty[s.key] ? 'var(--champagne)' : 'var(--success)' }}>
+              {dirty[s.key] ? 'chưa lưu' : 'đã lưu'}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Main layout: 2 cột ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16, alignItems: 'start' }}>
+
+        {/* Cột trái: nav sections */}
+        <div style={{ background: 'var(--surface2)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+          {SECTIONS.map(({ key, emoji, label, sub }) => {
+            const isAct = open === key
+            const isDirty = dirty[key]
+            return (
+              <button key={key} onClick={() => setOpen(key)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '14px 16px', border: 'none', cursor: 'pointer',
+                  background: isAct ? 'rgba(201,169,110,0.10)' : 'transparent',
+                  borderLeft: isAct ? '3px solid var(--champagne)' : '3px solid transparent',
+                  transition: 'all .15s', textAlign: 'left', fontFamily: 'var(--sans)',
+                  borderBottom: '1px solid var(--line)',
+                }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{emoji}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: isAct ? 'var(--champagne)' : 'var(--ink)', marginBottom: 1 }}>{label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
+                </div>
+                {isDirty && (
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--champagne)', flexShrink: 0 }} />
+                )}
+              </button>
+            )
+          })}
+
+          {/* Info panel */}
+          <div style={{ padding: '16px', background: '#fffbf0', borderTop: '1px solid var(--line)' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#7b5800', marginBottom: 6 }}>💡 Lưu ý</div>
+            <div style={{ fontSize: 12, color: '#7b5800', lineHeight: 1.5 }}>
+              Sau khi lưu, trang chủ cập nhật trong ~30 giây.
+              Nhấn <strong>Ctrl+Shift+R</strong> để xem ngay.
+            </div>
+          </div>
+        </div>
+
+        {/* Cột phải: editor */}
+        <div style={{ background: 'var(--surface2)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+          {loading ? (
+            <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--ink3)', fontFamily: 'var(--sans)' }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>🌸</div>
+              <div style={{ fontSize: 13 }}>Đang tải cấu hình...</div>
+            </div>
+          ) : SECTIONS.map(({ key, emoji, label, Editor }) => {
+            if (open !== key) return null
             const isDirty = dirty[key]
             const isSaving = saving[key]
             return (
-              <div key={key} style={cardStyle}>
-                {/* Accordion header */}
-                <button
-                  onClick={() => setOpen(isOpen ? null : key)}
-                  style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '20px' }}>{icon}</span>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontWeight: '800', fontSize: '14px', color: COLORS.text }}>{label}</div>
-                      {isDirty && (
-                        <div style={{ fontSize: '11px', color: '#B8860B', marginTop: '2px' }}>
-                          ● Có thay đổi chưa lưu
-                        </div>
-                      )}
+              <div key={key}>
+                {/* Editor header */}
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', fontFamily: 'var(--serif)' }}>
+                      {emoji} {label}
                     </div>
+                    {isDirty && (
+                      <div style={{ fontSize: 11, color: 'var(--champagne)', marginTop: 2 }}>● Có thay đổi chưa lưu</div>
+                    )}
                   </div>
-                  <span style={{ color: COLORS.textMute, fontSize: '18px', transition: 'transform .2s',
-                    transform: isOpen ? 'rotate(90deg)' : 'none' }}>›</span>
-                </button>
+                  <button
+                    onClick={() => handleSave(key)}
+                    disabled={isSaving || !isDirty}
+                    className={isDirty ? 'btn gold' : 'btn'}
+                    style={{ opacity: isSaving ? 0.7 : 1 }}>
+                    {isSaving ? 'Đang lưu...' : isDirty ? '💾 Lưu' : '✅ Đã lưu'}
+                  </button>
+                </div>
 
-                {/* Accordion body */}
-                {isOpen && (
-                  <div style={{ marginTop: '16px', borderTop: `1px solid ${COLORS.border}`, paddingTop: '16px' }}>
-                    <Editor data={configs[key]} onChange={(v) => handleChange(key, v)} />
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                      <button onClick={() => handleSave(key)} disabled={isSaving || !isDirty}
-                        style={{ flex: 1, padding: '12px', background: isDirty ? COLORS.grad : '#E8DDD4',
-                          color: isDirty ? 'white' : COLORS.textMute, border: 'none', borderRadius: '10px',
-                          fontWeight: '800', fontSize: '14px', cursor: isDirty ? 'pointer' : 'default',
-                          opacity: isSaving ? 0.7 : 1, transition: 'all .2s' }}>
-                        {isSaving ? 'Đang lưu...' : isDirty ? '💾 Lưu thay đổi' : '✅ Đã lưu'}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Editor body */}
+                <div style={{ padding: '20px' }}>
+                  <Editor data={configs[key]} onChange={(v) => handleChange(key, v)} />
+                </div>
               </div>
             )
-          })
-        )}
-      </div>
-
-      {/* Preview note */}
-      <div style={{ margin: '0 20px', padding: '14px 16px', background: '#FFF8E1',
-        border: '1px solid #FFE082', borderRadius: '12px', fontSize: '13px', color: '#7B5800' }}>
-        💡 <strong>Lưu ý:</strong> Sau khi lưu, trang chủ sẽ tự cập nhật trong vòng 30 giây (cache).
-        Nhấn <strong>Ctrl+Shift+R</strong> để xem ngay.
+          })}
+        </div>
       </div>
 
       {/* Toast */}
       {toast && (
-        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
-          background: '#1A1209', color: 'white', padding: '12px 24px', borderRadius: '999px',
-          fontWeight: '700', fontSize: '14px', zIndex: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--espresso)', color: '#f5ede0', padding: '12px 24px', borderRadius: 999,
+          fontWeight: 700, fontSize: 13, zIndex: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+          fontFamily: 'var(--sans)' }}>
           {toast}
         </div>
       )}
-    </div>
+    </>
   )
 }
