@@ -1,55 +1,61 @@
-// Hannah Spa — Luxury Design System
-// Dùng cho Admin Dashboard và các trang cao cấp
+// ═══════════════════════════════════════════════════════════════════════════════
+// Hannah Spa — Backward Compatibility Layer
+// Cập nhật: 11/05/2026 — Phase 0
+// Re-export từ colors.js để 62 file đang dùng LUX không bị break
+// Sẽ xóa file này sau khi migrate hết sang C tokens
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import { C, FONT, RADIUS } from './colors'
 
 export const LUX = {
-  // ── Surfaces ─────────────────────────────────
-  bg:       '#f5f0e8',
-  surface:  '#fbf8f3',
-  surface2: '#ffffff',
+  // Surfaces
+  bg:       C.bg,
+  surface:  C.bg,
+  surface2: C.card,
 
-  // ── Ink ──────────────────────────────────────
-  ink:  '#2a201a',
-  ink2: '#5a4a3e',
-  ink3: '#8a7868',
+  // Ink
+  ink:  C.text,
+  ink2: C.textSub,
+  ink3: C.textMute,
 
-  // ── Lines ────────────────────────────────────
-  line:  '#e8dfd2',
-  line2: '#d9cdb9',
+  // Lines
+  line:  C.border,
+  line2: C.borderLight,
 
-  // ── Brand Espresso ────────────────────────────
+  // Brand Espresso
   espresso:  '#3d2c20',
   espresso2: '#5a4030',
 
-  // ── Accent tones ─────────────────────────────
-  taupe:      '#8a6a52',
-  champagne:  '#c8a675',
+  // Accent tones
+  taupe:      C.primary,
+  champagne:  C.gold,
   champagne2: '#b08a55',
-  gold:       '#d4a574',
+  gold:       C.gold,
   rose:       '#b87a6a',
   sage:       '#7a8a6a',
-  danger:     '#b85a4a',
+  danger:     C.danger,
 
-  // ── Gradients ────────────────────────────────
-  heroGrad: 'radial-gradient(circle at 100% 0%, rgba(212,165,116,0.35), transparent 60%), linear-gradient(155deg, #4a3528 0%, #3d2c20 50%, #2e2018 100%)',
-  goldGrad: 'linear-gradient(180deg, #d4a574 0%, #b88a55 100%)',
+  // Gradients
+  heroGrad: C.heroGrad,
+  goldGrad: C.grad,
 
-  // ── Border Radius ─────────────────────────────
-  radius:   '18px',
-  radiusSm: '12px',
-  radiusLg: '28px',
+  // Border Radius
+  radius:   `${RADIUS.lg}px`,
+  radiusSm: `${RADIUS.sm}px`,
+  radiusLg: `${RADIUS.xl}px`,
 
-  // ── Shadows ───────────────────────────────────
-  shadowSm: '0 2px 8px -2px rgba(60,40,25,0.08)',
-  shadow:   '0 8px 32px -8px rgba(60,40,25,0.12), 0 2px 6px -2px rgba(60,40,25,0.06)',
-  shadowLg: '0 24px 60px -16px rgba(60,40,25,0.22), 0 4px 12px -4px rgba(60,40,25,0.08)',
+  // Shadows
+  shadowSm: C.shadowSm,
+  shadow:   C.shadow,
+  shadowLg: C.shadowLg,
 
-  // ── Typography ────────────────────────────────
-  fontSerif: "'Cormorant Garamond', serif",
-  fontSans:  "'Inter', -apple-system, sans-serif",
-  fontMono:  "'JetBrains Mono', monospace",
+  // Typography
+  fontSerif: FONT.serif,
+  fontSans:  FONT.sans,
+  fontMono:  FONT.mono,
 }
 
-// Menu accent config (dùng cho menu items ở dashboard)
+// Menu accent config — giữ nguyên
 export const LUX_MENU = [
   {
     key: 'status',

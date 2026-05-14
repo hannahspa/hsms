@@ -1,312 +1,148 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { LUX } from '../../../../constants/lux'
-import { formatCurrency, todayISO, getNowVN, formatDateInput, formatDateFull } from '../../../../lib/utils'
-import DatePicker from '../../../../components/shared/DatePicker'
+import { formatCurrency, getNowVN } from '../../../../lib/utils'
+import I from '../../../../components/shared/Icons'
 
-function getDateRange(tab, currentDate) {
-  const now = new Date(currentDate)
-  if (tab === 'ngay') {
-    // 1 ngày duy nhất
-    const iso = now.toISOString().split('T')[0]
-    return {
-      start: iso,
-      end:   iso,
-      label: formatDateFull(iso)
+const HINH_THUC = [
+  { id: 'tien_mat', label: 'Tiền Mặt', icon: '💵', color: '#3e5a32' },
+  { id: 'chuyen_khoan', label: 'Chuyển Khoản', icon: '🏦', color: '#1a4f70' },
+  { id: 'quet_the', label: 'Quẹt Thẻ', icon: '💳', color: '#5e2f74' },
+  { id: 'the_tra_truoc', label: 'Thẻ Trả Trước', icon: '🎫', color: '#6e4a1f' },
+]
+
+export default function PhanTichDoanhThu({ onBack }) {
+  const now = getNowVN()
+  const [thang, setThang] = useState(now.getMonth() + 1)
+  const [nam, setNam] = useState(now.getFullYear())
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    const start = `${nam}-${String(thang).padStart(2, '0')}-01`
+    const endDate = new Date(nam, thang, 0)
+    const end = `${nam}-${String(thang).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
+
+    let prevStart, prevEnd
+    if (thang === 1) {
+      prevStart = `${nam - 1}-12-01`; prevEnd = `${nam - 1}-12-31`
+    } else {
+      const prevM = thang - 1
+      const prevLastDay = new Date(nam, prevM, 0).getDate()
+      prevStart = `${nam}-${String(prevM).padStart(2, '0')}-01`
+      prevEnd = `${nam}-${String(prevM).padStart(2, '0')}-${String(prevLastDay).padStart(2, '0')}`
     }
-  }
-  if (tab === 'thang') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1)
-    const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    return {
-      start: start.toISOString().split('T')[0],
-      end:   end.toISOString().split('T')[0],
-      label: `Tháng ${now.getMonth()+1}/${now.getFullYear()}`
-    }
-  }
-  if (tab === 'nam') {
-    const start = new Date(now.getFullYear(), 0, 1)
-    const end   = new Date(now.getFullYear(), 11, 31)
-    return {
-      start: start.toISOString().split('T')[0],
-      end:   end.toISOString().split('T')[0],
-      label: `Năm ${now.getFullYear()}`
-    }
-  }
-}
 
-// ── AREA CHART CSS THUẦN ─────────────────────────────────
-function AreaChart({ data, color }) {
-  if (!data || data.length === 0) return null
-  const maxVal = Math.max(...data.map(d => d.value), 1)
-  const W = 340, H = 120, PAD = 8
+    Promise.all([
+      supabase.from('doanh_thu').select('so_tien, hinh_thuc, ngay, dien_giai').gte('ngay', start).lte('ngay', end).order('ngay', { ascending: false }),
+      supabase.from('doanh_thu').select('so_tien, hinh_thuc').gte('ngay', prevStart).lte('ngay', prevEnd),
+    ]).then(([rDT, rPrev]) => {
+      const dtList = rDT.data || []
+      const prevList = rPrev.data || []
+      const byHT = {}
+      HINH_THUC.forEach(ht => {
+        const total = dtList.filter(r => r.hinh_thuc === ht.id).reduce((s, r) => s + (r.so_tien || 0), 0)
+        const prevTotal = prevList.filter(r => r.hinh_thuc === ht.id).reduce((s, r) => s + (r.so_tien || 0), 0)
+        byHT[ht.id] = { ...ht, total, prevTotal, count: dtList.filter(r => r.hinh_thuc === ht.id).length }
+      })
+      const tongDoanhThu = dtList.reduce((s, r) => s + (r.so_tien || 0), 0)
+      const thucThu = dtList.filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + (r.so_tien || 0), 0)
+      const prevThucThu = prevList.filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + (r.so_tien || 0), 0)
+      setData({ dtList, byHT, tongDoanhThu, thucThu, prevThucThu })
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [thang, nam])
 
-  const points = data.map((d, i) => ({
-    x: PAD + (i / (data.length - 1)) * (W - PAD * 2),
-    y: H - PAD - (d.value / maxVal) * (H - PAD * 2)
-  }))
+  const changeMonth = (delta) => {
+    let m = thang + delta; let y = nam
+    if (m > 12) { m = 1; y++ }
+    if (m < 1) { m = 12; y-- }
+    setThang(m); setNam(y)
+  }
 
-  const linePath  = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-  const areaPath  = `${linePath} L ${points[points.length-1].x} ${H} L ${points[0].x} ${H} Z`
+  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--ink3)' }}>Đang tải...</div>
+
+  const donutColors = ['#c9a96e', '#a87366', '#6e8a5e', '#8a6a6e']
+  const donutSegs = HINH_THUC.map((ht, i) => ({ v: data.byHT[ht.id]?.total || 0, c: donutColors[i], l: ht.label }))
+  const pctChange = data.prevThucThu > 0 ? Math.round((data.thucThu - data.prevThucThu) / data.prevThucThu * 100) : 0
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: '120px' }}>
-      <defs>
-        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor={color} stopOpacity="0.35"/>
-          <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill="url(#areaGrad)" />
-      <path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      {points.map((p, i) => data[i].value > 0 && (
-        <circle key={i} cx={p.x} cy={p.y} r="3" fill={color} />
-      ))}
-    </svg>
+    <div style={{ padding: '22px 24px', flex: 1, overflow: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={onBack} className="icon-btn" style={{ width: 36, height: 36 }}><I.ArrowLeft style={{ width: 16, height: 16 }} /></button>
+          <div>
+            <div style={{ fontFamily: 'var(--serif)', fontSize: 26, fontWeight: 700, color: 'var(--ink)' }}>Phân Tích Doanh Thu</div>
+            <div style={{ fontSize: 12, color: 'var(--ink3)' }}>Theo hình thức thu</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => changeMonth(-1)} className="icon-btn" style={{ width: 36, height: 36 }}>‹</button>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', fontFamily: 'var(--serif)', minWidth: 140, textAlign: 'center' }}>Tháng {thang}/{nam}</span>
+          <button onClick={() => changeMonth(1)} className="icon-btn" style={{ width: 36, height: 36 }}>›</button>
+        </div>
+      </div>
+
+      <div className="strip" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 16 }}>
+        <div className="it"><div className="l">TỔNG DOANH THU</div><div className="v" style={{ color: '#426a2c' }}>{formatCurrency(data.tongDoanhThu)}</div><div className="d">{data.dtList.length} giao dịch</div></div>
+        <div className="it"><div className="l">THỰC THU</div><div className="v" style={{ color: '#426a2c' }}>{formatCurrency(data.thucThu)}</div><div className="d">Không tính thẻ TT</div></div>
+        <div className="it"><div className="l">SO THÁNG TRƯỚC</div>
+          <div className="v" style={{ color: pctChange >= 0 ? '#426a2c' : '#843a23' }}>{pctChange >= 0 ? '↑' : '↓'} {Math.abs(pctChange)}%</div>
+          <div className="d">Thực thu tháng trước: {formatCurrency(data.prevThucThu)}</div>
+        </div>
+      </div>
+
+      <div className="fin-grid" style={{ marginBottom: 16 }}>
+        <div className="card">
+          <div className="card-h">
+            <div className="card-t"><div className="arch-i"><I.Tag style={{ width: 13, height: 13, color: '#8a6a52' }} /></div><h3>Cơ Cấu Doanh Thu</h3></div>
+            <span className="chip">Tháng {thang}</span>
+          </div>
+          <div className="card-b">
+            <div className="donut-wrap">
+              <DonutChart segments={donutSegs} total={data.tongDoanhThu || 1} />
+              <div className="donut-leg">
+                {HINH_THUC.map((ht, i) => (
+                  <div className="row" key={i}><span className="sw" style={{ background: donutColors[i] }} /><span>{ht.label}</span><b>{formatCurrency(data.byHT[ht.id]?.total || 0)}</b></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-h"><div className="card-t"><div className="arch-i"><I.Receipt style={{ width: 13, height: 13, color: '#8a6a52' }} /></div><h3>Chi Tiết Theo Hình Thức</h3></div></div>
+          <div className="card-b">
+            {HINH_THUC.map((ht, i) => {
+              const info = data.byHT[ht.id]
+              const pct = data.tongDoanhThu > 0 ? Math.round((info?.total || 0) / data.tongDoanhThu * 100) : 0
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--bg2)', border: '1px solid var(--line)', marginBottom: i < 3 ? 8 : 0 }}>
+                  <div style={{ fontSize: 22 }}>{ht.icon}</div>
+                  <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink)' }}>{ht.label}</div><div style={{ fontSize: 11, color: 'var(--ink3)' }}>{info?.count || 0} giao dịch · {pct}%</div></div>
+                  <div style={{ fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 700, color: ht.color }}>{formatCurrency(info?.total || 0)}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
-export default function PhanTichDoanhThu({ onBack }) {
-  const [tab, setTab]               = useState('ngay')
-  const [currentDate, setCurrentDate] = useState(getNowVN())
-  const [data, setData]             = useState([])
-  const [loading, setLoading]       = useState(false)
-  const [showPicker, setShowPicker] = useState(false)
-  const [pickerTarget, setPickerTarget] = useState(null)
-  const [expandedDay, setExpandedDay] = useState(null)
-
-  const range = useMemo(() => getDateRange(tab, currentDate), [tab, currentDate])
-
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
-      try {
-        const { data: dt } = await supabase
-          .from('doanh_thu').select('ngay, so_tien, hinh_thuc')
-          .gte('ngay', range.start).lte('ngay', range.end)
-          .order('ngay')
-        setData(dt || [])
-      } catch(e) {
-        console.error(e)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
-  }, [range])
-
-  // Group by ngày
-  const byNgay = useMemo(() => {
-    const map = {}
-    data.forEach(r => {
-      if (!map[r.ngay]) map[r.ngay] = 0
-      if (r.hinh_thuc !== 'the_tra_truoc') map[r.ngay] += r.so_tien
-    })
-    return Object.entries(map)
-      .map(([ngay, value]) => ({ ngay, value }))
-      .sort((a, b) => b.ngay.localeCompare(a.ngay))
-  }, [data])
-
-  const thucThu = data
-    .filter(r => r.hinh_thuc !== 'the_tra_truoc')
-    .reduce((s, r) => s + r.so_tien, 0)
-
-  const tbNgay = byNgay.length > 0 ? Math.round(thucThu / byNgay.length) : 0
-
-  // Chart data (30 ngày)
-  const chartData = useMemo(() => {
-    if (tab === 'ngay') {
-      // 7 ngày xung quanh ngày đã chọn để có context
-      const center = new Date(range.start + 'T00:00:00')
-      return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(center)
-        d.setDate(d.getDate() - 3 + i)
-        const iso = d.toISOString().split('T')[0]
-        const found = byNgay.find(b => b.ngay === iso)
-        const isCenter = iso === range.start
-        return { label: String(d.getDate()), value: found?.value || 0, isCenter }
-      })
-    }
-    if (tab === 'thang') {
-      const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
-      return Array.from({ length: daysInMonth }, (_, i) => {
-        const day = i + 1
-        const iso = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
-        const found = byNgay.find(b => b.ngay === iso)
-        return { label: String(day), value: found?.value || 0 }
-      })
-    }
-    if (tab === 'nam') {
-      return Array.from({ length: 12 }, (_, i) => {
-        const m = i + 1
-        const monthStr = `${currentDate.getFullYear()}-${String(m).padStart(2,'0')}`
-        const total = data
-          .filter(r => r.ngay.startsWith(monthStr) && r.hinh_thuc !== 'the_tra_truoc')
-          .reduce((s, r) => s + r.so_tien, 0)
-        return { label: `T${m}`, value: total }
-      })
-    }
-    return []
-  }, [data, tab, range, byNgay, currentDate])
-
-  // Navigation
-  const prevPeriod = () => {
-    const d = new Date(currentDate)
-    if (tab === 'ngay')   d.setDate(d.getDate() - 1)
-    if (tab === 'thang')  d.setMonth(d.getMonth() - 1)
-    if (tab === 'nam')    d.setFullYear(d.getFullYear() - 1)
-    setCurrentDate(d)
-  }
-  const nextPeriod = () => {
-    const d = new Date(currentDate)
-    if (tab === 'ngay')   d.setDate(d.getDate() + 1)
-    if (tab === 'thang')  d.setMonth(d.getMonth() + 1)
-    if (tab === 'nam')    d.setFullYear(d.getFullYear() + 1)
-    setCurrentDate(d)
-  }
-
+function DonutChart({ segments, total, size = 140, ring = 18 }) {
+  const r = (size - ring) / 2; const cx = size / 2, cy = size / 2
+  let acc = 0
   return (
-    <div style={{ background: '#FAF7F4', minHeight: '100vh', paddingBottom: '100px' }}>
-
-      <DatePicker
-        open={showPicker}
-        selectedDate={todayISO()}
-        onClose={() => setShowPicker(false)}
-        onConfirm={(iso) => {
-          setCurrentDate(new Date(iso + 'T00:00:00'))
-          setShowPicker(false)
-        }}
-      />
-
-      {/* Header */}
-      <div style={{ background: LUX.heroGrad, padding: '44px 20px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <button onClick={onBack} style={{
-            width: '36px', height: '36px', borderRadius: '50%',
-            background: 'rgba(255,255,255,0.2)', border: '1.5px solid rgba(255,255,255,0.3)',
-            color: 'white', fontSize: '18px', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>←</button>
-          <div style={{ color: 'white', fontWeight: '700', fontSize: '18px' }}>Phân Tích Doanh Thu</div>
-        </div>
-
-        {/* Tab Ngày / Tháng / Năm */}
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', padding: '3px' }}>
-          {['ngay','thang','nam'].map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              flex: 1, padding: '8px', borderRadius: '10px', border: 'none',
-              background: tab === t ? 'white' : 'transparent',
-              color: tab === t ? LUX.taupe : 'rgba(255,255,255,0.8)',
-              fontWeight: tab === t ? '700' : '500', fontSize: '13px', cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}>
-              {t === 'ngay' ? 'Ngày' : t === 'thang' ? 'Tháng' : 'Năm'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ padding: '16px' }}>
-
-        {/* Date range navigator */}
-        <div style={{
-          background: LUX.surface2, borderRadius: '16px', padding: '12px 16px',
-          marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-        }}>
-          <button onClick={prevPeriod} style={{ background: 'none', border: 'none', fontSize: '20px', color: LUX.ink2, cursor: 'pointer', padding: '4px 8px' }}>‹</button>
-          <button onClick={() => setShowPicker(true)} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: '8px'
-          }}>
-            <span style={{ fontSize: '16px' }}>📅</span>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: LUX.taupe }}>{range.label}</span>
-          </button>
-          <button onClick={nextPeriod} style={{ background: 'none', border: 'none', fontSize: '20px', color: LUX.ink2, cursor: 'pointer', padding: '4px 8px' }}>›</button>
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: LUX.ink3 }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>📈</div>
-            <div style={{ fontSize: '13px' }}>Đang tải dữ liệu...</div>
-          </div>
-        ) : (
-          <>
-            {/* Biểu đồ */}
-            <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '20px', marginBottom: '14px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
-              <AreaChart data={chartData} color={'#2D7A4F'} />
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${LUX.line}` }}>
-                <div>
-                  <div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px' }}>Tổng Thu</div>
-                  <div style={{ fontWeight: '800', fontSize: '18px', color: '#2D7A4F' }}>{formatCurrency(thucThu)}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px' }}>Trung bình / ngày</div>
-                  <div style={{ fontWeight: '700', fontSize: '15px', color: LUX.ink }}>{formatCurrency(tbNgay)}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Danh sách theo ngày — click để xem chi tiết PTTT */}
-            {byNgay.length === 0 ? (
-              <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '40px 20px', textAlign: 'center', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>📊</div>
-                <div style={{ fontSize: '13px', color: LUX.ink3 }}>Không có doanh thu trong kỳ này</div>
-              </div>
-            ) : (
-              <div style={{ background: LUX.surface2, borderRadius: '24px', padding: '4px 0', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
-                {byNgay.map((item, i) => {
-                  const isExpanded = expandedDay === item.ngay
-                  const dayRecords = data.filter(r => r.ngay === item.ngay)
-                  const pttt = [
-                    { id: 'tien_mat', label: 'Tiền Mặt', icon: '💵' },
-                    { id: 'chuyen_khoan', label: 'Chuyển Khoản', icon: '🏦' },
-                    { id: 'quet_the', label: 'Quẹt Thẻ', icon: '💳' },
-                    { id: 'the_tra_truoc', label: 'Thẻ Trả Trước', icon: '🎫' },
-                  ]
-                  return (
-                  <div key={item.ngay}>
-                    <button
-                      onClick={() => setExpandedDay(isExpanded ? null : item.ngay)}
-                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', width: '100%', border: 'none', background: isExpanded ? '#FAF7F4' : 'transparent', cursor: 'pointer', textAlign: 'left' }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: '600', fontSize: '14px', color: LUX.ink }}>
-                          {formatDateFull(item.ngay)}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontWeight: '700', fontSize: '15px', color: '#2D7A4F' }}>
-                          {formatCurrency(item.value)}
-                        </span>
-                        <span style={{ color: LUX.ink3, fontSize: '16px' }}>{isExpanded ? '▲' : '›'}</span>
-                      </div>
-                    </button>
-                    {isExpanded && (
-                      <div style={{ padding: '8px 20px 14px 32px', borderLeft: '3px solid #A0714F20', marginLeft: '20px' }}>
-                        {pttt.map(ht => {
-                          const htTotal = dayRecords.filter(r => r.hinh_thuc === ht.id).reduce((s, r) => s + r.so_tien, 0)
-                          if (htTotal === 0) return null
-                          return (
-                            <div key={ht.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0', color: LUX.ink2 }}>
-                              <span>{ht.icon} {ht.label}</span>
-                              <span style={{ fontWeight: '600', color: '#2D7A4F' }}>{formatCurrency(htTotal)}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                    {i < byNgay.length - 1 && (
-                      <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,rgba(160,113,79,0.1),transparent)', margin: '0 20px' }} />
-                    )}
-                  </div>
-                )})}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+    <svg viewBox={`0 0 ${size} ${size}`} style={{ width: size, height: size, flexShrink: 0 }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e8dcc8" strokeWidth={ring} />
+      {segments.map((s, i) => {
+        const len = 2 * Math.PI * r; const part = (s.v / total) * len; const off = acc; acc += part
+        return <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={s.c} strokeWidth={ring} strokeDasharray={`${part} ${len - part}`} strokeDashoffset={-off} transform={`rotate(-90 ${cx} ${cy})`} />
+      })}
+      <text x={cx} y={cy - 2} textAnchor="middle" fontSize="10" fill="#8e7a68" fontFamily="Inter" fontWeight="600">THU</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="16" fill="#2a201a" fontFamily="var(--serif)" fontWeight="700">{Math.round(total / 1000)}M</text>
+    </svg>
   )
 }

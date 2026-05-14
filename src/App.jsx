@@ -76,34 +76,28 @@ export default function App() {
   // Shop (sắp ra mắt)
   if (path.startsWith('/shop')) return <ErrorBoundary><LandingPage /></ErrorBoundary>
 
-  // POS — Lễ Tân & Admin
-  if (path.startsWith('/pos')) {
-    return (
-      <AuthProvider>
-        <AppProvider>
-          <ErrorBoundary>
-            <RequireAuth requireAdmin={false}>
-              <PosApp />
-            </RequireAuth>
-          </ErrorBoundary>
-        </AppProvider>
-      </AuthProvider>
-    )
-  }
-
+  // POS, Admin, SoThuChi — dùng chung AdminShell
   return (
     <AuthProvider>
       <AppProvider>
         <ErrorBoundary>
           {path.startsWith('/admin') ? (
             <RequireAuth requireAdmin={true}>
-              <AdminShell title="Dashboard" subtitle="Tổng Quan · Hệ Thống Quản Trị">
+              <AdminShell>
                 <AdminApp />
+              </AdminShell>
+            </RequireAuth>
+          ) : path.startsWith('/pos') ? (
+            <RequireAuth requireAdmin={false}>
+              <AdminShell>
+                <PosApp />
               </AdminShell>
             </RequireAuth>
           ) : (
             <RequireAuth requireAdmin={false}>
-              <InternalApp />
+              <AdminShell>
+                <InternalApp />
+              </AdminShell>
             </RequireAuth>
           )}
         </ErrorBoundary>

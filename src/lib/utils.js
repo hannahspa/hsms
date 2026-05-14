@@ -7,6 +7,15 @@ export const parseVND = (s) => parseInt(String(s).replace(/\D/g, ''), 10) || 0
 
 export const formatCurrencyHide = () => '••••••••'
 
+export const fmtCompact = (n) => {
+  if (!n && n !== 0) return '—'
+  if (Math.abs(n) >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (Math.abs(n) >= 1_000) return (n / 1_000).toFixed(0) + 'K'
+  return String(n)
+}
+
+export const fmtFull = (n) => formatCurrency(n)
+
 export const formatDate = (isoDate) => {
   if (!isoDate) return ''
   const [y, m, d] = String(isoDate).substring(0, 10).split('-').map(Number)
@@ -72,4 +81,39 @@ export function recordPinFailure() {
 
 export function clearPinLockout() {
   localStorage.removeItem(LOCKOUT_KEY)
+}
+
+export const addDays = (iso, n) => {
+  const [y, m, d] = iso.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d + n))
+  return dt.toISOString().slice(0, 10)
+}
+
+export const monthRange = (y, m) => {
+  const days = new Date(y, m, 0).getDate()
+  const mm = String(m).padStart(2, '0')
+  return { first: `${y}-${mm}-01`, last: `${y}-${mm}-${String(days).padStart(2, '0')}`, days }
+}
+
+export const pctChange = (now, prev) => {
+  if (!prev) return null
+  return Math.round(((now - prev) / Math.abs(prev)) * 100)
+}
+
+export const daysUntil = (iso) => {
+  if (!iso) return null
+  const now = getNowVN(); now.setHours(0, 0, 0, 0)
+  const d = new Date(iso + 'T00:00:00')
+  return Math.round((d - now) / 86400000)
+}
+
+export const daysAgo = (iso) => {
+  if (!iso) return null
+  const now = getNowVN(); now.setHours(0, 0, 0, 0)
+  const d = new Date(iso + 'T00:00:00')
+  return Math.round((now - d) / 86400000)
+}
+
+export const viTriLabel = (v) => {
+  return v === 'ktv' ? 'KTV' : v === 'le_tan' ? 'Lễ Tân' : v === 'tap_vu' ? 'Tạp Vụ' : v || ''
 }

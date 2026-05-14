@@ -1,329 +1,316 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { LUX } from '../../../constants/lux'
-import { formatCurrency, formatCurrencyHide, todayISO, getNowVN, formatDateInput } from '../../../lib/utils'
-import ChiTietGiaoDich from '../tai-khoan/ChiTietGiaoDich'
+import { useAuth } from '../../../context/AuthContext'
+import { formatCurrency, todayISO, getNowVN, addDays, fmtCompact } from '../../../lib/utils'
+import I from '../../../components/shared/Icons'
 
-const HINH_THUC_LABEL = {
-  tien_mat: 'Tiền Mặt',
-  chuyen_khoan: 'Chuyển Khoản',
-  quet_the: 'Quẹt Thẻ',
-  the_tra_truoc: 'Thẻ Trả Trước',
-}
+const TABS = [
+  { k: 'ngay', l: 'Hôm nay' },
+  { k: 'tuan', l: '7 ngày' },
+  { k: 'thang', l: 'Tháng này' },
+  { k: 'nam', l: 'Năm nay' },
+]
 
-function getItemLabel(item) {
-  if (item.loai === 'thu') return `Doanh Thu ${HINH_THUC_LABEL[item.hinh_thuc] || item.hinh_thuc || ''}`
-  if (item.loai === 'chi') return item.ten_danh_muc || 'Chi Phí'
-  if (item.loai === 'chuyen_khoan') return `CK: ${item.ten_vi_tu || '?'} → ${item.ten_vi_den || '?'}`
-  return item.mo_ta || 'Giao dịch'
-}
-
-function getItemDesc(item) {
-  if (item.loai === 'thu') return item.dien_giai || 'Doanh thu'
-  if (item.loai === 'chi') return item.dien_giai || 'Chi phí'
-  if (item.loai === 'chuyen_khoan') return item.dien_giai || 'Chuyển khoản nội bộ'
-  return item.dien_giai || ''
-}
-
-function formatVNDate(isoStr) {
-  if (!isoStr) return ''
-  const [y, m, d] = isoStr.split('-')
-  const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
-  const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
-  return `${days[date.getDay()]}, ${d}/${m}/${y}`
-}
-
-function getViDesc(vi) {
-  if (vi.loai === 'tien_mat') return 'Tiền mặt tại quầy'
-  if (vi.loai === 'chuyen_khoan' || vi.loai === 'ngan_hang') return 'Ngân hàng'
-  if (vi.loai === 'quet_the') return 'Quẹt thẻ'
-  return vi.loai || ''
-}
-
-function HeaderTongQuan({ user, viList = [], stats }) {
-  const isAdmin = user?.vai_tro === 'admin'
-  const tongTS  = (viList || []).reduce((s, v) => s + (v.so_du_hien_tai || 0), 0)
-  const greeting = getNowVN().getHours() < 12 ? 'Chào buổi sáng' : getNowVN().getHours() < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
-
+// ════════════════ DONUT CHART (copy từ Demo Finance.jsx) ════════════════
+function Donut({ segments, size = 140, ring = 18 }) {
+  const r = (size - ring) / 2
+  const cx = size / 2, cy = size / 2
+  const total = segments.reduce((s, e) => s + e.v, 0) || 1
+  let acc = 0
   return (
-    <div style={{ background: LUX.heroGrad, padding: '30px 22px 50px', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: '-100px', left: '50%', transform: 'translateX(-50%)', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)', borderRadius: '50%' }} />
-
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', marginBottom: '18px' }}>
-          <img src="/logo.png" alt="Hannah Spa" style={{ width: '180px', height: 'auto', filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0,0,0,0.1))', objectFit: 'contain' }} />
-          <div style={{ color: 'rgba(255,255,255,0.95)', fontSize: '17px', fontFamily: "'Dancing Script', cursive", marginTop: '4px', letterSpacing: '0.5px' }}>Giữ Mãi Nét Thanh Xuân Của Bạn</div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '22px', position: 'relative' }}>
-          <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{isAdmin ? '👑' : '💁'}</div>
-          <div style={{ textAlign: 'left', lineHeight: '1.2' }}>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', fontFamily: LUX.fontSans }}>{greeting},</div>
-              <div style={{ color: '#FFFBF5', fontWeight: '700', fontSize: '15px', fontFamily: LUX.fontSerif }}>{user?.ten || user?.ho_ten || 'Admin'}</div>
-          </div>
-      </div>
-
-      <div style={{ textAlign: 'center', marginBottom: '25px', position: 'relative' }}>
-        <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px', fontFamily: LUX.fontSans }}>Tổng Tài Sản Hiện Có</div>
-        <div style={{ color: '#FFFBF5', fontSize: '38px', fontWeight: '700', letterSpacing: '-0.5px', textShadow: '0 2px 10px rgba(0,0,0,0.1)', fontFamily: LUX.fontSerif }}>{isAdmin ? formatCurrency(tongTS) : formatCurrencyHide()}</div>
-      </div>
-
-      <div style={{ textAlign: 'center', marginBottom: '8px', position: 'relative' }}>
-        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px', fontFamily: LUX.fontSans, letterSpacing: '1px' }}>
-          — THÁNG {stats.thangHienTai || ''} —
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', position: 'relative' }}>
-        {[
-          { label: 'Thực Thu', value: stats.thucThuMonth, color: '#A3E635' },
-          { label: 'Doanh Thu', value: stats.tongDTMonth, color: '#FDE047' },
-          { label: 'Lợi Nhuận', value: (stats.thucThuMonth || 0) - (stats.chiMonth || 0), color: ((stats.thucThuMonth || 0) - (stats.chiMonth || 0)) >= 0 ? '#A3E635' : '#FCA5A5' },
-        ].map((item, idx) => (
-            <div key={idx} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '14px', padding: '10px 4px', border: '1px solid rgba(255,255,255,0.12)', textAlign: 'center', backdropFilter: 'blur(5px)' }}>
-                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '9px', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.5px', fontFamily: LUX.fontSans }}>{item.label}</div>
-                <div style={{ color: item.color, fontWeight: '700', fontSize: '13px', fontFamily: LUX.fontMono }}>{formatCurrency(item.value)}</div>
-            </div>
-        ))}
-      </div>
-    </div>
+    <svg viewBox={`0 0 ${size} ${size}`} style={{ width: size, height: size, flexShrink: 0 }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e8dcc8" strokeWidth={ring} />
+      {segments.map((s, i) => {
+        const len = 2 * Math.PI * r
+        const part = (s.v / total) * len
+        const off = acc
+        acc += part
+        return (
+          <circle key={i} cx={cx} cy={cy} r={r} fill="none"
+            stroke={s.c} strokeWidth={ring} strokeLinecap="butt"
+            strokeDasharray={`${part} ${len - part}`}
+            strokeDashoffset={-off}
+            transform={`rotate(-90 ${cx} ${cy})`} />
+        )
+      })}
+      <text x={cx} y={cy - 4} textAnchor="middle" fontSize="11" fill="#8e7a68" fontFamily="Inter" fontWeight="600" letterSpacing="1.5">TỔNG</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="18" fill="#2a201a" fontFamily="var(--serif)" fontWeight="700">{Math.round(total / 1000)}M</text>
+    </svg>
   )
 }
 
-export default function TongQuanPage({ user, viList: extViList, onOpenForm, onOpenPheDuyet }) {
-  const [viList, setViList] = useState([])
-  const [history, setHistory] = useState([])
-  const [stats, setStats] = useState({ thucThu: 0, chi: 0, tongDoanhThu: 0, pendingCount: 0, insights: null })
-  const [loading, setLoading] = useState(true)
-  const [selectedGD, setSelectedGD] = useState(null)
-  const [refreshKey, setRefreshKey] = useState(0)
-  const isAdmin = user?.vai_tro === 'admin';
+// ════════════════ BAR CHART (copy từ Demo Finance.jsx — BarsThuChi) ════════════════
+function BarsThuChi({ data }) {
+  const days = data.length || 30
+  const max = Math.max(...data.map(d => d.in + d.out), 1) * 1.15
+  const W = 620, H = 180, padL = 30, padR = 10, padT = 10, padB = 24
+  const innerW = W - padL - padR, innerH = H - padT - padB
+  const bw = (innerW / days) * 0.6
+  const cw = innerW / days
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const today = todayISO();
-        const now = getNowVN();
-        const dayOfWeek = now.getDay();
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-        const monISO = startOfWeek.toISOString().split('T')[0];
-        const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-        const thangHienTai = now.getMonth() + 1;
-
-        const [viRes, historyRes, dtTodayRes, cpTodayRes, ycRes, dtWeekRes, cpWeekRes, dtMonthRes, cpMonthRes] = await Promise.all([
-          supabase.from('so_du_vi_thuc_te').select('*'),
-          supabase.from('lich_su_giao_dich_tong_hop').select('*').limit(8),
-          supabase.from('doanh_thu').select('so_tien, hinh_thuc').eq('ngay', today),
-          supabase.from('chi_phi').select('so_tien').eq('ngay', today),
-          supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact' }).eq('trang_thai', 'cho_duyet').in('loai_yeu_cau', ['sua', 'xoa']),
-          supabase.from('doanh_thu').select('so_tien, hinh_thuc').gte('ngay', monISO).lte('ngay', today),
-          supabase.from('chi_phi').select('so_tien, danh_muc_id').gte('ngay', monISO).lte('ngay', today),
-          supabase.from('doanh_thu').select('so_tien, hinh_thuc').gte('ngay', startOfMonth).lte('ngay', today),
-          supabase.from('chi_phi').select('so_tien').gte('ngay', startOfMonth).lte('ngay', today),
-        ]);
-        const { data: viData } = viRes;
-        const { data: historyData } = historyRes;
-        const { data: dtToday } = dtTodayRes;
-        const { data: cpToday } = cpTodayRes;
-        const pendingCount = ycRes.count || 0;
-
-        // Hôm nay — dùng cho card "Số Liệu Hôm Nay"
-        const thucThu = (dtToday || []).filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0) || 0;
-        const totalDT = (dtToday || []).reduce((s, r) => s + r.so_tien, 0) || 0;
-        const totalChi = (cpToday || []).reduce((s, r) => s + r.so_tien, 0) || 0;
-
-        // Tháng này — dùng cho 3 ô header
-        const thucThuMonth = (dtMonthRes.data || []).filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0) || 0;
-        const tongDTMonth = (dtMonthRes.data || []).reduce((s, r) => s + r.so_tien, 0) || 0;
-        const chiMonth = (cpMonthRes.data || []).reduce((s, r) => s + r.so_tien, 0) || 0;
-
-        // Tuần này — dùng cho insights
-        const thuWeek = (dtWeekRes.data || []).filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + r.so_tien, 0) || 0;
-        const chiWeek = (cpWeekRes.data || []).reduce((s, r) => s + r.so_tien, 0) || 0;
-        const loiNhuanWeek = thuWeek - chiWeek;
-
-        let insights = null;
-        if (isAdmin) {
-          const soDuThapNhat = Math.min(...(viData || []).map(v => v.so_du_hien_tai || 0));
-          const tenViThap = (viData || []).find(v => (v.so_du_hien_tai || 0) === soDuThapNhat);
-          const chiNhieuNhat = cpWeekRes.data?.length > 0
-            ? cpWeekRes.data.reduce((max, c) => c.so_tien > (max?.so_tien || 0) ? c : max, null)
-            : null;
-
-          if (chiWeek > thuWeek && thuWeek > 0) {
-            insights = { type: 'warning', icon: '⚠️', title: 'Chi tiêu vượt thu nhập tuần này',
-              detail: `Tuần này: Thu ${formatCurrency(thuWeek)} vs Chi ${formatCurrency(chiWeek)}. Lợi nhuận âm ${formatCurrency(loiNhuanWeek)}. Cần kiểm soát chi tiêu ngay!` };
-          } else if (soDuThapNhat < 1000000 && soDuThapNhat >= 0) {
-            insights = { type: 'warning', icon: '⚠️', title: `Số dư ${tenViThap?.ten || 'ví'} đang rất thấp`,
-              detail: `Chỉ còn ${formatCurrency(soDuThapNhat)}. Cân nhắc hạn chế chi tiêu từ ví này.` };
-          } else if (chiWeek > thuWeek * 0.7 && thuWeek > 0) {
-            insights = { type: 'info', icon: '💡', title: 'Chi tiêu đang ở mức cao',
-              detail: `Chiếm ${Math.round(chiWeek / thuWeek * 100)}% thu nhập tuần. Nên xem lại các khoản chi không cần thiết.` };
-          } else if (chiNhieuNhat && chiWeek > 0) {
-            insights = { type: 'success', icon: '✅', title: 'Tài chính tuần này ổn định',
-              detail: `Thu ${formatCurrency(thuWeek)} — Lời ${formatCurrency(loiNhuanWeek)}. Tiếp tục duy trì!` };
-          }
-        }
-
-        setViList(viData || []);
-        setHistory(historyData || []);
-        setStats({ thucThu, chi: totalChi, tongDoanhThu: totalDT, thucThuMonth, chiMonth, tongDTMonth, thangHienTai, pendingCount, insights, today });
-      } catch (err) { console.error(err); }
-      finally { setLoading(false); }
-    }
-    fetchData();
-  }, [refreshKey]);
-
-  if (loading) return <div style={{ padding: '60px', textAlign: 'center', color: LUX.ink3, fontSize: '13px', fontFamily: LUX.fontSans }}>✨ Chào mừng bạn đến với Hannah Spa...</div>
+  const yGrid = []
+  for (let g = 0; g <= max; g += Math.ceil(max / 5)) yGrid.push(g)
 
   return (
-    <div style={{ background: LUX.bg, minHeight: '100vh' }}>
-      <HeaderTongQuan user={user} viList={viList} stats={stats} />
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 180, display: 'block' }}>
+      {yGrid.map(g => (
+        <g key={g}>
+          <line x1={padL} x2={W - padR} y1={padT + innerH - (g / max) * innerH} y2={padT + innerH - (g / max) * innerH}
+            stroke="#e8dcc8" strokeDasharray={g === 0 ? '' : '2 3'} />
+          <text x={padL - 6} y={padT + innerH - (g / max) * innerH + 3} textAnchor="end" fontSize="9.5" fill="#8e7a68" fontFamily="Inter">
+            {g >= 1000000 ? (g / 1000000).toFixed(1) + 'M' : g >= 1000 ? (g / 1000).toFixed(0) + 'k' : g}
+          </text>
+        </g>
+      ))}
+      {data.map((d, i) => {
+        const x = padL + i * cw
+        const hi = (d.in / max) * innerH
+        const ho = (d.out / max) * innerH
+        return (
+          <g key={i}>
+            <rect x={x + cw / 2 - bw / 2} y={padT + innerH - hi} width={bw * 0.45} height={hi} fill="#6e8a5e" rx="1" />
+            <rect x={x + cw / 2 + 1} y={padT + innerH - ho} width={bw * 0.45} height={ho} fill="#b85a4a" rx="1" />
+            {i % 5 === 4 && (
+              <text x={x + cw / 2} y={H - 8} textAnchor="middle" fontSize="9" fill="#8e7a68" fontFamily="Inter">
+                {i + 1}
+              </text>
+            )}
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
 
-      <div style={{ padding: '0 16px', marginTop: '-20px', position: 'relative', zIndex: 2 }}>
-        {/* Ví tiền */}
-        <div style={{ background: LUX.surface2, borderRadius: LUX.radiusLg, padding: '18px 18px', marginBottom: '16px', boxShadow: LUX.shadow, border: `1px solid ${LUX.line}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <span style={{ fontWeight: '700', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSerif }}>Ví Tiền & Ngân Hàng</span>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#86EFAC', boxShadow: '0 0 8px #86EFAC' }} />
-          </div>
-          <div className="hsms-stagger">
-            {(viList || []).map((vi, i) => (
-              <div key={vi.id || i}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: LUX.radiusSm, background: `linear-gradient(135deg, ${LUX.surface}, ${LUX.line})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{vi.icon}</div>
-                    <div>
-                      <div style={{ fontWeight: '600', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSans }}>{vi.ten}</div>
-                      <div style={{ fontSize: '11px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{getViDesc(vi)}</div>
-                    </div>
-                  </div>
-                  <div style={{ fontWeight: '700', fontSize: '14px', color: isAdmin ? LUX.taupe : LUX.ink3, fontFamily: LUX.fontMono }}>
-                    {isAdmin ? formatCurrency(vi.so_du_hien_tai) : formatCurrencyHide()}
-                  </div>
-                </div>
-                {i < (viList.length - 1) && <div style={{ height: '1px', background: LUX.line }} />}
-              </div>
+// ════════════════ MAIN PAGE ════════════════
+export default function TongQuanPage({ onOpenForm }) {
+  const { user } = useAuth()
+  const [tab, setTab] = useState('thang')
+  const [data, setData] = useState({ tongThu: 0, tongChi: 0, barData: [], byHinhThuc: [], viList: [], history: [] })
+  const [loading, setLoading] = useState(true)
+
+  const today = todayISO()
+  const now = getNowVN()
+
+  useEffect(() => {
+    setLoading(true)
+    let start = today, end = today
+    if (tab === 'ngay') { start = today; end = today }
+    else if (tab === 'tuan') { start = addDays(today, -6); end = today }
+    else if (tab === 'thang') { start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`; end = today }
+    else if (tab === 'nam') { start = `${now.getFullYear()}-01-01`; end = today }
+
+    Promise.all([
+      supabase.from('doanh_thu').select('so_tien, hinh_thuc, ngay, dien_giai, created_at').gte('ngay', start).lte('ngay', end).order('ngay', { ascending: false }),
+      supabase.from('chi_phi').select('so_tien, hinh_thuc_thanh_toan, ngay, dien_giai, created_at').gte('ngay', start).lte('ngay', end).order('ngay', { ascending: false }),
+      supabase.from('so_du_vi_thuc_te').select('*'),
+    ]).then(([rDT, rCP, rVi]) => {
+      const dtList = rDT.data || []
+      const cpList = rCP.data || []
+      const tongThu = dtList.filter(r => r.hinh_thuc !== 'the_tra_truoc').reduce((s, r) => s + (r.so_tien || 0), 0)
+      const tongChi = cpList.reduce((s, r) => s + (r.so_tien || 0), 0)
+
+      // Tính theo hình thức cho donut chart
+      const byHT = {}
+      dtList.filter(r => r.hinh_thuc !== 'the_tra_truoc').forEach(r => {
+        const key = r.hinh_thuc === 'tien_mat' ? 'Tiền Mặt' : r.hinh_thuc === 'chuyen_khoan' ? 'CK' : r.hinh_thuc === 'quet_the' ? 'Quẹt Thẻ' : 'Khác'
+        byHT[key] = (byHT[key] || 0) + (r.so_tien || 0)
+      })
+      const byHinhThuc = Object.entries(byHT).map(([k, v]) => ({ l: k, v }))
+
+      // Dữ liệu bar chart theo ngày
+      const dayMap = {}
+      dtList.forEach(r => { const d = r.ngay; if (!dayMap[d]) dayMap[d] = { in: 0, out: 0 }; dayMap[d].in += (r.so_tien || 0) })
+      cpList.forEach(r => { const d = r.ngay; if (!dayMap[d]) dayMap[d] = { in: 0, out: 0 }; dayMap[d].out += (r.so_tien || 0) })
+      const barData = Object.entries(dayMap).sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v)
+
+      // Gộp doanh thu + chi phí thành history cho ledger, sắp xếp theo ngày + thời gian
+      const history = [
+        ...dtList.map(r => ({ ...r, loai: 'doanh_thu' })),
+        ...cpList.map(r => ({ ...r, loai: 'chi_phi' })),
+      ].sort((a, b) => {
+        if (a.ngay !== b.ngay) return b.ngay.localeCompare(a.ngay)
+        return (b.created_at || '').localeCompare(a.created_at || '')
+      })
+
+      setData({ tongThu, tongChi, barData, byHinhThuc, viList: rVi.data || [], history })
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [tab, today])
+
+  const periodLabel = tab === 'ngay' ? 'Hôm nay' : tab === 'tuan' ? '7 ngày gần nhất' : tab === 'thang' ? `Tháng ${now.getMonth() + 1}/${now.getFullYear()}` : `Năm ${now.getFullYear()}`
+
+  // Màu cho donut segments
+  const donutColors = ['#c9a96e', '#a87366', '#6e8a5e', '#8a6a6e']
+  const donutSegments = data.byHinhThuc.map((ht, i) => ({ v: ht.v, c: donutColors[i % 4], l: ht.l }))
+
+  return (
+    <div style={{ padding: '22px 24px', flex: 1, overflow: 'auto' }}>
+      {/* ── MODULE HEADER — copy chính xác từ Demo FinanceScreen ── */}
+      <div className="mod-head" style={{ marginBottom: 16 }}>
+        <div>
+          <div className="ttl">Thu Chi & Báo Cáo</div>
+          <div className="sub">{periodLabel} · Đối soát đến 23:59 · {user?.ho_ten || 'Admin'}</div>
+        </div>
+        <div className="acts">
+          <div className="subtabs">
+            {TABS.map(t => (
+              <div key={t.k} className={`st${tab === t.k ? ' active' : ''}`} onClick={() => setTab(t.k)}>{t.l}</div>
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Số Liệu Hôm Nay */}
-        {isAdmin && (
-          <div style={{ background: LUX.surface2, borderRadius: LUX.radiusLg, padding: '18px', marginBottom: '16px', boxShadow: LUX.shadow, border: `1px solid ${LUX.line}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-              <div>
-                <div style={{ fontWeight: '700', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSerif }}>Số Liệu Hôm Nay</div>
-                <div style={{ fontSize: '12px', color: LUX.taupe, fontFamily: LUX.fontSans, marginTop: '3px', fontWeight: '600' }}>
-                  {formatVNDate(stats.today)}
-                </div>
-                <div style={{ fontSize: '10px', color: LUX.ink3, fontFamily: LUX.fontSans, marginTop: '1px' }}>
-                  Múi giờ Việt Nam (GMT+7)
-                </div>
-              </div>
-              <div style={{ background: '#F0FDF4', color: '#2D7A4F', padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '700', fontFamily: LUX.fontSans, border: '1px solid #86D0A8' }}>
-                🇻🇳 VN
-              </div>
+      {/* ── WALLET CARDS — copy chính xác từ Demo ── */}
+      <div className="wallets" style={{ marginBottom: 16 }}>
+        {(data.viList || []).map(vi => (
+          <div key={vi.id} className={`wallet ${vi.loai === 'tien_mat' ? 'cash' : vi.loai === 'chuyen_khoan' ? 'bank' : 'epay'}`}>
+            <div>
+              <div className="nm">{vi.ten}{vi.loai === 'tien_mat' ? ' · Két Quầy' : vi.loai === 'chuyen_khoan' ? ' · *9821' : ' · *4567'}</div>
+              <div className="vl">{formatCurrency(vi.so_du_hien_tai)}</div>
             </div>
+            <div className="sb">Số dư cập nhật {today.split('-').reverse().join('/')}</div>
+          </div>
+        ))}
+      </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              {[
-                { label: 'Doanh Thu', value: stats.tongDoanhThu, color: '#2D7A4F', bg: '#F0FDF4', note: 'tổng thu' },
-                { label: 'Thực Thu', value: stats.thucThu, color: '#1A5276', bg: '#EBF5FB', note: 'trừ thẻ TT' },
-                { label: 'Chi Phí', value: stats.chi, color: '#C0392B', bg: '#FEF2F2', note: 'tổng chi' },
-                { label: 'Lợi Nhuận', value: stats.thucThu - stats.chi, color: (stats.thucThu - stats.chi) >= 0 ? '#2D7A4F' : '#C0392B', bg: (stats.thucThu - stats.chi) >= 0 ? '#F0FDF4' : '#FEF2F2', note: 'thu - chi' },
-              ].map((item, idx) => (
-                <div key={idx} style={{ background: item.bg, borderRadius: LUX.radiusSm, padding: '12px', border: `1px solid ${item.color}20` }}>
-                  <div style={{ fontSize: '10px', color: LUX.ink3, fontFamily: LUX.fontSans, marginBottom: '4px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</div>
-                  <div style={{ fontWeight: '800', fontSize: '15px', color: item.color, fontFamily: LUX.fontMono }}>{formatCurrency(item.value)}</div>
-                  <div style={{ fontSize: '9px', color: LUX.ink3, fontFamily: LUX.fontSans, marginTop: '2px' }}>{item.note}</div>
-                </div>
-              ))}
+      {/* ── STRIP — copy chính xác từ Demo ── */}
+      <div className="strip" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 16 }}>
+        <div className="it">
+          <div className="l">Tổng Thu {tab === 'ngay' ? 'Hôm Nay' : 'Kỳ'}</div>
+          <div className="v" style={{ color: '#426a2c' }}>{fmtCompact(data.tongThu)}</div>
+          <div className="d up">{tab === 'ngay' ? 'Hôm nay' : 'Kỳ này'}</div>
+        </div>
+        <div className="it">
+          <div className="l">Tổng Chi {tab === 'ngay' ? 'Hôm Nay' : 'Kỳ'}</div>
+          <div className="v" style={{ color: '#843a23' }}>{fmtCompact(data.tongChi)}</div>
+          <div className="d dn">{tab === 'ngay' ? 'Hôm nay' : 'Kỳ này'}</div>
+        </div>
+        <div className="it">
+          <div className="l">Lợi Nhuận Gộp</div>
+          <div className="v">{fmtCompact(data.tongThu - data.tongChi)}</div>
+          <div className="d up">Biên {data.tongThu > 0 ? Math.round((data.tongThu - data.tongChi) / data.tongThu * 100) : 0}%</div>
+        </div>
+        <div className="it">
+          <div className="l">Tổng Tài Sản</div>
+          <div className="v">{fmtCompact((data.viList || []).reduce((s, v) => s + (v.so_du_hien_tai || 0), 0))}</div>
+          <div className="d">3 ví</div>
+        </div>
+      </div>
+
+      {/* ── CHARTS ROW — copy chính xác từ Demo fin-grid ── */}
+      <div className="fin-grid" style={{ marginBottom: 16 }}>
+        {/* Bar Chart: Thu & Chi */}
+        <div className="card">
+          <div className="card-h">
+            <div className="card-t">
+              <div className="arch-i"><I.TrendUp style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+              <h3>Thu & Chi {Math.max(data.barData.length, 1)} Ngày</h3>
             </div>
+            <div className="legend">
+              <span><i style={{ background: '#6e8a5e' }} />Thu</span>
+              <span><i style={{ background: '#b85a4a' }} />Chi</span>
+            </div>
+          </div>
+          <div className="card-b">
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)' }}>Đang tải...</div>
+            ) : data.barData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 13 }}>Chưa có dữ liệu trong kỳ này.<br />Thử chọn khoảng thời gian khác.</div>
+            ) : (
+              <BarsThuChi data={data.barData} />
+            )}
+          </div>
+        </div>
 
-            {stats.tongDoanhThu === 0 && stats.chi === 0 && (
-              <div style={{ marginTop: '12px', padding: '10px 12px', background: '#FFF9F0', borderRadius: LUX.radiusSm, border: '1px solid #F0C080' }}>
-                <div style={{ fontSize: '11px', color: '#8B6914', fontFamily: LUX.fontSans, fontWeight: '600' }}>
-                  ⏳ Chưa có dữ liệu cho ngày này — Lễ Tân chưa nhập hoặc nhập sai ngày
+        {/* Donut Chart: Cơ Cấu Doanh Thu */}
+        <div className="card">
+          <div className="card-h">
+            <div className="card-t">
+              <div className="arch-i"><I.Tag style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+              <h3>Cơ Cấu Doanh Thu</h3>
+            </div>
+            <span className="chip">{tab === 'ngay' ? 'Hôm nay' : tab === 'tuan' ? '7 ngày' : tab === 'thang' ? 'Tháng' : 'Năm'}</span>
+          </div>
+          <div className="card-b">
+            {data.byHinhThuc.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 13 }}>Chưa có dữ liệu doanh thu<br />trong kỳ này.</div>
+            ) : (
+              <div className="donut-wrap">
+                <Donut size={140} ring={20} segments={donutSegments} />
+                <div className="donut-leg">
+                  {donutSegments.map((s, i) => (
+                    <div className="row" key={i}>
+                      <span className="sw" style={{ background: s.c }} />
+                      <span>{s.l}</span>
+                      <b>{fmtCompact(s.v)}</b>
+                      <span className="pct">{Math.round(s.v / (data.tongThu || 1) * 100)}%</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
           </div>
-        )}
-
-        {/* Phân tích tài chính thông minh */}
-        {isAdmin && stats.insights && (
-          <div style={{ background: stats.insights.type === 'warning' ? '#FFF9F0' : stats.insights.type === 'info' ? '#F0F4FF' : '#F0FDF4', borderRadius: LUX.radiusLg, padding: '16px 18px', marginBottom: '16px', boxShadow: LUX.shadow, border: `1px solid ${stats.insights.type === 'warning' ? '#F0C080' : stats.insights.type === 'info' ? '#B8C8E8' : '#86D0A8'}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '28px' }}>{stats.insights.icon}</span>
-              <div>
-                <div style={{ fontWeight: '700', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSans, marginBottom: '4px' }}>{stats.insights.title}</div>
-                <div style={{ fontSize: '12px', color: LUX.ink2, fontFamily: LUX.fontSans, lineHeight: '1.5' }}>{stats.insights.detail}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Thông báo yêu cầu chờ duyệt */}
-        {isAdmin && stats.pendingCount > 0 && (
-          <div onClick={onOpenPheDuyet} style={{ background: 'linear-gradient(135deg,#FFF9F0,#FFF3E0)', borderRadius: LUX.radiusLg, padding: '16px 18px', marginBottom: '16px', boxShadow: LUX.shadow, border: '2px solid #F0C080', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#F0C080', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
-              🔔
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: '700', fontSize: '14px', color: '#8B6914', fontFamily: LUX.fontSans }}>
-                {stats.pendingCount} yêu cầu chờ duyệt
-              </div>
-              <div style={{ fontSize: '12px', color: '#A68A3C', fontFamily: LUX.fontSans }}>
-                Nhân viên gửi yêu cầu sửa/xóa giao dịch — vào Admin để duyệt
-              </div>
-            </div>
-            <span style={{ color: '#8B6914', fontSize: '20px' }}>›</span>
-          </div>
-        )}
-
-        {/* Hoạt động gần đây */}
-        <div style={{ background: LUX.surface2, borderRadius: LUX.radiusLg, padding: '18px 18px', marginBottom: '110px', boxShadow: LUX.shadow, border: `1px solid ${LUX.line}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <span style={{ fontWeight: '700', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSerif }}>Hoạt Động Gần Đây</span>
-            <span style={{ color: LUX.taupe, fontSize: '11px', fontWeight: '600', fontFamily: LUX.fontSans }}>XEM TẤT CẢ</span>
-          </div>
-
-          {(history || []).map((item, i) => (
-                <div key={item.id || i}>
-                    <div onClick={() => setSelectedGD(item)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                            <div style={{ width: '38px', height: '38px', borderRadius: LUX.radiusSm, background: item.loai === 'thu' ? '#F0FDF4' : item.loai === 'chi' ? '#FEF2F2' : '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
-                                {item.loai === 'thu' ? '💰' : item.loai === 'chi' ? '💸' : '🔄'}
-                            </div>
-                            <div>
-                                <div style={{ fontWeight: '600', fontSize: '13px', color: LUX.ink, fontFamily: LUX.fontSans }}>{getItemLabel(item)}</div>
-                                <div style={{ fontSize: '10px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{getItemDesc(item)}</div>
-                            </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontWeight: '700', fontSize: '13px', color: item.loai === 'thu' ? '#2D7A4F' : item.loai === 'chi' ? '#C0392B' : '#6C3483', fontFamily: LUX.fontMono }}>
-                                {item.loai === 'chi' ? '-' : item.loai === 'thu' ? '+' : ''} {formatCurrency(item.so_tien)}
-                            </div>
-                            <div style={{ fontSize: '9px', color: LUX.ink3, fontFamily: LUX.fontSans }}>
-                                {item.ngay ? (() => { const [y,m,d]=item.ngay.split('-'); return `${d}/${m}` })() : ''}
-                                {item.created_at ? ' · ' + new Date(item.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }) : ''}
-                            </div>
-                        </div>
-                    </div>
-                    {i < (history.length - 1) && <div style={{ height: '1px', background: LUX.line }} />}
-                </div>
-            ))}
         </div>
       </div>
 
-      {selectedGD && (
-        <ChiTietGiaoDich
-          giaoDich={selectedGD}
-          user={user}
-          onBack={() => setSelectedGD(null)}
-          onUpdated={() => { setSelectedGD(null); setRefreshKey(k => k + 1) }}
-        />
-      )}
+      {/* ── LỊCH SỬ GIAO DỊCH — phân loại theo ngày, nguồn tiền ── */}
+      <div className="card">
+        <div className="card-h">
+          <div className="card-t">
+            <div className="arch-i"><I.Receipt style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+            <h3>Lịch Sử Giao Dịch</h3>
+            <span className="sub">{data.history.length} giao dịch</span>
+          </div>
+          <div className="card-actions">
+            <button className="chip active">Tất cả</button>
+            <button className="chip">Thu</button>
+            <button className="chip">Chi</button>
+          </div>
+        </div>
+        <div style={{ padding: 0 }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--ink3)' }}>Đang tải...</div>
+          ) : data.history.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--ink3)' }}>Chưa có giao dịch trong kỳ</div>
+          ) : (
+            <table className="ledger">
+              <thead><tr>
+                <th>Ngày</th>
+                <th>Loại</th>
+                <th>Diễn Giải</th>
+                <th>Nguồn Tiền</th>
+                <th className="r">Số Tiền</th>
+              </tr></thead>
+              <tbody>
+                {data.history.slice(0, 25).map((tx, i) => {
+                  const isThu = tx.loai === 'doanh_thu'
+                  const isChi = tx.loai === 'chi_phi'
+                  const tagClass = isThu ? 'sv' : 'ut'
+                  const tagLabel = isThu ? 'Doanh Thu' : 'Chi Phí'
+                  // Nguồn tiền: với doanh thu là hinh_thuc, với chi phí là hinh_thuc_thanh_toan
+                  const ptKey = isThu ? tx.hinh_thuc : tx.hinh_thuc_thanh_toan
+                  const methodLabel = ptKey === 'tien_mat' ? 'Tiền Mặt' : ptKey === 'chuyen_khoan' ? 'Chuyển Khoản' : ptKey === 'quet_the' ? 'Quẹt Thẻ' : ptKey === 'the_tra_truoc' ? 'Thẻ Trả Trước' : '—'
+                  const methodClass = ptKey === 'tien_mat' ? 'cash' : ptKey === 'chuyen_khoan' ? 'transfer' : ptKey === 'quet_the' ? 'card' : 'pkg'
+                  const amtClass = isChi ? 'amt out' : 'amt in'
+                  const amtPrefix = isChi ? '−' : '+'
+                  return (
+                    <tr key={i}>
+                      <td style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: 'var(--ink3)', fontSize: 12 }}>
+                        {tx.ngay ? tx.ngay.split('-').reverse().join('/') : '—'}
+                      </td>
+                      <td><span className={`tag ${tagClass}`}>{tagLabel}</span></td>
+                      <td className="nm">{tx.dien_giai || tx.mo_ta || 'Giao dịch'}</td>
+                      <td><span className={`method ${methodClass}`}>{methodLabel}</span></td>
+                      <td className={amtClass}>{amtPrefix}{formatCurrency(tx.so_tien)}đ</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

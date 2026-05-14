@@ -1,34 +1,75 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { LUX } from '../../../../constants/lux'
 import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 import ImageUpload from '../../../../components/shared/ImageUpload'
+import I from '../../../../components/shared/Icons'
+
+const S = {
+  overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'flex-end', zIndex: 500 },
+  sheet: { background: 'var(--surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 520, margin: '0 auto', maxHeight: '92vh', overflowY: 'auto', animation: 'slideUp .3s ease' },
+  handle: { display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
+  handleBar: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--line2)' },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 16px' },
+  headerLeft: { display: 'flex', alignItems: 'center', gap: 10 },
+  iconBox: (bg) => ({ width: 36, height: 36, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }),
+  title: { fontWeight: 700, fontSize: 16, color: 'var(--ink)', fontFamily: 'var(--serif)' },
+  subtitle: { fontSize: 11, color: 'var(--ink3)', fontFamily: 'var(--sans)' },
+  closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--ink3)', padding: 4, lineHeight: 1 },
+  body: { padding: '0 16px 32px' },
+  amountCard: { background: 'var(--surface2)', borderRadius: 'var(--r)', padding: 20, marginBottom: 12, boxShadow: 'var(--sh-1)', border: '1px solid var(--line)', textAlign: 'center' },
+  amountLabel: { fontSize: 12, color: 'var(--ink3)', marginBottom: 8, letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'var(--sans)' },
+  amountInput: (hasVal) => ({ width: '100%', border: 'none', outline: 'none', fontSize: 36, fontWeight: 700, textAlign: 'center', background: 'transparent', color: hasVal ? '#C0392B' : 'var(--line2)', fontFamily: 'var(--serif)' }),
+  amountDisplay: { fontSize: 14, color: '#C0392B', fontWeight: 600, marginTop: 4, fontFamily: 'var(--sans)' },
+  section: { background: 'var(--surface2)', borderRadius: 'var(--r)', marginBottom: 12, boxShadow: 'var(--sh-1)', border: '1px solid var(--line)', overflow: 'hidden' },
+  row: { display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface2)', borderRadius: 'var(--r)', padding: '16px 20px', marginBottom: 12, boxShadow: 'var(--sh-1)', border: '1px solid var(--line)', cursor: 'pointer' },
+  rowWarn: (hasVal) => ({ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface2)', borderRadius: 'var(--r)', padding: '16px 20px', marginBottom: 12, boxShadow: 'var(--sh-1)', border: hasVal ? '1px solid var(--line)' : '2px solid #E57373', cursor: 'pointer' }),
+  rowIcon: (bg) => ({ width: 40, height: 40, borderRadius: 11, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }),
+  rowContent: { flex: 1, textAlign: 'left' },
+  rowLabel: { fontSize: 11, color: 'var(--ink3)', marginBottom: 2, fontFamily: 'var(--sans)' },
+  rowValue: (hasVal, color) => ({ fontWeight: 600, fontSize: 14, color: hasVal ? (color || 'var(--ink)') : 'var(--ink3)', fontFamily: 'var(--sans)' }),
+  arrow: { color: 'var(--champagne)', fontSize: 18 },
+  check: { color: 'var(--espresso)', fontSize: 18 },
+  textareaRow: { display: 'flex', alignItems: 'flex-start', gap: 12 },
+  saveBtn: (saving) => ({ width: '100%', padding: 16, background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#E57373,#C0392B)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 6px 20px rgba(192,57,43,0.35)', transition: 'all .2s', fontFamily: 'var(--sans)' }),
+  // Pick list styles
+  pickSheet: { background: 'var(--surface2)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 520, margin: '0 auto', padding: '24px 20px 40px', maxHeight: '80vh', overflowY: 'auto' },
+  pickHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  pickTitle: { fontSize: 17, fontWeight: 700, color: 'var(--ink)', fontFamily: 'var(--serif)' },
+  pickItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '14px 0', background: 'none', border: 'none', cursor: 'pointer' },
+  pickItemLeft: { display: 'flex', alignItems: 'center', gap: 12 },
+  pickItemIcon: (bg) => ({ width: 44, height: 44, borderRadius: 13, background: bg || '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }),
+  pickItemTitle: { fontWeight: 600, fontSize: 15, color: 'var(--ink)', fontFamily: 'var(--sans)' },
+  pickItemSub: { fontSize: 11, color: 'var(--ink3)', marginTop: 2, fontFamily: 'var(--sans)' },
+  divider: { height: 1, background: 'var(--line)' },
+  backBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--ink3)', padding: 0 },
+  pickHeaderLeft: { display: 'flex', alignItems: 'center', gap: 12 },
+  avatarSm: { width: 44, height: 44, borderRadius: '50%', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#C0392B', fontFamily: 'var(--sans)' },
+}
 
 export default function FormChiPhi({ viList, user, onClose, onSaved }) {
-  const [soTien,       setSoTien]       = useState('')
-  const [nhomId,       setNhomId]       = useState(null)
-  const [hangMucId,    setHangMucId]    = useState(null)
-  const [viId,         setViId]         = useState(null)
-  const [nguoiChiId,   setNguoiChiId]   = useState(null)
-  const [ngay,         setNgay]         = useState(todayISO())
-  const [dienGiai,     setDienGiai]     = useState('')
+  const [soTien, setSoTien] = useState('')
+  const [nhomId, setNhomId] = useState(null)
+  const [hangMucId, setHangMucId] = useState(null)
+  const [viId, setViId] = useState(null)
+  const [nguoiChiId, setNguoiChiId] = useState(null)
+  const [ngay, setNgay] = useState(todayISO())
+  const [dienGiai, setDienGiai] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [step, setStep] = useState('main')
+  const [nhomList, setNhomList] = useState([])
+  const [hangMucList, setHangMucList] = useState([])
+  const [nhanVienList, setNhanVienList] = useState([])
+  const [chungTuUrl, setChungTuUrl] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [showLich, setShowLich] = useState(false)
 
-  // Mapping ví → hinh_thuc_thanh_toan (theo tên ví, không phụ thuộc vi.loai)
   const getHinhThucFromVi = (vi) => {
     if (!vi) return 'tien_mat'
     if (vi.ten === 'MB Bank') return 'chuyen_khoan'
     if (vi.ten === 'TP Bank') return 'quet_the'
     return 'tien_mat'
   }
-  const [saving,       setSaving]       = useState(false)
-  const [step,         setStep]         = useState('main')
-  const [nhomList,     setNhomList]     = useState([])
-  const [hangMucList,  setHangMucList]  = useState([])
-  const [nhanVienList, setNhanVienList] = useState([])
-  const [chungTuUrl,   setChungTuUrl]   = useState(null)
-  const [loading,      setLoading]      = useState(true)
-  const [showLich,     setShowLich]     = useState(false)
 
   useEffect(() => {
     async function loadDanhMuc() {
@@ -37,7 +78,6 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
         .select('*')
         .eq('is_active', true)
         .order('thu_tu')
-
       if (!error && data) {
         setNhomList(data.filter(d => d.parent_id === null))
         setHangMucList(data.filter(d => d.parent_id !== null))
@@ -45,7 +85,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
       setLoading(false)
     }
     loadDanhMuc()
-  },[])
+  }, [])
 
   useEffect(() => {
     async function loadNhanVien() {
@@ -59,11 +99,11 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
     loadNhanVien()
   }, [])
 
-  const nhomSelected      = nhomList.find(n => n.id === nhomId)
-  const nguoiChiSelected  = nhanVienList.find(n => n.id === nguoiChiId)
+  const nhomSelected = nhomList.find(n => n.id === nhomId)
+  const nguoiChiSelected = nhanVienList.find(n => n.id === nguoiChiId)
   const hangMucSelected = hangMucList.find(h => h.id === hangMucId)
-  const viSelected      = viList.find(v => v.id === viId)
-  const hangMucCuaNhom  = hangMucList.filter(h => h.parent_id === nhomId)
+  const viSelected = viList.find(v => v.id === viId)
+  const hangMucCuaNhom = hangMucList.filter(h => h.parent_id === nhomId)
 
   const chonNhom = (nhom) => {
     setNhomId(nhom.id)
@@ -74,11 +114,9 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
   const handleSave = async () => {
     if (!soTien || parseInt(soTien) <= 0) return onSaved('error', 'Vui lòng nhập số tiền!')
     if (!hangMucId) return onSaved('error', 'Vui lòng chọn hạng mục chi!')
-    if (!viId)      return onSaved('error', 'Vui lòng chọn nguồn tiền chi (Tiền Mặt/MB Bank/TP Bank)!')
+    if (!viId) return onSaved('error', 'Vui lòng chọn nguồn tiền chi (Tiền Mặt/MB Bank/TP Bank)!')
     if (!dienGiai?.trim()) return onSaved('error', 'Vui lòng nhập diễn giải!')
 
-    // Tiền Mặt được phép âm tạm thời — quy trình nộp quỹ hôm sau sẽ bù lại phần âm
-    // Chỉ kiểm tra số dư với MB Bank và TP Bank (tài khoản ngân hàng không thể âm)
     const isTienMat = viSelected?.ten === 'Tiền Mặt'
     if (user?.vai_tro !== 'admin' && !isTienMat) {
       const { data: freshVi } = await supabase
@@ -114,36 +152,34 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
     }
   }
 
-  const overlayBg = 'rgba(42,32,26,0.55)'
+  const viTriLabel = (vt) => vt === 'le_tan' ? 'Lễ Tân' : vt === 'ktv' ? 'KTV' : vt === 'tap_vu' ? 'Tạp Vụ' : vt
 
   // ── Chọn nhóm ──
   if (step === 'chon_nhom') {
     return (
-      <div style={{ position: 'fixed', inset: 0, backgroundColor: overlayBg, display: 'flex', alignItems: 'flex-end', zIndex: 500 }}>
-        <div style={{ background: LUX.surface2, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '520px', margin: '0 auto', padding: '24px 20px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '17px', fontWeight: '700', color: LUX.ink, fontFamily: LUX.fontSerif }}>Chọn Nhóm Chi</h3>
-            <button onClick={() => setStep('main')} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: LUX.ink3 }}>✕</button>
+      <div style={S.overlay}>
+        <div style={S.pickSheet}>
+          <div style={S.pickHeader}>
+            <h3 style={S.pickTitle}>Chọn Nhóm Chi</h3>
+            <button style={S.closeBtn} onClick={() => setStep('main')}>&times;</button>
           </div>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: LUX.ink3, fontFamily: LUX.fontSans }}>Đang tải dữ liệu...</div>
+            <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink3)', fontFamily: 'var(--sans)' }}>Đang tải dữ liệu...</div>
           ) : nhomList.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: LUX.ink3, fontSize: '13px', fontFamily: LUX.fontSans }}>Chưa có nhóm nào. Vui lòng thêm ở Cài Đặt.</div>
+            <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink3)', fontSize: 13, fontFamily: 'var(--sans)' }}>Chưa có nhóm nào. Vui lòng thêm ở Cài Đặt.</div>
           ) : nhomList.map((nhom, i) => (
             <div key={nhom.id}>
-              <button onClick={() => chonNhom(nhom)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '14px 0', background: 'none', border: 'none', cursor: 'pointer' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '13px', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>{nhom.icon || '📁'}</div>
+              <button onClick={() => chonNhom(nhom)} style={S.pickItem}>
+                <div style={S.pickItemLeft}>
+                  <div style={S.pickItemIcon('#FEF2F2')}>{nhom.icon || <I.Tag style={{ width: 20, height: 20, color: '#C0392B' }} />}</div>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontWeight: '600', fontSize: '15px', color: LUX.ink, fontFamily: LUX.fontSans }}>{nhom.ten}</div>
-                    <div style={{ fontSize: '11px', color: LUX.ink3, marginTop: '2px', fontFamily: LUX.fontSans }}>
-                      {hangMucList.filter(h => h.parent_id === nhom.id).length} hạng mục
-                    </div>
+                    <div style={S.pickItemTitle}>{nhom.ten}</div>
+                    <div style={S.pickItemSub}>{hangMucList.filter(h => h.parent_id === nhom.id).length} hạng mục</div>
                   </div>
                 </div>
-                <span style={{ color: LUX.gold, fontSize: '18px' }}>›</span>
+                <span style={S.arrow}>&rsaquo;</span>
               </button>
-              {i < nhomList.length - 1 && <div style={{ height: '1px', background: LUX.line }} />}
+              {i < nhomList.length - 1 && <div style={S.divider} />}
             </div>
           ))}
         </div>
@@ -154,27 +190,30 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
   // ── Chọn hạng mục ──
   if (step === 'chon_hang_muc') {
     return (
-      <div style={{ position: 'fixed', inset: 0, backgroundColor: overlayBg, display: 'flex', alignItems: 'flex-end', zIndex: 500 }}>
-        <div style={{ background: LUX.surface2, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '520px', margin: '0 auto', padding: '24px 20px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            <button onClick={() => setStep('chon_nhom')} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: LUX.ink3 }}>‹</button>
-            <div>
-              <h3 style={{ fontSize: '17px', fontWeight: '700', color: LUX.ink, fontFamily: LUX.fontSerif }}>Chọn Hạng Mục</h3>
-              <div style={{ fontSize: '12px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{nhomSelected?.icon} {nhomSelected?.ten}</div>
+      <div style={S.overlay}>
+        <div style={S.pickSheet}>
+          <div style={S.pickHeader}>
+            <div style={S.pickHeaderLeft}>
+              <button style={S.backBtn} onClick={() => setStep('chon_nhom')}>&lsaquo;</button>
+              <div>
+                <h3 style={S.pickTitle}>Chọn Hạng Mục</h3>
+                <div style={{ fontSize: 12, color: 'var(--ink3)', fontFamily: 'var(--sans)' }}>{nhomSelected?.icon} {nhomSelected?.ten}</div>
+              </div>
             </div>
+            <button style={S.closeBtn} onClick={() => setStep('main')}>&times;</button>
           </div>
           {hangMucCuaNhom.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: LUX.ink3, fontSize: '13px', fontFamily: LUX.fontSans }}>Nhóm này chưa có hạng mục nào.</div>
+            <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink3)', fontSize: 13, fontFamily: 'var(--sans)' }}>Nhóm này chưa có hạng mục nào.</div>
           ) : hangMucCuaNhom.map((hm, i) => (
             <div key={hm.id}>
-              <button onClick={() => { setHangMucId(hm.id); setStep('main') }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '14px 0', background: 'none', border: 'none', cursor: 'pointer' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '13px', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{hm.icon || '🏷️'}</div>
-                  <div style={{ fontWeight: '600', fontSize: '14px', color: LUX.ink, fontFamily: LUX.fontSans }}>{hm.ten}</div>
+              <button onClick={() => { setHangMucId(hm.id); setStep('main') }} style={S.pickItem}>
+                <div style={S.pickItemLeft}>
+                  <div style={S.pickItemIcon('#FEF2F2')}>{hm.icon || <I.Tag style={{ width: 20, height: 20, color: '#C0392B' }} />}</div>
+                  <div style={S.pickItemTitle}>{hm.ten}</div>
                 </div>
-                {hangMucId === hm.id && <span style={{ color: LUX.taupe, fontSize: '18px' }}>✓</span>}
+                {hangMucId === hm.id && <span style={S.check}>&#10003;</span>}
               </button>
-              {i < hangMucCuaNhom.length - 1 && <div style={{ height: '1px', background: LUX.line }} />}
+              {i < hangMucCuaNhom.length - 1 && <div style={S.divider} />}
             </div>
           ))}
         </div>
@@ -185,25 +224,29 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
   // ── Chọn ví ──
   if (step === 'chon_vi') {
     return (
-      <div style={{ position: 'fixed', inset: 0, backgroundColor: overlayBg, display: 'flex', alignItems: 'flex-end', zIndex: 500 }}>
-        <div style={{ background: LUX.surface2, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '520px', margin: '0 auto', padding: '24px 20px 40px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '17px', fontWeight: '700', color: LUX.ink, fontFamily: LUX.fontSerif }}>Chọn Nguồn Tiền Chi</h3>
-            <button onClick={() => setStep('main')} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: LUX.ink3 }}>✕</button>
+      <div style={S.overlay}>
+        <div style={S.pickSheet}>
+          <div style={S.pickHeader}>
+            <h3 style={S.pickTitle}>Chọn Nguồn Tiền Chi</h3>
+            <button style={S.closeBtn} onClick={() => setStep('main')}>&times;</button>
           </div>
           {viList.map((vi, i) => (
             <div key={vi.id}>
-              <button onClick={() => { setViId(vi.id); setStep('main') }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '14px 0', background: 'none', border: 'none', cursor: 'pointer' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '13px', background: `linear-gradient(135deg,${LUX.surface},${LUX.line})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>{vi.icon}</div>
+              <button onClick={() => { setViId(vi.id); setStep('main') }} style={S.pickItem}>
+                <div style={S.pickItemLeft}>
+                  <div style={S.pickItemIcon(`linear-gradient(135deg,var(--surface),var(--line))`)}>
+                    {vi.loai === 'tien_mat' ? <I.Coin style={{ width: 22, height: 22, color: '#3E5A32' }} /> :
+                     vi.loai === 'chuyen_khoan' ? <I.Bank style={{ width: 22, height: 22, color: '#1A4F70' }} /> :
+                     <I.Wallet style={{ width: 22, height: 22, color: '#5A3E22' }} />}
+                  </div>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontWeight: '600', fontSize: '15px', color: LUX.ink, fontFamily: LUX.fontSans }}>{vi.ten}</div>
-                    <div style={{ fontSize: '11px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{user?.vai_tro === 'admin' ? formatCurrency(vi.so_du_hien_tai) : '••••••'}</div>
+                    <div style={S.pickItemTitle}>{vi.ten}</div>
+                    <div style={S.pickItemSub}>{user?.vai_tro === 'admin' ? formatCurrency(vi.so_du_hien_tai) : '••••••'}</div>
                   </div>
                 </div>
-                {viId === vi.id && <span style={{ color: LUX.taupe, fontSize: '20px' }}>✓</span>}
+                {viId === vi.id && <span style={S.check}>&#10003;</span>}
               </button>
-              {i < viList.length - 1 && <div style={{ height: '1px', background: LUX.line }} />}
+              {i < viList.length - 1 && <div style={S.divider} />}
             </div>
           ))}
         </div>
@@ -214,29 +257,27 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
   // ── Chọn người chi ──
   if (step === 'chon_nguoi_chi') {
     return (
-      <div style={{ position: 'fixed', inset: 0, backgroundColor: overlayBg, display: 'flex', alignItems: 'flex-end', zIndex: 500 }}>
-        <div style={{ background: LUX.surface2, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '520px', margin: '0 auto', padding: '24px 20px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '17px', fontWeight: '700', color: LUX.ink, fontFamily: LUX.fontSerif }}>Người Chi Tiền</h3>
-            <button onClick={() => setStep('main')} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: LUX.ink3 }}>✕</button>
+      <div style={S.overlay}>
+        <div style={S.pickSheet}>
+          <div style={S.pickHeader}>
+            <h3 style={S.pickTitle}>Người Chi Tiền</h3>
+            <button style={S.closeBtn} onClick={() => setStep('main')}>&times;</button>
           </div>
           {nhanVienList.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: LUX.ink3, fontSize: '13px', fontFamily: LUX.fontSans }}>Đang tải danh sách nhân viên...</div>
+            <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink3)', fontSize: 13, fontFamily: 'var(--sans)' }}>Đang tải danh sách nhân viên...</div>
           ) : nhanVienList.map((nv, i) => (
             <div key={nv.id}>
-              <button onClick={() => { setNguoiChiId(nv.id); setStep('main') }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '14px 0', background: 'none', border: 'none', cursor: 'pointer' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '700', color: '#C0392B', fontFamily: LUX.fontSans }}>
-                    {nv.ho_ten?.charAt(0) || '?'}
-                  </div>
+              <button onClick={() => { setNguoiChiId(nv.id); setStep('main') }} style={S.pickItem}>
+                <div style={S.pickItemLeft}>
+                  <div style={S.avatarSm}>{nv.ho_ten?.charAt(0) || '?'}</div>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontWeight: '600', fontSize: '15px', color: LUX.ink, fontFamily: LUX.fontSans }}>{nv.ho_ten}</div>
-                    <div style={{ fontSize: '12px', color: LUX.ink3, fontFamily: LUX.fontSans }}>{nv.vi_tri === 'le_tan' ? 'Lễ Tân' : nv.vi_tri === 'ktv' ? 'KTV' : nv.vi_tri === 'tap_vu' ? 'Tạp Vụ' : nv.vi_tri}</div>
+                    <div style={S.pickItemTitle}>{nv.ho_ten}</div>
+                    <div style={S.pickItemSub}>{viTriLabel(nv.vi_tri)}</div>
                   </div>
                 </div>
-                {nguoiChiId === nv.id && <span style={{ color: LUX.taupe, fontSize: '20px' }}>✓</span>}
+                {nguoiChiId === nv.id && <span style={S.check}>&#10003;</span>}
               </button>
-              {i < nhanVienList.length - 1 && <div style={{ height: '1px', background: LUX.line }} />}
+              {i < nhanVienList.length - 1 && <div style={S.divider} />}
             </div>
           ))}
         </div>
@@ -246,87 +287,111 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
 
   // ── Form chính ──
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: overlayBg, display: 'flex', alignItems: 'flex-end', zIndex: 500 }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <DatePicker open={showLich} selectedDate={ngay} onClose={() => setShowLich(false)} onConfirm={(d) => { setNgay(d); setShowLich(false) }} />
 
-      <DatePicker open={showLich} selectedDate={ngay} onClose={() => setShowLich(false)} onConfirm={(newDate) => { setNgay(newDate); setShowLich(false); }} />
-
-      <div style={{ background: LUX.surface, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '520px', margin: '0 auto', maxHeight: '92vh', overflowY: 'auto', animation: 'slideUp 0.3s ease' }}>
+      <div style={S.sheet}>
         <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '12px', paddingBottom: '4px' }}><div style={{ width: '40px', height: '4px', borderRadius: '2px', backgroundColor: LUX.line2 }} /></div>
+        <div style={S.handle}><div style={S.handleBar} /></div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>💸</div>
-            <div><div style={{ fontWeight: '700', fontSize: '16px', color: LUX.ink, fontFamily: LUX.fontSerif }}>Chi Phí</div><div style={{ fontSize: '11px', color: LUX.ink3, fontFamily: LUX.fontSans }}>Nhập chi phí</div></div>
+        <div style={S.header}>
+          <div style={S.headerLeft}>
+            <div style={S.iconBox('#FEF2F2')}><I.Receipt style={{ width: 18, height: 18, color: '#C0392B' }} /></div>
+            <div>
+              <div style={S.title}>Chi Phí</div>
+              <div style={S.subtitle}>Nhập chi phí</div>
+            </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: LUX.ink3 }}>✕</button>
+          <button style={S.closeBtn} onClick={onClose}>&times;</button>
         </div>
 
-        <div style={{ padding: '0 16px 32px' }}>
-          <div style={{ background: LUX.surface2, borderRadius: LUX.radius, padding: '20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`, textAlign: 'center' }}>
-            <div style={{ fontSize: '12px', color: LUX.ink3, marginBottom: '8px', letterSpacing: '1px', textTransform: 'uppercase', fontFamily: LUX.fontSans }}>Số Tiền</div>
-            <input type="number" placeholder="0" value={soTien} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={{ width: '100%', border: 'none', outline: 'none', fontSize: '36px', fontWeight: '700', textAlign: 'center', background: 'transparent', color: soTien ? '#C0392B' : LUX.line2, fontFamily: LUX.fontMono }} />
-            {soTien && <div style={{ fontSize: '14px', color: '#C0392B', fontWeight: '600', marginTop: '4px', fontFamily: LUX.fontSans }}>{new Intl.NumberFormat('vi-VN').format(parseInt(soTien))} đ</div>}
+        <div style={S.body}>
+          <div style={S.amountCard}>
+            <div style={S.amountLabel}>Số Tiền</div>
+            <input type="number" placeholder="0" value={soTien} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={S.amountInput(!!soTien)} />
+            {soTien ? <div style={S.amountDisplay}>{new Intl.NumberFormat('vi-VN').format(parseInt(soTien))} đ</div> : null}
           </div>
 
-          <div style={{ background: LUX.surface2, borderRadius: LUX.radius, marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`, overflow: 'hidden' }}>
-            <button onClick={() => setStep('chon_nhom')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '16px 20px', background: 'none', border: 'none', borderBottom: nhomId ? `1px solid ${LUX.line}` : 'none', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{nhomSelected ? (nhomSelected.icon||'📂') : '📂'}</div>
-                <div style={{ textAlign: 'left' }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Nhóm Chi</div><div style={{ fontWeight: '600', fontSize: '14px', color: nhomSelected ? '#C0392B' : LUX.ink3, fontFamily: LUX.fontSans }}>{nhomSelected ? nhomSelected.ten : 'Chọn nhóm chi phí'}</div></div>
+          {/* Nhóm + Hạng mục */}
+          <div style={S.section}>
+            <button onClick={() => setStep('chon_nhom')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '16px 20px', background: 'none', border: 'none', borderBottom: nhomId ? '1px solid var(--line)' : 'none', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={S.rowIcon('#FEF2F2')}>{nhomSelected ? (nhomSelected.icon || <I.Tag style={{ width: 20, height: 20, color: '#C0392B' }} />) : <I.Tag style={{ width: 20, height: 20, color: 'var(--ink3)' }} />}</div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={S.rowLabel}>Nhóm Chi</div>
+                  <div style={S.rowValue(!!nhomSelected, '#C0392B')}>{nhomSelected ? nhomSelected.ten : 'Chọn nhóm chi phí'}</div>
+                </div>
               </div>
-              <span style={{ color: LUX.gold, fontSize: '18px' }}>›</span>
+              <span style={S.arrow}>&rsaquo;</span>
             </button>
 
             {nhomId && (
-              <button onClick={() => setStep('chon_hang_muc')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '16px 20px', background: hangMucId ? LUX.surface : 'none', border: 'none', cursor: 'pointer' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{hangMucSelected ? (hangMucSelected.icon||'🏷️') : '🏷️'}</div>
-                  <div style={{ textAlign: 'left' }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Hạng Mục</div><div style={{ fontWeight: '600', fontSize: '14px', color: hangMucSelected ? LUX.ink : LUX.ink3, fontFamily: LUX.fontSans }}>{hangMucSelected ? hangMucSelected.ten : 'Chọn hạng mục'}</div></div>
+              <button onClick={() => setStep('chon_hang_muc')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '16px 20px', background: hangMucId ? 'var(--surface)' : 'none', border: 'none', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={S.rowIcon('#FEF2F2')}>{hangMucSelected ? (hangMucSelected.icon || <I.Tag style={{ width: 20, height: 20, color: '#C0392B' }} />) : <I.Tag style={{ width: 20, height: 20, color: 'var(--ink3)' }} />}</div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={S.rowLabel}>Hạng Mục</div>
+                    <div style={S.rowValue(!!hangMucSelected)}>{hangMucSelected ? hangMucSelected.ten : 'Chọn hạng mục'}</div>
+                  </div>
                 </div>
-                {hangMucId ? <span style={{ color: LUX.taupe, fontSize: '18px' }}>✓</span> : <span style={{ color: LUX.gold, fontSize: '18px' }}>›</span>}
+                {hangMucId ? <span style={S.check}>&#10003;</span> : <span style={S.arrow}>&rsaquo;</span>}
               </button>
             )}
           </div>
 
-          <button onClick={() => setStep('chon_vi')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: viId ? `1px solid ${LUX.line}` : '2px solid #E57373', cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: `linear-gradient(135deg,${LUX.surface},${LUX.line})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{viSelected ? viSelected.icon : '⚠️'}</div>
-              <div style={{ textAlign: 'left' }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Nguồn Tiền Chi <span style={{color:'#C0392B'}}>*</span></div><div style={{ fontWeight: '600', fontSize: '14px', color: viSelected ? LUX.ink : '#C0392B', fontFamily: LUX.fontSans }}>{viSelected ? viSelected.ten + ' (' + getHinhThucFromVi(viSelected).replace('_',' ') + ')' : 'Bắt buộc chọn nguồn tiền!'}</div></div>
+          {/* Nguồn tiền chi */}
+          <button onClick={() => setStep('chon_vi')} style={S.rowWarn(!!viId)}>
+            <div style={S.rowIcon('linear-gradient(135deg,var(--surface),var(--line))')}>
+              {viSelected ? (
+                viSelected.loai === 'tien_mat' ? <I.Coin style={{ width: 22, height: 22, color: '#3E5A32' }} /> :
+                viSelected.loai === 'chuyen_khoan' ? <I.Bank style={{ width: 22, height: 22, color: '#1A4F70' }} /> :
+                <I.Wallet style={{ width: 22, height: 22, color: '#5A3E22' }} />
+              ) : <I.Wallet style={{ width: 20, height: 20, color: '#C0392B' }} />}
             </div>
-            <span style={{ color: LUX.gold, fontSize: '18px' }}>›</span>
-          </button>
-
-          <button onClick={() => setStep('chon_nguoi_chi')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`, cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '700', color: '#C0392B', fontFamily: LUX.fontSans }}>
-                {nguoiChiSelected ? nguoiChiSelected.ho_ten?.charAt(0) : '👤'}
+            <div style={S.rowContent}>
+              <div style={S.rowLabel}>Nguồn Tiền Chi <span style={{ color: '#C0392B' }}>*</span></div>
+              <div style={S.rowValue(!!viSelected, viSelected ? 'var(--ink)' : '#C0392B')}>
+                {viSelected ? `${viSelected.ten} (${getHinhThucFromVi(viSelected).replace('_', ' ')})` : 'Bắt buộc chọn nguồn tiền!'}
               </div>
-              <div style={{ textAlign: 'left' }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Người Chi</div><div style={{ fontWeight: '600', fontSize: '14px', color: nguoiChiSelected ? LUX.ink : LUX.ink3, fontFamily: LUX.fontSans }}>{nguoiChiSelected ? nguoiChiSelected.ho_ten : 'Chọn người chi'}</div></div>
             </div>
-            <span style={{ color: LUX.gold, fontSize: '18px' }}>›</span>
+            <span style={S.arrow}>&rsaquo;</span>
           </button>
 
-          <div onClick={() => setShowLich(true)} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '12px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}`, cursor: 'pointer' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>📅</div>
-            <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '2px', fontFamily: LUX.fontSans }}>Ngày Chi</div><div style={{ fontSize: '15px', fontWeight: '600', color: LUX.ink, fontFamily: LUX.fontSans }}>{formatDateInput(ngay)}</div></div>
-            <div style={{ fontSize: '18px', color: LUX.ink3 }}>›</div>
+          {/* Người chi */}
+          <button onClick={() => setStep('chon_nguoi_chi')} style={S.row}>
+            <div style={S.avatarSm}>{nguoiChiSelected ? nguoiChiSelected.ho_ten?.charAt(0) : <I.Users style={{ width: 18, height: 18, color: '#C0392B' }} />}</div>
+            <div style={S.rowContent}>
+              <div style={S.rowLabel}>Người Chi</div>
+              <div style={S.rowValue(!!nguoiChiSelected)}>{nguoiChiSelected ? nguoiChiSelected.ho_ten : 'Chọn người chi'}</div>
+            </div>
+            <span style={S.arrow}>&rsaquo;</span>
+          </button>
+
+          {/* Ngày */}
+          <div style={S.row} onClick={() => setShowLich(true)}>
+            <div style={S.rowIcon('#EFF6FF')}><I.Calendar style={{ width: 18, height: 18, color: '#1A4F70' }} /></div>
+            <div style={S.rowContent}>
+              <div style={S.rowLabel}>Ngày Chi</div>
+              <div style={S.rowValue(true)}>{formatDateInput(ngay)}</div>
+            </div>
+            <span style={S.arrow}>&rsaquo;</span>
           </div>
 
-          <div style={{ background: LUX.surface2, borderRadius: LUX.radius, padding: '16px 20px', marginBottom: '24px', boxShadow: LUX.shadowSm, border: `1px solid ${LUX.line}` }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: '#FDF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>📝</div>
-              <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: LUX.ink3, marginBottom: '4px', fontFamily: LUX.fontSans }}>Diễn Giải <span style={{color:'#C0392B'}}>*</span></div><textarea placeholder="Nhập nội dung chi tiêu..." value={dienGiai} onChange={e => setDienGiai(e.target.value)} rows={2} style={{ width: '100%', border: 'none', outline: 'none', fontSize: '14px', color: LUX.ink, background: 'transparent', resize: 'none', fontFamily: LUX.fontSans }} /></div>
+          {/* Diễn giải */}
+          <div style={{ ...S.section, padding: '16px 20px', marginBottom: 24 }}>
+            <div style={S.textareaRow}>
+              <div style={S.rowIcon('#FDF4FF')}>📝</div>
+              <div style={{ flex: 1 }}>
+                <div style={S.rowLabel}>Diễn Giải <span style={{ color: '#C0392B' }}>*</span></div>
+                <textarea placeholder="Nhập nội dung chi tiêu..." value={dienGiai} onChange={e => setDienGiai(e.target.value)} rows={2} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 14, color: 'var(--ink)', background: 'transparent', resize: 'none', fontFamily: 'var(--sans)' }} />
+              </div>
             </div>
           </div>
 
-          <ImageUpload
-            onUploaded={(url) => setChungTuUrl(url)}
-            onRemove={() => setChungTuUrl(null)}
-          />
+          <ImageUpload onUploaded={(url) => setChungTuUrl(url)} onRemove={() => setChungTuUrl(null)} />
 
-          <button onClick={handleSave} disabled={saving} style={{ width: '100%', padding: '16px', background: saving ? LUX.ink3 : 'linear-gradient(135deg,#E57373,#C0392B)', border: 'none', borderRadius: LUX.radius, color: 'white', fontSize: '16px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 6px 20px rgba(192,57,43,0.35)', transition: 'all 0.2s', fontFamily: LUX.fontSans }}>
-            {saving ? '⏳ Đang lưu...' : '💾 Lưu Chi Phí'}
+          <button onClick={handleSave} disabled={saving} style={S.saveBtn(saving)}>
+            {saving ? 'Đang lưu...' : 'Lưu Chi Phí'}
           </button>
         </div>
       </div>

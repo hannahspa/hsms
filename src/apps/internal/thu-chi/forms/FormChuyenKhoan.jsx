@@ -1,31 +1,76 @@
 import { useState } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { LUX } from '../../../../constants/lux'
 import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
+import I from '../../../../components/shared/Icons'
+
+const S = {
+  overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'flex-end', zIndex: 500 },
+  sheet: { background: 'var(--surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 520, margin: '0 auto', maxHeight: '92vh', overflowY: 'auto', animation: 'slideUp .3s ease' },
+  handle: { display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
+  handleBar: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--line2)' },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 16px' },
+  headerLeft: { display: 'flex', alignItems: 'center', gap: 10 },
+  iconBox: (bg) => ({ width: 36, height: 36, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }),
+  title: { fontWeight: 700, fontSize: 16, color: 'var(--ink)', fontFamily: 'var(--serif)' },
+  subtitle: { fontSize: 11, color: 'var(--ink3)', fontFamily: 'var(--sans)' },
+  closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--ink3)', padding: 4, lineHeight: 1 },
+  body: { padding: '0 16px 32px' },
+  amountCard: { background: 'var(--surface2)', borderRadius: 'var(--r)', padding: 20, marginBottom: 16, boxShadow: 'var(--sh-1)', border: '1px solid var(--line)', textAlign: 'center' },
+  amountLabel: { fontSize: 12, color: 'var(--ink3)', marginBottom: 8, letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'var(--sans)' },
+  amountInput: (hasVal) => ({ width: '100%', border: 'none', outline: 'none', fontSize: 36, fontWeight: 700, textAlign: 'center', background: 'transparent', color: hasVal ? '#6C3483' : 'var(--line2)', fontFamily: 'var(--serif)' }),
+  amountDisplay: { fontSize: 14, color: '#6C3483', fontWeight: 600, marginTop: 4, fontFamily: 'var(--sans)' },
+  section: { background: 'var(--surface2)', borderRadius: 'var(--r)', marginBottom: 16, boxShadow: 'var(--sh-1)', border: '1px solid var(--line)', overflow: 'hidden' },
+  viBtn: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer' },
+  viBtnLeft: { display: 'flex', alignItems: 'center', gap: 12 },
+  viIcon: (bg) => ({ width: 40, height: 40, borderRadius: 11, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }),
+  viLabel: { fontSize: 11, color: 'var(--ink3)', marginBottom: 2, fontFamily: 'var(--sans)' },
+  viValue: (hasVal) => ({ fontWeight: 600, fontSize: 14, color: hasVal ? 'var(--ink)' : 'var(--ink3)', fontFamily: 'var(--sans)' }),
+  arrow: { color: 'var(--champagne)', fontSize: 18 },
+  arrowCenter: { display: 'flex', justifyContent: 'center', padding: '8px 0', background: 'var(--surface)', position: 'relative' },
+  arrowCircle: { width: 32, height: 32, borderRadius: '50%', background: 'var(--surface2)', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--sh-1)' },
+  row: { display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface2)', borderRadius: 'var(--r)', padding: '16px 20px', marginBottom: 16, boxShadow: 'var(--sh-1)', border: '1px solid var(--line)', cursor: 'pointer' },
+  rowIcon: (bg) => ({ width: 40, height: 40, borderRadius: 11, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }),
+  rowContent: { flex: 1 },
+  rowLabel: { fontSize: 11, color: 'var(--ink3)', marginBottom: 2, fontFamily: 'var(--sans)' },
+  rowValue: { fontSize: 15, fontWeight: 600, color: 'var(--ink)', fontFamily: 'var(--sans)' },
+  textareaRow: { display: 'flex', alignItems: 'flex-start', gap: 12 },
+  saveBtn: (saving) => ({ width: '100%', padding: 16, background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#8B5CF6,#6C3483)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 6px 20px rgba(108,52,131,0.35)', transition: 'all .2s', fontFamily: 'var(--sans)' }),
+  pickSheet: { background: 'var(--surface2)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 520, margin: '0 auto', padding: '24px 20px 40px' },
+  pickHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  pickTitle: { fontSize: 17, fontWeight: 700, color: 'var(--ink)', fontFamily: 'var(--serif)' },
+  pickItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '16px 0', background: 'none', border: 'none', cursor: 'pointer' },
+  pickItemLeft: { display: 'flex', alignItems: 'center', gap: 14 },
+  pickItemIcon: { width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,var(--surface),var(--line))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 },
+  pickItemTitle: { fontWeight: 600, fontSize: 15, color: 'var(--ink)', fontFamily: 'var(--sans)', textAlign: 'left' },
+  pickItemSub: { fontSize: 11, color: 'var(--ink3)', fontFamily: 'var(--sans)', textAlign: 'left' },
+  divider: { height: 1, background: 'var(--line)' },
+}
+
+function ViIcon({ loai }) {
+  if (loai === 'tien_mat') return <I.Coin style={{ width: 22, height: 22, color: '#3E5A32' }} />
+  if (loai === 'chuyen_khoan') return <I.Bank style={{ width: 22, height: 22, color: '#1A4F70' }} />
+  return <I.Wallet style={{ width: 22, height: 22, color: '#5A3E22' }} />
+}
 
 export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
-  const [soTien,   setSoTien]   = useState('')
-  const [ngay,     setNgay]     = useState(todayISO())
+  const [soTien, setSoTien] = useState('')
+  const [ngay, setNgay] = useState(todayISO())
   const [dienGiai, setDienGiai] = useState('')
-  const [saving,   setSaving]   = useState(false)
+  const [saving, setSaving] = useState(false)
   const [showLich, setShowLich] = useState(false)
-  const [tuViId,   setTuViId]   = useState(null)
-  const [denViId,  setDenViId]  = useState(null)
-  const [step,     setStep]     = useState('main')
+  const [tuViId, setTuViId] = useState(null)
+  const [denViId, setDenViId] = useState(null)
+  const [step, setStep] = useState('main')
 
-  const tuVi  = viList?.find(v => v.id === tuViId)
+  const tuVi = viList?.find(v => v.id === tuViId)
   const denVi = viList?.find(v => v.id === denViId)
 
   const handleSave = async () => {
-    if (!soTien || parseInt(soTien) <= 0)
-      return onSaved('error', 'Vui lòng nhập số tiền!')
-    if (!tuViId || !denViId)
-      return onSaved('error', 'Vui lòng chọn đầy đủ Ví gửi và Ví nhận!')
-    if (tuViId === denViId)
-      return onSaved('error', 'Ví gửi và Ví nhận không được trùng nhau!')
+    if (!soTien || parseInt(soTien) <= 0) return onSaved('error', 'Vui lòng nhập số tiền!')
+    if (!tuViId || !denViId) return onSaved('error', 'Vui lòng chọn đầy đủ Ví gửi và Ví nhận!')
+    if (tuViId === denViId) return onSaved('error', 'Ví gửi và Ví nhận không được trùng nhau!')
 
-    // Kiểm tra số dư chỉ với Lễ Tân — Admin có thể nhập dữ liệu lịch sử không cần kiểm tra
     if (user?.vai_tro !== 'admin') {
       const { data: freshVi } = await supabase
         .from('so_du_vi_thuc_te')
@@ -42,9 +87,9 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
     try {
       const { error } = await supabase.from('chuyen_khoan_noi_bo').insert({
         ngay,
-        tu_vi_id:  tuViId,
+        tu_vi_id: tuViId,
         den_vi_id: denViId,
-        so_tien:   parseInt(soTien),
+        so_tien: parseInt(soTien),
         dien_giai: dienGiai || null,
         nguoi_thuc_hien: user?.ho_ten || null,
       })
@@ -58,35 +103,31 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
     }
   }
 
-  const overlayBg = 'rgba(42,32,26,0.55)'
-
-  // ── Chọn ví ──
+  // ── Chọn ví (dùng chung cho chọn ví gửi và ví nhận) ──
   if (step === 'chon_tu_vi' || step === 'chon_den_vi') {
     const title = step === 'chon_tu_vi' ? 'Chọn Ví Gửi Đi' : 'Chọn Ví Nhận Đến'
     const excludeId = step === 'chon_tu_vi' ? denViId : tuViId
+    const available = viList?.filter(v => v.id !== excludeId && (step === 'chon_den_vi' || v.loai === 'quet_the')) || []
+
     return (
-      <div style={{ position:'fixed',inset:0,backgroundColor:overlayBg,display:'flex',alignItems:'flex-end',zIndex:600 }}>
-        <div style={{ background:LUX.surface2,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'520px',margin:'0 auto',padding:'24px 20px 40px' }}>
-          <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px' }}>
-            <h3 style={{ fontSize:'17px',fontWeight:'700',color:LUX.ink,fontFamily:LUX.fontSerif }}>{title}</h3>
-            <button onClick={() => setStep('main')} style={{ background:'none',border:'none',fontSize:'20px',cursor:'pointer',color:LUX.ink3 }}>✕</button>
+      <div style={{ ...S.overlay, zIndex: 600 }}>
+        <div style={S.pickSheet}>
+          <div style={S.pickHeader}>
+            <h3 style={S.pickTitle}>{title}</h3>
+            <button style={S.closeBtn} onClick={() => setStep('main')}>&times;</button>
           </div>
-          {viList?.filter(v => v.id !== excludeId && (step === 'chon_den_vi' || v.loai === 'quet_the')).map((vi, i, arr) => (
+          {available.map((vi, i) => (
             <div key={vi.id}>
-              <button
-                onClick={() => {
-                  step === 'chon_tu_vi' ? setTuViId(vi.id) : setDenViId(vi.id)
-                  setStep('main')
-                }}
-                style={{ display:'flex',alignItems:'center',gap:'14px',width:'100%',padding:'16px 0',background:'none',border:'none',cursor:'pointer' }}
-              >
-                <div style={{ width:'44px',height:'44px',borderRadius:'12px',background:`linear-gradient(135deg,${LUX.surface},${LUX.line})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px' }}>{vi.icon}</div>
-                <div style={{ textAlign:'left' }}>
-                  <div style={{ fontWeight:'600',fontSize:'15px',color:LUX.ink,fontFamily:LUX.fontSans }}>{vi.ten}</div>
-                  <div style={{ fontSize:'11px',color:LUX.ink3,fontFamily:LUX.fontSans }}>{vi.loai === 'tien_mat' ? 'Tiền mặt' : 'Ngân hàng'}</div>
+              <button onClick={() => { step === 'chon_tu_vi' ? setTuViId(vi.id) : setDenViId(vi.id); setStep('main') }} style={S.pickItem}>
+                <div style={S.pickItemLeft}>
+                  <div style={S.pickItemIcon}><ViIcon loai={vi.loai} /></div>
+                  <div>
+                    <div style={S.pickItemTitle}>{vi.ten}</div>
+                    <div style={S.pickItemSub}>{vi.loai === 'tien_mat' ? 'Tiền mặt' : 'Ngân hàng'}</div>
+                  </div>
                 </div>
               </button>
-              {i < arr.length-1 && <div style={{ height:'1px',background:LUX.line }} />}
+              {i < available.length - 1 && <div style={S.divider} />}
             </div>
           ))}
         </div>
@@ -96,121 +137,91 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
 
   // ── Form chính ──
   return (
-    <div style={{ position:'fixed',inset:0,backgroundColor:overlayBg,display:'flex',alignItems:'flex-end',zIndex:500 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <DatePicker open={showLich} selectedDate={ngay} onClose={() => setShowLich(false)} onConfirm={d => { setNgay(d); setShowLich(false) }} />
 
-      <DatePicker open={showLich} selectedDate={ngay}
-        onClose={() => setShowLich(false)}
-        onConfirm={d => { setNgay(d); setShowLich(false) }} />
-
-      <div style={{ background:LUX.surface,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'520px',margin:'0 auto',maxHeight:'92vh',overflowY:'auto',animation:'slideUp 0.3s ease' }}>
+      <div style={S.sheet}>
         <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+        <div style={S.handle}><div style={S.handleBar} /></div>
 
-        <div style={{ display:'flex',justifyContent:'center',paddingTop:'12px' }}>
-          <div style={{ width:'40px',height:'4px',borderRadius:'2px',backgroundColor:LUX.line2 }} />
-        </div>
-
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 20px' }}>
-          <div style={{ display:'flex',alignItems:'center',gap:'10px' }}>
-            <div style={{ width:'36px',height:'36px',borderRadius:'10px',background:'#EFF6FF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px' }}>🔄</div>
+        <div style={S.header}>
+          <div style={S.headerLeft}>
+            <div style={S.iconBox('#F5F3FF')}><I.Bank style={{ width: 18, height: 18, color: '#6C3483' }} /></div>
             <div>
-              <div style={{ fontWeight:'700',fontSize:'16px',color:LUX.ink,fontFamily:LUX.fontSerif }}>Chuyển Khoản Nội Bộ</div>
-              <div style={{ fontSize:'11px',color:LUX.ink3,fontFamily:LUX.fontSans }}>Quẹt thẻ về MB hoặc rút tiền mặt</div>
+              <div style={S.title}>Chuyển Khoản Nội Bộ</div>
+              <div style={S.subtitle}>Quẹt thẻ về MB hoặc rút tiền mặt</div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background:'none',border:'none',fontSize:'20px',color:LUX.ink3,cursor:'pointer' }}>✕</button>
+          <button style={S.closeBtn} onClick={onClose}>&times;</button>
         </div>
 
-        <div style={{ padding:'0 16px 32px' }}>
-
+        <div style={S.body}>
           {/* Số tiền */}
-          <div style={{ background:LUX.surface2,borderRadius:LUX.radius,padding:'20px',marginBottom:'16px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}`,textAlign:'center' }}>
-            <div style={{ fontSize:'12px',color:LUX.ink3,marginBottom:'8px',textTransform:'uppercase',letterSpacing:'1px',fontFamily:LUX.fontSans }}>Số Tiền Chuyển</div>
-            <input type="number" placeholder="0" value={soTien} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))}
-              style={{ width:'100%',border:'none',outline:'none',fontSize:'36px',fontWeight:'700',textAlign:'center',background:'transparent',color:soTien?'#6C3483':LUX.line2,fontFamily:LUX.fontMono }} />
-            {soTien && (
-              <div style={{ fontSize:'14px',color:'#6C3483',fontWeight:'600',marginTop:'4px',fontFamily:LUX.fontSans }}>
-                {new Intl.NumberFormat('vi-VN').format(parseInt(soTien))} đ
-              </div>
-            )}
+          <div style={S.amountCard}>
+            <div style={S.amountLabel}>Số Tiền Chuyển</div>
+            <input type="number" placeholder="0" value={soTien} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={S.amountInput(!!soTien)} />
+            {soTien ? <div style={S.amountDisplay}>{new Intl.NumberFormat('vi-VN').format(parseInt(soTien))} đ</div> : null}
           </div>
 
           {/* Chọn ví */}
-          <div style={{ background:LUX.surface2,borderRadius:LUX.radius,marginBottom:'16px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}`,overflow:'hidden' }}>
-
-            {/* Từ ví */}
-            <button onClick={() => setStep('chon_tu_vi')} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'16px 20px',background:'none',border:'none',borderBottom:`1px solid ${LUX.line}`,cursor:'pointer' }}>
-              <div style={{ display:'flex',alignItems:'center',gap:'12px' }}>
-                <div style={{ width:'40px',height:'40px',borderRadius:'11px',background:'#FEF2F2',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px' }}>
-                  {tuVi ? tuVi.icon : '📤'}
+          <div style={S.section}>
+            <button onClick={() => setStep('chon_tu_vi')} style={{ ...S.viBtn, borderBottom: `1px solid var(--line)` }}>
+              <div style={S.viBtnLeft}>
+                <div style={S.viIcon('#FEF2F2')}>
+                  {tuVi ? <ViIcon loai={tuVi.loai} /> : <I.Wallet style={{ width: 20, height: 20, color: '#C0392B' }} />}
                 </div>
-                <div style={{ textAlign:'left' }}>
-                  <div style={{ fontSize:'11px',color:LUX.ink3,marginBottom:'2px',fontFamily:LUX.fontSans }}>Từ Tài Khoản</div>
-                  <div style={{ fontWeight:'600',fontSize:'14px',color:tuVi?LUX.ink:LUX.ink3,fontFamily:LUX.fontSans }}>
-                    {tuVi ? tuVi.ten : 'Chọn ví gửi...'}
-                  </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={S.viLabel}>Từ Tài Khoản</div>
+                  <div style={S.viValue(!!tuVi)}>{tuVi ? tuVi.ten : 'Chọn ví gửi...'}</div>
                 </div>
               </div>
-              <span style={{ color:LUX.gold,fontSize:'18px' }}>›</span>
+              <span style={S.arrow}>&rsaquo;</span>
             </button>
 
-            {/* Mũi tên giữa */}
-            <div style={{ display:'flex',justifyContent:'center',padding:'8px 0',background:LUX.surface,position:'relative' }}>
-              <div style={{ width:'32px',height:'32px',borderRadius:'50%',background:LUX.surface2,border:`1px solid ${LUX.line}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px',boxShadow:LUX.shadowSm }}>⬇️</div>
+            <div style={S.arrowCenter}>
+              <div style={S.arrowCircle}>
+                <I.TrendDown style={{ width: 14, height: 14, color: 'var(--champagne)' }} />
+              </div>
             </div>
 
-            {/* Đến ví */}
-            <button onClick={() => setStep('chon_den_vi')} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',padding:'16px 20px',background:'none',border:'none',cursor:'pointer' }}>
-              <div style={{ display:'flex',alignItems:'center',gap:'12px' }}>
-                <div style={{ width:'40px',height:'40px',borderRadius:'11px',background:'#F0FDF4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px' }}>
-                  {denVi ? denVi.icon : '📥'}
+            <button onClick={() => setStep('chon_den_vi')} style={S.viBtn}>
+              <div style={S.viBtnLeft}>
+                <div style={S.viIcon('#F0FDF4')}>
+                  {denVi ? <ViIcon loai={denVi.loai} /> : <I.Wallet style={{ width: 20, height: 20, color: '#2D7A4F' }} />}
                 </div>
-                <div style={{ textAlign:'left' }}>
-                  <div style={{ fontSize:'11px',color:LUX.ink3,marginBottom:'2px',fontFamily:LUX.fontSans }}>Đến Tài Khoản</div>
-                  <div style={{ fontWeight:'600',fontSize:'14px',color:denVi?LUX.ink:LUX.ink3,fontFamily:LUX.fontSans }}>
-                    {denVi ? denVi.ten : 'Chọn ví nhận...'}
-                  </div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={S.viLabel}>Đến Tài Khoản</div>
+                  <div style={S.viValue(!!denVi)}>{denVi ? denVi.ten : 'Chọn ví nhận...'}</div>
                 </div>
               </div>
-              <span style={{ color:LUX.gold,fontSize:'18px' }}>›</span>
+              <span style={S.arrow}>&rsaquo;</span>
             </button>
           </div>
 
           {/* Ngày */}
-          <div onClick={() => setShowLich(true)} style={{ display:'flex',alignItems:'center',gap:'12px',background:LUX.surface2,borderRadius:LUX.radius,padding:'16px 20px',marginBottom:'16px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}`,cursor:'pointer' }}>
-            <div style={{ width:'40px',height:'40px',borderRadius:'11px',background:'#EFF6FF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px' }}>📅</div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:'11px',color:LUX.ink3,marginBottom:'2px',fontFamily:LUX.fontSans }}>Ngày Thực Hiện</div>
-              <div style={{ fontSize:'15px',fontWeight:'600',color:LUX.ink,fontFamily:LUX.fontSans }}>{formatDateInput(ngay)}</div>
+          <div style={S.row} onClick={() => setShowLich(true)}>
+            <div style={S.rowIcon('#EFF6FF')}><I.Calendar style={{ width: 18, height: 18, color: '#1A4F70' }} /></div>
+            <div style={S.rowContent}>
+              <div style={S.rowLabel}>Ngày Thực Hiện</div>
+              <div style={S.rowValue}>{formatDateInput(ngay)}</div>
             </div>
-            <div style={{ fontSize:'18px',color:LUX.ink3 }}>›</div>
+            <span style={S.arrow}>&rsaquo;</span>
           </div>
 
           {/* Diễn giải */}
-          <div style={{ background:LUX.surface2,borderRadius:LUX.radius,padding:'16px 20px',marginBottom:'24px',boxShadow:LUX.shadowSm,border:`1px solid ${LUX.line}` }}>
-            <div style={{ display:'flex',alignItems:'flex-start',gap:'12px' }}>
-              <div style={{ width:'40px',height:'40px',borderRadius:'11px',background:'#FDF4FF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px',flexShrink:0 }}>📝</div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:'11px',color:LUX.ink3,marginBottom:'4px',fontFamily:LUX.fontSans }}>Diễn Giải</div>
-                <textarea placeholder="Ghi chú nội dung chuyển khoản..." value={dienGiai}
-                  onChange={e => setDienGiai(e.target.value)} rows={2}
-                  style={{ width:'100%',border:'none',outline:'none',fontSize:'14px',color:LUX.ink,background:'transparent',resize:'none',fontFamily:LUX.fontSans }} />
+          <div style={{ ...S.section, padding: '16px 20px', marginBottom: 24 }}>
+            <div style={S.textareaRow}>
+              <div style={S.rowIcon('#FDF4FF')}>📝</div>
+              <div style={{ flex: 1 }}>
+                <div style={S.rowLabel}>Diễn Giải</div>
+                <textarea placeholder="Ghi chú nội dung chuyển khoản..." value={dienGiai} onChange={e => setDienGiai(e.target.value)} rows={2} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 14, color: 'var(--ink)', background: 'transparent', resize: 'none', fontFamily: 'var(--sans)' }} />
               </div>
             </div>
           </div>
 
           {/* Lưu */}
-          <button onClick={handleSave} disabled={saving} style={{
-            width:'100%',padding:'16px',
-            background: saving ? LUX.ink3 : 'linear-gradient(135deg,#8B5CF6,#6C3483)',
-            border:'none',borderRadius:LUX.radius,color:'white',
-            fontSize:'16px',fontWeight:'600',
-            cursor: saving?'not-allowed':'pointer',
-            boxShadow:'0 6px 20px rgba(108,52,131,0.35)',
-            transition:'all 0.2s',
-            fontFamily:LUX.fontSans
-          }}>
-            {saving ? '⏳ Đang lưu...' : '💾 Lưu Chuyển Khoản'}
+          <button onClick={handleSave} disabled={saving} style={S.saveBtn(saving)}>
+            {saving ? 'Đang lưu...' : 'Lưu Chuyển Khoản'}
           </button>
         </div>
       </div>
