@@ -1,13 +1,15 @@
 # HSMS — HANNAH SPA MANAGEMENT SYSTEM
-# Master Project Document v3.0
-# Cập nhật: 08/05/2026 | Tổng hợp từ: CLAUDE.md + DeepSeek session + MySpa analysis
+# Master Project Document v4.0
+# Cập nhật: 14/05/2026 | Đang cải tạo giao diện — Phase 0
 
 ---
 Trước khi viết bất kỳ UI nào, đọc src/DESIGN_SYSTEM.md
+Dự án cải tạo giao diện: D:\Hannah Spa\Du An WebApp Hannah Spa\Cai Tao Giao Dien Web\KE_HOACH_Cai_Tao_Giao_Dien.md
 ## 🇻🇳 NGÔN NGỮ — BẮT BUỘC
 - Toàn bộ phản hồi PHẢI bằng tiếng Việt: giải thích, phân tích, câu hỏi, thông báo lỗi
 - Khi đọc file, chạy lệnh, debug → tóm tắt kết quả bằng tiếng Việt
 - KHÔNG dùng tiếng Anh dù chỉ 1 câu, trừ: code, tên biến, tên file, terminal output
+- Thinking cũng ghi bằng tiếng việt, tuyệt đối không dùng tiếng anh
 ## MỤC LỤC
 
 1. [Thông tin dự án & doanh nghiệp](#1-thông-tin-dự-án--doanh-nghiệp)
@@ -58,7 +60,11 @@ Trước khi viết bất kỳ UI nào, đọc src/DESIGN_SYSTEM.md
 
 ## 2. TRẠNG THÁI HIỆN TẠI — ĐÃ LÀM ĐƯỢC GÌ
 
-> **Cập nhật cuối: 08/05/2026 sau session DeepSeek**
+> **Cập nhật cuối: 14/05/2026**
+>
+> Session 13-14/05/2026 đã làm: DatePicker fix createPortal (không còn hiện sai vị trí), POS thêm tab "Danh Sách Bán Hàng" (filter/search/detail/void/resume), sidebar logo Hannah Spa + menu cha-con 4 modules (Nhân Sự 6 sub / Kho Hàng 5 sub / Khuyến Mãi 2 sub / Marketing 3 sub), Tổng Quan lên vị trí 1 trong Nhân Sự, fix 3 bugs AdminApp (trang_thai 'active'→'dang_lam', URL ?tab=off→/xet-duyet). AdminNhanSuPage chuyển sang URL routing (window.location.pathname). **KHÔNG kết nối POS với Sổ Thu Chi** — giữ data sạch đến khi web hoàn thiện 100%.
+
+> **4 commits local chưa push:** afe792a, 37bf45f, 9270467, facc335
 
 ### ✅ Đã hoàn chỉnh & đang LIVE
 
@@ -146,7 +152,7 @@ Trước khi viết bất kỳ UI nào, đọc src/DESIGN_SYSTEM.md
 | Quỹ ngày OFF từ ngày lễ | 🟡 Cần | Table `quy_ngay_off` có, chưa có UI |
 | Seed dich_vu thật (300+ DV) | 🟡 Cần | Bảng có, cần import data từ MySpa |
 | Seed nội dung homepage_config | 🟡 Cần | |
-| Module POS Bán Hàng | 🔴 Quan trọng | Xem phần 8 |
+| Module POS Bán Hàng | ⚠️ Đang làm | Tab Bán Hàng + Danh Sách có. Chưa kết nối Sổ Thu Chi |
 | Module Đặt Hẹn / Lịch Hẹn | 🟡 Cần | |
 | Module CRM Khách Hàng | 🟡 Cần | Schema có |
 | Module Thẻ Liệu Trình | 🟡 Cần | Schema có |
@@ -254,15 +260,15 @@ cham_cong (
   id                    uuid PK,
   nhan_vien_id          uuid FK,
   ngay                  date,
-  gio_vao               timestamptz,
-  gio_ra                timestamptz,
+  gio_vao               text,        -- định dạng "HH:MM:SS" (không phải timestamptz)
+  gio_ra                text,        -- định dạng "HH:MM:SS"
   loai                  enum(di_lam, off_phep, off_ov, off_t7, off_t7x),
-  he_so                 numeric,   -- hệ số thực (0.79 nếu về sớm)
+  he_so                 numeric,     -- hệ số thực (0.79 nếu về sớm)
   he_so_tam             numeric,
   tang_ca_gio           numeric,
-  trang_thai_tang_ca    enum(cho_duyet, duyet, tu_choi),
+  trang_thai_tang_ca    enum(khong_co, cho_duyet),  -- đơn giản hơn bản cũ
   ly_do_ve_som          text,
-  nguoi_cham            uuid FK
+  nguoi_cham            text         -- text (không phải uuid FK)
 )
 
 dang_ky_off (
@@ -286,11 +292,14 @@ bang_luong (
   luong_co_ban    integer,
   tien_tang_ca    integer,
   tien_phat       integer,
-  hoa_hong        integer,
+  hoa_hong_dv     integer,        -- hoa hồng dịch vụ từ POS
+  hoa_hong_the    integer,        -- thưởng đạt doanh số
+  tien_tour       integer,        -- tiền tour
   tru_ung_luong   integer,
   tru_ky_quy      integer,
   tong_linh       integer,
-  trang_thai      text
+  trang_thai_lc   text,           -- Kỳ 1: chua_tinh/da_tinh/da_chot/da_phat_luong
+  trang_thai_lkd  text            -- Kỳ 2: chua_tinh/da_tinh/da_chot/da_phat_luong
 )
 
 quy_ngay_off (
@@ -337,7 +346,8 @@ doanh_thu (
   hinh_thuc   text,  -- tien_mat | chuyen_khoan | quet_the | the_tra_truoc
   so_tien     integer,
   dien_giai   text,
-  nguoi_nhap  uuid FK,
+  nguoi_nhap  text,        -- text (không phải uuid FK)
+  chung_tu_url text,       -- URL ảnh chứng từ
   created_at  timestamptz
 )
 
@@ -347,8 +357,10 @@ chi_phi (
   danh_muc_id           uuid FK,
   so_tien               integer,
   hinh_thuc_thanh_toan  text,  -- tien_mat | chuyen_khoan | quet_the
+  vi_id                 uuid FK,      -- ví nguồn chi
   dien_giai             text,
-  nguoi_nhap            uuid FK,
+  nguoi_nhap            text,         -- text (không phải uuid FK)
+  chung_tu_url          text,
   created_at            timestamptz
 )
 
@@ -359,7 +371,7 @@ chuyen_khoan_noi_bo (
   den_vi_id       uuid FK,
   so_tien         integer,
   dien_giai       text,
-  nguoi_thuc_hien uuid FK,
+  nguoi_thuc_hien text,         -- text (không phải uuid FK)
   created_at      timestamptz
 )
 
@@ -376,28 +388,36 @@ danh_muc_chi_phi (
 
 ### Kho Hàng
 ```sql
-san_pham (
-  id                  uuid PK,
-  ten                 text,
-  loai                enum(tieu_hao, ban_khach, dau_goi),
-  don_vi              text,
-  ton_kho_hien_tai    integer,
-  canh_bao_het_hang   integer,
-  gia_nhap            integer,
-  gia_ban             integer
+kho_san_pham (  -- Tên thật trong DB, CLAUDE.md cũ ghi là san_pham
+  id                uuid PK,
+  ten               text,
+  loai              enum(tieu_hao, ban_khach, vat_tu),  -- vat_tu thay vì dau_goi
+  don_vi            text,
+  ton_kho           integer,         -- tên thật: ton_kho (không phải ton_kho_hien_tai)
+  canh_bao_ton      integer,         -- tên thật: canh_bao_ton
+  gia_nhap          integer,
+  gia_ban           integer,
+  mo_ta             text,
+  co_the_chiet      boolean,
+  san_pham_chiet_id uuid,
+  he_so_chiet       numeric,
+  is_active         boolean,
+  created_at        timestamptz
 )
 
-nhap_xuat_kho (
+kho_giao_dich (  -- Tên thật trong DB, CLAUDE.md cũ ghi là nhap_xuat_kho
   id              uuid PK,
-  san_pham_id     uuid FK,
-  loai            enum(nhap, xuat, dieu_chinh),
-  so_luong        integer,  -- LUÔN > 0, sign lưu trong loai
+  kho_san_pham_id uuid FK,          -- tên thật (không phải san_pham_id)
+  loai            enum(nhap_kho, xuat_su_dung, xuat_ban, chiet_ra, chiet_vao, dieu_chinh, tra_nha_cc),
+  so_luong        numeric,           -- LUÔN > 0, sign lưu trong loai
   ngay            date,
+  gia_don_vi      integer,
   ghi_chu         text,
-  nguoi_thuc_hien uuid FK,
-  chi_phi_id      uuid FK   -- liên kết chi_phi nếu là nhập kho
+  nguoi_thuc_hien text,              -- text (không phải uuid FK)
+  lien_quan_id    uuid,
+  created_at      timestamptz
 )
--- NOTE: khi xóa nhập kho → phải xóa cả chi_phi liên quan
+-- NOTE: khi xóa nhập kho → hoàn lại ton_kho trong kho_san_pham
 ```
 
 ### Khách Hàng
@@ -669,6 +689,8 @@ Lưu trong: .env.import (gitignored)
 | 2.5 | Module Thẻ liệu trình: UI danh sách + báo cáo | Schema đã có |
 | 2.6 | Admin tạo OFF trực tiếp cho NV | `nguon='admin'` trong `dang_ky_off` |
 | 2.7 | Báo cáo Commission KTV | Cần sau khi có POS |
+| 2.8 | **Giao diện Mobile** — responsive sidebar + cards | Admin hiện chỉ tối ưu desktop |
+| 2.9 | **In hoá đơn nhiệt** — khổ 80mm, thermal printer | Chờ anh Nam gửi mẫu hoá đơn |
 
 ### 🟢 Cấp 3 — Nice-to-have (3-6 tháng)
 
