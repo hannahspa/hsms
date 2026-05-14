@@ -218,86 +218,93 @@ function KMForm({ initial, dichVuList, onSave, onCancel }) {
   )
 }
 
-// ── Row item ───────────────────────────────────────────────────────────────────
+// ── Promo Card ────────────────────────────────────────────────────────────────
 function KMRow({ km, dichVuMap, onEdit, onDelete, onToggle }) {
   const sc = STATUS_COLOR[km.trang_thai] || STATUS_COLOR.draft
   const today = todayISO()
   const isExpiredDate = km.ngay_ket_thuc < today && km.trang_thai === 'active'
+  const status = isExpiredDate ? 'expired' : km.trang_thai
+  const statusSc = STATUS_COLOR[status] || sc
+
+  // Màu arch cover theo tên
+  const coverColors = [
+    'linear-gradient(135deg,#C9A96E,#A0714F)',
+    'linear-gradient(135deg,#7D9EC0,#5A7A9A)',
+    'linear-gradient(135deg,#7BB88F,#4E9467)',
+    'linear-gradient(135deg,#C4998A,#A87366)',
+    'linear-gradient(135deg,#9B8EA0,#7A6B80)',
+    'linear-gradient(135deg,#D4A96E,#B07840)',
+  ]
+  const coverGrad = coverColors[(km.ten?.charCodeAt(0) || 0) % coverColors.length]
 
   return (
-    <div style={{ background: 'white', borderRadius: '14px', padding: '16px 20px',
-      border: `1px solid ${COLORS.border}`, boxShadow: COLORS.shadow,
-      display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="promo" style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* Cover arch */}
+      <div className="promo-cover" style={{ background: coverGrad, position: 'relative', overflow: 'hidden', borderRadius: 'var(--r) var(--r) 0 0' }}>
+        {/* Discount badge */}
+        <div style={{
+          position: 'absolute', top: 10, right: 10,
+          background: 'rgba(192,57,43,.9)', color: 'white',
+          borderRadius: 6, padding: '4px 10px',
+          fontSize: 13, fontWeight: 800, letterSpacing: '.02em',
+        }}>
+          -{km.phan_tram_giam}%
+        </div>
+        {/* Status badge */}
+        <div style={{
+          position: 'absolute', top: 10, left: 10,
+          background: statusSc.bg, color: statusSc.color,
+          borderRadius: 6, padding: '3px 8px',
+          fontSize: 10.5, fontWeight: 700,
+          display: 'flex', alignItems: 'center', gap: 4,
+        }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusSc.dot, display: 'inline-block' }} />
+          {isExpiredDate ? 'Quá hạn' : STATUS_LABEL[km.trang_thai]}
+        </div>
+      </div>
 
-      {/* Row 1: Tên + badge */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', justifyContent: 'space-between' }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: '800', fontSize: '15px', color: COLORS.text }}>
-            {km.ten}
+      {/* Body */}
+      <div className="promo-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontFamily: 'var(--serif)', fontSize: 15, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.3 }}>
+          {km.ten}
+        </div>
+        {km.dich_vu_id && dichVuMap[km.dich_vu_id] && (
+          <div style={{ fontSize: 11.5, color: 'var(--ink3)' }}>
+            {dichVuMap[km.dich_vu_id]}
           </div>
-          {km.dich_vu_id && dichVuMap[km.dich_vu_id] && (
-            <div style={{ fontSize: '12px', color: COLORS.textMute, marginTop: '2px' }}>
-              📌 {dichVuMap[km.dich_vu_id]}
-            </div>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-          {/* % giảm */}
-          <span style={{ background: '#C0392B', color: 'white', borderRadius: '6px',
-            padding: '3px 8px', fontSize: '12px', fontWeight: '800' }}>
-            -{km.phan_tram_giam}%
+        )}
+        {/* Price row */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 2 }}>
+          <span style={{ fontFamily: 'var(--serif)', fontSize: 17, fontWeight: 700, color: 'var(--chi)' }}>
+            {fmt(km.gia_km)}
           </span>
-          {/* Status */}
-          <span style={{ background: sc.bg, color: sc.color, borderRadius: '6px',
-            padding: '3px 8px', fontSize: '12px', fontWeight: '700' }}>
-            {isExpiredDate ? '⚠️ Quá hạn' : STATUS_LABEL[km.trang_thai]}
+          <span style={{ fontSize: 12, color: 'var(--ink3)', textDecoration: 'line-through' }}>
+            {fmt(km.gia_goc)}
           </span>
         </div>
-      </div>
-
-      {/* Row 2: Giá */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <span style={{ fontSize: '12px', color: COLORS.textMute, textDecoration: 'line-through' }}>
-          {fmt(km.gia_goc)}
-        </span>
-        <span style={{ fontSize: '17px', fontWeight: '800', color: '#C0392B' }}>
-          {fmt(km.gia_km)}
-        </span>
-        <span style={{ fontSize: '12px', color: COLORS.textMute }}>
-          · Tiết kiệm {fmt(km.gia_goc - km.gia_km)}
-        </span>
-      </div>
-
-      {/* Row 3: Ngày */}
-      <div style={{ fontSize: '12px', color: COLORS.textMute }}>
-        📅 {fmtDate(km.ngay_bat_dau)} → {fmtDate(km.ngay_ket_thuc)}
-      </div>
-
-      {/* Mô tả */}
-      {km.mo_ta && (
-        <div style={{ fontSize: '12px', color: COLORS.textSub, background: COLORS.bg,
-          borderRadius: '8px', padding: '8px 10px' }}>
-          {km.mo_ta}
+        <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+          {fmtDate(km.ngay_bat_dau)} → {fmtDate(km.ngay_ket_thuc)}
         </div>
-      )}
-
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: '8px', paddingTop: '4px' }}>
-        <button onClick={() => onEdit(km)}
-          style={{ flex: 1, padding: '8px', background: COLORS.bg, border: `1px solid ${COLORS.border}`,
-            borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', color: COLORS.text }}>
-          ✏️ Sửa
-        </button>
-        <button onClick={() => onToggle(km)}
-          style={{ flex: 1, padding: '8px', background: COLORS.bg, border: `1px solid ${COLORS.border}`,
-            borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', color: COLORS.textSub }}>
-          {km.trang_thai === 'active' ? '⏸ Tạm dừng' : '▶️ Kích hoạt'}
-        </button>
-        <button onClick={() => onDelete(km)}
-          style={{ padding: '8px 12px', background: '#FDECEA', border: '1px solid #FADBD8',
-            borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', color: '#C0392B' }}>
-          🗑
-        </button>
+        {km.mo_ta && (
+          <div style={{ fontSize: 11.5, color: 'var(--ink3)', borderTop: '1px solid var(--line)', paddingTop: 6 }}>
+            {km.mo_ta}
+          </div>
+        )}
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 8 }}>
+          <button className="btn" style={{ flex: 1, justifyContent: 'center', fontSize: 12, padding: '7px 8px' }}
+            onClick={() => onEdit(km)}>
+            Sửa
+          </button>
+          <button className="btn ghost" style={{ flex: 1, justifyContent: 'center', fontSize: 12, padding: '7px 8px' }}
+            onClick={() => onToggle(km)}>
+            {km.trang_thai === 'active' ? 'Tạm dừng' : 'Kích hoạt'}
+          </button>
+          <button className="icon-btn" style={{ width: 30, height: 30, color: 'var(--chi)' }}
+            onClick={() => onDelete(km)}>
+            ✕
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -369,96 +376,84 @@ export default function AdminKhuyenMaiPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: COLORS.bg, fontFamily: 'sans-serif', paddingBottom: '40px' }}>
-
-      {/* Header */}
-      <div style={{ background: COLORS.grad, padding: '40px 20px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-          <button onClick={() => window.location.href = '/admin'}
-            style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white',
-              padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}>
-            ← Admin
+    <>
+      {/* mod-head */}
+      <div className="mod-head" style={{ marginBottom: 20 }}>
+        <div>
+          <div className="ttl">Khuyến Mãi</div>
+          <div className="sub">
+            Badge giảm giá · hiển thị trên Menu iPad + Landing Page
+          </div>
+        </div>
+        <div className="acts">
+          <div className="subtabs">
+            <div className={`st${tab === 'list' ? ' active' : ''}`} onClick={() => setTab('list')}>Danh Sách</div>
+            <div className={`st${tab === 'roi' ? ' active' : ''}`} onClick={() => setTab('roi')}>Phân Tích ROI</div>
+          </div>
+          <button className="btn gold" onClick={handleCreate}>
+            + Tạo mới
           </button>
-        </div>
-        <div style={{ color: 'white', fontWeight: '800', fontSize: '22px', marginTop: '8px' }}>
-          🏷️ Quản Lý Khuyến Mãi
-        </div>
-        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', marginTop: '4px' }}>
-          Hiển thị badge giảm giá trên menu iPad + landing page
-        </div>
-
-        {/* Stats */}
-        <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-          {[
-            { label: 'Đang chạy', val: stats.active, color: '#6FCF8E' },
-            { label: 'Nháp',      val: stats.draft,  color: '#F4D03F' },
-            { label: 'Hết hạn',   val: stats.expired,color: '#E8796B' },
-          ].map(s => (
-            <div key={s.label} style={{ flex: 1, background: 'rgba(255,255,255,0.15)',
-              borderRadius: '12px', padding: '10px 14px', textAlign: 'center' }}>
-              <div style={{ color: s.color, fontWeight: '800', fontSize: '22px' }}>{s.val}</div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', marginTop: '2px' }}>{s.label}</div>
-            </div>
-          ))}
         </div>
       </div>
 
-      {/* Tab switcher */}
-      <div style={{ display: 'flex', gap: '0', margin: '16px 20px 0', background: 'white',
-        borderRadius: '12px', padding: '4px', border: `1px solid ${COLORS.border}`, boxShadow: COLORS.shadow }}>
-        {[['list', '🏷️ Danh Sách'], ['roi', '📊 Phân Tích ROI']].map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)}
-            style={{ flex: 1, padding: '10px', border: 'none', cursor: 'pointer', fontWeight: '700',
-              fontSize: '13px', borderRadius: '9px', transition: 'all .2s',
-              background: tab === k ? COLORS.grad : 'transparent',
-              color: tab === k ? 'white' : COLORS.textSub }}>
-            {l}
-          </button>
-        ))}
+      {/* Strip KPIs */}
+      <div className="strip" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 20 }}>
+        <div className="it">
+          <div className="l">Tổng Khuyến Mãi</div>
+          <div className="v">{list.length}</div>
+        </div>
+        <div className="it">
+          <div className="l">Đang Chạy</div>
+          <div className="v" style={{ color: 'var(--thu)' }}>{stats.active}</div>
+        </div>
+        <div className="it">
+          <div className="l">Nháp</div>
+          <div className="v">{stats.draft}</div>
+        </div>
+        <div className="it">
+          <div className="l">Hết Hạn</div>
+          <div className="v" style={{ color: 'var(--ink3)' }}>{stats.expired}</div>
+        </div>
       </div>
 
       {/* ROI Tab */}
       {tab === 'roi' && <ROITab list={list} />}
 
-      {/* Filter + List — chỉ hiện khi tab = list */}
+      {/* List tab */}
       {tab === 'list' && (
         <>
-          <div style={{ padding: '16px 20px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '6px', flex: 1, flexWrap: 'wrap' }}>
-              {[['all', 'Tất Cả'], ['active', '✅ Đang chạy'], ['draft', '⏸ Nháp'], ['expired', '⏹ Hết hạn']].map(([k, l]) => (
-                <button key={k} onClick={() => setFilter(k)}
-                  style={{ padding: '7px 14px', borderRadius: '999px', border: 'none', cursor: 'pointer',
-                    fontWeight: '700', fontSize: '12px',
-                    background: filter === k ? COLORS.primary : 'white',
-                    color: filter === k ? 'white' : COLORS.textSub,
-                    boxShadow: COLORS.shadow }}>
-                  {l}
-                </button>
-              ))}
-            </div>
-            <button onClick={handleCreate}
-              style={{ padding: '10px 18px', background: COLORS.grad, color: 'white', border: 'none',
-                borderRadius: '12px', fontWeight: '800', fontSize: '13px', cursor: 'pointer',
-                whiteSpace: 'nowrap', boxShadow: COLORS.shadow }}>
-              + Tạo mới
-            </button>
+          {/* Filter chips */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+            {[['all', 'Tất Cả'], ['active', 'Đang chạy'], ['draft', 'Nháp'], ['expired', 'Hết hạn']].map(([k, l]) => (
+              <button key={k} className={`chip${filter === k ? ' active' : ''}`}
+                onClick={() => setFilter(k)} style={{ padding: '7px 14px', fontSize: 12.5 }}>
+                {l}
+                <span style={{ opacity: .6, marginLeft: 5 }}>
+                  {k === 'all' ? list.length : list.filter(x => x.trang_thai === k).length}
+                </span>
+              </button>
+            ))}
           </div>
-          <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: COLORS.textMute }}>Đang tải...</div>
-            ) : filtered.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: COLORS.textMute }}>
-                <div style={{ fontSize: '36px', marginBottom: '12px' }}>🏷️</div>
-                <div style={{ fontWeight: '700' }}>Chưa có khuyến mãi nào</div>
-                <div style={{ fontSize: '13px', marginTop: '6px' }}>Nhấn "+ Tạo mới" để bắt đầu</div>
-              </div>
-            ) : (
-              filtered.map(km => (
+
+          {/* Promo Grid */}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '60px', color: 'var(--ink3)' }}>
+              <div style={{ width: 44, height: 72, margin: '0 auto 16px', background: 'var(--grad-gold)', borderRadius: '999px 999px 12px 12px', opacity: .3, animation: 'floatGlow 2.5s ease-in-out infinite alternate' }} />
+              Đang tải khuyến mãi...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px', color: 'var(--ink3)' }}>
+              <div style={{ fontFamily: 'var(--serif)', fontSize: 17, fontWeight: 600, color: 'var(--ink2)', marginBottom: 6 }}>Chưa có khuyến mãi nào</div>
+              <div style={{ fontSize: 13 }}>Nhấn "+ Tạo mới" để bắt đầu</div>
+            </div>
+          ) : (
+            <div className="promo-grid">
+              {filtered.map(km => (
                 <KMRow key={km.id} km={km} dichVuMap={dichVuMap}
                   onEdit={handleEdit} onDelete={handleDelete} onToggle={handleToggle} />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
@@ -474,12 +469,16 @@ export default function AdminKhuyenMaiPage() {
 
       {/* Toast */}
       {toast && (
-        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
-          background: '#1A1209', color: 'white', padding: '12px 24px', borderRadius: '999px',
-          fontWeight: '700', fontSize: '14px', zIndex: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--espresso)', color: '#f5ede0', padding: '12px 24px',
+          borderRadius: 999, fontWeight: 700, fontSize: 14, zIndex: 999,
+          boxShadow: 'var(--sh-3)', whiteSpace: 'nowrap', maxWidth: '90vw',
+          animation: 'fadeUp .3s var(--ease-out) both',
+        }}>
           {toast}
         </div>
       )}
-    </div>
+    </>
   )
 }

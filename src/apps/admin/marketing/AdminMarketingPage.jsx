@@ -828,88 +828,84 @@ export default function AdminMarketingPage() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: COLORS.bg,
-      fontFamily: "'Inter','Segoe UI',sans-serif", paddingBottom: '48px' }}>
-      {/* Header */}
-      <div style={{ background: COLORS.grad, padding: '44px 20px 20px' }}>
-        <button onClick={() => window.location.href = '/admin'}
-          style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white',
-            padding: '6px 14px', borderRadius: '8px', cursor: 'pointer',
-            fontSize: '13px', fontWeight: '700', marginBottom: '12px' }}>
-          ← Admin
-        </button>
-        <div style={{ color: 'white', fontWeight: '800', fontSize: '22px' }}>📣 Marketing</div>
-        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', marginTop: '4px' }}>
-          Chiến dịch · Chi phí kênh · ROI ước tính
+    <>
+      {/* mod-head */}
+      <div className="mod-head" style={{ marginBottom: 20 }}>
+        <div>
+          <div className="ttl">Marketing</div>
+          <div className="sub">Chiến dịch · Chi phí kênh · ROI ước tính</div>
         </div>
-
-        {/* Quick stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '16px' }}>
-          {[
-            { label: 'Đang chạy',   val: activeCampaigns.length, icon: '📣', color: '#C9A96E' },
-            { label: 'Chi tháng',   val: fmtShort(chiThang) + 'đ', icon: '💸', color: '#F4A460' },
-            { label: 'Ngân sách',   val: fmtShort(tongNganSach) + 'đ', icon: '🎯', color: '#7EB8D4' },
-            { label: 'KH mới (tổng)', val: tongKHMoi, icon: '👥', color: '#6FCF8E' },
-          ].map(s => (
-            <div key={s.label} style={{ background: 'rgba(255,255,255,0.12)',
-              borderRadius: '12px', padding: '10px 6px', textAlign: 'center' }}>
-              <div style={{ fontSize: '14px' }}>{s.icon}</div>
-              <div style={{ fontWeight: '800', fontSize: '13px', color: s.color, marginTop: '2px' }}>{s.val}</div>
-              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginTop: '1px',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</div>
-            </div>
-          ))}
+        <div className="acts">
+          <div className="subtabs">
+            {TABS.map(t => (
+              <div key={t.key} className={`st${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+                {t.label}
+              </div>
+            ))}
+          </div>
+          {tab === 'chien-dich' && (
+            <button className="btn gold" onClick={() => setTab('chien-dich')}>
+              + Chiến Dịch
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div style={{ background: 'white', borderBottom: `1px solid ${COLORS.border}`,
-        display: 'flex', padding: '0 16px' }}>
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            style={{ padding: '13px 18px', border: 'none', background: 'none', cursor: 'pointer',
-              fontWeight: tab === t.key ? '800' : '600', fontSize: '13px', whiteSpace: 'nowrap',
-              color: tab === t.key ? COLORS.primary : COLORS.textMute,
-              borderBottom: tab === t.key ? `2.5px solid ${COLORS.primary}` : '2.5px solid transparent',
-              transition: 'all .2s' }}>
-            {t.icon} {t.label}
-          </button>
-        ))}
+      {/* Strip KPIs */}
+      <div className="strip" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 20 }}>
+        <div className="it">
+          <div className="l">Đang Chạy</div>
+          <div className="v" style={{ color: 'var(--thu)' }}>{activeCampaigns.length}</div>
+          <div className="d">chiến dịch</div>
+        </div>
+        <div className="it">
+          <div className="l">Chi Tháng Này</div>
+          <div className="v">{fmtShort(chiThang)}<span className="cur">đ</span></div>
+        </div>
+        <div className="it">
+          <div className="l">Tổng Ngân Sách</div>
+          <div className="v">{fmtShort(tongNganSach)}<span className="cur">đ</span></div>
+        </div>
+        <div className="it">
+          <div className="l">KH Mới (Tổng)</div>
+          <div className="v">{tongKHMoi}<span className="cur"> KH</span></div>
+        </div>
       </div>
 
       {/* Content */}
-      <div style={{ padding: '20px' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: COLORS.textMute }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>📣</div>
-            <div>Đang tải dữ liệu marketing...</div>
-          </div>
-        ) : (
-          <>
-            {tab === 'dashboard' && (
-              <TabDashboard campaigns={campaigns}
-                chiPhiMarketing={chiPhiMarketing} danhMucMarketing={danhMucMarketing} />
-            )}
-            {tab === 'chien-dich' && (
-              <TabChienDich campaigns={campaigns} khuyenMaiList={khuyenMaiList}
-                onReload={load} showToast={showToast} />
-            )}
-            {tab === 'chi-phi' && (
-              <TabChiPhi chiPhiMarketing={chiPhiMarketing} danhMucMarketing={danhMucMarketing} />
-            )}
-          </>
-        )}
-      </div>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--ink3)' }}>
+          <div style={{ width: 44, height: 72, margin: '0 auto 16px', background: 'var(--grad-arch)', borderRadius: '999px 999px 12px 12px', opacity: .3, animation: 'floatGlow 2.5s ease-in-out infinite alternate' }} />
+          Đang tải dữ liệu marketing...
+        </div>
+      ) : (
+        <>
+          {tab === 'dashboard' && (
+            <TabDashboard campaigns={campaigns}
+              chiPhiMarketing={chiPhiMarketing} danhMucMarketing={danhMucMarketing} />
+          )}
+          {tab === 'chien-dich' && (
+            <TabChienDich campaigns={campaigns} khuyenMaiList={khuyenMaiList}
+              onReload={load} showToast={showToast} />
+          )}
+          {tab === 'chi-phi' && (
+            <TabChiPhi chiPhiMarketing={chiPhiMarketing} danhMucMarketing={danhMucMarketing} />
+          )}
+        </>
+      )}
 
       {/* Toast */}
       {toast && (
-        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
-          background: '#1A1209', color: 'white', padding: '12px 24px', borderRadius: '999px',
-          fontWeight: '700', fontSize: '14px', zIndex: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
-          whiteSpace: 'nowrap', maxWidth: '90vw' }}>
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--espresso)', color: '#f5ede0', padding: '12px 24px',
+          borderRadius: 999, fontWeight: 700, fontSize: 14, zIndex: 999,
+          boxShadow: 'var(--sh-3)', whiteSpace: 'nowrap', maxWidth: '90vw',
+          animation: 'fadeUp .3s var(--ease-out) both',
+        }}>
           {toast}
         </div>
       )}
-    </div>
+    </>
   )
 }

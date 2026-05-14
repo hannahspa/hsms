@@ -1526,67 +1526,99 @@ export default function AdminKhoHangPage() {
     { key: 'bao-cao',   icon: '📈', label: 'Báo Cáo' },
   ]
 
+  // Stats từ data đã tải
+  const activeProducts = products.filter(p => p.is_active)
+  const lowStockCount  = activeProducts.filter(p => p.ton_kho <= (p.canh_bao_ton || 0)).length
+  const gtKho = activeProducts.reduce((s, p) => s + (p.ton_kho || 0) * (p.gia_nhap || 0), 0)
+
   return (
-    <div style={{ minHeight: '100vh', background: COLORS.bg, fontFamily: "'Inter','Segoe UI',sans-serif", paddingBottom: '48px' }}>
-      {/* Header */}
-      <div style={{ background: COLORS.grad, padding: '44px 20px 20px' }}>
-        <button onClick={() => window.location.href = '/admin'}
-          style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white',
-            padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px',
-            fontWeight: '700', marginBottom: '12px' }}>
-          ← Admin
-        </button>
-        <div style={{ color: 'white', fontWeight: '800', fontSize: '22px' }}>📦 Kho Hàng</div>
-        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', marginTop: '4px' }}>
-          {products.filter(p => p.is_active).length} sản phẩm · Mỹ phẩm · Vật tư · Chiết rót
+    <>
+      {/* mod-head */}
+      <div className="mod-head" style={{ marginBottom: 20 }}>
+        <div>
+          <div className="ttl">Kho Hàng</div>
+          <div className="sub">
+            {activeProducts.length} sản phẩm · Mỹ phẩm · Vật tư · Chiết rót
+            {lowStockCount > 0 && <span style={{ color: 'var(--chi)', marginLeft: 8 }}>· {lowStockCount} cần nhập</span>}
+          </div>
+        </div>
+        <div className="acts">
+          <div className="subtabs">
+            {TABS.map(t => (
+              <div key={t.key} className={`st${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+                {t.label}
+              </div>
+            ))}
+          </div>
+          <button className="btn" onClick={() => setShowKiemKho(true)}>
+            ⊞ Kiểm Kho
+          </button>
+          <button className="btn gold" onClick={() => setTab('giao-dich')}>
+            + Nhập/Xuất
+          </button>
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div style={{ background: 'white', borderBottom: `1px solid ${COLORS.border}`,
-        display: 'flex', overflowX: 'auto', padding: '0 12px' }}>
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            style={{ padding: '13px 14px', border: 'none', background: 'none', cursor: 'pointer',
-              fontWeight: tab === t.key ? '800' : '600', fontSize: '12px', whiteSpace: 'nowrap',
-              color: tab === t.key ? COLORS.primary : COLORS.textMute,
-              borderBottom: tab === t.key ? `2.5px solid ${COLORS.primary}` : '2.5px solid transparent',
-              transition: 'all .2s' }}>
-            {t.icon} {t.label}
-          </button>
-        ))}
+      {/* Strip KPIs */}
+      <div className="strip" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 20 }}>
+        <div className="it">
+          <div className="l">Sản Phẩm Active</div>
+          <div className="v">{activeProducts.length}<span className="cur"> SP</span></div>
+        </div>
+        <div className="it">
+          <div className="l">Cần Nhập Kho</div>
+          <div className="v" style={{ color: lowStockCount > 0 ? 'var(--chi)' : 'var(--ink)' }}>
+            {lowStockCount}
+            <span className="cur"> SP</span>
+          </div>
+        </div>
+        <div className="it">
+          <div className="l">GT Hàng Trong Kho</div>
+          <div className="v" style={{ fontSize: gtKho > 0 ? undefined : 'var(--ink3)' }}>
+            {gtKho > 0
+              ? <>{(gtKho / 1e6).toFixed(1)}<span className="cur"> tr</span></>
+              : '—'
+            }
+          </div>
+        </div>
+        <div className="it">
+          <div className="l">Giao Dịch Gần Đây</div>
+          <div className="v">{transactions.length}<span className="cur"> GD</span></div>
+        </div>
       </div>
 
-      {/* Content */}
-      <div style={{ padding: '20px' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: COLORS.textMute }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>📦</div>
-            <div>Đang tải kho hàng...</div>
-          </div>
-        ) : (
-          <>
-            {tab === 'tong-quan' && (
-              <TabTongQuan products={products} transactions={transactions}
-                onNavigate={setTab} onKiemKho={() => setShowKiemKho(true)} />
-            )}
-            {tab === 'san-pham' && (
-              <TabSanPham products={products} onReload={load} showToast={showToast} />
-            )}
-            {tab === 'giao-dich' && (
-              <TabGiaoDich products={products} transactions={transactions}
-                userId={user?.id} danhMucKho={danhMucKho} onReload={load} showToast={showToast} />
-            )}
-            {tab === 'chiet-rot' && (
-              <TabChietRot products={products} transactions={transactions}
-                userId={user?.id} onReload={load} showToast={showToast} />
-            )}
-            {tab === 'bao-cao' && (
-              <TabBaoCao products={products} />
-            )}
-          </>
-        )}
-      </div>
+      {/* Content tabs */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--ink3)' }}>
+          <div style={{
+            width: 44, height: 72, margin: '0 auto 16px',
+            background: 'var(--grad-arch)', borderRadius: '999px 999px 12px 12px', opacity: .3,
+            animation: 'floatGlow 2.5s ease-in-out infinite alternate',
+          }} />
+          Đang tải kho hàng...
+        </div>
+      ) : (
+        <>
+          {tab === 'tong-quan' && (
+            <TabTongQuan products={products} transactions={transactions}
+              onNavigate={setTab} onKiemKho={() => setShowKiemKho(true)} />
+          )}
+          {tab === 'san-pham' && (
+            <TabSanPham products={products} onReload={load} showToast={showToast} />
+          )}
+          {tab === 'giao-dich' && (
+            <TabGiaoDich products={products} transactions={transactions}
+              userId={user?.id} danhMucKho={danhMucKho} onReload={load} showToast={showToast} />
+          )}
+          {tab === 'chiet-rot' && (
+            <TabChietRot products={products} transactions={transactions}
+              userId={user?.id} onReload={load} showToast={showToast} />
+          )}
+          {tab === 'bao-cao' && (
+            <TabBaoCao products={products} />
+          )}
+        </>
+      )}
 
       {/* Kiểm kho modal */}
       {showKiemKho && (
@@ -1601,13 +1633,16 @@ export default function AdminKhoHangPage() {
 
       {/* Toast */}
       {toast && (
-        <div style={{ position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
-          background: '#1A1209', color: 'white', padding: '12px 24px', borderRadius: '999px',
-          fontWeight: '700', fontSize: '14px', zIndex: 999, boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
-          whiteSpace: 'nowrap', maxWidth: '90vw' }}>
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--espresso)', color: '#f5ede0', padding: '12px 24px',
+          borderRadius: 999, fontWeight: 700, fontSize: 14, zIndex: 999,
+          boxShadow: 'var(--sh-3)', whiteSpace: 'nowrap', maxWidth: '90vw',
+          animation: 'fadeUp .3s var(--ease-out) both',
+        }}>
           {toast}
         </div>
       )}
-    </div>
+    </>
   )
 }
