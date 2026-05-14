@@ -194,6 +194,7 @@ export default function PosApp() {
   const [currentOrder, setCurrentOrder] = useState(null)
   const [lineItems, setLineItems] = useState([])
   const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [customerCards, setCustomerCards] = useState([])
   const [loading, setLoading] = useState(false)
   const [dichVuList, setDichVuList] = useState([])
   const [cat, setCat] = useState('all')
@@ -217,6 +218,14 @@ export default function PosApp() {
   }, [orderId])
 
   useEffect(() => { loadLineItems() }, [loadLineItems])
+
+  // Load thẻ liệu trình khi chọn khách hàng
+  useEffect(() => {
+    if (!selectedCustomer?.id) { setCustomerCards([]); return }
+    posService.getCustomerCards(selectedCustomer.id)
+      .then(cards => setCustomerCards(cards || []))
+      .catch(() => setCustomerCards([]))
+  }, [selectedCustomer?.id])
 
   // ── Order handlers ──
   const handleNewOrder = async () => {
@@ -262,6 +271,30 @@ export default function PosApp() {
       const updated = await posService.updateLineItemQty(id, qty, donGia)
       setLineItems(p => p.map(i => i.id === id ? { ...i, ...updated } : i))
     } catch (err) { alert('Lỗi: ' + err.message) }
+  }
+
+  const handleAddCard = async (card) => {
+    let oid = orderId
+    if (!oid) {
+      if (!confirm('Chưa có đơn. Tạo đơn mới?')) return
+      setLoading(true)
+      try {
+        const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: selectedCustomer?.id || null })
+        setCurrentOrder(order)
+        oid = order.id
+      } catch (err) { alert('Lỗi: ' + err.message); setLoading(false); return }
+      setLoading(false)
+    }
+    try {
+      const added = await posService.addLineItem(oid, {
+        loai_item: 'the_lieu_trinh',
+        the_lieu_trinh_id: card.id,
+        so_luong: 1,
+        don_gia: 0,
+        thanh_tien: 0,
+      })
+      setLineItems(p => [...p, added])
+    } catch (err) { alert('Lỗi thêm thẻ: ' + err.message) }
   }
 
   const handleVoidOrder = async () => {
@@ -410,6 +443,37 @@ export default function PosApp() {
         <aside className="pos-right">
           {/* Customer selector */}
           <CustomerSelector selected={selectedCustomer} onSelect={setSelectedCustomer} />
+
+          {/* Thẻ liệu trình của khách */}
+          {customerCards.length > 0 && (
+            <div style={{ borderBottom: '1px solid var(--line)', padding: '8px 12px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>
+                🎫 Thẻ liệu trình ({customerCards.length})
+              </div>
+              {customerCards.map(card => (
+                <button
+                  key={card.id}
+                  onClick={() => handleAddCard(card)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', padding: '7px 10px', marginBottom: 4,
+                    background: 'rgba(201,169,110,.08)', border: '1px solid rgba(201,169,110,.22)',
+                    borderRadius: 8, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--sans)',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>{card.ten_dich_vu}</div>
+                    <div style={{ fontSize: 10, color: 'var(--ink3)', marginTop: 1 }}>
+                      Còn {card.so_buoi_con_lai} buổi · Hết {card.ngay_het_han ? new Date(card.ngay_het_han).toLocaleDateString('vi-VN') : '—'}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--champagne)', fontWeight: 700, marginLeft: 8, flexShrink: 0 }}>
+                    + Dùng
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Cart header */}
           <div style={{
