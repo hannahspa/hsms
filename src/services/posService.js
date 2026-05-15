@@ -13,7 +13,7 @@ export const posService = {
         khach_hang_id: khachHangId || null,
         nguoi_tao: nguoiTao,
         ngay: todayISO(),
-        ghi_chu,
+        ghi_chu: ghiChu,
       })
       .select('*')
       .single()
