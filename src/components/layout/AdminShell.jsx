@@ -18,6 +18,8 @@ const ROLE_LABEL = {
 const ICON_MAP = {
   dashboard: I.Dashboard,
   pos: I.Cart,
+  'pos-tao': I.Cart,
+  'pos-ds': I.Receipt,
   sothuchi: I.Wallet,
   thuchi: I.Wallet,
   doisoat: I.Receipt,
