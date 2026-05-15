@@ -72,11 +72,17 @@ function LieuTrinhCard({ card, onUse }) {
 }
 
 // ── Cart line (right panel) ───────────────────────────────────────────────────
-function CartLine({ item, onRemove, onQtyChange }) {
+function CartLine({ item, onRemove, onQtyChange, selectedCustomer, onCardCreated }) {
   const [qty, setQty] = useState(item.so_luong || 1)
+  const [isNewCard, setIsNewCard] = useState(false)
+  const [sobuoi, setSobuoi] = useState(10)
+  const [ngayHetHan, setNgayHetHan] = useState('')
+  const [creatingCard, setCreatingCard] = useState(false)
+
   const name = item.dich_vu?.ten || item.san_pham?.ten || item.the_lieu_trinh?.ten_dich_vu || '—'
   const giaGoc = item.dich_vu?.gia_co_ban || item.don_gia || 0
   const nv = item.nhan_vien
+  const isDichVu = item.loai_item === 'dich_vu'
 
   const changeQty = async (n) => {
     if (n < 1) return
@@ -84,8 +90,33 @@ function CartLine({ item, onRemove, onQtyChange }) {
     await onQtyChange(item.id, n, item.don_gia)
   }
 
+  const handleCreateCard = async () => {
+    if (!selectedCustomer?.id) return alert('Cần chọn khách hàng trước khi tạo thẻ')
+    if (!ngayHetHan) return alert('Vui lòng nhập ngày hết hạn')
+    if (sobuoi < 1) return alert('Số buổi phải lớn hơn 0')
+    setCreatingCard(true)
+    try {
+      const { error } = await supabase.from('the_lieu_trinh').insert({
+        khach_hang_id: selectedCustomer.id,
+        ten_dich_vu: name,
+        so_buoi_tong: sobuoi,
+        so_buoi_da_dung: 0,
+        so_buoi_con_lai: sobuoi,
+        gia_tri_the: (item.thanh_tien || 0),
+        ngay_het_han: ngayHetHan,
+        trang_thai: 'active',
+      })
+      if (error) throw error
+      alert(`Đã tạo thẻ "${name}" — ${sobuoi} buổi cho ${selectedCustomer.ho_ten}`)
+      setIsNewCard(false)
+      if (onCardCreated) onCardCreated()
+    } catch (err) { alert('Lỗi tạo thẻ: ' + err.message) }
+    finally { setCreatingCard(false) }
+  }
+
   return (
     <div style={{ padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+      {/* Row 1: xóa + tên + qty + giá */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
         <button onClick={() => onRemove(item.id)} style={{
           background: 'none', border: 'none', color: '#DC3545',
@@ -116,6 +147,8 @@ function CartLine({ item, onRemove, onQtyChange }) {
           {formatCurrency(item.thanh_tien || 0)}
         </div>
       </div>
+
+      {/* Row 2: NV commission */}
       {nv && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, paddingLeft: 20 }}>
           <div style={{
@@ -127,6 +160,93 @@ function CartLine({ item, onRemove, onQtyChange }) {
           <span style={{ fontSize: 10, color: 'var(--champagne)', fontWeight: 700, marginLeft: 'auto' }}>
             HH: {formatCurrency(item.commission_tien || 0)}
           </span>
+        </div>
+      )}
+
+      {/* Row 3: Checkbox "Thẻ liệu trình" — chỉ hiện cho dịch vụ */}
+      {isDichVu && (
+        <div style={{ paddingLeft: 20, marginTop: 5 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', width: 'fit-content' }}>
+            <input
+              type="checkbox"
+              checked={isNewCard}
+              onChange={e => setIsNewCard(e.target.checked)}
+              style={{ accentColor: 'var(--champagne)', width: 13, height: 13 }}
+            />
+            <span style={{ fontSize: 11, color: 'var(--ink3)' }}>Thẻ liệu trình</span>
+          </label>
+
+          {/* Form tạo thẻ mới */}
+          {isNewCard && (
+            <div style={{
+              marginTop: 8, padding: '10px 12px',
+              background: 'rgba(201,169,110,.08)', border: '1px solid rgba(201,169,110,.2)',
+              borderRadius: 8,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--champagne)', marginBottom: 8 }}>
+                Tạo thẻ liệu trình mới
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                {/* Số buổi */}
+                <div>
+                  <div style={{ fontSize: 10, color: 'var(--ink3)', marginBottom: 3 }}>Số buổi LT</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button onClick={() => setSobuoi(Math.max(1, sobuoi - 1))} style={{
+                      width: 22, height: 22, border: '1px solid var(--bord)', borderRadius: 4,
+                      background: '#fff', cursor: 'pointer', fontSize: 14,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>−</button>
+                    <input
+                      value={sobuoi}
+                      onChange={e => setSobuoi(Math.max(1, parseInt(e.target.value) || 1))}
+                      style={{
+                        width: 40, border: '1px solid var(--bord)', borderRadius: 5,
+                        padding: '3px 0', fontSize: 13, fontWeight: 700, textAlign: 'center',
+                        outline: 'none', background: '#fff',
+                      }}
+                    />
+                    <button onClick={() => setSobuoi(sobuoi + 1)} style={{
+                      width: 22, height: 22, border: '1px solid var(--bord)', borderRadius: 4,
+                      background: '#fff', cursor: 'pointer', fontSize: 14,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>+</button>
+                  </div>
+                </div>
+                {/* Ngày hết hạn */}
+                <div>
+                  <div style={{ fontSize: 10, color: 'var(--ink3)', marginBottom: 3 }}>Ngày hết hạn</div>
+                  <input
+                    type="date"
+                    value={ngayHetHan}
+                    onChange={e => setNgayHetHan(e.target.value)}
+                    style={{
+                      width: '100%', border: '1px solid var(--bord)', borderRadius: 6,
+                      padding: '5px 8px', fontSize: 12, outline: 'none',
+                      background: '#fff', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                  Giá trị thẻ: <b style={{ color: 'var(--ink)' }}>{formatCurrency(item.thanh_tien || 0)}</b>
+                </span>
+                <button
+                  onClick={handleCreateCard}
+                  disabled={creatingCard || !ngayHetHan}
+                  style={{
+                    padding: '6px 14px', border: 'none', borderRadius: 7,
+                    background: creatingCard || !ngayHetHan ? 'var(--bg2)' : 'var(--champagne)',
+                    color: creatingCard || !ngayHetHan ? 'var(--ink3)' : '#2a1d14',
+                    fontSize: 12, fontWeight: 700, cursor: creatingCard || !ngayHetHan ? 'not-allowed' : 'pointer',
+                    fontFamily: 'var(--sans)',
+                  }}
+                >
+                  {creatingCard ? 'Đang tạo…' : 'Tạo thẻ'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -340,7 +460,7 @@ function PosCreateOrder() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 112px)', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 65px)', overflow: 'hidden', background: 'var(--bg)', margin: '-26px -28px -40px' }}>
 
       {/* ═══ LEFT PANEL (60%) ═══ */}
       <div style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid var(--line)' }}>
@@ -500,7 +620,7 @@ function PosCreateOrder() {
 
                   {/* Thẻ liệu trình đang sử dụng */}
                   {customerCards.length > 0 && (
-                    <div>
+                    <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>
                         Liệu trình đang sử dụng
                       </div>
@@ -707,7 +827,14 @@ function PosCreateOrder() {
                 Chọn dịch vụ từ danh mục bên trái
               </div>
             ) : lineItems.map(item => (
-              <CartLine key={item.id} item={item} onRemove={handleRemoveItem} onQtyChange={handleQtyChange} />
+              <CartLine
+                key={item.id}
+                item={item}
+                onRemove={handleRemoveItem}
+                onQtyChange={handleQtyChange}
+                selectedCustomer={selectedCustomer}
+                onCardCreated={() => posService.getCustomerCards(selectedCustomer?.id).then(c => setCustomerCards(c || []))}
+              />
             ))}
           </div>
 
