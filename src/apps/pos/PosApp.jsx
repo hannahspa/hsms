@@ -1,141 +1,82 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { posService } from '../../services/posService'
 import { supabase } from '../../lib/supabase'
-import { formatCurrency, todayISO, getNowVN } from '../../lib/utils'
+import { formatCurrency, getNowVN } from '../../lib/utils'
 import { useAuth } from '../../context/AuthContext'
 import I from '../../components/shared/Icons'
 import PosOrderHistory from './PosOrderHistory'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const PTTT_CFG = [
-  { id: 'tien_mat',     label: 'Tiền Mặt',    icon: '💵', color: '#2D7A4F' },
-  { id: 'chuyen_khoan', label: 'Chuyển Khoản', icon: '🏦', color: '#1A5276' },
-  { id: 'quet_the',     label: 'Quẹt Thẻ',    icon: '💳', color: '#6C3483' },
+const PTTT_OPTS = [
+  { id: 'tien_mat',     label: 'Tiền mặt',     icon: '💵' },
+  { id: 'chuyen_khoan', label: 'Chuyển khoản', icon: '🏦' },
+  { id: 'quet_the',     label: 'Quẹt thẻ',     icon: '💳' },
 ]
 
-const ITEM_LABEL = { dich_vu: 'DV', san_pham: 'SP', the_lieu_trinh: 'Thẻ' }
-
+function parseVND(s) { return parseInt(String(s).replace(/\D/g, ''), 10) || 0 }
 function getInitials(name) {
   if (!name) return '?'
   const p = name.trim().split(' ')
   return (p[p.length - 1][0] || '').toUpperCase()
 }
 
-function parseVND(s) {
-  return parseInt(String(s).replace(/\D/g, ''), 10) || 0
+// ── Toggle switch ──────────────────────────────────────────────────────────────
+function Toggle({ on, onChange, label }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+      <div onClick={() => onChange(!on)} style={{
+        width: 38, height: 21, borderRadius: 11, position: 'relative',
+        background: on ? 'var(--champagne)' : 'rgba(0,0,0,.18)', transition: 'background .2s', flexShrink: 0,
+      }}>
+        <div style={{
+          position: 'absolute', top: 2.5, left: on ? 19 : 2.5,
+          width: 16, height: 16, borderRadius: '50%', background: '#fff',
+          transition: 'left .18s', boxShadow: '0 1px 4px rgba(0,0,0,.25)',
+        }} />
+      </div>
+      {label && <span style={{ fontSize: 12.5, color: 'var(--ink2)' }}>{label}</span>}
+    </label>
+  )
 }
 
-// ─── CustomerSelector ─────────────────────────────────────────────────────────
-function CustomerSelector({ selected, onSelect }) {
-  const [q, setQ] = useState('')
-  const [results, setResults] = useState([])
-  const [open, setOpen] = useState(false)
-  const [searching, setSearching] = useState(false)
-  const timer = useRef(null)
-
-  const search = useCallback(async (query) => {
-    if (!query || query.length < 2) { setResults([]); return }
-    setSearching(true)
-    try { setResults(await posService.searchCustomers(query, 8)) }
-    finally { setSearching(false) }
-  }, [])
-
-  const onChange = e => {
-    const v = e.target.value
-    setQ(v); setOpen(true)
-    clearTimeout(timer.current)
-    timer.current = setTimeout(() => search(v), 280)
-  }
-
-  const pick = c => { onSelect(c); setOpen(false); setQ(''); setResults([]) }
-  const clear = () => { onSelect(null); setQ(''); setResults([]) }
-
-  if (selected) {
-    return (
-      <div className="pos-cust">
-        <div className="avatar" style={{ background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#2a1d14' }}>
-          {getInitials(selected.ho_ten)}
-        </div>
-        <div className="info" style={{ flex: 1 }}>
-          <div className="n">{selected.ho_ten}</div>
-          <div className="m">
-            {selected.so_dien_thoai || 'Không có SĐT'}
-            {selected.tong_chi_tieu > 0 && ` · ${formatCurrency(selected.tong_chi_tieu)}`}
-          </div>
-        </div>
-        <button onClick={clear} style={{
-          background: 'none', border: 'none', color: 'var(--ink3)',
-          cursor: 'pointer', fontSize: 15, padding: '4px 6px', lineHeight: 1,
-        }}>✕</button>
-      </div>
-    )
-  }
-
+// ── Thẻ liệu trình card (horizontal) ─────────────────────────────────────────
+function LieuTrinhCard({ card, onUse }) {
+  const pct = card.so_buoi_tong > 0 ? (card.so_buoi_da_dung / card.so_buoi_tong) * 100 : 0
+  const usedAmt = card.gia_tri_the > 0 ? Math.round((card.so_buoi_da_dung / card.so_buoi_tong) * card.gia_tri_the) : 0
   return (
-    <div style={{ position: 'relative' }}>
-      <div className="pos-cust" style={{ padding: '10px 14px' }}>
-        <div className="avatar" style={{ background: 'var(--grad-arch)', flexShrink: 0, fontSize: 13 }}>?</div>
-        <input
-          value={q}
-          onChange={onChange}
-          onFocus={() => setOpen(true)}
-          placeholder="Tìm khách hàng (tên, SĐT)…"
-          style={{
-            flex: 1, border: 'none', background: 'transparent', outline: 'none',
-            fontSize: 13, color: 'var(--ink)', fontFamily: 'var(--sans)',
-          }}
-        />
-        {searching && <span style={{ fontSize: 11, color: 'var(--ink3)', animation: 'fadeUp .2s' }}>…</span>}
+    <div style={{
+      minWidth: 195, maxWidth: 210, flexShrink: 0, borderRadius: 12, padding: '12px 14px',
+      background: 'linear-gradient(135deg,#C9A96E 0%,#A0714F 55%,#7D5A3C 100%)',
+      color: '#fff', boxShadow: '0 4px 16px rgba(160,113,79,.3)',
+    }}>
+      <div style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.3, marginBottom: 2 }}>
+        {card.ten_dich_vu} ({card.so_buoi_da_dung}/{card.so_buoi_tong})
       </div>
-
-      {open && (results.length > 0 || (q.length >= 2 && !searching)) && (
-        <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 60,
-          background: 'var(--surface)', border: '1px solid var(--bord)',
-          borderRadius: 12, boxShadow: 'var(--sh-3)', overflow: 'hidden',
-          animation: 'scaleIn .18s var(--ease-out) both',
-        }}>
-          {results.length === 0 ? (
-            <div style={{ padding: '14px', fontSize: 13, color: 'var(--ink3)', textAlign: 'center' }}>
-              Không tìm thấy · <span style={{ color: 'var(--champagne)' }}>Thêm mới</span>
-            </div>
-          ) : results.map(c => (
-            <button
-              key={c.id}
-              onClick={() => pick(c)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                width: '100%', padding: '10px 14px', border: 'none',
-                background: 'transparent', cursor: 'pointer', textAlign: 'left',
-                borderBottom: '1px solid var(--line)', fontFamily: 'var(--sans)',
-              }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%', background: 'var(--grad-arch)',
-                flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 700, color: '#2a1d14',
-              }}>{getInitials(c.ho_ten)}</div>
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{c.ho_ten}</div>
-                <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 1 }}>{c.so_dien_thoai}</div>
-              </div>
-              {c.tong_chi_tieu > 0 && (
-                <div style={{ fontSize: 11, color: 'var(--champagne)', fontWeight: 700 }}>
-                  {formatCurrency(c.tong_chi_tieu)}
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-      {open && <div style={{ position: 'fixed', inset: 0, zIndex: 59 }} onClick={() => setOpen(false)} />}
+      <div style={{ fontSize: 9.5, opacity: .75, marginBottom: 8 }}>
+        {card.ma_the || '—'} · {formatCurrency(card.gia_tri_the || 0)}
+      </div>
+      <div style={{ height: 3, background: 'rgba(255,255,255,.25)', borderRadius: 2, marginBottom: 5 }}>
+        <div style={{ height: '100%', borderRadius: 2, background: '#fff', width: `${pct}%` }} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 9.5, opacity: .7 }}>
+          {formatCurrency(usedAmt)}/{formatCurrency(card.gia_tri_the || 0)}
+        </span>
+        <button onClick={() => onUse(card)} style={{
+          background: 'rgba(255,255,255,.25)', border: '1px solid rgba(255,255,255,.4)',
+          borderRadius: 6, padding: '3px 10px', color: '#fff', cursor: 'pointer',
+          fontSize: 11, fontWeight: 700, fontFamily: 'var(--sans)',
+        }}>→ Dùng</button>
+      </div>
     </div>
   )
 }
 
-// ─── CartLine ─────────────────────────────────────────────────────────────────
+// ── Cart line (right panel) ───────────────────────────────────────────────────
 function CartLine({ item, onRemove, onQtyChange }) {
-  const [qty, setQty] = useState(item.so_luong)
+  const [qty, setQty] = useState(item.so_luong || 1)
   const name = item.dich_vu?.ten || item.san_pham?.ten || item.the_lieu_trinh?.ten_dich_vu || '—'
+  const giaGoc = item.dich_vu?.gia_co_ban || item.don_gia || 0
+  const nv = item.nhan_vien
 
   const changeQty = async (n) => {
     if (n < 1) return
@@ -144,98 +85,111 @@ function CartLine({ item, onRemove, onQtyChange }) {
   }
 
   return (
-    <div className="cart-line" style={{ alignItems: 'flex-start', gap: 10 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 13, fontWeight: 600, color: 'var(--ink)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{name}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-          <span style={{
-            fontSize: 9, letterSpacing: '.06em', textTransform: 'uppercase',
-            background: 'var(--bg2)', border: '1px solid var(--line)',
-            padding: '1px 5px', borderRadius: 4, color: 'var(--ink3)', fontWeight: 700,
-          }}>{ITEM_LABEL[item.loai_item]}</span>
-          {/* Qty stepper */}
-          <button onClick={() => changeQty(qty - 1)} style={{
-            width: 20, height: 20, border: '1px solid var(--line)', borderRadius: 4,
-            background: 'var(--bg)', cursor: 'pointer', fontSize: 15, color: 'var(--ink2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-          }}>−</button>
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', minWidth: 18, textAlign: 'center' }}>
-            {qty}
-          </span>
-          <button onClick={() => changeQty(qty + 1)} style={{
-            width: 20, height: 20, border: '1px solid var(--line)', borderRadius: 4,
-            background: 'var(--bg)', cursor: 'pointer', fontSize: 15, color: 'var(--ink2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-          }}>+</button>
-          {item.nhan_vien && (
-            <span style={{ fontSize: 10, color: 'var(--champagne)', marginLeft: 2 }}>
-              {item.nhan_vien.ho_ten}
-            </span>
+    <div style={{ padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+        <button onClick={() => onRemove(item.id)} style={{
+          background: 'none', border: 'none', color: '#DC3545',
+          cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1, flexShrink: 0,
+        }}>✕</button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>{name}</div>
+          {giaGoc > 0 && item.thanh_tien !== giaGoc && (
+            <div style={{ fontSize: 10, color: 'var(--ink3)', textDecoration: 'line-through' }}>
+              {formatCurrency(giaGoc)}
+            </div>
           )}
         </div>
-      </div>
-      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontFamily: 'var(--serif)', fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
-          {formatCurrency(item.thanh_tien)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+          <button onClick={() => changeQty(qty - 1)} style={{
+            width: 22, height: 22, border: '1px solid var(--bord)', borderRadius: 4,
+            background: 'var(--bg)', cursor: 'pointer', fontSize: 14, lineHeight: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink2)',
+          }}>−</button>
+          <span style={{ fontSize: 12, fontWeight: 700, minWidth: 18, textAlign: 'center', color: 'var(--ink)' }}>{qty}</span>
+          <button onClick={() => changeQty(qty + 1)} style={{
+            width: 22, height: 22, border: '1px solid var(--bord)', borderRadius: 4,
+            background: 'var(--bg)', cursor: 'pointer', fontSize: 14, lineHeight: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink2)',
+          }}>+</button>
         </div>
-        <button onClick={() => onRemove(item.id)} style={{
-          background: 'none', border: 'none', color: 'var(--ink3)',
-          cursor: 'pointer', fontSize: 13, padding: '2px 4px', marginTop: 2,
-        }}>✕</button>
+        <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--ink)', minWidth: 72, textAlign: 'right', flexShrink: 0 }}>
+          {formatCurrency(item.thanh_tien || 0)}
+        </div>
       </div>
+      {nv && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, paddingLeft: 20 }}>
+          <div style={{
+            width: 22, height: 22, borderRadius: '50%',
+            background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#2a1d14',
+            fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>{getInitials(nv.ho_ten)}</div>
+          <span style={{ fontSize: 11, color: 'var(--ink2)' }}>{nv.ho_ten}</span>
+          <span style={{ fontSize: 10, color: 'var(--champagne)', fontWeight: 700, marginLeft: 'auto' }}>
+            HH: {formatCurrency(item.commission_tien || 0)}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
 
-// ─── Main PosApp ──────────────────────────────────────────────────────────────
-export default function PosApp() {
+// ── PosCreateOrder (toàn bộ hook ở đây) ──────────────────────────────────────
+function PosCreateOrder() {
   const { user } = useAuth()
-  const path = window.location.pathname
 
-  // Route /pos/danh-sach → PosOrderHistory
-  if (path === '/pos/danh-sach') {
-    return <PosOrderHistory onResumeOrder={(order) => {
-      window.location.href = '/pos'
-    }} />
-  }
-
+  // Order
   const [currentOrder, setCurrentOrder] = useState(null)
   const [lineItems, setLineItems] = useState([])
-  const [selectedCustomer, setSelectedCustomer] = useState(null)
-  const [customerCards, setCustomerCards] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [dichVuList, setDichVuList] = useState([])
-  const [cat, setCat] = useState('all')
-  const [search, setSearch] = useState('')
-  const [todayStats, setTodayStats] = useState({ soDon: 0, tongThu: 0 })
-  const [catalogTab, setCatalogTab] = useState('dich_vu')
-  // Khách hàng
+
+  // Customer
   const [isGuest, setIsGuest] = useState(true)
+  const [saveInfo, setSaveInfo] = useState(false)
   const [guestName, setGuestName] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
-  // Payment state
-  const [activePay, setActivePay] = useState('tien_mat')
-  const [payAmounts, setPayAmounts] = useState({ tien_mat: '', chuyen_khoan: '', quet_the: '' })
-  const [giamGia, setGiamGia] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
+  const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [customerCards, setCustomerCards] = useState([])
+  const [custSearch, setCustSearch] = useState('')
+  const [custResults, setCustResults] = useState([])
+  const [custOpen, setCustOpen] = useState(false)
+  const [custLoading, setCustLoading] = useState(false)
 
+  // Catalog
+  const [catalogTab, setCatalogTab] = useState('dich_vu')
+  const [cat, setCat] = useState('all')
+  const [search, setSearch] = useState('')
+  const [dichVuList, setDichVuList] = useState([])
+
+  // Right panel
+  const [rightTab, setRightTab] = useState('don_hang')
+  const [giamDVPct, setGiamDVPct] = useState('')
+  const [vatPct, setVatPct] = useState('')
+  const [maKM, setMaKM] = useState('')
+  const [nhapTien, setNhapTien] = useState('')
+  const [pttt, setPttt] = useState('tien_mat')
+  const [sendSMS, setSendSMS] = useState(false)
+  const [sendZNS, setSendZNS] = useState(true)
+  const [todayStats, setTodayStats] = useState({ soDon: 0, tongThu: 0 })
+  const [loading, setLoading] = useState(false)
+
+  const custTimer = useRef(null)
   const orderId = currentOrder?.id
 
+  // ── Load ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     posService.getServices().then(d => setDichVuList(d || []))
     posService.getTodayStats().then(s => setTodayStats(s))
+    // Auto-tạo đơn khi vào trang
+    posService.createOrder({ nguoiTao: user?.id, khachHangId: null })
+      .then(order => setCurrentOrder(order))
+      .catch(console.error)
   }, [])
 
-  const loadLineItems = useCallback(async () => {
+  useEffect(() => {
     if (!orderId) return
-    setLineItems(await posService.getLineItems(orderId) || [])
+    posService.getLineItems(orderId).then(items => setLineItems(items || []))
   }, [orderId])
 
-  useEffect(() => { loadLineItems() }, [loadLineItems])
-
-  // Load thẻ liệu trình khi chọn khách hàng
   useEffect(() => {
     if (!selectedCustomer?.id) { setCustomerCards([]); return }
     posService.getCustomerCards(selectedCustomer.id)
@@ -243,36 +197,63 @@ export default function PosApp() {
       .catch(() => setCustomerCards([]))
   }, [selectedCustomer?.id])
 
-  // ── Order handlers ──
-  const handleNewOrder = async () => {
-    if (currentOrder?.trang_thai === 'draft' && !confirm('Đơn đang dở. Tạo đơn mới?')) return
-    setLoading(true)
-    try {
-      const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: selectedCustomer?.id || null })
-      setCurrentOrder(order)
-      setLineItems([])
-      setPayAmounts({ tien_mat: '', chuyen_khoan: '', quet_the: '' })
-      setGiamGia('')
-    } catch (err) { alert('Lỗi: ' + err.message) }
-    finally { setLoading(false) }
+  // ── Customer search ─────────────────────────────────────────────────────────
+  const searchCustomers = useCallback(async (q) => {
+    if (!q || q.length < 2) { setCustResults([]); return }
+    setCustLoading(true)
+    try { setCustResults(await posService.searchCustomers(q, 6)) }
+    finally { setCustLoading(false) }
+  }, [])
+
+  const onCustChange = (v) => {
+    setCustSearch(v)
+    setCustOpen(true)
+    clearTimeout(custTimer.current)
+    custTimer.current = setTimeout(() => searchCustomers(v), 280)
   }
 
-  const handleAddItem = async (item) => {
-    let oid = orderId
-    if (!oid) {
-      if (!confirm('Chưa có đơn. Tạo đơn mới?')) return
-      setLoading(true)
-      try {
-        const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: selectedCustomer?.id || null })
-        setCurrentOrder(order)
-        oid = order.id
-      } catch (err) { alert('Lỗi: ' + err.message); setLoading(false); return }
-      setLoading(false)
-    }
+  const pickCustomer = (c) => {
+    setSelectedCustomer(c)
+    setCustSearch(c.ho_ten)
+    setCustOpen(false)
+    setCustResults([])
+  }
+
+  const clearCustomer = () => {
+    setSelectedCustomer(null)
+    setCustSearch('')
+    setCustResults([])
+    setCustomerCards([])
+  }
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
+  const ensureOrder = async () => {
+    if (orderId) return orderId
+    const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: selectedCustomer?.id || null })
+    setCurrentOrder(order)
+    return order.id
+  }
+
+  const handleAddService = async (dv) => {
     try {
-      const added = await posService.addLineItem(oid, item)
+      const oid = await ensureOrder()
+      const added = await posService.addLineItem(oid, {
+        loai_item: 'dich_vu', dich_vu_id: dv.id,
+        so_luong: 1, don_gia: dv.gia_co_ban, thanh_tien: dv.gia_co_ban,
+      })
       setLineItems(p => [...p, added])
-    } catch (err) { alert('Lỗi thêm dịch vụ: ' + err.message) }
+    } catch (err) { alert('Lỗi: ' + err.message) }
+  }
+
+  const handleAddCard = async (card) => {
+    try {
+      const oid = await ensureOrder()
+      const added = await posService.addLineItem(oid, {
+        loai_item: 'the_lieu_trinh', the_lieu_trinh_id: card.id,
+        so_luong: 1, don_gia: 0, thanh_tien: 0,
+      })
+      setLineItems(p => [...p, added])
+    } catch (err) { alert('Lỗi: ' + err.message) }
   }
 
   const handleRemoveItem = async (id) => {
@@ -289,78 +270,63 @@ export default function PosApp() {
     } catch (err) { alert('Lỗi: ' + err.message) }
   }
 
-  const handleAddCard = async (card) => {
-    let oid = orderId
-    if (!oid) {
-      if (!confirm('Chưa có đơn. Tạo đơn mới?')) return
-      setLoading(true)
-      try {
-        const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: selectedCustomer?.id || null })
-        setCurrentOrder(order)
-        oid = order.id
-      } catch (err) { alert('Lỗi: ' + err.message); setLoading(false); return }
-      setLoading(false)
-    }
+  const handleCreateGuest = async () => {
+    if (!guestName.trim()) return
     try {
-      const added = await posService.addLineItem(oid, {
-        loai_item: 'the_lieu_trinh',
-        the_lieu_trinh_id: card.id,
-        so_luong: 1,
-        don_gia: 0,
-        thanh_tien: 0,
-      })
-      setLineItems(p => [...p, added])
-    } catch (err) { alert('Lỗi thêm thẻ: ' + err.message) }
+      const { data, error } = await supabase
+        .from('khach_hang')
+        .insert({ ho_ten: guestName.trim(), so_dien_thoai: guestPhone.trim() || null })
+        .select().single()
+      if (error) throw error
+      setSelectedCustomer(data)
+      setIsGuest(false)
+      setCustSearch(data.ho_ten)
+      setGuestName(''); setGuestPhone(''); setGuestEmail('')
+    } catch (err) { alert('Lỗi tạo KH: ' + err.message) }
   }
 
   const handleVoidOrder = async () => {
-    if (!orderId || !confirm('Hủy đơn hàng này?')) return
+    if (!orderId || !confirm('Hủy đơn và tạo đơn mới?')) return
     try {
       await posService.voidOrder(orderId)
-      setCurrentOrder(null)
+      const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: null })
+      setCurrentOrder(order)
       setLineItems([])
+      setNhapTien(''); setGiamDVPct(''); setVatPct(''); setMaKM('')
     } catch (err) { alert('Lỗi: ' + err.message) }
   }
 
-  const handleCheckout = async () => {
-    if (!orderId || lineItems.length === 0) return
-    const giam = parseVND(giamGia)
-    const tongSauGiam = Math.max(0, tongHang - giam)
-    const totalPaid = PTTT_CFG.reduce((s, p) => s + parseVND(payAmounts[p.id]), 0)
-
-    if (totalPaid < tongSauGiam) {
-      if (!confirm(`Còn thiếu ${formatCurrency(tongSauGiam - totalPaid)}. Ghi nợ và chốt đơn?`)) return
-    }
-
+  const handleCheckout = async (andPrint = false) => {
+    if (!orderId || lineItems.length === 0) return alert('Giỏ hàng trống')
+    const giamAmt = Math.round(tongHang * (parseFloat(giamDVPct) || 0) / 100)
+    const vatAmt2 = Math.round((tongHang - giamAmt) * (parseFloat(vatPct) || 0) / 100)
+    const tienDaTra = parseVND(nhapTien)
+    const conNo = Math.max(0, tongCuoi - tienDaTra)
     setLoading(true)
     try {
-      // Ghi thanh toán từng PTTT
-      for (const p of PTTT_CFG) {
-        const amt = parseVND(payAmounts[p.id])
-        if (amt > 0) {
-          await posService.addPayment(orderId, { hinhThuc: p.id, soTien: amt })
-        }
+      if (tienDaTra > 0) {
+        await posService.addPayment(orderId, { hinhThuc: pttt, soTien: Math.min(tienDaTra, tongCuoi) })
       }
-      const conNo = Math.max(0, tongSauGiam - PTTT_CFG.reduce((s, p) => s + parseVND(payAmounts[p.id]), 0))
-      await posService.finalizeOrder(orderId, { giamGia: giam, conNo })
-      // Reset
-      setCurrentOrder(null)
+      await posService.finalizeOrder(orderId, { giamGia: giamAmt, conNo })
+      const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: null })
+      setCurrentOrder(order)
       setLineItems([])
-      setPayAmounts({ tien_mat: '', chuyen_khoan: '', quet_the: '' })
-      setGiamGia('')
+      setNhapTien(''); setGiamDVPct(''); setVatPct(''); setMaKM('')
       const stats = await posService.getTodayStats()
       setTodayStats(stats)
+      if (andPrint) alert('Chức năng in đang phát triển')
     } catch (err) { alert('Lỗi thanh toán: ' + err.message) }
     finally { setLoading(false) }
   }
 
-  // ── Computed values ──
+  // ── Computed ────────────────────────────────────────────────────────────────
   const tongHang = lineItems.reduce((s, i) => s + (i.thanh_tien || 0), 0)
-  const giamGiaNum = parseVND(giamGia)
-  const tongSauGiam = Math.max(0, tongHang - giamGiaNum)
-  const tongDaTra = PTTT_CFG.reduce((s, p) => s + parseVND(payAmounts[p.id]), 0)
-  const conLai = Math.max(0, tongSauGiam - tongDaTra)
-  const thoiLai = Math.max(0, tongDaTra - tongSauGiam)
+  const giamDVAmt = Math.round(tongHang * (parseFloat(giamDVPct) || 0) / 100)
+  const vatAmt = Math.round((tongHang - giamDVAmt) * (parseFloat(vatPct) || 0) / 100)
+  const tongCuoi = Math.max(0, tongHang - giamDVAmt + vatAmt)
+  const tienNhapNum = parseVND(nhapTien)
+  const tienThua = Math.max(0, tienNhapNum - tongCuoi)
+  const conLai = Math.max(0, tongCuoi - tienNhapNum)
 
   const categories = ['all', ...new Set(dichVuList.map(d => d.danh_muc).filter(Boolean))]
   const filteredDV = dichVuList.filter(dv => {
@@ -369,105 +335,233 @@ export default function PosApp() {
     return true
   })
 
-  const handleResumeOrder = (order) => {
-    setCurrentOrder(order)
-  }
+  const nowVN = getNowVN()
+  const dateStr = nowVN.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-  const handleCreateGuest = async () => {
-    if (!guestName.trim()) return
-    try {
-      const { data, error } = await supabase
-        .from('khach_hang')
-        .insert({ ho_ten: guestName.trim(), so_dien_thoai: guestPhone.trim() || null })
-        .select()
-        .single()
-      if (error) throw error
-      setSelectedCustomer(data)
-      setIsGuest(false)
-      setGuestName('')
-      setGuestPhone('')
-    } catch (err) { alert('Lỗi tạo khách hàng: ' + err.message) }
-  }
-
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div>
-      {/* ── Header ── */}
-      <div className="mod-head" style={{ marginBottom: 16 }}>
-        <div>
-          <div className="ttl">Tạo Đơn Hàng</div>
-          <div className="sub">
-            {user?.ho_ten || 'Thu Ngân'} · Hôm nay: {todayStats.soDon} đơn · {formatCurrency(todayStats.tongThu)}
-            {orderId && (
-              <span style={{ marginLeft: 10, color: 'var(--champagne)', fontWeight: 700 }}>
-                · Đơn {currentOrder?.ma_don}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="acts">
-          <button className="btn" onClick={() => window.location.href = '/pos/danh-sach'}>
-            <I.Receipt style={{ width: 13, height: 13 }} /> Danh Sách ĐH
-          </button>
-          {!orderId
-            ? <button className="btn gold" onClick={handleNewOrder} disabled={loading}>
-                <I.Plus style={{ width: 13, height: 13 }} /> Tạo Đơn Mới
-              </button>
-            : <button className="btn" onClick={handleNewOrder} disabled={loading}>
-                <I.Plus style={{ width: 13, height: 13 }} /> Đơn Mới
-              </button>
-          }
-        </div>
-      </div>
+    <div style={{ display: 'flex', height: 'calc(100vh - 112px)', overflow: 'hidden', background: 'var(--bg)' }}>
 
-      <div className="pos">
-        {/* LEFT — Catalog */}
-        <div className="pos-left">
-          {/* 3 catalog tabs */}
-          <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--line)', marginBottom: 14 }}>
-            {[
-              { key: 'dich_vu',       label: 'Dịch Vụ' },
-              { key: 'the_lieu_trinh', label: 'Thẻ LT' },
-            ].map(t => (
-              <button key={t.key} onClick={() => setCatalogTab(t.key)}
+      {/* ═══ LEFT PANEL (60%) ═══ */}
+      <div style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid var(--line)' }}>
+
+        {/* Left header */}
+        <div style={{
+          padding: '10px 16px', borderBottom: '1px solid var(--line)',
+          background: 'var(--surface)', flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--ink)' }}>Tạo Đơn Hàng</div>
+            <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 1 }}>
+              {user?.ho_ten} · {todayStats.soDon} đơn hôm nay · {formatCurrency(todayStats.tongThu)}
+              {currentOrder?.ma_don && (
+                <span style={{ marginLeft: 8, color: 'var(--champagne)', fontWeight: 700 }}>· {currentOrder.ma_don}</span>
+              )}
+            </div>
+          </div>
+          <button className="btn" style={{ fontSize: 12 }}
+            onClick={() => window.location.href = '/pos/danh-sach'}>
+            <I.Receipt style={{ width: 13, height: 13 }} /> Danh Sách
+          </button>
+        </div>
+
+        {/* ── CUSTOMER SECTION ── */}
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--line)', background: '#fafaf9', flexShrink: 0 }}>
+
+          {/* Toggle row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 12 }}>
+            <Toggle on={isGuest} onChange={(v) => { setIsGuest(v); if (!v) { setGuestName(''); setGuestPhone(''); setGuestEmail('') } }} label="Khách lẻ" />
+            {isGuest && <Toggle on={saveInfo} onChange={setSaveInfo} label="Lưu thông tin khách hàng" />}
+          </div>
+
+          {isGuest ? (
+            /* ── Khách lẻ: form 3 cột + nút + ── */
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 36px', gap: 8, alignItems: 'end' }}>
+              {[
+                { label: 'Tên khách hàng', val: guestName, set: setGuestName, ph: 'Tên KH…', type: 'text' },
+                { label: 'Số điện thoại',  val: guestPhone, set: setGuestPhone, ph: 'SĐT…',   type: 'tel' },
+                { label: 'Email',           val: guestEmail, set: setGuestEmail, ph: 'Email…', type: 'email' },
+              ].map(f => (
+                <div key={f.label}>
+                  <div style={{ fontSize: 10, color: 'var(--ink3)', marginBottom: 3 }}>{f.label}</div>
+                  <input value={f.val} onChange={e => f.set(e.target.value)}
+                    placeholder={f.ph} type={f.type}
+                    style={{
+                      width: '100%', border: '1px solid var(--bord)', borderRadius: 8,
+                      padding: '7px 10px', fontSize: 13, outline: 'none',
+                      background: '#fff', color: 'var(--ink)', fontFamily: 'var(--sans)', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              ))}
+              <button onClick={handleCreateGuest} disabled={!guestName.trim()}
+                title="Tạo khách hàng mới"
                 style={{
-                  padding: '9px 18px', border: 'none', background: 'none',
-                  fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)',
+                  width: 36, height: 36, border: 'none', borderRadius: 8,
+                  background: guestName.trim() ? 'var(--champagne)' : 'var(--bg2)',
+                  color: guestName.trim() ? '#2a1d14' : 'var(--ink3)',
+                  cursor: guestName.trim() ? 'pointer' : 'not-allowed',
+                  fontSize: 22, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>+</button>
+            </div>
+          ) : (
+            /* ── Khách cũ: search + form sau khi chọn ── */
+            <div style={{ position: 'relative' }}>
+              <div style={{ fontSize: 10, color: 'var(--ink3)', marginBottom: 3 }}>Tìm theo tên, số điện thoại hoặc email</div>
+              <div style={{ position: 'relative' }}>
+                <input value={custSearch} onChange={e => onCustChange(e.target.value)}
+                  onFocus={() => setCustOpen(true)}
+                  placeholder="Tìm nhanh KH…"
+                  style={{
+                    width: '100%', border: '1px solid var(--bord)', borderRadius: 8,
+                    padding: '9px 36px 9px 12px', fontSize: 13, outline: 'none',
+                    background: '#fff', color: 'var(--ink)', fontFamily: 'var(--sans)', boxSizing: 'border-box',
+                  }}
+                />
+                <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--champagne)' }}>
+                  <I.Search style={{ width: 15, height: 15 }} />
+                </div>
+              </div>
+
+              {/* Dropdown */}
+              {custOpen && (custResults.length > 0 || (custSearch.length >= 2 && !custLoading)) && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, marginTop: 4,
+                  background: '#fff', border: '1px solid var(--bord)', borderRadius: 10,
+                  boxShadow: '0 8px 30px rgba(0,0,0,.12)', overflow: 'hidden',
+                }}>
+                  {custResults.length === 0 ? (
+                    <div style={{ padding: '14px', fontSize: 13, color: 'var(--ink3)', textAlign: 'center' }}>
+                      {custLoading ? 'Đang tìm…' : 'Không tìm thấy khách hàng'}
+                    </div>
+                  ) : custResults.map(c => (
+                    <button key={c.id} onClick={() => pickCustomer(c)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                        padding: '10px 14px', border: 'none', background: 'none',
+                        cursor: 'pointer', borderBottom: '1px solid var(--line)', fontFamily: 'var(--sans)',
+                      }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: '50%',
+                        background: 'linear-gradient(135deg,#C9A96E,#A0714F)',
+                        color: '#2a1d14', fontSize: 13, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      }}>{getInitials(c.ho_ten)}</div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{c.ho_ten}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                          {c.so_dien_thoai}
+                          {c.ma_kh && <span style={{ marginLeft: 6, color: 'var(--champagne)', fontWeight: 600 }}>{c.ma_kh}</span>}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: 10, background: 'var(--grad-gold)', color: '#2a1d14',
+                        padding: '2px 8px', borderRadius: 999, fontWeight: 700, flexShrink: 0,
+                      }}>Hannah Spa</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {custOpen && <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setCustOpen(false)} />}
+
+              {/* Sau khi chọn KH */}
+              {selectedCustomer && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 36px', gap: 8, alignItems: 'end', marginBottom: 8 }}>
+                    {[
+                      { label: 'Tên khách hàng', val: selectedCustomer.ho_ten },
+                      { label: 'Số điện thoại',  val: selectedCustomer.so_dien_thoai || '' },
+                      { label: 'Email',           val: selectedCustomer.email || '' },
+                    ].map(f => (
+                      <div key={f.label}>
+                        <div style={{ fontSize: 10, color: 'var(--ink3)', marginBottom: 3 }}>{f.label}</div>
+                        <input readOnly value={f.val} placeholder="—"
+                          style={{
+                            width: '100%', border: '1px solid var(--bord)', borderRadius: 8,
+                            padding: '7px 10px', fontSize: 13, background: '#f5f0ea',
+                            color: 'var(--ink)', fontFamily: 'var(--sans)', boxSizing: 'border-box', outline: 'none',
+                          }}
+                        />
+                      </div>
+                    ))}
+                    <button onClick={clearCustomer} style={{
+                      width: 36, height: 36, border: '1px solid var(--bord)', borderRadius: 8,
+                      background: '#fff', color: 'var(--ink3)', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                    }}>✕</button>
+                  </div>
+
+                  {/* Số dư */}
+                  <div style={{ display: 'flex', gap: 20, fontSize: 12, color: 'var(--ink3)', marginBottom: 10 }}>
+                    <span>Số dư khả dụng: <b style={{ color: 'var(--champagne)' }}>0đ</b></span>
+                    <span>Tài khoản thưởng: <b style={{ color: 'var(--champagne)' }}>0đ</b></span>
+                  </div>
+
+                  {/* Thẻ liệu trình đang sử dụng */}
+                  {customerCards.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>
+                        Liệu trình đang sử dụng
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+                        {customerCards.filter(c => c.so_buoi_con_lai > 0).map(card => (
+                          <LieuTrinhCard key={card.id} card={card} onUse={handleAddCard} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── CATALOG ── */}
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+          {/* Catalog tabs */}
+          <div style={{ display: 'flex', borderBottom: '2px solid var(--line)', background: '#fff', flexShrink: 0 }}>
+            {[
+              { key: 'the_dich_vu', label: 'Thẻ dịch vụ' },
+              { key: 'dich_vu',     label: 'Dịch vụ' },
+              { key: 'san_pham',    label: 'Sản phẩm' },
+            ].map(t => (
+              <button key={t.key} onClick={() => { setCatalogTab(t.key); setCat('all'); setSearch('') }}
+                style={{
+                  padding: '10px 20px', border: 'none', background: 'none', fontSize: 13,
+                  fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)', whiteSpace: 'nowrap',
                   color: catalogTab === t.key ? 'var(--champagne)' : 'var(--ink3)',
                   borderBottom: catalogTab === t.key ? '2px solid var(--champagne)' : '2px solid transparent',
                   marginBottom: -2, transition: 'all .15s',
-                }}>
-                {t.label}
-              </button>
+                }}>{t.label}</button>
             ))}
           </div>
 
-          {/* Tab: Dịch Vụ */}
+          {/* Tab: Dịch vụ */}
           {catalogTab === 'dich_vu' && (
-            <>
-              {/* Category chips */}
-              <div className="pos-cats">
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '10px 16px 0', flexShrink: 0 }}>
+                <div className="search" style={{ maxWidth: '100%' }}>
+                  <I.Search />
+                  <input placeholder="Tìm nhanh dịch vụ" value={search} onChange={e => setSearch(e.target.value)} />
+                  {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: 'var(--ink3)', cursor: 'pointer' }}>✕</button>}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, padding: '8px 16px', overflowX: 'auto', flexShrink: 0 }}>
                 {categories.map(c => (
-                  <button key={c} className={`pos-cat${c === cat ? ' active' : ''}`} onClick={() => setCat(c)}>
-                    {c === 'all' ? 'TẤT CẢ' : c.toUpperCase()}
-                  </button>
+                  <button key={c} onClick={() => setCat(c)} style={{
+                    padding: '5px 12px', border: '1px solid var(--bord)', borderRadius: 20, whiteSpace: 'nowrap',
+                    background: c === cat ? 'var(--champagne)' : 'transparent',
+                    color: c === cat ? '#2a1d14' : 'var(--ink3)',
+                    fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--sans)', transition: 'all .15s',
+                  }}>{c === 'all' ? 'Tất cả' : c}</button>
                 ))}
               </div>
-              {/* Search */}
-              <div className="search" style={{ margin: '0 0 14px', maxWidth: '100%' }}>
-                <I.Search />
-                <input
-                  placeholder="Tìm dịch vụ…"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-                {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: 'var(--ink3)', cursor: 'pointer', fontSize: 14 }}>✕</button>}
-              </div>
-              {/* Service grid */}
-              <div className="pos-grid">
+              <div className="pos-grid" style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px' }}>
                 {filteredDV.map(dv => (
                   <div key={dv.id} className={`pos-item k${(dv.ten?.charCodeAt(0) || 1) % 6 + 1}`}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => handleAddItem({ loai_item: 'dich_vu', dich_vu_id: dv.id, so_luong: 1, don_gia: dv.gia_co_ban, thanh_tien: dv.gia_co_ban })}>
+                    style={{ cursor: 'pointer' }} onClick={() => handleAddService(dv)}>
                     <div className="arch-thumb" />
                     <div className="n">{dv.ten}</div>
                     <div className="meta">{dv.thoi_luong_phut || dv.thoi_gian_phut || 0} phút</div>
@@ -475,49 +569,50 @@ export default function PosApp() {
                   </div>
                 ))}
                 {filteredDV.length === 0 && (
-                  <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 20px', color: 'var(--ink3)', fontSize: 13 }}>
+                  <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--ink3)', fontSize: 13 }}>
                     {search ? `Không tìm thấy "${search}"` : 'Không có dịch vụ'}
                   </div>
                 )}
               </div>
-            </>
+            </div>
           )}
 
-          {/* Tab: Thẻ Liệu Trình */}
-          {catalogTab === 'the_lieu_trinh' && (
-            <div>
+          {/* Tab: Thẻ dịch vụ */}
+          {catalogTab === 'the_dich_vu' && (
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
               {!selectedCustomer ? (
                 <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink3)' }}>
-                  <div style={{ fontSize: 32, marginBottom: 12 }}>🎫</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Chọn khách hàng trước</div>
-                  <div style={{ fontSize: 12 }}>Thẻ liệu trình sẽ hiển thị ở đây sau khi chọn KH</div>
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>🎫</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>Chọn khách hàng trước</div>
+                  <div style={{ fontSize: 12, marginTop: 4 }}>Thẻ liệu trình sẽ hiển thị sau khi chọn KH</div>
                 </div>
               ) : customerCards.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink3)' }}>
-                  <div style={{ fontSize: 32, marginBottom: 12 }}>🎫</div>
-                  <div style={{ fontSize: 13 }}>Khách hàng chưa có thẻ liệu trình</div>
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>🎫</div>
+                  <div style={{ fontSize: 14 }}>Khách hàng chưa có thẻ liệu trình</div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {customerCards.map(card => (
                     <button key={card.id} onClick={() => handleAddCard(card)}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '14px 16px', background: 'var(--surface)',
-                        border: '1px solid rgba(201,169,110,.2)', borderRadius: 'var(--r)',
+                        border: '1px solid rgba(201,169,110,.2)', borderRadius: 10,
                         cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--sans)',
-                        transition: 'box-shadow .15s',
                       }}>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{card.ten_dich_vu}</div>
-                        <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 3, display: 'flex', gap: 12 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
+                          {card.ten_dich_vu} ({card.so_buoi_da_dung}/{card.so_buoi_tong})
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 4, display: 'flex', gap: 12 }}>
                           <span>Còn <b style={{ color: 'var(--champagne)' }}>{card.so_buoi_con_lai}</b> buổi</span>
                           {card.ngay_het_han && <span>Hết hạn: {new Date(card.ngay_het_han).toLocaleDateString('vi-VN')}</span>}
                         </div>
                       </div>
                       <span style={{
                         background: 'var(--grad-gold)', color: '#2a1d14',
-                        fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
+                        fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 999, flexShrink: 0,
                       }}>+ Dùng</span>
                     </button>
                   ))}
@@ -525,261 +620,268 @@ export default function PosApp() {
               )}
             </div>
           )}
+
+          {/* Tab: Sản phẩm */}
+          {catalogTab === 'san_pham' && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink3)' }}>
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <div style={{ fontSize: 36, marginBottom: 10 }}>📦</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>Sản phẩm</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>Tính năng đang phát triển</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ═══ RIGHT PANEL (40%) ═══ */}
+      <aside style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden' }}>
+
+        {/* Right header */}
+        <div style={{
+          padding: '0 16px', borderBottom: '1px solid var(--line)', flexShrink: 0,
+          background: 'linear-gradient(135deg,#3d2c20 0%,#2a1d14 100%)',
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#f3e6d2', fontFamily: 'var(--serif)', paddingTop: 12, marginBottom: 8 }}>
+            Thông tin đơn hàng
+          </div>
+          <div style={{ display: 'flex' }}>
+            {[['don_hang', 'Đơn hàng'], ['vat_tu', 'Vật tư tiêu hao']].map(([k, lbl]) => (
+              <button key={k} onClick={() => setRightTab(k)}
+                style={{
+                  padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer',
+                  fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--sans)',
+                  color: rightTab === k ? '#C9A96E' : 'rgba(243,230,210,.45)',
+                  borderBottom: rightTab === k ? '2px solid #C9A96E' : '2px solid transparent',
+                  transition: 'all .15s',
+                }}>{lbl}</button>
+            ))}
+          </div>
         </div>
 
-        {/* RIGHT — Cart */}
-        <aside className="pos-right">
-          {/* Customer section */}
-          <div style={{ borderBottom: '1px solid var(--line)', padding: '12px 14px' }}>
-            {/* Toggle Khách lẻ / Thành viên */}
-            <div style={{ display: 'flex', gap: 0, marginBottom: 10, background: 'var(--bg2)', borderRadius: 8, padding: 3 }}>
-              <button
-                onClick={() => { setIsGuest(true); setSelectedCustomer(null) }}
-                style={{
-                  flex: 1, padding: '6px 10px', border: 'none', borderRadius: 6, cursor: 'pointer',
-                  fontSize: 12, fontWeight: 700, fontFamily: 'var(--sans)',
-                  background: isGuest ? 'var(--champagne)' : 'transparent',
-                  color: isGuest ? '#2a1d14' : 'var(--ink3)',
-                  transition: 'all .15s',
-                }}>
-                Khách Lẻ
-              </button>
-              <button
-                onClick={() => setIsGuest(false)}
-                style={{
-                  flex: 1, padding: '6px 10px', border: 'none', borderRadius: 6, cursor: 'pointer',
-                  fontSize: 12, fontWeight: 700, fontFamily: 'var(--sans)',
-                  background: !isGuest ? 'var(--champagne)' : 'transparent',
-                  color: !isGuest ? '#2a1d14' : 'var(--ink3)',
-                  transition: 'all .15s',
-                }}>
-                Thành Viên
-              </button>
+        {rightTab === 'don_hang' && (<>
+          {/* KH info row */}
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)', background: '#fafaf9', flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                {selectedCustomer ? (
+                  <>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--champagne)' }}>{selectedCustomer.ho_ten}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 1 }}>
+                      {selectedCustomer.so_dien_thoai}
+                      {selectedCustomer.ma_kh && <span style={{ marginLeft: 6 }}>{selectedCustomer.ma_kh}</span>}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 13, color: 'var(--ink3)', fontStyle: 'italic' }}>Khách lẻ</div>
+                )}
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                {currentOrder?.ma_don && (
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink)' }}>Mã: {currentOrder.ma_don}</div>
+                )}
+                <div style={{ fontSize: 10, color: 'var(--ink3)', marginTop: 1 }}>{dateStr}</div>
+              </div>
             </div>
-
-            {/* Khách lẻ: form nhập tên + SĐT */}
-            {isGuest ? (
-              selectedCustomer ? (
-                <div className="pos-cust" style={{ padding: '8px 10px', background: 'rgba(201,169,110,.08)', borderRadius: 8 }}>
-                  <div className="avatar" style={{ background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#2a1d14', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
-                    {getInitials(selectedCustomer.ho_ten)}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{selectedCustomer.ho_ten}</div>
-                    <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 1 }}>{selectedCustomer.so_dien_thoai || 'Không có SĐT'}</div>
-                  </div>
-                  <button onClick={() => { setSelectedCustomer(null); setGuestName(''); setGuestPhone('') }}
-                    style={{ background: 'none', border: 'none', color: 'var(--ink3)', cursor: 'pointer', fontSize: 15, padding: '4px 6px' }}>✕</button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <input
-                    value={guestName}
-                    onChange={e => setGuestName(e.target.value)}
-                    placeholder="Tên khách hàng…"
-                    style={{
-                      border: '1px solid var(--bord)', borderRadius: 8, padding: '8px 12px',
-                      fontSize: 13, color: 'var(--ink)', background: 'var(--bg)',
-                      outline: 'none', fontFamily: 'var(--sans)',
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <input
-                      value={guestPhone}
-                      onChange={e => setGuestPhone(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleCreateGuest()}
-                      placeholder="Số điện thoại…"
-                      type="tel"
-                      style={{
-                        flex: 1, border: '1px solid var(--bord)', borderRadius: 8, padding: '8px 12px',
-                        fontSize: 13, color: 'var(--ink)', background: 'var(--bg)',
-                        outline: 'none', fontFamily: 'var(--sans)',
-                      }}
-                    />
-                    <button
-                      onClick={handleCreateGuest}
-                      disabled={!guestName.trim()}
-                      style={{
-                        width: 36, height: 36, border: 'none', borderRadius: 8,
-                        background: guestName.trim() ? 'var(--champagne)' : 'var(--bg2)',
-                        color: guestName.trim() ? '#2a1d14' : 'var(--ink3)',
-                        cursor: guestName.trim() ? 'pointer' : 'not-allowed',
-                        fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0, transition: 'all .15s',
-                      }}
-                      title="Tạo khách hàng mới">+</button>
-                  </div>
-                </div>
-              )
-            ) : (
-              /* Thành viên: CustomerSelector */
-              <CustomerSelector selected={selectedCustomer} onSelect={setSelectedCustomer} />
-            )}
           </div>
 
           {/* Cart header */}
           <div style={{
-            padding: '10px 16px 6px',
-            fontSize: 10.5, color: 'var(--ink3)',
-            letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 700,
-            borderBottom: '1px solid var(--line)',
+            display: 'grid', gridTemplateColumns: '1fr 70px 80px',
+            padding: '5px 14px', background: '#f5f0ea', flexShrink: 0,
+            fontSize: 10, fontWeight: 700, color: 'var(--ink3)', letterSpacing: '.06em', textTransform: 'uppercase',
           }}>
-            Giỏ hàng ({lineItems.length} dịch vụ)
+            <span>DV/SP</span>
+            <span style={{ textAlign: 'center' }}>SL</span>
+            <span style={{ textAlign: 'right' }}>Thành tiền</span>
           </div>
 
           {/* Cart items */}
-          <div className="pos-cart">
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px' }}>
             {lineItems.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '36px 12px', color: 'var(--ink3)', fontSize: 13 }}>
+              <div style={{ textAlign: 'center', padding: '40px 12px', color: 'var(--ink3)', fontSize: 13 }}>
                 <div style={{
-                  width: 36, height: 60, margin: '0 auto 12px',
-                  background: 'var(--grad-arch)', borderRadius: '999px 999px 10px 10px', opacity: .25,
+                  width: 28, height: 46, margin: '0 auto 12px',
+                  background: 'var(--grad-arch)', borderRadius: '999px 999px 6px 6px', opacity: .2,
                 }} />
-                Chọn dịch vụ hoặc sản phẩm từ danh mục
+                Chọn dịch vụ từ danh mục bên trái
               </div>
-            ) : (
-              lineItems.map(item => (
-                <CartLine
-                  key={item.id}
-                  item={item}
-                  onRemove={handleRemoveItem}
-                  onQtyChange={handleQtyChange}
-                />
-              ))
+            ) : lineItems.map(item => (
+              <CartLine key={item.id} item={item} onRemove={handleRemoveItem} onQtyChange={handleQtyChange} />
+            ))}
+          </div>
+
+          {/* Summary */}
+          <div style={{ borderTop: '1px solid var(--line)', padding: '10px 14px', flexShrink: 0, background: '#fafaf9' }}>
+
+            {/* Mã KM */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <input value={maKM} onChange={e => setMaKM(e.target.value)} placeholder="Mã khuyến mại"
+                style={{
+                  flex: 1, border: '1px solid var(--bord)', borderRadius: 6,
+                  padding: '5px 8px', fontSize: 12, background: '#fff', outline: 'none', fontFamily: 'var(--sans)',
+                }}
+              />
+              <button style={{
+                padding: '5px 12px', border: 'none', borderRadius: 6,
+                background: 'var(--champagne)', color: '#2a1d14', fontWeight: 700, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--sans)',
+              }}>ÁP DỤNG</button>
+            </div>
+
+            {/* Tạm tính */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 5 }}>
+              <span style={{ color: 'var(--ink3)' }}>Tạm tính</span>
+              <span style={{ fontWeight: 700, fontFamily: 'var(--serif)' }}>{formatCurrency(tongHang)}</span>
+            </div>
+
+            {/* Giảm giá DV */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4, fontSize: 12 }}>
+              <span style={{ color: 'var(--ink3)', flex: 1 }}>Giảm giá DV</span>
+              <span style={{ color: 'var(--ink3)' }}>−</span>
+              <input value={giamDVPct} onChange={e => setGiamDVPct(e.target.value)} placeholder="0"
+                style={{ width: 40, border: '1px solid var(--bord)', borderRadius: 5, padding: '3px 5px', fontSize: 12, textAlign: 'center', outline: 'none', background: '#fff' }}
+              />
+              <span style={{ color: 'var(--ink3)' }}>%</span>
+              <span style={{ fontWeight: 700, color: 'var(--chi)', minWidth: 65, textAlign: 'right', fontFamily: 'var(--serif)' }}>
+                {giamDVAmt > 0 ? `−${formatCurrency(giamDVAmt)}` : '0'}
+              </span>
+            </div>
+
+            {/* VAT */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8, fontSize: 12 }}>
+              <span style={{ color: 'var(--ink3)', flex: 1 }}>VAT</span>
+              <span style={{ color: 'var(--ink3)' }}>+</span>
+              <input value={vatPct} onChange={e => setVatPct(e.target.value)} placeholder="0"
+                style={{ width: 40, border: '1px solid var(--bord)', borderRadius: 5, padding: '3px 5px', fontSize: 12, textAlign: 'center', outline: 'none', background: '#fff' }}
+              />
+              <span style={{ color: 'var(--ink3)' }}>%</span>
+              <span style={{ fontWeight: 700, color: 'var(--thu)', minWidth: 65, textAlign: 'right', fontFamily: 'var(--serif)' }}>
+                {vatAmt > 0 ? formatCurrency(vatAmt) : '0'}
+              </span>
+            </div>
+
+            {/* Tổng cộng */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '8px 0', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)', marginBottom: 8,
+            }}>
+              <span style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--ink)' }}>Tổng cộng</span>
+              <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--thu)', fontFamily: 'var(--serif)' }}>{formatCurrency(tongCuoi)}</span>
+            </div>
+
+            {/* Nhận */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 12, color: 'var(--ink3)', flex: 1 }}>Nhận</span>
+              <input value={nhapTien}
+                onChange={e => setNhapTien(e.target.value)}
+                onFocus={() => { if (!nhapTien && tongCuoi > 0) setNhapTien(String(tongCuoi)) }}
+                placeholder="0"
+                style={{
+                  width: 110, border: '1px solid var(--bord)', borderRadius: 6,
+                  padding: '6px 8px', fontSize: 14, fontFamily: 'var(--serif)',
+                  fontWeight: 700, textAlign: 'right', outline: 'none', background: '#fff',
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 8 }}>
+              <span style={{ color: 'var(--ink3)' }}>Tiền thừa</span>
+              <span style={{ fontWeight: 700, fontFamily: 'var(--serif)', color: tienThua > 0 ? 'var(--thu)' : 'var(--ink3)' }}>
+                {formatCurrency(tienThua)}
+              </span>
+            </div>
+
+            {/* PTTT */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 5, marginBottom: 6 }}>
+              {PTTT_OPTS.map(p => (
+                <button key={p.id} onClick={() => setPttt(p.id)}
+                  style={{
+                    padding: '6px 4px', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--sans)',
+                    border: `2px solid ${pttt === p.id ? 'var(--champagne)' : 'var(--bord)'}`,
+                    background: pttt === p.id ? 'rgba(201,169,110,.12)' : 'transparent',
+                    color: pttt === p.id ? 'var(--champagne)' : 'var(--ink3)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                    fontSize: 10.5, fontWeight: 700, transition: 'all .15s',
+                  }}>
+                  <span style={{ fontSize: 15 }}>{p.icon}</span>
+                  <span style={{ textAlign: 'center', lineHeight: 1.2 }}>{p.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {conLai > 0 && tienNhapNum > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--chi)', textAlign: 'center', fontWeight: 600 }}>
+                Còn thiếu: {formatCurrency(conLai)}
+              </div>
             )}
           </div>
 
-          {/* Footer */}
-          <div className="pos-foot">
-            {/* Giảm giá */}
-            {lineItems.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '0 2px' }}>
-                <span style={{ fontSize: 11.5, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>Giảm giá:</span>
-                <input
-                  value={giamGia}
-                  onChange={e => setGiamGia(e.target.value)}
-                  placeholder="0đ"
-                  style={{
-                    flex: 1, border: '1px solid var(--bord)', borderRadius: 8,
-                    padding: '6px 10px', fontSize: 13, background: 'var(--bg)',
-                    color: 'var(--chi)', fontFamily: 'var(--serif)', outline: 'none',
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Total */}
-            <div className="total">
-              <span className="l">Tổng Cộng</span>
-              <span className="v">{formatCurrency(tongHang)}</span>
+          {/* ── Bottom action bar ── */}
+          <div style={{
+            borderTop: '2px solid var(--line)', padding: '10px 14px', flexShrink: 0,
+            background: 'linear-gradient(135deg,#3d2c20 0%,#2a1d14 100%)',
+          }}>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+              <Toggle on={sendSMS} onChange={setSendSMS}
+                label={<span style={{ color: 'rgba(243,230,210,.65)', fontSize: 11 }}>Gửi SMS khi thanh toán đơn hàng</span>} />
+              <Toggle on={sendZNS} onChange={setSendZNS}
+                label={<span style={{ color: 'rgba(243,230,210,.65)', fontSize: 11 }}>Gửi ZNS cảm ơn khách hàng</span>} />
             </div>
-            {giamGiaNum > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--chi)', padding: '2px 0 6px' }}>
-                <span>Giảm giá</span>
-                <span>-{formatCurrency(giamGiaNum)}</span>
-              </div>
-            )}
-            {giamGiaNum > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 15, fontFamily: 'var(--serif)', color: 'var(--ink)', padding: '0 0 10px', borderBottom: '1px solid var(--line)' }}>
-                <span>Thực Thu</span>
-                <span style={{ color: 'var(--thu)' }}>{formatCurrency(tongSauGiam)}</span>
-              </div>
-            )}
-
-            {/* Payment methods */}
-            <div style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 10.5, color: 'var(--ink3)', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, marginBottom: 8 }}>
-                Hình Thức Thanh Toán
-              </div>
-              <div className="pos-pays" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 10 }}>
-                {PTTT_CFG.map(p => (
-                  <button
-                    key={p.id}
-                    className={`pos-pay${activePay === p.id ? ' active' : ''}`}
-                    onClick={() => setActivePay(p.id)}
-                    style={{
-                      flexDirection: 'column', gap: 2, padding: '8px 6px',
-                      height: 'auto', alignItems: 'center',
-                      borderColor: activePay === p.id ? p.color : parseVND(payAmounts[p.id]) > 0 ? `${p.color}80` : undefined,
-                      background: activePay === p.id ? `${p.color}18` : parseVND(payAmounts[p.id]) > 0 ? `${p.color}08` : undefined,
-                    }}>
-                    <span>{p.icon}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em' }}>{p.label.toUpperCase()}</span>
-                    {parseVND(payAmounts[p.id]) > 0 && (
-                      <span style={{ fontSize: 11, color: p.color, fontWeight: 700, fontFamily: 'var(--serif)' }}>
-                        {formatCurrency(parseVND(payAmounts[p.id]))}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Amount input for active PTTT */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 11.5, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>
-                  {PTTT_CFG.find(p => p.id === activePay)?.label}:
-                </span>
-                <input
-                  value={payAmounts[activePay]}
-                  onChange={e => setPayAmounts(prev => ({ ...prev, [activePay]: e.target.value }))}
-                  onFocus={e => {
-                    if (!payAmounts[activePay] && conLai > 0) {
-                      setPayAmounts(prev => ({ ...prev, [activePay]: String(conLai) }))
-                    }
-                  }}
-                  placeholder="0"
-                  style={{
-                    flex: 1, border: '1px solid var(--bord)', borderRadius: 8,
-                    padding: '8px 12px', fontSize: 15, fontFamily: 'var(--serif)',
-                    fontWeight: 700, color: 'var(--ink)', background: 'var(--bg)', outline: 'none',
-                  }}
-                />
-              </div>
-
-              {/* Summary */}
-              {lineItems.length > 0 && (
-                <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 10, display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Đã nhập: {formatCurrency(tongDaTra)}</span>
-                  {conLai > 0
-                    ? <span style={{ color: 'var(--chi)' }}>Còn lại: {formatCurrency(conLai)}</span>
-                    : thoiLai > 0
-                    ? <span style={{ color: 'var(--thu)' }}>Thối lại: {formatCurrency(thoiLai)}</span>
-                    : <span style={{ color: 'var(--thu)' }}>✓ Đủ tiền</span>
-                  }
-                </div>
-              )}
-            </div>
-
-            {/* Checkout buttons */}
             <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={handleVoidOrder} title="Hủy đơn / Đơn mới"
+                style={{
+                  width: 40, height: 40, border: '1px solid rgba(243,230,210,.2)', borderRadius: 8,
+                  background: 'rgba(255,255,255,.08)', color: 'rgba(243,230,210,.7)',
+                  cursor: 'pointer', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>←</button>
               <button
-                className="btn"
-                style={{ flex: '0 0 auto', justifyContent: 'center', padding: '14px 16px', fontSize: 13 }}
+                disabled={!orderId || lineItems.length === 0}
                 onClick={() => alert('Đã lưu đơn nháp')}
-                disabled={loading || lineItems.length === 0 || !orderId}>
-                Lưu
-              </button>
+                style={{
+                  flex: '0 0 auto', padding: '0 16px', height: 40, border: '1px solid rgba(243,230,210,.3)',
+                  borderRadius: 8, background: 'rgba(255,255,255,.1)', color: '#f3e6d2',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'var(--sans)',
+                }}>Lưu</button>
               <button
-                className="btn gold"
-                style={{ flex: 1, justifyContent: 'center', padding: '14px', fontSize: 14, fontWeight: 700 }}
-                onClick={handleCheckout}
-                disabled={loading || lineItems.length === 0 || !orderId}>
-                <I.Receipt style={{ width: 16, height: 16 }} />
-                {loading ? 'Đang xử lý…' : 'THANH TOÁN & IN'}
-              </button>
+                disabled={loading || lineItems.length === 0 || !orderId}
+                onClick={() => handleCheckout(false)}
+                style={{
+                  flex: 1, height: 40, border: 'none', borderRadius: 8,
+                  background: 'var(--champagne)', color: '#2a1d14',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'var(--sans)',
+                  opacity: loading || lineItems.length === 0 || !orderId ? 0.6 : 1,
+                }}>Thanh toán</button>
+              <button
+                disabled={loading || lineItems.length === 0 || !orderId}
+                onClick={() => handleCheckout(true)}
+                style={{
+                  flex: '0 0 auto', padding: '0 14px', height: 40, border: 'none', borderRadius: 8,
+                  background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#2a1d14',
+                  cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--sans)',
+                  opacity: loading || lineItems.length === 0 || !orderId ? 0.6 : 1, whiteSpace: 'nowrap',
+                }}>Thanh toán & in</button>
             </div>
-
-            {orderId && (
-              <button
-                className="btn ghost"
-                style={{ width: '100%', marginTop: 6, justifyContent: 'center', color: 'var(--chi)', fontSize: 12 }}
-                onClick={handleVoidOrder}>
-                Hủy Đơn
-              </button>
-            )}
           </div>
-        </aside>
-      </div>
+        </>)}
+
+        {rightTab === 'vat_tu' && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink3)' }}>
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div style={{ fontSize: 36, marginBottom: 10 }}>🧴</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Vật tư tiêu hao</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Tính năng đang phát triển</div>
+            </div>
+          </div>
+        )}
+      </aside>
     </div>
   )
+}
+
+// ── Router ────────────────────────────────────────────────────────────────────
+export default function PosApp() {
+  const path = window.location.pathname
+  if (path === '/pos/danh-sach') {
+    return <PosOrderHistory onResumeOrder={() => { window.location.href = '/pos' }} />
+  }
+  return <PosCreateOrder />
 }
