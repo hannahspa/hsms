@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { getNavByRole } from '../../constants/navConfig'
 import { getNowVN } from '../../lib/utils'
 import I from '../shared/Icons'
+import MobileShell from './MobileShell'
 import '../../styles/hannah-admin.css'
 import '../../styles/modules.css'
 
@@ -44,11 +45,20 @@ function getInitials(name) {
 
 export default function AdminShell({ children }) {
   const { user, logout } = useAuth()
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const [now, setNow] = useState(getNowVN())
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [openMenus, setOpenMenus] = useState({})
   const path = window.location.pathname
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  if (isMobile) return <MobileShell>{children}</MobileShell>
 
   const role = user?.vai_tro || 'admin'
   const navItems = getNavByRole(role)
