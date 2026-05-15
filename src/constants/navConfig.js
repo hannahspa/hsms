@@ -8,8 +8,10 @@ export const ADMIN_NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/admin/dashboard' },
 
   { sec: 'Vận Hành' },
-  { id: 'pos-tao', icon: '🛒', label: 'Tạo Đơn Hàng',      path: '/pos' },
-  { id: 'pos-ds',  icon: '📋', label: 'Danh Sách Bán Hàng', path: '/pos/danh-sach' },
+  { id: 'pos', icon: '🛒', label: 'Bán Hàng (POS)', children: [
+    { id: 'pos-tao', label: 'Tạo Đơn Hàng',      path: '/pos' },
+    { id: 'pos-ds',  label: 'Danh Sách Bán Hàng', path: '/pos/danh-sach' },
+  ]},
 
   // ── SỔ THU CHI ──
   { id: 'sothuchi', icon: '💰', label: 'Sổ Thu Chi', children: [
@@ -63,8 +65,10 @@ export const ADMIN_NAV = [
 
 export const LETAN_NAV = [
   { sec: 'Vận Hành' },
-  { id: 'pos-tao', icon: '🛒', label: 'Tạo Đơn Hàng',      path: '/pos' },
-  { id: 'pos-ds',  icon: '📋', label: 'Danh Sách Bán Hàng', path: '/pos/danh-sach' },
+  { id: 'pos', icon: '🛒', label: 'Bán Hàng (POS)', children: [
+    { id: 'pos-tao', label: 'Tạo Đơn Hàng',      path: '/pos' },
+    { id: 'pos-ds',  label: 'Danh Sách Bán Hàng', path: '/pos/danh-sach' },
+  ]},
 
   // ── SỔ THU CHI ──
   { id: 'sothuchi', icon: '💰', label: 'Sổ Thu Chi', children: [
