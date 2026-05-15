@@ -8,7 +8,10 @@ export const ADMIN_NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/admin/dashboard' },
 
   { sec: 'Vận Hành' },
-  { id: 'pos', icon: '🛒', label: 'POS Bán Hàng', path: '/pos', pill: 'Mới' },
+  { id: 'pos', icon: '🛒', label: 'Bán Hàng (POS)', children: [
+    { id: 'pos-tao', label: 'Tạo Đơn Hàng', path: '/pos' },
+    { id: 'pos-ds',  label: 'Danh Sách ĐH',  path: '/pos/danh-sach' },
+  ]},
 
   // ── SỔ THU CHI ──
   { id: 'sothuchi', icon: '💰', label: 'Sổ Thu Chi', children: [
@@ -62,7 +65,10 @@ export const ADMIN_NAV = [
 
 export const LETAN_NAV = [
   { sec: 'Vận Hành' },
-  { id: 'pos', icon: '🛒', label: 'POS Bán Hàng', path: '/pos' },
+  { id: 'pos', icon: '🛒', label: 'Bán Hàng (POS)', children: [
+    { id: 'pos-tao', label: 'Tạo Đơn Hàng', path: '/pos' },
+    { id: 'pos-ds',  label: 'Danh Sách ĐH',  path: '/pos/danh-sach' },
+  ]},
 
   // ── SỔ THU CHI ──
   { id: 'sothuchi', icon: '💰', label: 'Sổ Thu Chi', children: [
