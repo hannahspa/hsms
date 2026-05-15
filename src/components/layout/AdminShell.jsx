@@ -104,13 +104,7 @@ export default function AdminShell({ children }) {
             <div className="brand-mark">H</div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
-              <div style={{
-                background: 'rgba(255,255,255,0.95)', borderRadius: 8, padding: '4px 8px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
-              }}>
-                <img src="/logo.png" alt="Hannah Spa" style={{ height: 34, width: 'auto', display: 'block' }} />
-              </div>
+              <img src="/logo.png" alt="Hannah Spa" style={{ height: 38, width: 'auto', display: 'block', flexShrink: 0 }} />
               <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(243,230,210,0.5)', lineHeight: 1.4, fontFamily: 'var(--sans)' }}>
                 {ROLE_LABEL[role] || 'Admin'}
               </div>

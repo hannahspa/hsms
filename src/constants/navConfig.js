@@ -29,11 +29,11 @@ export const ADMIN_NAV = [
     { id: 'ns-lichca',    label: 'Lịch Ca',       path: '/admin/nhan-su/lich-ca' },
     { id: 'ns-xetduyet',  label: 'Xét Duyệt',    path: '/admin/nhan-su/xet-duyet' },
     { id: 'ns-bangluong', label: 'Bảng Lương',   path: '/admin/nhan-su/bang-luong' },
+    { id: 'commission',   label: 'Hoa Hồng KTV', path: '/admin/commission' },
   ]},
 
   { id: 'crm', icon: '💝', label: 'CRM Khách Hàng', path: '/admin/crm' },
   { id: 'the-lieu-trinh', icon: '🎫', label: 'Thẻ Liệu Trình', path: '/admin/the-lieu-trinh' },
-  { id: 'commission', icon: '💹', label: 'Hoa Hồng KTV', path: '/admin/commission' },
 
   // ── KHO HÀNG ──
   { id: 'kho', icon: '📦', label: 'Kho Hàng', children: [
