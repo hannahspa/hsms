@@ -87,7 +87,7 @@ export default function InternalApp() {
 
   // Lễ Tân bị giới hạn tab — admin xem được tất cả
   const isLeTan = user?.vai_tro === 'le_tan'
-  const leTanAllowed = ['doi-soat', 'cai-dat']
+  const leTanAllowed = ['tong-quan', 'doi-soat', 'nhap-lieu', 'cai-dat']
   const effectiveTab = isLeTan && !leTanAllowed.includes(tab) ? 'doi-soat' : tab
 
   const handleOpenForm = (type) => {
@@ -142,7 +142,7 @@ export default function InternalApp() {
         {form === 'ck'  && <FormChuyenKhoan viList={viList} user={user} onClose={closeForm} onSaved={handleSaved} />}
         {pheDuyetOpen && <PheDuyetThuChi onClose={() => setPheDuyetOpen(false)} onUpdated={() => setRefreshKey(k => k + 1)} />}
 
-        <div style={{ paddingBottom: isLeTan ? '0px' : '80px' }}>
+        <div style={{ paddingBottom: '80px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '80px', color: 'var(--ink3)', fontFamily: 'var(--sans)' }}>
               <div style={{ fontSize: '28px', marginBottom: '12px' }}>🌸</div>
@@ -169,11 +169,9 @@ export default function InternalApp() {
           )}
         </div>
 
-        {!isLeTan && (
-          <div className="bottom-nav-wrapper">
-            <BottomNav active={effectiveTab} onChange={setTabAndUrl} onOpenForm={handleOpenForm} user={user} />
-          </div>
-        )}
+        {<div className="bottom-nav-wrapper">
+          <BottomNav active={effectiveTab} onChange={setTabAndUrl} onOpenForm={handleOpenForm} user={user} />
+        </div>}
       </div>
     </>
   )
