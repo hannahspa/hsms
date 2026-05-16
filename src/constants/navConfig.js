@@ -32,7 +32,7 @@ export const ADMIN_NAV = [
     { id: 'ns-lichca',    label: 'Lịch Ca',       path: '/admin/nhan-su/lich-ca' },
     { id: 'ns-xetduyet',  label: 'Xét Duyệt',    path: '/admin/nhan-su/xet-duyet' },
     { id: 'ns-bangluong', label: 'Bảng Lương',   path: '/admin/nhan-su/bang-luong' },
-    { id: 'commission',   label: 'Hoa Hồng KTV', path: '/admin/commission' },
+    { id: 'commission',   label: 'Lương Kinh Doanh', path: '/admin/commission' },
   ]},
 
   { id: 'crm', icon: '💝', label: 'CRM Khách Hàng', path: '/admin/crm' },
@@ -72,7 +72,6 @@ export const LETAN_NAV = [
 
   // ── SỔ THU CHI ──
   { id: 'sothuchi', icon: '💰', label: 'Sổ Thu Chi', children: [
-    { id: 'tongquan',  label: 'Tổng Quan',     path: '/SoThuChi' },
     { id: 'doisoat',   label: 'Đối Soát Ngày', path: '/SoThuChi/doi-soat' },
     { id: 'nhap lieu', label: 'Nhập Thu Chi',  path: '/SoThuChi/nhap-lieu' },
     { id: 'settings',  label: 'Cài Đặt',        path: '/SoThuChi/cai-dat' },
