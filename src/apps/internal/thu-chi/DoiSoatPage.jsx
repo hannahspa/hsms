@@ -231,56 +231,58 @@ export default function DoiSoatPage({ user, refreshKey }) {
         </div>
       </div>
 
-      {/* ── SỐ DƯ TÀI KHOẢN ── */}
-      <div className="card">
-        <div className="card-h">
-          <div className="card-t">
-            <div className="arch-i"><I.Wallet style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
-            <h3>SỐ DƯ TÀI KHOẢN ĐẾN NGÀY</h3>
+      {/* ── SỐ DƯ TÀI KHOẢN — chỉ Admin xem được ── */}
+      {user?.vai_tro === 'admin' && (
+        <div className="card">
+          <div className="card-h">
+            <div className="card-t">
+              <div className="arch-i"><I.Wallet style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+              <h3>SỐ DƯ TÀI KHOẢN ĐẾN NGÀY</h3>
+            </div>
           </div>
-        </div>
-        <div className="card-b">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {(data.viList || []).map(vi => (
-              <div key={vi.id} style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                padding: '14px 16px', borderRadius: 12,
-                background: 'var(--bg2)', border: '1px solid var(--line)',
-              }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: 12,
-                  background: vi.loai === 'tien_mat'
-                    ? 'linear-gradient(180deg,#e0eedd,#bfd5b8)'
-                    : vi.loai === 'chuyen_khoan'
-                    ? 'linear-gradient(180deg,#dde9f3,#a8c5dc)'
-                    : 'linear-gradient(180deg,#f0dcc0,#d4a574)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 22,
+          <div className="card-b">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {(data.viList || []).map(vi => (
+                <div key={vi.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '14px 16px', borderRadius: 12,
+                  background: 'var(--bg2)', border: '1px solid var(--line)',
                 }}>
-                  {viIcons[vi.loai] || '💰'}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)', fontFamily: 'var(--sans)' }}>
-                    {vi.ten}
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12,
+                    background: vi.loai === 'tien_mat'
+                      ? 'linear-gradient(180deg,#e0eedd,#bfd5b8)'
+                      : vi.loai === 'chuyen_khoan'
+                      ? 'linear-gradient(180deg,#dde9f3,#a8c5dc)'
+                      : 'linear-gradient(180deg,#f0dcc0,#d4a574)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 22,
+                  }}>
+                    {viIcons[vi.loai] || '💰'}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
-                    {viSubLabels[vi.loai] || ''}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)', fontFamily: 'var(--sans)' }}>
+                      {vi.ten}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                      {viSubLabels[vi.loai] || ''}
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 700, color: 'var(--ink)' }}>
+                    {formatCurrency(vi.so_du_hien_tai || 0)}
                   </div>
                 </div>
-                <div style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 700, color: 'var(--ink)' }}>
-                  {formatCurrency(vi.so_du_hien_tai || 0)}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="rec-row tot" style={{ marginTop: 12 }}>
-            <span>Tổng Tài Sản</span>
-            <span style={{ fontWeight: 700, fontFamily: 'var(--serif)', fontSize: 18 }}>
-              {formatCurrency((data.viList || []).reduce((s, v) => s + (v.so_du_hien_tai || 0), 0))}
-            </span>
+              ))}
+            </div>
+            <div className="rec-row tot" style={{ marginTop: 12 }}>
+              <span>Tổng Tài Sản</span>
+              <span style={{ fontWeight: 700, fontFamily: 'var(--serif)', fontSize: 18 }}>
+                {formatCurrency((data.viList || []).reduce((s, v) => s + (v.so_du_hien_tai || 0), 0))}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

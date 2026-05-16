@@ -10,8 +10,8 @@ const TABS_ADMIN = [
 ]
 
 const TABS_LETHAN = [
-  { id: 'tong-quan', icon: '🏠', label: 'Tổng Quan' },
   { id: 'doi-soat',  icon: '📋', label: 'Đối Soát'  },
+  { id: null,        icon: null,  label: ''          },
   { id: '__fab__',   icon: null,  label: ''          },
   { id: 'nhap-lieu', icon: '📝', label: 'Nhập Liệu' },
   { id: 'cai-dat',   icon: '⚙️', label: 'Cài Đặt'  },

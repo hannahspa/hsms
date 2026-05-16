@@ -87,7 +87,7 @@ export default function InternalApp() {
 
   // Lễ Tân bị giới hạn tab — admin xem được tất cả
   const isLeTan = user?.vai_tro === 'le_tan'
-  const leTanAllowed = ['tong-quan', 'doi-soat', 'nhap-lieu', 'cai-dat']
+  const leTanAllowed = ['doi-soat', 'nhap-lieu', 'cai-dat']
   const effectiveTab = isLeTan && !leTanAllowed.includes(tab) ? 'doi-soat' : tab
 
   const handleOpenForm = (type) => {
