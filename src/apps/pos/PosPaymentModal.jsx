@@ -1,145 +1,282 @@
-import { useState } from 'react'
-import { formatCurrency, parseVND } from '../../lib/utils'
-import { LUX } from '../../constants/lux'
-import { COLORS } from '../../constants/colors'
+import { useState, useCallback } from 'react'
+import { formatCurrency } from '../../lib/utils'
 import { HINH_THUC_THU } from '../../constants/enums'
 
-const S = {
-  overlay: {
-    position: 'fixed', inset: 0, zIndex: 1000,
-    background: 'rgba(0,0,0,0.5)', display: 'flex',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  modal: {
-    background: LUX.surface2, borderRadius: LUX.radiusLg,
-    padding: '24px', width: '420px', maxWidth: '95vw',
-    boxShadow: LUX.shadowLg,
-  },
-  title: {
-    fontWeight: 800, fontSize: '18px', color: LUX.ink, marginBottom: '4px',
-  },
-  subtitle: {
-    fontSize: '13px', color: LUX.ink3, marginBottom: '16px',
-  },
-  dueRow: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '12px 16px', background: LUX.bg, borderRadius: LUX.radiusSm,
-    marginBottom: '16px',
-  },
-  dueLabel: { fontSize: '14px', color: LUX.ink2, fontWeight: 600 },
-  dueAmount: { fontSize: '24px', fontWeight: 800, color: COLORS.primary },
-  sectionTitle: {
-    fontSize: '13px', fontWeight: 700, color: LUX.ink2, marginBottom: '8px',
-  },
-  paymentMethods: {
-    display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px',
-  },
-  methodRow: {
-    display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
-    borderRadius: LUX.radiusSm, border: `1.5px solid ${LUX.line}`,
-  },
-  methodLabel: {
-    minWidth: '100px', fontSize: '14px', fontWeight: 600, color: LUX.ink,
-  },
-  amountInput: {
-    flex: 1, padding: '8px 12px', borderRadius: '8px', fontSize: '15px',
-    border: `1.5px solid ${LUX.line2}`, outline: 'none', textAlign: 'right',
-    background: LUX.bg, color: LUX.ink, fontWeight: 600,
-  },
-  remaining: {
-    textAlign: 'right', fontSize: '13px', marginTop: '4px', marginBottom: '12px',
-  },
-  btnRow: { display: 'flex', gap: '8px', marginTop: '8px' },
-  btn: {
-    flex: 1, padding: '12px', borderRadius: LUX.radiusSm, border: 'none',
-    fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-  },
-  btnConfirm: {
-    background: COLORS.grad, color: '#fff',
-  },
-  btnCancel: {
-    background: 'transparent', color: LUX.ink2,
-    border: `1.5px solid ${LUX.line2}`,
-  },
-}
+function parseVND(s) { return parseInt(String(s).replace(/\D/g, ''), 10) || 0 }
+function fmtInput(n) { return n > 0 ? new Intl.NumberFormat('vi-VN').format(n) : '' }
+
+const PTTT_LIST = HINH_THUC_THU
+
+let _id = 0
+const newLine = (soTien = 0, hinhThuc = '') => ({ _id: ++_id, soTien, hinhThuc })
 
 export default function PosPaymentModal({ tongHang, selectedCustomer, onConfirm, onCancel }) {
-  const [amounts, setAmounts] = useState({})
-  const [giamGia, setGiamGia] = useState(0)
+  const [giamGia, setGiamGia]   = useState(0)
+  const [lines, setLines]       = useState([newLine(tongHang, 'tien_mat')])
+  const [ghiChu, setGhiChu]     = useState('')
 
-  const updateAmount = (hinhThuc, val) => {
-    setAmounts(prev => ({ ...prev, [hinhThuc]: parseVND(val) }))
+  const tongSauGiam = Math.max(0, tongHang - giamGia)
+  const tongNhan    = lines.reduce((s, l) => s + l.soTien, 0)
+  const tienThua    = Math.max(0, tongNhan - tongSauGiam)
+  const conNo       = Math.max(0, tongSauGiam - tongNhan)
+  const canConfirm  = !!selectedCustomer && tongNhan > 0 && (tongNhan >= tongSauGiam || conNo > 0)
+
+  const updateLine = (id, field, val) =>
+    setLines(p => p.map(l => l._id === id ? { ...l, [field]: val } : l))
+
+  const addLine = () => setLines(p => [...p, newLine(Math.max(0, conNo), '')])
+  const removeLine = (id) => setLines(p => p.filter(l => l._id !== id))
+
+  // Khi gõ số tiền lớn = auto phân bổ vào line đó
+  const handleSoTien = (id, raw) => {
+    const val = parseVND(raw)
+    updateLine(id, 'soTien', val)
   }
 
-  const totalPaid = Object.values(amounts).reduce((s, a) => s + (a || 0), 0)
-  const remaining = Math.max(0, tongHang - giamGia - totalPaid)
-  const canConfirm = (totalPaid >= (tongHang - giamGia)) || (remaining > 0 && selectedCustomer)
-
   const handleConfirm = () => {
-    const paymentList = Object.entries(amounts)
-      .filter(([_, v]) => v > 0)
-      .map(([hinhThuc, soTien]) => ({ hinhThuc, soTien }))
+    const payments = lines
+      .filter(l => l.soTien > 0 && l.hinhThuc)
+      .map(l => ({ hinhThuc: l.hinhThuc, soTien: l.soTien }))
 
-    if (paymentList.length === 0) {
-      alert('Vui lòng nhập ít nhất 1 khoản thanh toán')
+    if (!selectedCustomer) {
+      alert('Vui long chon khach hang truoc khi chot don de CRM va doi soat du lieu duoc ghi nhan day du.')
       return
     }
-    onConfirm({ giamGia, payments: paymentList })
+    if (payments.length === 0) {
+      alert('Vui lòng nhập ít nhất 1 khoản thanh toán và chọn hình thức')
+      return
+    }
+    // Nếu còn nợ mà không có KH → chặn
+    if (conNo > 0 && !selectedCustomer) {
+      alert('Khách lẻ phải thanh toán đủ. Vui lòng chọn khách hàng để ghi nợ.')
+      return
+    }
+    onConfirm({ giamGia, payments, ghiChu })
   }
 
   return (
-    <div style={S.overlay} onClick={onCancel}>
-      <div style={S.modal} onClick={e => e.stopPropagation()}>
-        <div style={S.title}>💰 Thanh Toán</div>
-        <div style={S.subtitle}>Có thể chọn nhiều hình thức trong 1 đơn</div>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} onClick={onCancel}>
+      <div style={{
+        background: '#fff', borderRadius: 16, width: 'min(520px, 95vw)',
+        maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 24px 80px rgba(0,0,0,.28)',
+      }} onClick={e => e.stopPropagation()}>
 
-        <div style={S.dueRow}>
-          <span style={S.dueLabel}>Tổng tiền hàng</span>
-          <span style={S.dueAmount}>{formatCurrency(tongHang)}</span>
+        {/* Header */}
+        <div style={{
+          padding: '16px 20px 12px',
+          background: 'linear-gradient(135deg,#3d2c20 0%,#2a1d14 100%)',
+          borderRadius: '16px 16px 0 0', flexShrink: 0,
+        }}>
+          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--serif)', color: '#f3e6d2' }}>
+            Thanh Toán
+          </div>
+          {selectedCustomer && (
+            <div style={{ fontSize: 12, color: 'rgba(243,230,210,.6)', marginTop: 2 }}>
+              {selectedCustomer.ho_ten} · {selectedCustomer.so_dien_thoai}
+            </div>
+          )}
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
-          <div style={S.sectionTitle}>Giảm giá (VNĐ)</div>
-          <input
-            style={{ ...S.amountInput, textAlign: 'left', width: '100%', boxSizing: 'border-box' }}
-            placeholder="0đ"
-            value={giamGia > 0 ? formatCurrency(giamGia) : ''}
-            onChange={e => setGiamGia(parseVND(e.target.value))}
-          />
-        </div>
+        {/* Scrollable body */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 20px' }}>
 
-        <div style={S.sectionTitle}>Hình thức thanh toán</div>
-        <div style={S.paymentMethods}>
-          {HINH_THUC_THU.map(ht => (
-            <div key={ht.id} style={S.methodRow}>
-              <span style={S.methodLabel}>{ht.icon} {ht.label}</span>
+          {/* Tổng + Giảm giá */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16,
+            padding: 14, background: '#fafaf9', borderRadius: 10, border: '1px solid var(--line)',
+          }}>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>
+                Tạm tính
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--ink)' }}>
+                {formatCurrency(tongHang)}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>
+                Giảm giá (VNĐ)
+              </div>
               <input
-                style={S.amountInput}
+                value={giamGia > 0 ? fmtInput(giamGia) : ''}
+                onChange={e => setGiamGia(parseVND(e.target.value))}
                 placeholder="0đ"
-                value={amounts[ht.id] > 0 ? formatCurrency(amounts[ht.id]) : ''}
-                onChange={e => updateAmount(ht.id, e.target.value)}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  border: '1.5px solid var(--bord)', borderRadius: 7,
+                  padding: '5px 10px', fontSize: 14, fontWeight: 700, outline: 'none',
+                  background: '#fff', fontFamily: 'var(--sans)', color: '#C0392B',
+                }}
               />
             </div>
-          ))}
+          </div>
+
+          {/* Tổng cộng */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '10px 14px', background: '#f0ebe4', borderRadius: 8, marginBottom: 16,
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', fontFamily: 'var(--serif)' }}>Tổng cộng</span>
+            <span style={{ fontSize: 20, fontWeight: 800, color: '#2D7A4F', fontFamily: 'var(--serif)' }}>
+              {formatCurrency(tongSauGiam)}
+            </span>
+          </div>
+
+          {/* PTTT Lines */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>
+              Hình thức thanh toán
+            </div>
+            {lines.map((line, idx) => {
+              // Số tiền đã phân bổ trước line này
+              const daPhanBo = lines.slice(0, idx).reduce((s, l) => s + l.soTien, 0)
+              const conLai   = Math.max(0, tongSauGiam - daPhanBo)
+              return (
+                <div key={line._id} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'stretch' }}>
+                  {/* Số tiền */}
+                  <div style={{ flex: 1 }}>
+                    {idx === 0 && (
+                      <div style={{ fontSize: 10, color: 'var(--ink3)', marginBottom: 3 }}>Số tiền</div>
+                    )}
+                    <input
+                      value={fmtInput(line.soTien)}
+                      onChange={e => handleSoTien(line._id, e.target.value)}
+                      placeholder={formatCurrency(conLai)}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        border: '1.5px solid var(--bord)', borderRadius: 8,
+                        padding: '8px 10px', fontSize: 15, fontWeight: 700, outline: 'none',
+                        background: '#fff', fontFamily: 'var(--sans)', color: 'var(--ink)',
+                        textAlign: 'right',
+                      }}
+                    />
+                  </div>
+
+                  {/* PTTT */}
+                  <div style={{ flex: 1 }}>
+                    {idx === 0 && (
+                      <div style={{ fontSize: 10, color: 'var(--ink3)', marginBottom: 3 }}>Hình thức</div>
+                    )}
+                    <select
+                      value={line.hinhThuc}
+                      onChange={e => updateLine(line._id, 'hinhThuc', e.target.value)}
+                      style={{
+                        width: '100%', border: '1.5px solid var(--bord)', borderRadius: 8,
+                        padding: '8px 10px', fontSize: 13, outline: 'none',
+                        background: '#fff', color: line.hinhThuc ? 'var(--ink)' : 'var(--ink3)',
+                        fontFamily: 'var(--sans)', cursor: 'pointer',
+                        appearance: 'auto', height: 40,
+                      }}
+                    >
+                      <option value="">-- Chọn PTTT --</option>
+                      {PTTT_LIST.map(p => (
+                        <option key={p.id} value={p.id}>{p.icon} {p.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Nút xóa (chỉ hiện từ line 2 trở đi) */}
+                  {lines.length > 1 && (
+                    <button onClick={() => removeLine(line._id)} style={{
+                      alignSelf: 'flex-end',
+                      width: 36, height: 40, border: '1px solid var(--bord)', borderRadius: 8,
+                      background: '#fff', color: '#DC3545', cursor: 'pointer', fontSize: 16,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}>✕</button>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Nút thêm PTTT */}
+            <button onClick={addLine} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', border: '1px dashed var(--bord)', borderRadius: 8,
+              background: 'none', color: 'var(--champagne)', cursor: 'pointer',
+              fontSize: 12, fontWeight: 700, fontFamily: 'var(--sans)',
+            }}>
+              + Thêm phương thức
+            </button>
+          </div>
+
+          {/* Tổng nhận / Tiền thừa / Còn nợ */}
+          <div style={{
+            padding: 14, background: '#fafaf9', borderRadius: 10,
+            border: '1px solid var(--line)', marginBottom: 14,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
+              <span style={{ color: 'var(--ink3)' }}>Tổng nhận</span>
+              <span style={{ fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--ink)' }}>
+                {formatCurrency(tongNhan)}
+              </span>
+            </div>
+            {tienThua > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ color: 'var(--ink3)' }}>Tiền thừa trả lại</span>
+                <span style={{ fontWeight: 700, fontFamily: 'var(--serif)', color: '#2D7A4F' }}>
+                  {formatCurrency(tienThua)}
+                </span>
+              </div>
+            )}
+            {conNo > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ color: 'var(--ink3)' }}>
+                  {selectedCustomer ? 'Ghi nợ KH' : 'Còn thiếu'}
+                </span>
+                <span style={{ fontWeight: 700, fontFamily: 'var(--serif)', color: '#C0392B' }}>
+                  {formatCurrency(conNo)}
+                  {!selectedCustomer && <span style={{ fontSize: 10, marginLeft: 4 }}>⚠️ cần TT đủ</span>}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Ghi chú */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>
+              Ghi chú
+            </div>
+            <textarea
+              value={ghiChu}
+              onChange={e => setGhiChu(e.target.value)}
+              placeholder="Ghi chú đơn hàng (tùy chọn)…"
+              rows={2}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                border: '1.5px solid var(--bord)', borderRadius: 8,
+                padding: '8px 10px', fontSize: 13, outline: 'none', resize: 'none',
+                background: '#fff', color: 'var(--ink)', fontFamily: 'var(--sans)',
+              }}
+            />
+          </div>
         </div>
 
-        <div style={S.remaining}>
-          {remaining > 0 ? (
-            <span style={{ color: LUX.danger }}>
-              Còn thiếu: {formatCurrency(remaining)}
-              {selectedCustomer ? ' (có thể ghi nợ)' : ' (khách lẻ phải TT đủ)'}
-            </span>
-          ) : totalPaid > 0 ? (
-            <span style={{ color: COLORS.thu }}>
-              {totalPaid > (tongHang - giamGia) ? `Thừa: ${formatCurrency(totalPaid - tongHang + giamGia)}` : 'Đủ ✓'}
-            </span>
-          ) : null}
-        </div>
-
-        <div style={S.btnRow}>
-          <button style={{ ...S.btn, ...S.btnCancel }} onClick={onCancel}>Hủy</button>
-          <button style={{ ...S.btn, ...S.btnConfirm }} onClick={handleConfirm} disabled={!canConfirm}>
-            {remaining > 0 && selectedCustomer ? 'Ghi Nợ & Chốt Đơn' : 'Xác Nhận Thanh Toán'}
+        {/* Footer */}
+        <div style={{
+          padding: '12px 20px', borderTop: '1px solid var(--line)', flexShrink: 0,
+          display: 'flex', gap: 10,
+        }}>
+          <button onClick={onCancel} style={{
+            flex: 1, height: 44, border: '1.5px solid var(--bord)', borderRadius: 10,
+            background: '#fff', color: 'var(--ink2)', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'var(--sans)',
+          }}>Hủy</button>
+          <button onClick={handleConfirm} disabled={!canConfirm} style={{
+            flex: 2, height: 44, border: 'none', borderRadius: 10,
+            background: canConfirm
+              ? (conNo > 0 ? 'linear-gradient(135deg,#C0392B,#922b21)' : 'linear-gradient(135deg,#C9A96E 0%,#A0714F 45%,#7D5A3C 100%)')
+              : 'var(--line)',
+            color: canConfirm ? '#fff' : 'var(--ink3)',
+            cursor: canConfirm ? 'pointer' : 'not-allowed',
+            fontSize: 14, fontWeight: 700, fontFamily: 'var(--sans)', transition: 'all .15s',
+          }}>
+            {conNo > 0 && selectedCustomer
+              ? `Ghi Nợ ${formatCurrency(conNo)} & Chốt Đơn`
+              : `Xác Nhận — ${formatCurrency(tongSauGiam)}`
+            }
           </button>
         </div>
       </div>

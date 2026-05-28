@@ -3,6 +3,8 @@ import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../context/AuthContext'
 import { formatCurrency, todayISO, getNowVN, addDays, fmtCompact } from '../../../lib/utils'
 import I from '../../../components/shared/Icons'
+import FormDoanhThu from '../thu-chi/forms/FormDoanhThu'
+import FormChiPhi from '../thu-chi/forms/FormChiPhi'
 
 const TABS = [
   { k: 'ngay', l: 'Hôm nay' },
@@ -88,9 +90,29 @@ export default function TongQuanPage({ onOpenForm }) {
   const [tab, setTab] = useState('thang')
   const [data, setData] = useState({ tongThu: 0, tongChi: 0, barData: [], byHinhThuc: [], viList: [], history: [] })
   const [loading, setLoading] = useState(true)
+  const [editingTx, setEditingTx] = useState(null)    // { loai:'doanh_thu'|'chi_phi', data: {...} }
+  const [deletingTx, setDeletingTx] = useState(null)  // transaction đang confirm xoá
+  const [deleting, setDeleting] = useState(false)
 
   const today = todayISO()
   const now = getNowVN()
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const handleDelete = async () => {
+    if (!deletingTx) return
+    setDeleting(true)
+    try {
+      const table = deletingTx.loai === 'doanh_thu' ? 'doanh_thu' : 'chi_phi'
+      const { error } = await supabase.from(table).delete().eq('id', deletingTx.data.id)
+      if (error) throw error
+      setDeletingTx(null)
+      setRefreshKey(k => k + 1)
+    } catch (err) {
+      alert('Lỗi xoá: ' + err.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -101,8 +123,8 @@ export default function TongQuanPage({ onOpenForm }) {
     else if (tab === 'nam') { start = `${now.getFullYear()}-01-01`; end = today }
 
     Promise.all([
-      supabase.from('doanh_thu').select('so_tien, hinh_thuc, ngay, dien_giai, created_at').gte('ngay', start).lte('ngay', end).order('ngay', { ascending: false }),
-      supabase.from('chi_phi').select('so_tien, hinh_thuc_thanh_toan, ngay, dien_giai, created_at').gte('ngay', start).lte('ngay', end).order('ngay', { ascending: false }),
+      supabase.from('doanh_thu').select('id, so_tien, hinh_thuc, ngay, dien_giai, chung_tu_url, created_at').gte('ngay', start).lte('ngay', end).order('ngay', { ascending: false }),
+      supabase.from('chi_phi').select('id, so_tien, hinh_thuc_thanh_toan, ngay, dien_giai, chung_tu_url, vi_id, danh_muc_id, nguoi_nhap, created_at').gte('ngay', start).lte('ngay', end).order('ngay', { ascending: false }),
       supabase.from('so_du_vi_thuc_te').select('*'),
     ]).then(([rDT, rCP, rVi]) => {
       const dtList = rDT.data || []
@@ -136,7 +158,7 @@ export default function TongQuanPage({ onOpenForm }) {
       setData({ tongThu, tongChi, barData, byHinhThuc, viList: rVi.data || [], history })
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [tab, today])
+  }, [tab, today, refreshKey])
 
   const periodLabel = tab === 'ngay' ? 'Hôm nay' : tab === 'tuan' ? '7 ngày gần nhất' : tab === 'thang' ? `Tháng ${now.getMonth() + 1}/${now.getFullYear()}` : `Năm ${now.getFullYear()}`
 
@@ -281,6 +303,7 @@ export default function TongQuanPage({ onOpenForm }) {
                 <th>Diễn Giải</th>
                 <th>Nguồn Tiền</th>
                 <th className="r">Số Tiền</th>
+                <th className="r" style={{ width: 80 }}>Thao Tác</th>
               </tr></thead>
               <tbody>
                 {data.history.slice(0, 25).map((tx, i) => {
@@ -303,6 +326,14 @@ export default function TongQuanPage({ onOpenForm }) {
                       <td className="nm">{tx.dien_giai || tx.mo_ta || 'Giao dịch'}</td>
                       <td><span className={`method ${methodClass}`}>{methodLabel}</span></td>
                       <td className={amtClass}>{amtPrefix}{formatCurrency(tx.so_tien)}đ</td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => setEditingTx({ loai: tx.loai, data: tx })}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 6px', color: 'var(--espresso)', borderRadius: 6, marginRight: 2 }}
+                          title="Sửa">✏️</button>
+                        <button onClick={() => setDeletingTx({ loai: tx.loai, data: tx })}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 6px', color: '#C0392B', borderRadius: 6 }}
+                          title="Xoá">🗑️</button>
+                      </td>
                     </tr>
                   )
                 })}
@@ -311,6 +342,58 @@ export default function TongQuanPage({ onOpenForm }) {
           )}
         </div>
       </div>
+
+      {/* ── FORM SỬA ── */}
+      {editingTx && editingTx.loai === 'doanh_thu' && (
+        <FormDoanhThu
+          user={user}
+          viList={data.viList}
+          initialData={editingTx.data}
+          onClose={() => setEditingTx(null)}
+          onSaved={(type, msg) => {
+            if (type === 'success') setRefreshKey(k => k + 1)
+            setEditingTx(null)
+          }}
+        />
+      )}
+      {editingTx && editingTx.loai === 'chi_phi' && (
+        <FormChiPhi
+          user={user}
+          viList={data.viList}
+          initialData={editingTx.data}
+          onClose={() => setEditingTx(null)}
+          onSaved={(type, msg) => {
+            if (type === 'success') setRefreshKey(k => k + 1)
+            setEditingTx(null)
+          }}
+        />
+      )}
+
+      {/* ── XÁC NHẬN XOÁ ── */}
+      {deletingTx && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 20, padding: '24px 28px', maxWidth: 380, width: '90%', boxShadow: '0 12px 48px rgba(0,0,0,0.25)', textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', marginBottom: 8, fontFamily: 'var(--serif)' }}>Xác Nhận Xoá</div>
+            <div style={{ fontSize: 13, color: 'var(--ink2)', marginBottom: 6, fontFamily: 'var(--sans)' }}>
+              {deletingTx.loai === 'doanh_thu' ? 'Doanh Thu' : 'Chi Phí'} — {formatCurrency(deletingTx.data.so_tien)}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 20, fontFamily: 'var(--sans)' }}>
+              {deletingTx.data.dien_giai || 'Không có diễn giải'}
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => setDeletingTx(null)} disabled={deleting}
+                style={{ padding: '10px 24px', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 14, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                Huỷ
+              </button>
+              <button onClick={handleDelete} disabled={deleting}
+                style={{ padding: '10px 24px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#E57373,#C0392B)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: deleting ? 'not-allowed' : 'pointer', fontFamily: 'var(--sans)', opacity: deleting ? 0.6 : 1 }}>
+                {deleting ? 'Đang xoá...' : 'Xoá'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

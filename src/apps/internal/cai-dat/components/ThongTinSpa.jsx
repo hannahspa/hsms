@@ -8,7 +8,7 @@ export default function ThongTinSpa({ onClose }) {
     { label: 'Giờ làm việc',     value: '9:15 – 20:00 (ngưng nhận khách 19:30)' },
     { label: 'Email',            value: 'hannahspa.nm@gmail.com' },
     { label: 'Website',          value: 'hannahspa.vn' },
-    { label: 'POS',              value: 'myspa.vn (nguồn hoa hồng KTV)' },
+    { label: 'Bán Hàng',         value: 'HSMS / MySpa đối chiếu hoa hồng KTV' },
     { label: 'Ngân hàng chính',  value: 'MB Bank' },
     { label: 'Ngân hàng quẹt thẻ', value: 'TP Bank (về sau 3-7 ngày)' },
     { label: 'Chủ sở hữu',       value: 'Cao Quốc Nam — quản lý từ Mỹ' },

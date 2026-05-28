@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hannah Spa — Demo Giao Diện Mẫu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Inter:opsz,wght@14..32,100..900&family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════ DESIGN SYSTEM ═══════════ */
+:root {
+  --bg:        #f3ece1;
+  --bg2:       #ede4d6;
+  --surface:   #fbf7ef;
+  --surface2:  #ffffff;
+  --ink:       #2a201a;
+  --ink2:      #5a4a3e;
+  --ink3:      #8e7a68;
+  --ink4:      #b5a594;
+  --line:      #e8dcc8;
+  --line2:     #d4c4ad;
+  --espresso:  #3d2c20;
+  --espresso2: #5a4030;
+  --walnut:    #6b4a35;
+  --champagne: #c9a96e;
+  --champagne2:#b08a55;
+  --gold:      #d4a574;
+  --rose:      #c4998a;
+  --rose2:     #a87366;
+  --mauve:     #8a6a6e;
+  --sage:      #7a8a6a;
+  --danger:    #b85a4a;
+  --success:   #6e8a5e;
+  --grad-gold: linear-gradient(135deg,#e2c08a 0%,#c9a96e 50%,#a87f4f 100%);
+  --grad-arch: linear-gradient(180deg,#dec5b6 0%,#c4998a 60%,#a87366 100%);
+  --grad-side: linear-gradient(180deg,#3a2a1f 0%,#2a1d14 100%);
+  --serif: 'Cormorant Garamond', 'Playfair Display', serif;
+  --sans:  'Inter', -apple-system, sans-serif;
+  --mono:  'JetBrains Mono', monospace;
+  --r-sm: 10px;
+  --r:    16px;
+  --r-lg: 24px;
+  --sh-1: 0 1px 2px rgba(60,40,25,.05), 0 1px 1px rgba(60,40,25,.03);
+  --sh-2: 0 4px 14px -4px rgba(60,40,25,.10), 0 2px 4px -2px rgba(60,40,25,.05);
+  --sh-3: 0 18px 48px -16px rgba(60,40,25,.22), 0 4px 12px -4px rgba(60,40,25,.08);
+  --sh-glow: 0 0 0 4px rgba(201,169,110,.18);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: var(--sans);
+  color: var(--ink);
+  background: #e8e2d5;
+  -webkit-font-smoothing: antialiased;
+  padding: 40px 20px;
+}
+
+.demo-container { max-width: 1200px; margin: 0 auto; }
+
+/* Section tabs */
+.demo-tabs {
+  display: flex; gap: 8px; margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.demo-tab {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface2);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink2);
+  cursor: pointer;
+  transition: all .15s;
+}
+.demo-tab:hover { border-color: var(--champagne); }
+.demo-tab.active {
+  background: var(--ink);
+  color: #f3e6d2;
+  border-color: var(--ink);
+}
+.demo-screen { display: none; }
+.demo-screen.active { display: block; }
+
+/* ─── ALL CSS FROM DEMO ─── */
+.page {
+  padding: 26px 28px 40px;
+  display: flex; flex-direction: column; gap: 22px;
+  background: var(--bg);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-3);
+}
+.mod-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; margin-bottom: 4px;
+}
+.mod-head .ttl {
+  font-family: var(--serif);
+  font-size: 28px; font-weight: 700;
+  letter-spacing: -.01em; color: var(--ink);
+}
+.mod-head .sub {
+  font-size: 12px; color: var(--ink3); margin-top: 2px; letter-spacing: .03em;
+}
+.mod-head .acts { display: flex; gap: 8px; }
+
+.subtabs {
+  display: flex; gap: 4px; padding: 4px;
+  background: var(--bg2); border-radius: 12px; width: fit-content;
+}
+.subtabs .st {
+  padding: 7px 14px; border-radius: 8px;
+  font-size: 12.5px; font-weight: 600; color: var(--ink3); cursor: pointer;
+}
+.subtabs .st.active {
+  background: var(--surface2); color: var(--ink); box-shadow: var(--sh-1);
+}
+
+.strip {
+  display: grid; gap: 12px;
+}
+.strip .it {
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  box-shadow: var(--sh-1);
+}
+.strip .l { font-size: 10.5px; color: var(--ink3); text-transform: uppercase; letter-spacing: .14em; font-weight: 600; }
+.strip .v { font-family: var(--serif); font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 4px; line-height: 1; letter-spacing: -.01em; }
+.strip .v .cur { font-size: 13px; color: var(--ink3); margin-left: 1px; }
+.strip .d { font-size: 11px; color: var(--ink3); margin-top: 3px; }
+.strip .d.up { color: #426a2c; font-weight: 600; }
+.strip .d.dn { color: #843a23; font-weight: 600; }
+
+.wallets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.wallet {
+  border-radius: var(--r); padding: 16px; color: #f3e6d2;
+  position: relative; overflow: hidden;
+  min-height: 110px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.wallet::after {
+  content:''; position: absolute; right: -30px; top: -40px;
+  width: 110px; height: 140px;
+  border-radius: 999px 999px 8px 8px;
+  background: rgba(255,255,255,.12); opacity: .8;
+}
+.wallet.cash { background: linear-gradient(135deg, #5a4030, #2e2018); }
+.wallet.bank { background: linear-gradient(135deg, #6b4a35, #3d2c20); }
+.wallet.epay { background: linear-gradient(135deg, #a87f4f, #6b4a35); }
+.wallet .nm { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; opacity: .65; font-weight: 600; }
+.wallet .vl { font-family: var(--serif); font-size: 22px; font-weight: 700; letter-spacing: -.01em; line-height: 1; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.wallet .vl .cur { font-size: 13px; opacity: .65; margin-left: 1px; }
+.wallet .sb { font-size: 10.5px; opacity: .65; }
+
+.fin-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+
+.card {
+  background: var(--surface2);
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  box-shadow: var(--sh-1);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.card-h {
+  padding: 16px 20px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.card-t { display: flex; align-items: center; gap: 10px; }
+.card-t .arch-i {
+  width: 22px; height: 26px;
+  border-radius: 999px 999px 4px 4px;
+  background: linear-gradient(180deg, var(--bg2), var(--bg));
+  border: 1px solid var(--line2);
+  display: flex; align-items: center; justify-content: center;
+}
+.card-t h3 {
+  font-family: var(--serif);
+  font-size: 17px; font-weight: 700;
+  color: var(--ink); letter-spacing: -.005em;
+}
+.card-t .sub { font-size: 11px; color: var(--ink3); margin-left: 6px; }
+.card-actions { display: flex; gap: 6px; }
+.card-b { padding: 18px 20px; flex: 1; }
+
+.chip {
+  font-size: 11.5px; padding: 5px 10px; border-radius: 999px;
+  background: var(--bg2); color: var(--ink2);
+  border: 1px solid transparent; cursor: pointer;
+  font-family: var(--sans); font-weight: 500; transition: all .15s;
+}
+.chip:hover { background: var(--bg); border-color: var(--line); }
+.chip.active { background: var(--ink); color: #f3e6d2; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface2);
+  color: var(--ink); font-family: var(--sans);
+  font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .18s;
+}
+.btn:hover { background: var(--bg2); border-color: var(--line2); }
+.btn.gold {
+  background: var(--grad-gold); color: #2a1d14; border-color: transparent;
+  box-shadow: 0 4px 12px -4px rgba(176,138,85,.5);
+}
+.btn.gold:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -4px rgba(176,138,85,.6); }
+
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--ink2); transition: all .18s;
+}
+.icon-btn:hover { background: var(--bg2); color: var(--ink); border-color: var(--line2); }
+
+.legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--ink2); }
+.legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; vertical-align: middle; }
+
+.tbl {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.tbl th {
+  text-align: left; padding: 10px 14px; color: var(--ink3);
+  font-weight: 600; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .12em; background: var(--bg2);
+  border-bottom: 1px solid var(--line);
+}
+.tbl td {
+  padding: 12px 14px; border-bottom: 1px solid var(--line);
+  color: var(--ink2); vertical-align: middle;
+}
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--bg); }
+.tbl .amount { text-align: right; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tbl .time { font-variant-numeric: tabular-nums; color: var(--ink3); font-size: 12px; width: 64px; }
+.tbl .desc { color: var(--ink); font-weight: 500; }
+.tbl .desc small { display: block; color: var(--ink3); font-weight: 400; font-size: 11px; margin-top: 1px; }
+
+.method {
+  display: inline-block; padding: 3px 9px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .02em;
+}
+.method.cash    { background: #e8f1de; color: #3e6a2c; }
+.method.transfer{ background: #ddeaf3; color: #1a4f70; }
+.method.card    { background: #ecdcef; color: #5e2f74; }
+.method.pkg     { background: #f0e2cd; color: #6e4a1f; }
+
+.ledger { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ledger th {
+  text-align: left; padding: 10px 14px;
+  font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink3); background: var(--bg2); font-weight: 600;
+  border-bottom: 1px solid var(--line);
+}
+.ledger th.r { text-align: right; }
+.ledger td {
+  padding: 11px 14px; border-bottom: 1px solid var(--line);
+  color: var(--ink2); vertical-align: middle;
+}
+.ledger tr:last-child td { border-bottom: none; }
+.ledger tr:hover td { background: var(--bg); }
+.ledger .nm { color: var(--ink); font-weight: 600; }
+.ledger .nm small { display: block; color: var(--ink3); font-weight: 400; font-size: 11px; margin-top: 1px; }
+.ledger .amt { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ledger .amt.in { color: #426a2c; }
+.ledger .amt.out { color: #843a23; }
+
+.tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .02em;
+}
+.tag.sv { background: #f0e2cd; color: #6e4a1f; }
+.tag.pr { background: #ecdcef; color: #5e2f74; }
+.tag.sl { background: #e1eee8; color: #2c4a30; }
+.tag.rt { background: #fae0d8; color: #6e2818; }
+.tag.ut { background: #ddeaf3; color: #1a4f70; }
+.tag.cm { background: #f0e6df; color: #5a3a28; }
+
+.rec-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.rec-box {
+  background: var(--surface2); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 18px 20px; box-shadow: var(--sh-1);
+}
+.rec-box h4 {
+  font-family: var(--serif); font-size: 17px; font-weight: 700; color: var(--ink);
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+}
+.rec-box h4 .ic-pill {
+  width: 28px; height: 34px; border-radius: 999px 999px 5px 5px;
+  display: flex; align-items: center; justify-content: center;
+}
+.rec-row {
+  display: flex; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px dashed var(--line);
+  font-size: 12.5px; color: var(--ink2); font-variant-numeric: tabular-nums;
+}
+.rec-row:last-child { border-bottom: none; }
+.rec-row.tot { font-weight: 700; color: var(--ink); padding-top: 12px; border-top: 1px solid var(--line); border-bottom: none; font-size: 13.5px; }
+.rec-input {
+  width: 100%; margin-top: 8px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg2);
+  font-family: var(--mono); font-size: 14px; font-weight: 700;
+  color: var(--ink); text-align: right;
+}
+.diff {
+  margin-top: 10px; padding: 9px 12px; border-radius: 10px;
+  font-size: 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 600;
+}
+.diff.ok { background: #e8f1de; color: #426a2c; }
+.diff.warn { background: #fbf3df; color: #5e441b; }
+.grid-2 { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; }
+
+.donut-wrap { display: flex; align-items: center; gap: 18px; }
+.donut-leg { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.donut-leg .row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink2); }
+.donut-leg .row .sw { width: 10px; height: 10px; border-radius: 3px; }
+.donut-leg .row b { font-weight: 700; color: var(--ink); margin-left: auto; font-variant-numeric: tabular-nums; }
+.donut-leg .row .pct { font-size: 11px; color: var(--ink3); min-width: 38px; text-align: right; }
+
+.hero {
+  background:
+    linear-gradient(105deg, rgba(255,255,255,.0) 50%, rgba(255,255,255,.6) 100%),
+    linear-gradient(135deg, #efe2cf 0%, #e6d4bc 60%, #d8bfa1 100%);
+  border-radius: var(--r-lg);
+  padding: 22px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px;
+  border: 1px solid var(--line2);
+  box-shadow: var(--sh-2);
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content:''; position: absolute;
+  width: 280px; height: 320px;
+  right: -60px; top: -100px;
+  border-radius: 999px 999px 14px 14px;
+  background: radial-gradient(ellipse at 30% 30%, rgba(255,255,255,.6), transparent 60%), var(--grad-arch);
+  opacity: .55; filter: blur(.5px);
+}
+.hero-text { position: relative; z-index: 1; max-width: 60%; }
+.hero-eyebrow {
+  font-size: 11px; letter-spacing: .26em; text-transform: uppercase;
+  color: var(--espresso2); font-weight: 600; margin-bottom: 8px;
+}
+.hero h2 {
+  font-family: var(--serif); font-size: 30px; font-weight: 700;
+  line-height: 1.15; color: var(--espresso); letter-spacing: -.01em;
+}
+.hero h2 em { font-style: italic; color: var(--rose2); font-weight: 600; }
+.hero p { font-size: 13.5px; color: var(--ink2); margin-top: 8px; max-width: 460px; }
+.hero-stats { display: flex; gap: 22px; position: relative; z-index: 1; }
+.hero-stat .v { font-family: var(--serif); font-size: 28px; font-weight: 700; color: var(--espresso); letter-spacing: -.01em; line-height: 1; }
+.hero-stat .l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .14em; color: var(--ink3); margin-top: 4px; font-weight: 600; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.kpi {
+  background: var(--surface2); border-radius: var(--r);
+  padding: 18px 20px; border: 1px solid var(--line);
+  box-shadow: var(--sh-1); display: flex; flex-direction: column; gap: 10px;
+}
+.kpi-top { display: flex; align-items: center; justify-content: space-between; }
+.kpi-icon {
+  width: 36px; height: 44px; border-radius: 999px 999px 8px 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.kpi.revenue .kpi-icon { background: linear-gradient(180deg,#e0eedd,#bfd5b8); color: #3e5a32; }
+.kpi.expense .kpi-icon { background: linear-gradient(180deg,#f5d8c8,#e3a890); color: #6b3a28; }
+.kpi.orders  .kpi-icon { background: linear-gradient(180deg,#f0dcc0,#d4a574); color: #5a3e22; }
+.kpi.assets  .kpi-icon { background: linear-gradient(180deg,#dfd2c7,#9b8270); color: #2e2018; }
+.kpi-trend {
+  font-size: 11px; font-weight: 600; padding: 3px 8px;
+  border-radius: 999px; display: inline-flex; align-items: center; gap: 3px;
+}
+.kpi-trend.up { background: #e8f1de; color: #426a2c; }
+.kpi-trend.down { background: #f7e1d8; color: #843a23; }
+.kpi-value {
+  font-family: var(--serif); font-size: 30px; font-weight: 700;
+  color: var(--ink); letter-spacing: -.015em; line-height: 1;
+}
+.kpi-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .14em; color: var(--ink3); font-weight: 600; }
+.kpi-sub { font-size: 11.5px; color: var(--ink3); }
+
+.bar-h { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+.bar-h i { display: block; height: 100%; background: var(--grad-gold); }
+
+/* SVG Icons */
+.ico-svg { display: inline-block; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<div class="demo-container">
+  <h1 style="font-family:var(--serif);font-size:36px;font-weight:700;color:var(--espresso);margin-bottom:8px;">Hannah Spa — Demo Giao Diện Mẫu</h1>
+  <p style="color:var(--ink3);margin-bottom:28px;font-size:14px;">Thiết kế chuẩn từ thư mục <code>docs/Demo</code> — Đây là giao diện đích cần đạt được</p>
+
+  <div class="demo-tabs">
+    <button class="demo-tab active" onclick="showScreen('finance')">1. Thu Chi & Báo Cáo</button>
+    <button class="demo-tab" onclick="showScreen('reconcile')">2. Đối Soát Cuối Ngày</button>
+    <button class="demo-tab" onclick="showScreen('dashboard')">3. Dashboard Tổng Quan</button>
+  </div>
+
+  <!-- ═══════════ 1. FINANCE SCREEN ═══════════ -->
+  <div class="demo-screen active" id="screen-finance">
+    <div class="page">
+
+      <!-- Module Header -->
+      <div class="mod-head">
+        <div>
+          <div class="ttl">Thu Chi & Báo Cáo</div>
+          <div class="sub">Tháng 5 / 2026 · Đối soát đến 23:59 ngày 10/05</div>
+        </div>
+        <div class="acts">
+          <div class="subtabs">
+            <div class="st">Hôm nay</div>
+            <div class="st">7 ngày</div>
+            <div class="st active">Tháng này</div>
+            <div class="st">Quý II</div>
+            <div class="st">Tuỳ chỉnh</div>
+          </div>
+          <button class="btn">
+            <svg class="ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 3h16v18l-3-2-3 2-3-2-3 2-4-2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+            Xuất Excel
+          </button>
+          <button class="btn">
+            <svg class="ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Ghi nhận
+          </button>
+        </div>
+      </div>
+
+      <!-- Wallet Cards -->
+      <div class="wallets">
+        <div class="wallet cash">
+          <div>
+            <div class="nm">Tiền Mặt · Két Quầy</div>
+            <div class="vl">12.450.000<span class="cur">đ</span></div>
+          </div>
+          <div class="sb">Đối soát · 10/05 · 09:15</div>
+        </div>
+        <div class="wallet bank">
+          <div>
+            <div class="nm">MB Bank · *9821</div>
+            <div class="vl">68.200.000<span class="cur">đ</span></div>
+          </div>
+          <div class="sb">Số dư cập nhật 17:30</div>
+        </div>
+        <div class="wallet epay">
+          <div>
+            <div class="nm">TP Bank · *4567</div>
+            <div class="vl">15.200.235<span class="cur">đ</span></div>
+          </div>
+          <div class="sb">12 giao dịch chờ đối soát</div>
+        </div>
+      </div>
+
+      <!-- Stat Strip -->
+      <div class="strip" style="grid-template-columns:repeat(4,1fr)">
+        <div class="it">
+          <div class="l">Tổng Thu Tháng</div>
+          <div class="v" style="color:#426a2c">168.4<span class="cur">M</span></div>
+          <div class="d up">↑ 18% vs T4/2026</div>
+        </div>
+        <div class="it">
+          <div class="l">Tổng Chi Tháng</div>
+          <div class="v" style="color:#843a23">74.2<span class="cur">M</span></div>
+          <div class="d dn">↑ 6% vs T4/2026</div>
+        </div>
+        <div class="it">
+          <div class="l">Lợi Nhuận Gộp</div>
+          <div class="v">94.2<span class="cur">M</span></div>
+          <div class="d up">Biên 56% · ↑ 4pt</div>
+        </div>
+        <div class="it">
+          <div class="l">Công Nợ Phải Thu</div>
+          <div class="v">8.6<span class="cur">M</span></div>
+          <div class="d">12 KH · 3 quá hạn</div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="fin-grid">
+        <!-- Revenue Chart -->
+        <div class="card">
+          <div class="card-h">
+            <div class="card-t">
+              <div class="arch-i">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a6a52" stroke-width="2"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+              </div>
+              <h3>Thu & Chi 30 Ngày</h3>
+            </div>
+            <div class="legend">
+              <span><i style="background:#6e8a5e"></i>Thu</span>
+              <span><i style="background:#b85a4a"></i>Chi</span>
+            </div>
+          </div>
+          <div class="card-b">
+            <svg viewBox="0 0 620 180" style="width:100%;height:180px;display:block">
+              <line x1="30" x2="610" y1="20" y2="20" stroke="#e8dcc8" stroke-dasharray="2 3"/>
+              <text x="24" y="23" text-anchor="end" font-size="9.5" fill="#8e7a68" font-family="Inter">8M</text>
+              <line x1="30" x2="610" y1="54" y2="54" stroke="#e8dcc8" stroke-dasharray="2 3"/>
+              <text x="24" y="57" text-anchor="end" font-size="9.5" fill="#8e7a68" font-family="Inter">6M</text>
+              <line x1="30" x2="610" y1="88" y2="88" stroke="#e8dcc8" stroke-dasharray="2 3"/>
+              <text x="24" y="91" text-anchor="end" font-size="9.5" fill="#8e7a68" font-family="Inter">4M</text>
+              <line x1="30" x2="610" y1="122" y2="122" stroke="#e8dcc8" stroke-dasharray="2 3"/>
+              <text x="24" y="125" text-anchor="end" font-size="9.5" fill="#8e7a68" font-family="Inter">2M</text>
+              <line x1="30" x2="610" y1="156" y2="156" stroke="#e8dcc8"/>
+              <text x="24" y="159" text-anchor="end" font-size="9.5" fill="#8e7a68" font-family="Inter">0</text>
+              <!-- Bars for 30 days -->
+              <rect x="38" y="70" width="7" height="86" fill="#6e8a5e" rx="1" opacity=".7"/>
+              <rect x="46" y="70" width="7" height="30" fill="#b85a4a" rx="1" opacity=".7"/>
+              <rect x="57" y="55" width="7" height="101" fill="#6e8a5e" rx="1" opacity=".7"/>
+              <rect x="66" y="90" width="7" height="25" fill="#b85a4a" rx="1" opacity=".7"/>
+              <rect x="76" y="48" width="7" height="108" fill="#6e8a5e" rx="1" opacity=".7"/>
+              <rect x="85" y="75" width="7" height="35" fill="#b85a4a" rx="1" opacity=".7"/>
+              <rect x="95" y="38" width="7" height="118" fill="#6e8a5e" rx="1" opacity=".7"/>
+              <rect x="104" y="85" width="7" height="28" fill="#b85a4a" rx="1" opacity=".7"/>
+              <rect x="114" y="30" width="7" height="126" fill="#6e8a5e" rx="1" opacity=".7"/>
+              <rect x="123" y="95" width="7" height="20" fill="#b85a4a" rx="1" opacity=".7"/>
+              <rect x="133" y="52" width="7" height="104" fill="#6e8a5e" rx="1" opacity=".7"/>
+              <rect x="142" y="70" width="7" height="32" fill="#b85a4a" rx="1" opacity=".7"/>
+              <rect x="152" y="62" width="7" height="94" fill="#6e8a5e" rx="1" opacity=".7"/>
+              <rect x="161" y="80" width="7" height="28" fill="#b85a4a" rx="1" opacity=".7"/>
+              <rect x="171" y="42" width="7" height="114" fill="#6e8a5e" rx="1" opacity=".7"/>
+              <rect x="180" y="60" width="7" height="38" fill="#b85a4a" rx="1" opacity=".7"/>
+              <rect x="190" y="35" width="7" height="121" fill="#6e8a5e" rx="1" opacity=".7"/>
+              <rect x="199" y="86" width="7" height="25" fill="#b85a4a" rx="1" opacity=".7"/>
+              <rect x="209" y="55" width="7" height="101" fill="#6e8a5e" rx="1" opacity=".7"/>
+              <rect x="218" y="75" width="7" height="30" fill="#b85a4a" rx="1" opacity=".7"/>
+              <!-- Today highlight -->
+              <line x1="238" x2="238" y1="12" y2="156" stroke="#a87f4f" stroke-dasharray="3 3" stroke-width="1" opacity=".5"/>
+              <rect x="238" y="20" width="18" height="136" fill="#c9a96e" rx="2"/>
+              <rect x="247" y="85" width="8" height="25" fill="#a87366" rx="1"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Donut Chart -->
+        <div class="card">
+          <div class="card-h">
+            <div class="card-t">
+              <div class="arch-i">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a6a52" stroke-width="1.6"><path d="M20.6 13.6 13 21.2a2 2 0 0 1-2.8 0l-7-7a2 2 0 0 1-.6-1.6V4.5A1.5 1.5 0 0 1 4.1 3h8.1a2 2 0 0 1 1.4.6l7 7a2 2 0 0 1 0 3z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>
+              </div>
+              <h3>Cơ Cấu Doanh Thu</h3>
+            </div>
+            <span class="chip">Tháng</span>
+          </div>
+          <div class="card-b">
+            <div class="donut-wrap">
+              <svg viewBox="0 0 140 140" class="donut" style="width:140px;height:140px">
+                <circle cx="70" cy="70" r="58" fill="none" stroke="#e8dcc8" stroke-width="20"/>
+                <circle cx="70" cy="70" r="58" fill="none" stroke="#c9a96e" stroke-width="20" stroke-dasharray="208 364" stroke-dashoffset="0" transform="rotate(-90 70 70)"/>
+                <circle cx="70" cy="70" r="58" fill="none" stroke="#a87366" stroke-width="20" stroke-dasharray="92 364" stroke-dashoffset="-208" transform="rotate(-90 70 70)"/>
+                <circle cx="70" cy="70" r="58" fill="none" stroke="#6e8a5e" stroke-width="20" stroke-dasharray="46 364" stroke-dashoffset="-300" transform="rotate(-90 70 70)"/>
+                <circle cx="70" cy="70" r="58" fill="none" stroke="#8a6a6e" stroke-width="20" stroke-dasharray="20 364" stroke-dashoffset="-346" transform="rotate(-90 70 70)"/>
+                <text x="70" y="66" text-anchor="middle" font-size="11" fill="#8e7a68" font-family="Inter" font-weight="600">TỔNG</text>
+                <text x="70" y="82" text-anchor="middle" font-size="18" fill="#2a201a" font-family="Cormorant Garamond" font-weight="700">168M</text>
+              </svg>
+              <div class="donut-leg">
+                <div class="row"><span class="sw" style="background:#c9a96e"></span><span>Dịch vụ</span><b>96.0M</b><span class="pct">57%</span></div>
+                <div class="row"><span class="sw" style="background:#a87366"></span><span>Sản phẩm</span><b>42.0M</b><span class="pct">25%</span></div>
+                <div class="row"><span class="sw" style="background:#6e8a5e"></span><span>Thẻ LT</span><b>21.0M</b><span class="pct">12%</span></div>
+                <div class="row"><span class="sw" style="background:#8a6a6e"></span><span>Thẻ quà</span><b>9.4M</b><span class="pct">6%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ledger Table -->
+      <div class="card">
+        <div class="card-h">
+          <div class="card-t">
+            <div class="arch-i">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a6a52" stroke-width="1.6"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18"/><circle cx="17" cy="15" r="1.2"/></svg>
+            </div>
+            <h3>Sổ Quỹ — Giao Dịch</h3>
+            <span class="sub">128 giao dịch · 30 ngày</span>
+          </div>
+          <div class="card-actions">
+            <button class="chip active">Tất cả</button>
+            <button class="chip">Thu</button>
+            <button class="chip">Chi</button>
+            <button class="chip">Chờ duyệt</button>
+          </div>
+        </div>
+        <div style="padding:0">
+          <table class="ledger">
+            <thead><tr>
+              <th>Thời Gian</th><th>Loại</th><th>Mô Tả</th><th>Đối Tượng</th><th>Ví / Phương Thức</th>
+              <th class="r">Số Tiền</th><th class="r" style="width:50px"></th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td style="white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink3);font-size:12px">10/05 14:30</td>
+                <td><span class="tag sv">Dịch Vụ</span></td>
+                <td class="nm">RF Trẻ Hóa Bắp Tay<small>Liệu trình · Buổi 3/8</small></td>
+                <td>Cô Phương Anh · VIP</td><td>MB Bank · CK</td>
+                <td class="amt in">+1.000.000đ</td>
+                <td class="r"><button class="icon-btn" style="width:26px;height:26px"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></td>
+              </tr>
+              <tr>
+                <td style="white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink3);font-size:12px">10/05 13:15</td>
+                <td><span class="tag sv">Dịch Vụ</span></td>
+                <td class="nm">Massage Cổ Vai Gáy<small>Khách lẻ · 60 phút</small></td>
+                <td>Khách lẻ</td><td>Tiền Mặt</td>
+                <td class="amt in">+350.000đ</td>
+                <td class="r"><button class="icon-btn" style="width:26px;height:26px"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></td>
+              </tr>
+              <tr>
+                <td style="white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink3);font-size:12px">10/05 12:00</td>
+                <td><span class="tag ut">Chi Phí</span></td>
+                <td class="nm">Tiền điện tháng 4<small>EVN · Hóa đơn tự động</small></td>
+                <td>EVN</td><td>MB Bank · CK</td>
+                <td class="amt out">−2.450.000đ</td>
+                <td class="r"><button class="icon-btn" style="width:26px;height:26px"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></td>
+              </tr>
+              <tr>
+                <td style="white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink3);font-size:12px">10/05 11:00</td>
+                <td><span class="tag pr">Sản Phẩm</span></td>
+                <td class="nm">Kem dưỡng Hannah XYZ × 2<small>Bán lẻ tại quầy</small></td>
+                <td>Cô Thu Hồng</td><td>TP Bank · Quẹt thẻ</td>
+                <td class="amt in">+640.000đ</td>
+                <td class="r"><button class="icon-btn" style="width:26px;height:26px"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></td>
+              </tr>
+              <tr>
+                <td style="white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink3);font-size:12px">10/05 10:20</td>
+                <td><span class="tag sv">Dịch Vụ</span></td>
+                <td class="nm">Gội Đầu Dưỡng Sinh<small>Khách lẻ · 45 phút</small></td>
+                <td>Khách lẻ</td><td>Tiền Mặt</td>
+                <td class="amt in">+80.000đ</td>
+                <td class="r"><button class="icon-btn" style="width:26px;height:26px"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════ 2. RECONCILE SCREEN ═══════════ -->
+  <div class="demo-screen" id="screen-reconcile">
+    <div class="page">
+
+      <div class="mod-head">
+        <div>
+          <div class="ttl">Đối Soát Cuối Ngày</div>
+          <div class="sub">Ca chiều · 10/05/2026 · Thu ngân: Bích Phượng · Bắt đầu lúc 13:00</div>
+        </div>
+        <div class="acts">
+          <button class="btn">
+            <svg class="ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 3h16v18l-3-2-3 2-3-2-3 2-4-2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+            In Phiếu
+          </button>
+          <button class="btn gold">
+            <svg class="ico-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Khoá Sổ Ca
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary Strip -->
+      <div class="strip" style="grid-template-columns:repeat(5,1fr)">
+        <div class="it"><div class="l">Hoá Đơn Ca</div><div class="v">14</div><div class="d">8 dịch vụ + 6 sản phẩm</div></div>
+        <div class="it"><div class="l">Tổng Thu Ca</div><div class="v" style="color:#426a2c">8.450<span class="cur">k</span></div><div class="d">3 PT thanh toán</div></div>
+        <div class="it"><div class="l">Tổng Chi Ca</div><div class="v" style="color:#843a23">540<span class="cur">k</span></div><div class="d">2 phiếu chi vặt</div></div>
+        <div class="it"><div class="l">Voucher Đã Dùng</div><div class="v">3</div><div class="d">Trị giá 350.000đ</div></div>
+        <div class="it"><div class="l">Chênh Lệch</div><div class="v" style="color:#426a2c">+0<span class="cur">đ</span></div><div class="d up">Khớp 3/3 ví</div></div>
+      </div>
+
+      <!-- Reconcile Boxes -->
+      <div class="rec-grid">
+        <!-- Tiền Mặt -->
+        <div class="rec-box">
+          <h4>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="ic-pill" style="background:linear-gradient(180deg,#e0eedd,#bfd5b8)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3e5a32" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4M12 7v10"/></svg>
+              </div>
+              Tiền Mặt
+            </div>
+            <span style="font-size:11px;font-weight:600;color:var(--ink3)">Két quầy lễ tân</span>
+          </h4>
+          <div class="rec-row"><span>Mở ca (13:00)</span><span>5.000.000đ</span></div>
+          <div class="rec-row"><span>+ Thu trong ca</span><span style="color:#426a2c">+ 2.340.000đ</span></div>
+          <div class="rec-row"><span>− Chi vặt</span><span style="color:#843a23">− 240.000đ</span></div>
+          <div class="rec-row"><span>− Hoa hồng đã ứng</span><span style="color:#843a23">− 800.000đ</span></div>
+          <div class="rec-row tot"><span>Số dư theo hệ thống</span><span>6.300.000đ</span></div>
+          <div style="margin-top:14px">
+            <div style="font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Thực tế đếm (kiểm két)</div>
+            <input class="rec-input" value="6.300.000" readonly>
+            <div class="diff ok"><span>Chênh lệch</span><span>0đ · Khớp ✓</span></div>
+          </div>
+        </div>
+
+        <!-- MB Bank -->
+        <div class="rec-box">
+          <h4>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="ic-pill" style="background:linear-gradient(180deg,#dde9f3,#a8c5dc)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a4f70" stroke-width="1.6"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18"/></svg>
+              </div>
+              MB Bank
+            </div>
+            <span style="font-size:11px;font-weight:600;color:var(--ink3)">*9821 · 8 GD</span>
+          </h4>
+          <div class="rec-row"><span>+ Khách CK</span><span style="color:#426a2c">+ 4.860.000đ</span></div>
+          <div class="rec-row"><span>− Chi tự động (điện)</span><span style="color:#843a23">− 2.450.000đ</span></div>
+          <div class="rec-row"><span>+ Nạp tiền từ TM</span><span style="color:#426a2c">+ 1.200.000đ</span></div>
+          <div class="rec-row tot"><span>Theo sao kê SMS</span><span>+ 3.610.000đ</span></div>
+          <div style="margin-top:14px">
+            <div style="font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Đối chiếu app ngân hàng</div>
+            <input class="rec-input" value="3.610.000" readonly>
+            <div class="diff ok"><span>Chênh lệch</span><span>0đ · Khớp ✓</span></div>
+          </div>
+        </div>
+
+        <!-- TP Bank -->
+        <div class="rec-box">
+          <h4>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="ic-pill" style="background:linear-gradient(180deg,#f0dcc0,#d4a574)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5a3e22" stroke-width="1.6"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+              </div>
+              TP Bank
+            </div>
+            <span style="font-size:11px;font-weight:600;color:var(--ink3)">*4567 · Quẹt thẻ</span>
+          </h4>
+          <div class="rec-row"><span>+ Khách quẹt thẻ</span><span style="color:#426a2c">+ 1.250.000đ</span></div>
+          <div class="rec-row"><span>− Phí giao dịch (1.5%)</span><span style="color:#843a23">− 18.750đ</span></div>
+          <div class="rec-row"><span>− Về MB Bank</span><span style="color:#843a23">− 1.200.000đ</span></div>
+          <div class="rec-row tot"><span>Số dư còn lại</span><span>31.250đ</span></div>
+          <div style="margin-top:14px">
+            <div style="font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Đối chiếu cổng thanh toán</div>
+            <input class="rec-input" value="31.250" readonly>
+            <div class="diff warn"><span>Chênh lệch</span><span>− 0đ · Đang về ⚠</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail + Notes -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-h">
+            <div class="card-t">
+              <div class="arch-i">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a6a52" stroke-width="1.6"><path d="M4 3h16v18l-3-2-3 2-3-2-3 2-4-2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+              </div>
+              <h3>Hoá Đơn Ca (14)</h3>
+            </div>
+          </div>
+          <div class="card-b" style="padding:0">
+            <table class="tbl">
+              <thead><tr><th style="padding-left:20px">#</th><th>Giờ</th><th>Mô Tả</th><th>PT</th><th style="padding-right:20px">Số Tiền</th></tr></thead>
+              <tbody>
+                <tr><td style="padding-left:20px;font-variant-numeric:tabular-nums;font-weight:700;font-size:11.5px;color:var(--ink3)">HN-2058</td><td class="time">15:45</td><td class="desc">RF Trẻ Hóa + Massage CV</td><td><span class="method transfer">CK</span></td><td class="amount" style="padding-right:20px">1.210.000đ</td></tr>
+                <tr><td style="padding-left:20px;font-variant-numeric:tabular-nums;font-weight:700;font-size:11.5px;color:var(--ink3)">HN-2057</td><td class="time">15:20</td><td class="desc">Aqua Skin Facial · LT 5/10</td><td><span class="method pkg">Thẻ LT</span></td><td class="amount" style="padding-right:20px">400.000đ</td></tr>
+                <tr><td style="padding-left:20px;font-variant-numeric:tabular-nums;font-weight:700;font-size:11.5px;color:var(--ink3)">HN-2056</td><td class="time">14:30</td><td class="desc">Combo Detox VIP</td><td><span class="method card">Quẹt thẻ</span></td><td class="amount" style="padding-right:20px">1.250.000đ</td></tr>
+                <tr><td style="padding-left:20px;font-variant-numeric:tabular-nums;font-weight:700;font-size:11.5px;color:var(--ink3)">HN-2055</td><td class="time">14:00</td><td class="desc">Gội Dưỡng Sinh + Serum</td><td><span class="method cash">Tiền mặt</span></td><td class="amount" style="padding-right:20px">260.000đ</td></tr>
+                <tr><td style="padding-left:20px;font-variant-numeric:tabular-nums;font-weight:700;font-size:11.5px;color:var(--ink3)">HN-2054</td><td class="time">13:45</td><td class="desc">Massage 90p</td><td><span class="method cash">Tiền mặt</span></td><td class="amount" style="padding-right:20px">500.000đ</td></tr>
+                <tr><td style="padding-left:20px;font-variant-numeric:tabular-nums;font-weight:700;font-size:11.5px;color:var(--ink3)">HN-2053</td><td class="time">13:20</td><td class="desc">Kem dưỡng Hannah XYZ × 2</td><td><span class="method transfer">CK</span></td><td class="amount" style="padding-right:20px">640.000đ</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <div class="card-t">
+              <div class="arch-i">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a6a52" stroke-width="1.6"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+              </div>
+              <h3>Ghi Chú Bàn Giao</h3>
+            </div>
+          </div>
+          <div class="card-b">
+            <textarea style="width:100%;min-height:120px;resize:none;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);font-family:var(--sans);font-size:13px;color:var(--ink);line-height:1.5" readonly>· Phòng 04 — máy RF hơi nóng, chuyển kỹ thuật xem trước ca tối.
+· Khách cô Tâm hẹn 17h chuyển sang 18h vì đi trễ.
+· Kem dưỡng Hannah XYZ chỉ còn 2 hộp — đã đặt thêm.
+· Két còn 6.300k, đã niêm phong và bàn giao cho ca tối.</textarea>
+            <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
+              <div class="avatar" style="width:34px;height:34px;background:linear-gradient(135deg,#c4998a,#a87366);border-radius:999px;display:flex;align-items:center;justify-content:center;color:#2a1d14;font-weight:700;font-size:12px">BP</div>
+              <div style="flex:1">
+                <div style="font-size:12px;font-weight:600;color:var(--ink)">Bàn giao cho: <b>Nhân Thu (ca tối)</b></div>
+                <div style="font-size:11px;color:var(--ink3)">Ký xác nhận trên tablet · Hiệu lực 18:00 — 22:00</div>
+              </div>
+              <button class="btn">Ký bàn giao</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════ 3. DASHBOARD ═══════════ -->
+  <div class="demo-screen" id="screen-dashboard">
+    <div class="page">
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-text">
+          <div class="hero-eyebrow">T5, 10/05/2026 — Admin Dashboard</div>
+          <h2>Chào Quốc Nam, <em>hôm nay spa đang hoạt động tốt!</em></h2>
+          <p>Doanh thu 5.200.000đ · 14 đơn POS · 4 KTV đang trực · 28 khách hôm nay</p>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="v" style="color:var(--success)">5.2M</div>
+            <div class="l">Thực Thu</div>
+          </div>
+          <div class="hero-stat">
+            <div class="v" style="color:var(--danger)">1.2M</div>
+            <div class="l">Tổng Chi</div>
+          </div>
+          <div class="hero-stat">
+            <div class="v" style="color:var(--success)">4.0M</div>
+            <div class="l">Lợi Nhuận</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi revenue">
+          <div class="kpi-top">
+            <div class="kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3e5a32" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4M12 7v10"/></svg>
+            </div>
+            <span class="kpi-trend up">↑ 18.4%</span>
+          </div>
+          <div>
+            <div class="kpi-label">Doanh Thu Hôm Nay</div>
+            <div class="kpi-value">5.200.000</div>
+          </div>
+          <div class="kpi-sub">So với <b>4.390.000đ</b> hôm qua</div>
+        </div>
+        <div class="kpi expense">
+          <div class="kpi-top">
+            <div class="kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b3a28" stroke-width="1.6"><path d="M4 3h16v18l-3-2-3 2-3-2-3 2-4-2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+            </div>
+            <span class="kpi-trend down">↑ 6.2%</span>
+          </div>
+          <div>
+            <div class="kpi-label">Chi Phí Hôm Nay</div>
+            <div class="kpi-value">1.200.000</div>
+          </div>
+          <div class="kpi-sub">So với <b>1.130.000đ</b> hôm qua</div>
+        </div>
+        <div class="kpi orders">
+          <div class="kpi-top">
+            <div class="kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5a3e22" stroke-width="1.6"><path d="M3 3h2l2.6 12.4a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 7H6"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg>
+            </div>
+            <span class="kpi-trend up">↑ 12%</span>
+          </div>
+          <div>
+            <div class="kpi-label">Đơn Hàng</div>
+            <div class="kpi-value">14</div>
+          </div>
+          <div class="kpi-sub"><b>8 dịch vụ</b> + 6 sản phẩm</div>
+        </div>
+        <div class="kpi assets">
+          <div class="kpi-top">
+            <div class="kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2e2018" stroke-width="1.6"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18"/></svg>
+            </div>
+            <span class="kpi-trend up">↑ 3.2%</span>
+          </div>
+          <div>
+            <div class="kpi-label">Tổng Tài Sản</div>
+            <div class="kpi-value">95.850.235</div>
+          </div>
+          <div class="kpi-sub">3 ví · Cập nhật realtime</div>
+        </div>
+      </div>
+
+      <!-- Tables Row -->
+      <div class="grid-2">
+        <!-- Recent Transactions -->
+        <div class="card">
+          <div class="card-h">
+            <div class="card-t">
+              <div class="arch-i">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a6a52" stroke-width="1.6"><path d="M4 3h16v18l-3-2-3 2-3-2-3 2-4-2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+              </div>
+              <h3>Giao Dịch Gần Đây</h3>
+              <span class="sub">5 mới nhất hôm nay</span>
+            </div>
+            <button class="btn">Xem tất cả →</button>
+          </div>
+          <div class="card-b" style="padding:0">
+            <table class="tbl">
+              <thead><tr><th style="padding-left:20px">Giờ</th><th>Dịch Vụ</th><th>Phương Thức</th><th style="padding-right:20px">Số Tiền</th></tr></thead>
+              <tbody>
+                <tr><td class="time" style="padding-left:20px">14:30</td><td class="desc">RF Trẻ Hóa Bắp Tay<small>Liệu trình · Buổi 3/8</small></td><td><span class="method transfer">CK</span></td><td class="amount" style="padding-right:20px">1.000.000đ</td></tr>
+                <tr><td class="time" style="padding-left:20px">13:15</td><td class="desc">Massage Cổ Vai Gáy<small>Khách lẻ · 60 phút</small></td><td><span class="method cash">Tiền mặt</span></td><td class="amount" style="padding-right:20px">350.000đ</td></tr>
+                <tr><td class="time" style="padding-left:20px">11:00</td><td class="desc">Combo Body Thư Giãn<small>Khách lẻ · 90 phút</small></td><td><span class="method card">Quẹt thẻ</span></td><td class="amount" style="padding-right:20px">500.000đ</td></tr>
+                <tr><td class="time" style="padding-left:20px">10:20</td><td class="desc">Gội Đầu Dưỡng Sinh<small>Khách lẻ · 45 phút</small></td><td><span class="method cash">Tiền mặt</span></td><td class="amount" style="padding-right:20px">80.000đ</td></tr>
+                <tr><td class="time" style="padding-left:20px">09:45</td><td class="desc">AQUA SKIN — Cấp Ẩm<small>Liệu trình · Buổi 5/10</small></td><td><span class="method pkg">Thẻ LT</span></td><td class="amount" style="padding-right:20px">400.000đ</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="card">
+          <div class="card-h">
+            <div class="card-t">
+              <div class="arch-i">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a6a52" stroke-width="1.6"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+              </div>
+              <h3>Cảnh Báo</h3>
+              <span class="sub">4 mục cần xử lý</span>
+            </div>
+            <button class="chip">Tất cả</button>
+          </div>
+          <div class="card-b">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#fbf3df;border-left:3px solid #c89a3e;font-size:12.5px;color:#5e441b;line-height:1.45">
+                <div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/></svg></div>
+                <div style="flex:1"><b>Kem Dưỡng Da Hannah XYZ</b> sắp hết — còn 2 hộp trong kho.</div>
+                <span style="font-size:10.5px;color:var(--ink3);white-space:nowrap">45m</span>
+              </div>
+              <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#e1eee8;border-left:3px solid #6e8a5e;font-size:12.5px;color:#2c4a30;line-height:1.45">
+                <div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 1 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></div>
+                <div style="flex:1"><b>12 khách</b> chưa quay lại trên 30 ngày — gợi ý gửi voucher.</div>
+                <span style="font-size:10.5px;color:var(--ink3);white-space:nowrap">2h</span>
+              </div>
+              <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#fbf3df;border-left:3px solid #c89a3e;font-size:12.5px;color:#5e441b;line-height:1.45">
+                <div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20.6 13.6 13 21.2a2 2 0 0 1-2.8 0l-7-7a2 2 0 0 1-.6-1.6V4.5A1.5 1.5 0 0 1 4.1 3h8.1a2 2 0 0 1 1.4.6l7 7a2 2 0 0 1 0 3z"/></svg></div>
+                <div style="flex:1"><b>3 thẻ liệu trình</b> sắp hết hạn trong 7 ngày tới.</div>
+                <span style="font-size:10.5px;color:var(--ink3);white-space:nowrap">4h</span>
+              </div>
+              <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#fae0d8;border-left:3px solid #b85a4a;font-size:12.5px;color:#6e2818;line-height:1.45">
+                <div style="width:22px;height:22px;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 3h16v18l-3-2-3 2-3-2-3 2-4-2z"/></svg></div>
+                <div style="flex:1"><b>Chưa đối soát</b> ngày 08/05 — cần xác nhận trước 17:00.</div>
+                <span style="font-size:10.5px;color:var(--ink3);white-space:nowrap">18h</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showScreen(name) {
+  document.querySelectorAll('.demo-screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

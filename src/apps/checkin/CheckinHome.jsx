@@ -7,6 +7,7 @@ import CheckinDangKyOff from './CheckinDangKyOff'
 import CheckinDoiPin from './CheckinDoiPin'
 import CheckinLich from './CheckinLich'
 import CheckinLuong from './CheckinLuong'
+import CheckinThuNhap from './CheckinThuNhap'
 import CheckinDoiAvatar from './CheckinDoiAvatar'
 import './styles.css'
 
@@ -45,6 +46,7 @@ const SHORTCUTS = [
   { tab: 'lich',        accent: '#7a8a6a', icnBg: '#eef2e7', title: 'Lịch Tháng',    desc: 'Xem công tháng này',    icon: ICN.calendar },
   { tab: 'dang-ky-off', accent: '#b87a6a', icnBg: '#f1e3df', title: 'Đăng Ký OFF',   desc: 'Xin nghỉ phép',         icon: ICN.off      },
   { tab: 'luong',       accent: '#c8a675', icnBg: '#f5e9d4', title: 'Lương Tháng',   desc: 'Xem chi tiết lương',    icon: ICN.wallet   },
+  { tab: 'thu-nhap',    accent: '#1a5276', icnBg: '#d6eaf8', title: 'Thu Nhập',       desc: 'Tour & hoa hồng DV',    icon: <span style={{fontSize:20}}>✈️</span> },
   { tab: 'doi-pin',     accent: '#8a6a52', icnBg: '#ece2d4', title: 'Đổi PIN',        desc: 'Thay đổi mật khẩu',    icon: ICN.lock     },
   { tab: 'doi-avatar',  accent: '#a07a5c', icnBg: '#f5e8d4', title: 'Ảnh Đại Diện',  desc: 'Thay ảnh, cắt tròn',   icon: <span style={{fontSize:20}}>📷</span> },
 ]
@@ -94,6 +96,7 @@ export default function CheckinHome({ nhanVien, onLogout }) {
   if (tab === 'lich') return <CheckinLich nhanVien={nhanVien} onBack={() => setTab('home')} />
   if (tab === 'doi-pin')    return <CheckinDoiPin    nhanVien={nhanVien} onBack={() => setTab('home')} />
   if (tab === 'luong')      return <CheckinLuong      nhanVien={nhanVien} onBack={() => setTab('home')} />
+  if (tab === 'thu-nhap')  return <CheckinThuNhap    nhanVien={nhanVien} onBack={() => setTab('home')} />
   if (tab === 'doi-avatar') return <CheckinDoiAvatar  nhanVien={{ ...nhanVien, avatar_url: avatarUrl }} onBack={() => setTab('home')} onUpdated={url => setAvatarUrl(url)} />
 
   return (

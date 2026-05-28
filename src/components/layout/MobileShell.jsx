@@ -19,6 +19,7 @@ const PAGE_TITLES = {
   '/admin/nhan-su/xet-duyet':        'Xét Duyệt OFF',
   '/admin/nhan-su/bang-luong':       'Bảng Lương',
   '/admin/commission':               'Hoa Hồng KTV',
+  '/admin/doi-soat-data':            'Đối Soát Data Cũ',
   '/admin/crm':                      'CRM Khách Hàng',
   '/admin/the-lieu-trinh':           'Thẻ Liệu Trình',
   '/admin/kho-hang':                 'Kho Hàng',
@@ -35,9 +36,10 @@ const PAGE_TITLES = {
   '/SoThuChi':                       'Sổ Thu Chi',
   '/SoThuChi/nhap-lieu':             'Nhập Thu Chi',
   '/SoThuChi/doi-soat':              'Đối Soát',
+  '/SoThuChi/chot-ngay':             'Chốt Ngày',
   '/SoThuChi/bao-cao':               'Báo Cáo',
   '/SoThuChi/cai-dat':               'Cài Đặt',
-  '/pos':                            'POS Bán Hàng',
+  '/pos':                            'Bán Hàng',
 }
 
 const NHANSU_ITEMS = [
@@ -53,6 +55,7 @@ const NHANSU_ITEMS = [
 const MORE_ADMIN = [
   { label: 'Kho Hàng',       path: '/admin/kho-hang',        icon: '📦' },
   { label: 'CRM',             path: '/admin/crm',             icon: '💝' },
+  { label: 'Data Cũ',         path: '/admin/doi-soat-data',   icon: '📋' },
   { label: 'Thẻ LT',         path: '/admin/the-lieu-trinh',  icon: '🎫' },
   { label: 'Khuyến Mãi',     path: '/admin/khuyen-mai',      icon: '🏷️' },
   { label: 'Marketing',       path: '/admin/marketing',       icon: '📣' },
@@ -67,14 +70,14 @@ const MORE_LETAN = [
 const BOTTOM_ADMIN = [
   { id: 'dashboard', label: 'Tổng Quan', Icon: I.Dashboard, path: '/admin/dashboard' },
   { id: 'sothuchi',  label: 'Thu Chi',   Icon: I.Wallet,    path: '/SoThuChi' },
-  { id: 'pos',       label: 'POS',       Icon: I.Cart,      path: '/pos' },
+  { id: 'pos',       label: 'Bán Hàng',  Icon: I.Cart,      path: '/pos' },
   { id: 'nhansu',    label: 'Nhân Sự',   Icon: I.Users,     hasChildren: true },
   { id: 'more',      label: 'Thêm',      Icon: I.More,      isMore: true },
 ]
 
 const BOTTOM_LETAN = [
   { id: 'sothuchi', label: 'Thu Chi', Icon: I.Wallet, path: '/SoThuChi' },
-  { id: 'pos',      label: 'POS',     Icon: I.Cart,   path: '/pos' },
+  { id: 'pos',      label: 'Bán Hàng', Icon: I.Cart,   path: '/pos' },
   { id: 'more',     label: 'Thêm',    Icon: I.More,   isMore: true },
 ]
 

@@ -9,6 +9,7 @@ import NhapLieuPage from './thu-chi/NhapLieuPage'
 import BaoCaoPage from './bao-cao/BaoCaoPage'
 import CaiDatPage from './cai-dat/CaiDatPage'
 import DoiSoatPage from './thu-chi/DoiSoatPage'
+import ChotNgayPage from './thu-chi/ChotNgayPage'
 import FormDoanhThu from './thu-chi/forms/FormDoanhThu'
 import FormChiPhi from './thu-chi/forms/FormChiPhi'
 import FormChuyenKhoan from './thu-chi/forms/FormChuyenKhoan'
@@ -19,6 +20,7 @@ const BREAKPOINT = 768
 const PATH_TO_TAB = {
   '/SoThuChi': 'tong-quan',
   '/SoThuChi/doi-soat': 'doi-soat',
+  '/SoThuChi/chot-ngay': 'chot-ngay',
   '/SoThuChi/bao-cao': 'bao-cao',
   '/SoThuChi/nhap-lieu': 'nhap-lieu',
   '/SoThuChi/cai-dat': 'cai-dat',
@@ -26,6 +28,7 @@ const PATH_TO_TAB = {
 const TAB_TO_PATH = {
   'tong-quan': '/SoThuChi',
   'doi-soat': '/SoThuChi/doi-soat',
+  'chot-ngay': '/SoThuChi/chot-ngay',
   'bao-cao': '/SoThuChi/bao-cao',
   'nhap-lieu': '/SoThuChi/nhap-lieu',
   'cai-dat': '/SoThuChi/cai-dat',
@@ -87,7 +90,7 @@ export default function InternalApp() {
 
   // Lễ Tân bị giới hạn tab — admin xem được tất cả
   const isLeTan = user?.vai_tro === 'le_tan'
-  const leTanAllowed = ['doi-soat', 'nhap-lieu', 'cai-dat']
+  const leTanAllowed = ['doi-soat', 'chot-ngay', 'nhap-lieu', 'cai-dat']
   const effectiveTab = isLeTan && !leTanAllowed.includes(tab) ? 'doi-soat' : tab
 
   const handleOpenForm = (type) => {
@@ -152,6 +155,7 @@ export default function InternalApp() {
             <>
               {effectiveTab === 'tong-quan' && <TongQuanPage viList={viList} user={user} onOpenForm={handleOpenForm} isDesktop={isDesktop} onOpenPheDuyet={() => setPheDuyetOpen(true)} />}
               {effectiveTab === 'doi-soat'  && <DoiSoatPage user={user} onOpenForm={handleOpenForm} onSettings={() => setTabAndUrl('cai-dat')} refreshKey={refreshKey} />}
+              {effectiveTab === 'chot-ngay' && <ChotNgayPage user={user} refreshKey={refreshKey} />}
               {effectiveTab === 'nhap-lieu' && <NhapLieuPage onOpenForm={handleOpenForm} isDesktop={isDesktop} user={user} />}
               {effectiveTab === 'bao-cao'   && <BaoCaoPage isDesktop={isDesktop} />}
               {effectiveTab === 'cai-dat'   && (

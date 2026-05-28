@@ -9,7 +9,10 @@ import AdminMarketingPage from './marketing/AdminMarketingPage'
 import AdminDashboardPage from './dashboard/AdminDashboardPage'
 import AdminLichSuNopTienMat from './bao-cao/AdminLichSuNopTienMat'
 import AdminTheLieuTrinhPage from './the-lieu-trinh/AdminTheLieuTrinhPage'
+import AdminDichVuPage from './dich-vu/AdminDichVuPage'
 import AdminCommissionPage from './commission/AdminCommissionPage'
+import AdminDoiSoatDataPage from './doi-soat-data/AdminDoiSoatDataPage'
+import AdminPosReadinessPage from './pos-readiness/AdminPosReadinessPage'
 import { supabase } from '../../lib/supabase'
 import { todayISO, getNowVN, fmtCompact } from '../../lib/utils'
 
@@ -54,6 +57,7 @@ const MODULES = [
   { icon: '👥', label: 'Nhân Sự',         href: '/admin/nhan-su',         badge: null,    group: 'nb',  color: '#a0714f', desc: 'Chấm công · Duyệt OFF · Bảng lương' },
   { icon: '👤', label: 'CRM Khách Hàng', href: '/admin/crm',             badge: null,    group: 'nb',  color: '#8e44ad', desc: 'Hồ sơ · Thẻ liệu trình · Công nợ' },
   { icon: '🎫', label: 'Thẻ Liệu Trình', href: '/admin/the-lieu-trinh', badge: null,    group: 'nb',  color: '#6c3483', desc: 'Danh sách thẻ · Tiến độ · Hết hạn' },
+  { icon: '💎', label: 'Dịch Vụ',         href: '/admin/dich-vu',       badge: null,    group: 'nb',  color: '#a0714f', desc: 'Mã DV · Danh mục · Giá bán' },
   { icon: '💹', label: 'Hoa Hồng KTV',   href: '/admin/commission',     badge: null,    group: 'nb',  color: '#426a2c', desc: 'Commission · Doanh thu · Tỉ lệ' },
   { icon: '📦', label: 'Kho Hàng',        href: '/admin/kho-hang',        badge: null,    group: 'nb',  color: '#16a085', desc: 'Nhập xuất · Tồn kho · Cảnh báo' },
   { icon: '🏷️', label: 'Khuyến Mãi',     href: '/admin/khuyen-mai',      badge: null,    group: 'nb',  color: '#c0392b', desc: 'CRUD KM · Badge giảm giá · ROI' },
@@ -82,8 +86,11 @@ export default function AdminApp() {
   if (path.startsWith('/admin/crm'))        return <AdminCRMPage />
   if (path.startsWith('/admin/marketing'))  return <AdminMarketingPage />
   if (path.startsWith('/admin/dashboard'))  return <AdminDashboardPage />
+  if (path.startsWith('/admin/pos-doi-soat')) return <AdminPosReadinessPage />
+  if (path.startsWith('/admin/doi-soat-data')) return <AdminDoiSoatDataPage />
   if (path.startsWith('/admin/lich-su-nop-tien-mat')) return <AdminLichSuNopTienMat />
   if (path.startsWith('/admin/the-lieu-trinh'))      return <AdminTheLieuTrinhPage />
+  if (path.startsWith('/admin/dich-vu'))             return <AdminDichVuPage />
   if (path.startsWith('/admin/commission'))          return <AdminCommissionPage />
 
   const now = getNowVN()

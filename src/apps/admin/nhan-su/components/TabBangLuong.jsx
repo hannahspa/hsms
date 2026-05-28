@@ -637,9 +637,9 @@ export default function TabBangLuong() {
                   <span>DS Ngọc Phương:</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.dsNP)}</span>
                   <span>DT Mỹ Phẩm:</span>       <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(leTanInput.dtMyPham)}</span>
                   <span style={{ color: '#1A5276', fontWeight: 700 }}>Cơ sở bậc 1:</span> <span style={{ textAlign: 'right', fontWeight: 700, color: '#1A5276' }}>{formatCurrency(calcLeTan.coSo1)}</span>
-                  <span>HH bậc 1 (1%):</span>    <span style={{ textAlign: 'right', fontWeight: 600 }}>+{formatCurrency(calcLeTan.hh1)}</span>
+                  <span>Hoa Hồng bậc 1 (1%):</span>    <span style={{ textAlign: 'right', fontWeight: 600 }}>+{formatCurrency(calcLeTan.hh1)}</span>
                   <span>Vượt &gt;150tr:</span>        <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.vuot)}</span>
-                  <span>HH bậc 2 (1.5%):</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>+{formatCurrency(calcLeTan.hh2)}</span>
+                  <span>Hoa Hồng bậc 2 (1.5%):</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>+{formatCurrency(calcLeTan.hh2)}</span>
                 </div>
 
                 {/* ── Thông tin Chấm Công Tham Khảo ── */}
@@ -733,8 +733,8 @@ export default function TabBangLuong() {
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontFamily: LUX.fontMono, fontSize: '15px', fontWeight: 700, color: ky === 1 ? LUX.taupe : '#1A5276' }}>{formatCurrency(kyTong)}</div>
                   {ky === 1 && ld.tienTangCa > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#6a4a8a', fontWeight: 600 }}>+TC {formatCurrency(ld.tienTangCa)}</div>}
-                  {ky === 2 && !isLeTan && (ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0)) > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#1A5276', fontWeight: 600 }}>{[ld.hoaHongDV > 0 && 'HH', ld.tienTour > 0 && 'Tour', (ld.thuongDatDoanhSo || 0) > 0 && 'Thưởng'].filter(Boolean).join(' + ')}</div>}
-                  {ky === 2 && isLeTan && (ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0)) > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#1A5276', fontWeight: 600 }}>{[ld.hoaHongDV > 0 && 'HH', ld.tienTour > 0 && 'LgKD', (ld.thuongDatDoanhSo || 0) > 0 && 'Thưởng'].filter(Boolean).join(' + ')}</div>}
+                  {ky === 2 && !isLeTan && (ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0)) > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#1A5276', fontWeight: 600 }}>{[ld.hoaHongDV > 0 && 'Hoa Hồng', ld.tienTour > 0 && 'Tour', (ld.thuongDatDoanhSo || 0) > 0 && 'Thưởng'].filter(Boolean).join(' + ')}</div>}
+                  {ky === 2 && isLeTan && (ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0)) > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#1A5276', fontWeight: 600 }}>{[ld.hoaHongDV > 0 && 'Hoa Hồng', ld.tienTour > 0 && 'LgKD', (ld.thuongDatDoanhSo || 0) > 0 && 'Thưởng'].filter(Boolean).join(' + ')}</div>}
                 </div>
                 <div style={{ color: LUX.line2, fontSize: '18px', flexShrink: 0 }}>›</div>
               </button>
@@ -924,8 +924,8 @@ export default function TabBangLuong() {
                     ) : (
                       <>
                         {isLeTan
-                          ? `${formatCurrency(editState.tienTour)} LgKD + ${formatCurrency(editState.hoaHongDV)} HH${(editState.thuongDS || 0) > 0 ? ` + ${formatCurrency(editState.thuongDS)} Thưởng` : ''}`
-                          : `${formatCurrency(editState.hoaHongDV)} HH${editState.tienTour > 0 ? ` + ${formatCurrency(editState.tienTour)} Tour` : ''}${(editState.thuongDS || 0) > 0 ? ` + ${formatCurrency(editState.thuongDS)} Thưởng` : ''}`
+                          ? `${formatCurrency(editState.tienTour)} LgKD + ${formatCurrency(editState.hoaHongDV)} Hoa Hồng${(editState.thuongDS || 0) > 0 ? ` + ${formatCurrency(editState.thuongDS)} Thưởng` : ''}`
+                          : `${formatCurrency(editState.hoaHongDV)} Hoa Hồng${editState.tienTour > 0 ? ` + ${formatCurrency(editState.tienTour)} Tour` : ''}${(editState.thuongDS || 0) > 0 ? ` + ${formatCurrency(editState.thuongDS)} Thưởng` : ''}`
                         }
                         {!editState.hoaHongDV && !editState.tienTour && !(editState.thuongDS || 0) && 'Chưa có dữ liệu'}
                       </>

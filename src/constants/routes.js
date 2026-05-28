@@ -4,6 +4,7 @@ export const ROUTES = {
   TONG_QUAN:  '/SoThuChi',
   TAI_KHOAN:  '/SoThuChi/tai-khoan',
   NHAP_LIEU:  '/SoThuChi/nhap-lieu',
+  CHOT_NGAY:  '/SoThuChi/chot-ngay',
   BAO_CAO:    '/SoThuChi/bao-cao',
   CAI_DAT:    '/SoThuChi/cai-dat',
 

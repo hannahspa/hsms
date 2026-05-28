@@ -47,7 +47,7 @@ const S = {
   avatarSm: { width: 44, height: 44, borderRadius: '50%', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#C0392B', fontFamily: 'var(--sans)' },
 }
 
-export default function FormChiPhi({ viList, user, onClose, onSaved }) {
+export default function FormChiPhi({ viList, user, onClose, onSaved, initialData }) {
   const [soTien, setSoTien] = useState('')
   const [nhomId, setNhomId] = useState(null)
   const [hangMucId, setHangMucId] = useState(null)
@@ -63,6 +63,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
   const [chungTuUrl, setChungTuUrl] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showLich, setShowLich] = useState(false)
+  const isEdit = !!initialData
 
   const getHinhThucFromVi = (vi) => {
     if (!vi) return 'tien_mat'
@@ -72,32 +73,39 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
   }
 
   useEffect(() => {
-    async function loadDanhMuc() {
-      const { data, error } = await supabase
-        .from('danh_muc_chi_phi')
-        .select('*')
-        .eq('is_active', true)
-        .order('thu_tu')
-      if (!error && data) {
-        setNhomList(data.filter(d => d.parent_id === null))
-        setHangMucList(data.filter(d => d.parent_id !== null))
+    async function loadData() {
+      const [rDM, rNV] = await Promise.all([
+        supabase.from('danh_muc_chi_phi').select('*').eq('is_active', true).order('thu_tu'),
+        supabase.from('nhan_vien').select('id, ho_ten, vi_tri').eq('trang_thai', 'dang_lam').order('ho_ten'),
+      ])
+      if (!rDM.error && rDM.data) {
+        setNhomList(rDM.data.filter(d => d.parent_id === null))
+        setHangMucList(rDM.data.filter(d => d.parent_id !== null))
       }
+      if (rNV.data) setNhanVienList(rNV.data)
       setLoading(false)
     }
-    loadDanhMuc()
+    loadData()
   }, [])
 
+  // Khởi tạo form từ initialData sau khi danh mục & nhân viên đã load
   useEffect(() => {
-    async function loadNhanVien() {
-      const { data } = await supabase
-        .from('nhan_vien')
-        .select('id, ho_ten, vi_tri')
-        .eq('trang_thai', 'dang_lam')
-        .order('ho_ten')
-      if (data) setNhanVienList(data)
+    if (!initialData || loading) return
+    setSoTien(String(initialData.so_tien || ''))
+    setNgay(initialData.ngay || todayISO())
+    setDienGiai(initialData.dien_giai || '')
+    setChungTuUrl(initialData.chung_tu_url || null)
+    setViId(initialData.vi_id || null)
+    if (initialData.danh_muc_id) {
+      setHangMucId(initialData.danh_muc_id)
+      const hm = hangMucList.find(h => h.id === initialData.danh_muc_id)
+      if (hm) setNhomId(hm.parent_id)
     }
-    loadNhanVien()
-  }, [])
+    if (initialData.nguoi_nhap) {
+      const nv = nhanVienList.find(n => n.ho_ten === initialData.nguoi_nhap)
+      if (nv) setNguoiChiId(nv.id)
+    }
+  }, [initialData?.id, loading])
 
   const nhomSelected = nhomList.find(n => n.id === nhomId)
   const nguoiChiSelected = nhanVienList.find(n => n.id === nguoiChiId)
@@ -118,7 +126,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
     if (!dienGiai?.trim()) return onSaved('error', 'Vui lòng nhập diễn giải!')
 
     const isTienMat = viSelected?.ten === 'Tiền Mặt'
-    if (user?.vai_tro !== 'admin' && !isTienMat) {
+    if (!isEdit && user?.vai_tro !== 'admin' && !isTienMat) {
       const { data: freshVi } = await supabase
         .from('so_du_vi_thuc_te')
         .select('so_du_hien_tai')
@@ -132,18 +140,25 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
 
     setSaving(true)
     try {
-      const { error } = await supabase.from('chi_phi').insert({
+      const payload = {
         ngay: ngay,
         danh_muc_id: hangMucId,
         so_tien: parseInt(soTien),
         hinh_thuc_thanh_toan: getHinhThucFromVi(viSelected),
         vi_id: viId,
-        nguoi_nhap: nguoiChiSelected?.ho_ten || user?.ho_ten || null,
         chung_tu_url: chungTuUrl,
         dien_giai: dienGiai || null,
-      })
-      if (error) throw error
-      onSaved('success', `Đã chi ${formatCurrency(parseInt(soTien))} thành công!`)
+      }
+      if (isEdit) {
+        const { error } = await supabase.from('chi_phi').update(payload).eq('id', initialData.id)
+        if (error) throw error
+        onSaved('success', `Đã cập nhật chi phí ${formatCurrency(parseInt(soTien))}!`)
+      } else {
+        payload.nguoi_nhap = nguoiChiSelected?.ho_ten || user?.ho_ten || null
+        const { error } = await supabase.from('chi_phi').insert(payload)
+        if (error) throw error
+        onSaved('success', `Đã chi ${formatCurrency(parseInt(soTien))} thành công!`)
+      }
       onClose()
     } catch (err) {
       onSaved('error', 'Lỗi: ' + err.message)
@@ -298,8 +313,8 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
           <div style={S.headerLeft}>
             <div style={S.iconBox('#FEF2F2')}><I.Receipt style={{ width: 18, height: 18, color: '#C0392B' }} /></div>
             <div>
-              <div style={S.title}>Chi Phí</div>
-              <div style={S.subtitle}>Nhập chi phí</div>
+              <div style={S.title}>{isEdit ? 'Sửa Chi Phí' : 'Chi Phí'}</div>
+              <div style={S.subtitle}>{isEdit ? 'Chỉnh sửa chi phí' : 'Nhập chi phí'}</div>
             </div>
           </div>
           <button style={S.closeBtn} onClick={onClose}>&times;</button>
@@ -391,7 +406,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved }) {
           <ImageUpload onUploaded={(url) => setChungTuUrl(url)} onRemove={() => setChungTuUrl(null)} />
 
           <button onClick={handleSave} disabled={saving} style={S.saveBtn(saving)}>
-            {saving ? 'Đang lưu...' : 'Lưu Chi Phí'}
+            {saving ? 'Đang lưu...' : (isEdit ? 'Cập Nhật' : 'Lưu Chi Phí')}
           </button>
         </div>
       </div>

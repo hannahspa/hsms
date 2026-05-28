@@ -1,0 +1,3 @@
+[mcp_servers.hsms]
+args = ["mcp-server/index.js"]
+command = "node"

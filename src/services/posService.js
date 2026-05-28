@@ -1,6 +1,15 @@
 import { supabase } from '../lib/supabase'
 import { todayISO, getNowVN } from '../lib/utils'
 
+function shortStaffName(name = '') {
+  const isRetired = /\(\s*Nghỉ Việc\s*\)/i.test(String(name))
+  const baseName = String(name).replace(/\(\s*Nghỉ Việc\s*\)/i, '').trim()
+  const parts = baseName.split(/\s+/).filter(Boolean)
+  if (parts.length <= 2) return parts.join(' ')
+  const displayName = parts.slice(-2).join(' ')
+  return isRetired ? `${displayName} (Nghỉ Việc)` : displayName
+}
+
 export const posService = {
   // ═══════════════════════════════════════════════════
   // ĐƠN HÀNG
@@ -31,15 +40,129 @@ export const posService = {
     return data
   },
 
+  summarizeOrder(order) {
+    const items = order.items || []
+    const payments = order.payments || []
+    const tour = items.reduce((s, i) => {
+      const isService = i.loai_item === 'dich_vu' || i.loai_item === 'the_lieu_trinh'
+      if (!isService) return s
+      return s + (i.tien_tour || i.tien_commission || 0)
+    }, 0)
+    const hoaHong = items.reduce((s, i) => {
+      const isSaleItem = i.loai_item === 'san_pham' || i.loai_item === 'the_moi'
+      if (!isSaleItem) return s
+      return s + (i.tien_commission || 0)
+    }, 0)
+    const itemNames = items.map(i =>
+      i.meta?.tenDichVu || i.the_lieu_trinh?.ten_dich_vu || i.dich_vu?.ten || i.san_pham?.ten || i.loai_item
+    ).filter(Boolean)
+    const subtotal = items.reduce((sum, item) => sum + ((item.don_gia || 0) * (item.so_luong || 1)), 0)
+    const itemTotal = items.reduce((sum, item) => sum + (item.thanh_tien || 0), 0)
+    const discountTotal = Math.max(0, subtotal - itemTotal)
+    const paidTotal = payments.reduce((sum, payment) => sum + (payment.so_tien || 0), 0)
+    const staffMap = {}
+    items.forEach(i => {
+      const staffName = i.nhan_vien?.ho_ten || i.meta?.myspaStaffDisplay
+      if (!staffName && !i.nhan_vien_id) return
+      const key = i.nhan_vien_id || staffName
+      if (!staffMap[key]) {
+        staffMap[key] = {
+          id: i.nhan_vien_id || null,
+          name: staffName || 'Nhân viên',
+          short_name: shortStaffName(staffName || 'Nhân viên'),
+          tour: 0,
+          hoaHong: 0,
+        }
+      }
+      // Dịch vụ + thẻ liệu trình → tiền KTV là TOUR
+      // Sản phẩm + thẻ mới → tiền KTV là HOA HỒNG (tien_commission)
+      const isServiceItem = i.loai_item === 'dich_vu' || i.loai_item === 'the_lieu_trinh'
+      if (isServiceItem) {
+        // tien_tour là cột chuẩn; fallback tien_commission cho data T5 import cũ ghi nhầm cột
+        staffMap[key].tour += (i.tien_tour || i.tien_commission || 0)
+      } else {
+        // san_pham, the_moi → hoa hồng
+        staffMap[key].hoaHong += (i.tien_commission || 0)
+      }
+    })
+    const staffCompensations = Object.values(staffMap)
+    const paymentLabels = payments.map(p => p.hinh_thuc).filter(Boolean)
+
+    return {
+      ...order,
+      items,
+      payments,
+      item_summary: itemNames.join(', '),
+      staff_summary: staffCompensations.map(s => s.short_name).join(', '),
+      staff_compensations: staffCompensations,
+      payment_summary: paymentLabels.join(' + '),
+      don_gia_tong: subtotal,
+      giam_gia_tong: discountTotal,
+      da_thu_tong: paidTotal,
+      vat_tong: order.vat || 0,
+      nen_tang: 'Bán hàng',
+      tien_tour_tong: tour,
+      hoa_hong_tong: hoaHong,
+    }
+  },
+
+  async enrichOrders(orders) {
+    return Promise.all((orders || []).map(async order => {
+      try {
+        const [items, payments] = await Promise.all([
+          this.getLineItems(order.id),
+          this.getPayments(order.id),
+        ])
+        return this.summarizeOrder({ ...order, items, payments })
+      } catch (_) {
+        return this.summarizeOrder(order)
+      }
+    }))
+  },
+
   async getOrdersByDate(date) {
     const { data, error } = await supabase
       .from('don_hang')
       .select('*, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)')
       .eq('ngay', date)
-      .neq('trang_thai', 'huy')
-      .order('created_at', { ascending: false })
+      .order('ngay', { ascending: false })
+      .order('ma_don', { ascending: false })
     if (error) throw error
-    return data || []
+    return this.enrichOrders(data || [])
+  },
+
+  async getOrdersByRange({ fromDate, toDate, limit = 500 }) {
+    let query = supabase
+      .from('don_hang')
+      .select('*, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)')
+      .order('ngay', { ascending: false })
+      .order('ma_don', { ascending: false })
+      .limit(limit)
+
+    if (fromDate) query = query.gte('ngay', fromDate)
+    if (toDate) query = query.lte('ngay', toDate)
+
+    const { data, error } = await query
+    if (error) throw error
+    return this.enrichOrders(data || [])
+  },
+
+  async getOrdersPage({ page = 1, pageSize = 50, fromDate = null, toDate = null } = {}) {
+    const from = Math.max(0, (page - 1) * pageSize)
+    const to = from + pageSize - 1
+    let query = supabase
+      .from('don_hang')
+      .select('*, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)', { count: 'exact' })
+      .order('ngay', { ascending: false })
+      .order('ma_don', { ascending: false })
+      .range(from, to)
+
+    if (fromDate) query = query.gte('ngay', fromDate)
+    if (toDate) query = query.lte('ngay', toDate)
+
+    const { data, error, count } = await query
+    if (error) throw error
+    return { orders: await this.enrichOrders(data || []), total: count || 0 }
   },
 
   async searchOrders(query, limit = 50) {
@@ -47,10 +170,11 @@ export const posService = {
       .from('don_hang')
       .select('*, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)')
       .or(`ma_don.ilike.%${query}%,khach_hang.ho_ten.ilike.%${query}%`)
-      .order('created_at', { ascending: false })
+      .order('ngay', { ascending: false })
+      .order('ma_don', { ascending: false })
       .limit(limit)
     if (error) throw error
-    return data || []
+    return this.enrichOrders(data || [])
   },
 
   // ═══════════════════════════════════════════════════
@@ -58,22 +182,28 @@ export const posService = {
   // ═══════════════════════════════════════════════════
 
   async addLineItem(orderId, item) {
+    const insertData = {
+      don_hang_id: orderId,
+      loai_item: item.loai_item,
+      dich_vu_id: item.dich_vu_id || null,
+      san_pham_id: item.san_pham_id || null,
+      the_lieu_trinh_id: item.the_lieu_trinh_id || null,
+      nhan_vien_id: item.nhan_vien_id || null,
+      so_luong: item.so_luong || 1,
+      don_gia: item.don_gia,
+      thanh_tien: item.thanh_tien,
+      ti_le_hoa_hong: item.ti_le_hoa_hong || null,
+      tien_tour: item.tien_tour || 0,
+      tien_commission: item.tien_commission || 0,
+      ghi_chu: item.ghi_chu || '',
+    }
+    // Chỉ thêm meta nếu có (dùng cho the_moi — lưu thông tin tạo thẻ)
+    if (item.meta) {
+      insertData.meta = item.meta
+    }
     const { data, error } = await supabase
       .from('don_hang_chi_tiet')
-      .insert({
-        don_hang_id: orderId,
-        loai_item: item.loai_item,
-        dich_vu_id: item.dich_vu_id || null,
-        san_pham_id: item.san_pham_id || null,
-        the_lieu_trinh_id: item.the_lieu_trinh_id || null,
-        nhan_vien_id: item.nhan_vien_id || null,
-        so_luong: item.so_luong || 1,
-        don_gia: item.don_gia,
-        thanh_tien: item.thanh_tien,
-        ti_le_hoa_hong: item.ti_le_hoa_hong || null,
-        tien_hoa_hong: item.tien_hoa_hong || 0,
-        ghi_chu: item.ghi_chu || '',
-      })
+      .insert(insertData)
       .select('*')
       .single()
     if (error) throw error
@@ -87,7 +217,7 @@ export const posService = {
         *,
         dich_vu:dich_vu_id(ten, danh_muc),
         san_pham:san_pham_id(ten, don_vi),
-        the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu, so_buoi_con_lai, khach_hang:khach_hang_id(ho_ten)),
+        the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu, so_buoi_con_lai, so_buoi_tong, so_buoi_da_dung, gia_tri_the, khach_hang:khach_hang_id(ho_ten)),
         nhan_vien:nhan_vien_id(ho_ten)
       `)
       .eq('don_hang_id', orderId)
@@ -114,6 +244,14 @@ export const posService = {
       .single()
     if (error) throw error
     return data
+  },
+
+  async updateLineItemDiscount(lineItemId, thanhTien) {
+    const { error } = await supabase
+      .from('don_hang_chi_tiet')
+      .update({ thanh_tien: thanhTien })
+      .eq('id', lineItemId)
+    if (error) throw error
   },
 
   // ═══════════════════════════════════════════════════
@@ -145,6 +283,76 @@ export const posService = {
     return data || []
   },
 
+  async getOrderStaffLedger(orderId) {
+    const { data, error } = await supabase
+      .from('nhan_vien_thu_nhap')
+      .select(`
+        id, loai, so_tien, ti_le, doanh_so_tinh, trang_thai,
+        nhan_vien:nhan_vien_id(ho_ten, vi_tri),
+        line_item:don_hang_chi_tiet_id(loai_item)
+      `)
+      .eq('don_hang_id', orderId)
+      .order('created_at', { ascending: true })
+    if (error) return []
+    return data || []
+  },
+
+  async getCustomerSnapshot(khachHangId, { cardLimit = 8, historyLimit = 8, debtLimit = 20 } = {}) {
+    if (!khachHangId) return null
+
+    const [customerRes, cardsRes, historyRes, debtRes] = await Promise.all([
+      supabase
+        .from('khach_hang')
+        .select('*')
+        .eq('id', khachHangId)
+        .maybeSingle(),
+      supabase
+        .from('the_lieu_trinh')
+        .select('id, ma_the, ten_dich_vu, so_buoi_tong, so_buoi_da_dung, so_buoi_con_lai, gia_tri_the, ngay_mua, ngay_het_han, trang_thai, ghi_chu')
+        .eq('khach_hang_id', khachHangId)
+        .order('created_at', { ascending: false })
+        .limit(cardLimit),
+      supabase
+        .from('lich_su_dich_vu_kh')
+        .select('*')
+        .eq('khach_hang_id', khachHangId)
+        .order('ngay', { ascending: false })
+        .limit(historyLimit),
+      supabase
+        .from('cong_no_khach_hang')
+        .select('loai, so_tien, so_du_con_lai, ngay, ghi_chu')
+        .eq('khach_hang_id', khachHangId)
+        .order('created_at', { ascending: false })
+        .limit(debtLimit),
+    ])
+
+    const debts = debtRes.data || []
+    const debtBalance = debts.length > 0
+      ? debts[0].so_du_con_lai || 0
+      : debts.reduce((sum, row) => {
+          if (row.loai === 'phat_sinh') return sum + (row.so_tien || 0)
+          return sum - (row.so_tien || 0)
+        }, 0)
+
+    const cards = cardsRes.data || []
+    const activeCards = cards.filter(c => c.trang_thai === 'active' && (c.so_buoi_con_lai || 0) > 0)
+
+    return {
+      customer: customerRes.data || null,
+      cards,
+      activeCards,
+      history: historyRes.data || [],
+      debtBalance,
+      debtRows: debts,
+      errors: {
+        customer: customerRes.error?.message || null,
+        cards: cardsRes.error?.message || null,
+        history: historyRes.error?.message || null,
+        debt: debtRes.error?.message || null,
+      },
+    }
+  },
+
   async removePayment(paymentId) {
     const { error } = await supabase
       .from('thanh_toan')
@@ -158,15 +366,20 @@ export const posService = {
   // ═══════════════════════════════════════════════════
 
   async finalizeOrder(orderId, { giamGia = 0, conNo = 0, ghiChu = '' } = {}) {
-    const { data, error } = await supabase
-      .rpc('pos_finalize_order', {
-        p_don_hang_id: orderId,
-        p_trang_thai: 'da_thanh_toan',
-        p_giam_gia: giamGia,
-        p_con_no: conNo,
-        p_ghi_chu: ghiChu,
-      })
+    // Migration 046: đã bỏ p_vat, thêm p_skip_doanh_thu
+    const params = {
+      p_don_hang_id: orderId,
+      p_trang_thai:  'da_thanh_toan',
+      p_giam_gia:    giamGia,
+      p_con_no:      conNo,
+      p_ghi_chu:     ghiChu,
+    }
+    const { data, error } = await supabase.rpc('pos_finalize_order', params)
     if (error) throw error
+    // CHUA_DU_BUOI: không throw — trả về data để UI hiện modal thu nợ rồi retry
+    if (data?.success === false && data?.error_code !== 'CHUA_DU_BUOI') {
+      throw new Error(data.error || 'Không thể chốt đơn')
+    }
     return data
   },
 
@@ -174,6 +387,7 @@ export const posService = {
     const { data, error } = await supabase
       .rpc('pos_void_order', { p_don_hang_id: orderId })
     if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Không thể hủy đơn')
     return data
   },
 
@@ -186,6 +400,7 @@ export const posService = {
       .from('dich_vu')
       .select('*')
       .eq('is_active', true)
+      .eq('hien_tren_menu', true)
       .order('thu_tu', { ascending: true })
       .order('ten', { ascending: true })
 
@@ -203,6 +418,7 @@ export const posService = {
       .from('dich_vu')
       .select('danh_muc')
       .eq('is_active', true)
+      .eq('hien_tren_menu', true)
       .not('danh_muc', 'is', null)
       .order('danh_muc')
     if (error) throw error
@@ -210,19 +426,22 @@ export const posService = {
   },
 
   async getSellableProducts(search = '') {
-    let q = supabase
+    const { data, error } = await supabase
       .from('kho_san_pham')
       .select('*')
       .eq('is_active', true)
       .in('loai', ['ban_khach', 'tieu_hao'])
       .gt('ton_kho', 0)
-      .order('ten', { ascending: true })
-
-    if (search) q = q.ilike('ten', `%${search}%`)
-
-    const { data, error } = await q
+      .order('created_at', { ascending: false })
     if (error) throw error
-    return data || []
+    const q = search.trim().toLowerCase()
+    return (data || [])
+      .filter(p => p.hien_tren_pos !== false)
+      .filter(p => {
+        if (!q) return true
+        return [p.ten, p.ma_sp, p.sku, p.barcode, p.nhan_hieu, p.danh_muc]
+          .filter(Boolean).join(' ').toLowerCase().includes(q)
+      })
   },
 
   // ═══════════════════════════════════════════════════
@@ -255,6 +474,18 @@ export const posService = {
     return data
   },
 
+  async getCustomerCardsHistory(khachHangId) {
+    const { data, error } = await supabase
+      .from('the_lieu_trinh')
+      .select('id,ten_dich_vu,so_buoi_tong,so_buoi_da_dung,so_buoi_con_lai,gia_tri_the,trang_thai,ngay_mua,ngay_het_han,ma_the')
+      .eq('khach_hang_id', khachHangId)
+      .neq('trang_thai', 'active')
+      .order('ngay_mua', { ascending: false })
+      .limit(20)
+    if (error) throw error
+    return data || []
+  },
+
   async getCustomerCards(khachHangId) {
     const { data, error } = await supabase
       .from('the_lieu_trinh')
@@ -266,9 +497,58 @@ export const posService = {
     return data || []
   },
 
+  // Lấy danh sách thẻ còn nợ (da_thanh_toan < gia_tri_the)
+  async getCustomerDebt(khachHangId) {
+    const { data, error } = await supabase
+      .from('v_cong_no_tong_hop')
+      .select('the_lieu_trinh_id, ten_dich_vu, gia_tri_the, da_thanh_toan, con_no, pct_da_tra, du_30_pct, trang_thai, ngay_mua, ma_don, don_hang_id')
+      .eq('khach_hang_id', khachHangId)
+      .order('con_no', { ascending: false })
+    if (error) throw error
+    return data || []
+  },
+
+  // Thu nợ thẻ liệu trình — gọi RPC pos_thu_no_the
+  async thuNoThe({ theLieuTrinhId, soTien, hinhThuc, nguoiThu, ghiChu = null }) {
+    const { data, error } = await supabase.rpc('pos_thu_no_the', {
+      p_the_lieu_trinh_id: theLieuTrinhId,
+      p_so_tien:           soTien,
+      p_hinh_thuc:         hinhThuc,
+      p_nguoi_thu:         nguoiThu,
+      p_ghi_chu:           ghiChu,
+    })
+    if (error) throw error
+    return data
+  },
+
   // ═══════════════════════════════════════════════════
   // KTV
   // ═══════════════════════════════════════════════════
+
+  async markCreatedComboCards(orderId, comboItems = []) {
+    for (const item of comboItems) {
+      const comboId = item.meta?.comboId
+      const tenDichVu = item.meta?.tenDichVu
+      if (!comboId || !tenDichVu) continue
+      const { error } = await supabase
+        .from('the_lieu_trinh')
+        .update({
+          combo_id: comboId,
+          loai_the: 'combo_lieu_trinh',
+          is_khong_gioi_han: !!item.meta?.khongGioiHan,
+          source: 'pos_combo',
+          meta: {
+            combo_id: comboId,
+            ma_combo: item.meta?.maCombo || null,
+            ten_combo: tenDichVu,
+            dich_vu: item.meta?.dichVuCombo || [],
+          },
+        })
+        .eq('don_hang_id', orderId)
+        .eq('ten_dich_vu', tenDichVu)
+      if (error) throw error
+    }
+  },
 
   async getKTVs() {
     const { data, error } = await supabase
@@ -299,5 +579,116 @@ export const posService = {
       soDon: orders.length,
       tongThu: orders.reduce((s, o) => s + (o.thuc_thu || 0), 0),
     }
+  },
+
+  // ═══════════════════════════════════════════════════
+  // MUA THẺ LIỆU TRÌNH MỚI
+  // ═══════════════════════════════════════════════════
+
+  async getServicesForCards() {
+    const { data, error } = await supabase
+      .from('dich_vu')
+      .select('id, ten, danh_muc, gia_co_ban, ti_le_hoa_hong, promotion_config')
+      .eq('is_active', true)
+      .order('danh_muc', { ascending: true })
+      .order('ten', { ascending: true })
+    if (error) throw error
+    return data || []
+  },
+
+  async getTreatmentCombos() {
+    const { data, error } = await supabase
+      .from('combo_lieu_trinh')
+      .select('*, dich_vu:combo_lieu_trinh_dich_vu(*)')
+      .eq('trang_thai', 'active')
+      .order('ten_combo', { ascending: true })
+    if (error) throw error
+    return data || []
+  },
+
+  async useTreatmentCard(theLieuTrinhId, soLuong = 1) {
+    const { data: card, error: fetchErr } = await supabase
+      .from('the_lieu_trinh')
+      .select('so_buoi_da_dung, so_buoi_con_lai, so_buoi_tong')
+      .eq('id', theLieuTrinhId)
+      .single()
+    if (fetchErr) throw fetchErr
+
+    const daDung = (card.so_buoi_da_dung || 0) + soLuong
+    // so_buoi_con_lai là GENERATED ALWAYS column → không update trực tiếp
+    const trangThai = (card.so_buoi_tong - daDung) <= 0 ? 'het_buoi' : 'active'
+
+    const { error } = await supabase
+      .from('the_lieu_trinh')
+      .update({ so_buoi_da_dung: daDung, trang_thai: trangThai })
+      .eq('id', theLieuTrinhId)
+    if (error) throw error
+  },
+
+  async createTreatmentCard({ khachHangId, donHangId, dichVuId, tenDichVu, soBuoiMua, soBuoiTang, giaTri, nhanVienBanId, ngayHetHan }) {
+    const soBuoiTong = soBuoiMua + soBuoiTang
+    const insertData = {
+      khach_hang_id: khachHangId,
+      don_hang_id: donHangId,
+      dich_vu_id: dichVuId || null,
+      nhan_vien_ban_id: nhanVienBanId || null,
+      ten_dich_vu: tenDichVu,
+      so_buoi_tong: soBuoiTong,
+      so_buoi_da_dung: 0,
+      // so_buoi_con_lai là GENERATED ALWAYS column → DB tự tính
+      gia_tri_the: giaTri,
+      ngay_mua: todayISO(),
+      trang_thai: 'active',
+    }
+    if (ngayHetHan) insertData.ngay_het_han = ngayHetHan
+    const { data, error } = await supabase
+      .from('the_lieu_trinh')
+      .insert(insertData)
+      .select('*')
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async createComboTreatmentCard({ khachHangId, donHangId, combo, nhanVienBanId }) {
+    const primary = combo?.dich_vu?.[0] || null
+    const today = todayISO()
+    const end = new Date(`${today}T00:00:00`)
+    if (combo?.thoi_han_don_vi === 'month') end.setMonth(end.getMonth() + (combo.thoi_han_so || 1))
+    else if (combo?.thoi_han_don_vi === 'day') end.setDate(end.getDate() + (combo.thoi_han_so || 1))
+    else end.setFullYear(end.getFullYear() + (combo?.thoi_han_so || 1))
+
+    const soBuoiTong = primary?.khong_gioi_han ? 9999 : (primary?.so_lan || 1)
+    const insertData = {
+      khach_hang_id: khachHangId,
+      don_hang_id: donHangId,
+      combo_id: combo.id,
+      dich_vu_id: primary?.dich_vu_id || null,
+      nhan_vien_ban_id: nhanVienBanId || null,
+      ten_dich_vu: combo.ten_combo,
+      so_buoi_tong: soBuoiTong,
+      so_buoi_da_dung: 0,
+      gia_tri_the: combo.gia_ban || 0,
+      ngay_mua: today,
+      ngay_het_han: end.toISOString().slice(0, 10),
+      trang_thai: 'active',
+      loai_the: 'combo_lieu_trinh',
+      is_khong_gioi_han: !!primary?.khong_gioi_han,
+      source: 'pos_combo',
+      ghi_chu: combo.ghi_chu || '',
+      meta: {
+        combo_id: combo.id,
+        ma_combo: combo.ma_combo,
+        ten_combo: combo.ten_combo,
+        dich_vu: combo.dich_vu || [],
+      },
+    }
+    const { data, error } = await supabase
+      .from('the_lieu_trinh')
+      .insert(insertData)
+      .select('*')
+      .single()
+    if (error) throw error
+    return data
   },
 }

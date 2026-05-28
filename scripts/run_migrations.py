@@ -84,10 +84,7 @@ if __name__ == "__main__":
     base = os.path.join(os.path.dirname(__file__), "..", "supabase", "migrations")
 
     files = [
-        "004_pos_tables.sql",
-        "005_pos_alter.sql",
-        "006_pos_rpc.sql",
-        "007_unified_schema.sql",
+        "017_pos_test_mode.sql",
     ]
 
     for f in files:

@@ -332,6 +332,7 @@ body, html {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  min-width: 0;
   position: relative;
 }
 
@@ -435,6 +436,7 @@ body, html {
   display: flex;
   flex-direction: column;
   gap: 22px;
+  min-width: 0;
 }
 
 /* ─── HERO STRIP ─── */

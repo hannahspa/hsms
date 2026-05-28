@@ -12,10 +12,10 @@ const HINH_THUC = [
 ]
 const QUICK = [80000, 350000, 500000, 1000000, 1500000, 2000000, 3000000, 5000000]
 const TABS = [
-  { id: 'thu', label: 'Doanh Thu', desc: 'Nhập khoản thu mới', icon: I.Coin, color: '#2D7A4F', grad: 'linear-gradient(180deg,#e0eedd,#bfd5b8)' },
+  { id: 'thu', label: 'Doanh Thu', desc: 'Chỉ admin điều chỉnh', icon: I.Coin, color: '#8a6a52', grad: 'linear-gradient(180deg,#f8ead2,#d4a574)', adminOnly: true },
   { id: 'chi', label: 'Chi Phí', desc: 'Nhập khoản chi', icon: I.Receipt, color: '#C0392B', grad: 'linear-gradient(180deg,#f5d8c8,#e3a890)' },
-  { id: 'ck', label: 'Chuyển Khoản', desc: 'Chuyển nội bộ giữa các ví', icon: I.Bank, color: '#6C3483', grad: 'linear-gradient(180deg,#d8d0f0,#b8a8e0)' },
-  { id: 'noptm', label: 'Nộp Tiền Mặt', desc: 'Tính toán & nộp vào MB Bank', icon: I.Wallet, color: '#1a4f70', grad: 'linear-gradient(180deg,#dde9f3,#a8c5dc)' },
+  { id: 'ck', label: 'Chuyển Khoản', desc: 'Chuyển nội bộ giữa các ví', icon: I.Bank, color: '#6C3483', grad: 'linear-gradient(180deg,#d8d0f0,#b8a8e0)', adminOnly: true },
+  { id: 'noptm', label: 'Nộp Tiền Mặt', desc: 'Tính toán & nộp vào MB Bank', icon: I.Wallet, color: '#1a4f70', grad: 'linear-gradient(180deg,#dde9f3,#a8c5dc)', adminOnly: true },
 ]
 
 function LedgerTable({ data, onEdit, onDelete }) {
@@ -44,7 +44,7 @@ function LedgerTable({ data, onEdit, onDelete }) {
 
 export default function NhapLieuPage({ user }) {
   const today = todayISO()
-  const [tab, setTab] = useState('thu')
+  const [tab, setTab] = useState('chi')
   const [ngay, setNgay] = useState(today)
   const [showLich, setShowLich] = useState(false)
   const [soTien, setSoTien] = useState('')
@@ -53,6 +53,7 @@ export default function NhapLieuPage({ user }) {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
   const isAdmin = user?.vai_tro === 'admin'
+  const visibleTabs = isAdmin ? TABS : TABS.filter(t => !t.adminOnly)
 
   // Chi Phí
   const [nhomList, setNhomList] = useState([])
@@ -77,6 +78,13 @@ export default function NhapLieuPage({ user }) {
   const [loadingTx, setLoadingTx] = useState(true)
   const [txFilter, setTxFilter] = useState('all')
 
+  // Lịch sử giao dịch (dùng khi delete/edit)
+  const [hsFrom, setHsFrom] = useState(today)
+  const [hsTo, setHsTo] = useState(today)
+  const [hsData, setHsData] = useState([])
+  const [hsLoading, setHsLoading] = useState(false)
+  const [dailyClose, setDailyClose] = useState(null)
+
   useEffect(() => {
     supabase.from('danh_muc_chi_phi').select('*').eq('is_active', true).order('thu_tu').then(r => {
       const all = r.data || []
@@ -86,6 +94,12 @@ export default function NhapLieuPage({ user }) {
   }, [])
   useEffect(() => { loadTodayTx() }, [ngay])
   useEffect(() => { if (tab === 'noptm') loadNopTm() }, [tab, ngay])
+  useEffect(() => { if (!isAdmin && tab !== 'chi') setTab('chi') }, [isAdmin, tab])
+  useEffect(() => {
+    supabase.from('so_thu_chi_chot_ngay').select('id,trang_thai,nguoi_chot,chot_luc').eq('ngay', ngay).maybeSingle()
+      .then(r => setDailyClose(r.data || null))
+      .catch(() => setDailyClose(null))
+  }, [ngay])
 
   const showMsg = (text, type = 'success') => { setMsg({ text, type }); setTimeout(() => setMsg(null), 3000) }
   const resetForm = () => { setSoTien(''); setDienGiai(''); setNhomId(null); setHangMucId(null) }
@@ -105,6 +119,7 @@ export default function NhapLieuPage({ user }) {
 
   // ── SAVE HANDLERS ──
   const handleSaveThu = async () => {
+    if (!isAdmin) return showMsg('Doanh thu được ghi nhận tự động từ Bán Hàng. Nhân sự chỉ nhập chi phí phát sinh.', 'error')
     const amt = parseInt(soTien.replace(/\D/g, '')); if (!amt || amt <= 0) return showMsg('Nhập số tiền!', 'error')
     setSaving(true)
     try {
@@ -115,6 +130,7 @@ export default function NhapLieuPage({ user }) {
   }
 
   const handleSaveChi = async () => {
+    if (!isAdmin && dailyClose && ['submitted', 'approved'].includes(dailyClose.trang_thai)) return showMsg('Ngày này đã chốt. Muốn nhập thêm chi phí cần báo Admin mở điều chỉnh.', 'error')
     const amt = parseInt(soTien.replace(/\D/g, '')); if (!amt || amt <= 0) return showMsg('Nhập số tiền!', 'error')
     if (!hangMucId) return showMsg('Chọn hạng mục chi!', 'error')
     if (!dienGiai?.trim()) return showMsg('Nhập diễn giải!', 'error')
@@ -127,6 +143,7 @@ export default function NhapLieuPage({ user }) {
   }
 
   const handleSaveCk = async () => {
+    if (!isAdmin) return showMsg('Chuyển khoản nội bộ chỉ dành cho admin/quản lý ca.', 'error')
     const amt = parseInt(soTien.replace(/\D/g, '')); if (!amt || amt <= 0) return showMsg('Nhập số tiền!', 'error')
     setSaving(true)
     try {
@@ -165,6 +182,7 @@ export default function NhapLieuPage({ user }) {
   }
 
   const handleNopTm = async () => {
+    if (!isAdmin) return showMsg('Nộp tiền mặt chỉ dành cho admin/quản lý ca.', 'error')
     if (!nopTmData || nopTmData.phaiNop <= 0) return showMsg('Không có tiền cần nộp!', 'error')
     if (nopTmData.daNop >= nopTmData.phaiNop) return showMsg('Đã nộp đủ!')
     setSaving(true)
@@ -222,6 +240,22 @@ export default function NhapLieuPage({ user }) {
   const hangMucChon = hangMucList.find(h => h.id === hangMucId)
   const hmCuaNhom = hangMucList.filter(h => h.parent_id === nhomId)
 
+  // Tổng hợp nhanh từ danh sách giao dịch hôm nay
+  const summary = (() => {
+    const thuItems = todayTx.filter(t => t._t === 'thu')
+    const chiItems = todayTx.filter(t => t._t === 'chi')
+    const thu = thuItems.reduce((s, r) => s + (r.so_tien || 0), 0)
+    const chi = chiItems.reduce((s, r) => s + (r.so_tien || 0), 0)
+    const pos = thuItems.filter(r => r.nguon === 'pos').reduce((s, r) => s + (r.so_tien || 0), 0)
+    const byMethod = {
+      tien_mat: thuItems.filter(r => r.hinh_thuc === 'tien_mat').reduce((s, r) => s + (r.so_tien || 0), 0)
+               - chiItems.filter(r => r.hinh_thuc_thanh_toan === 'tien_mat').reduce((s, r) => s + (r.so_tien || 0), 0),
+      chuyen_khoan: thuItems.filter(r => r.hinh_thuc === 'chuyen_khoan').reduce((s, r) => s + (r.so_tien || 0), 0),
+      quet_the: thuItems.filter(r => r.hinh_thuc === 'quet_the').reduce((s, r) => s + (r.so_tien || 0), 0),
+    }
+    return { thu, chi, pos, net: thu - chi, byMethod }
+  })()
+
   return (
     <div style={{ padding: '22px 24px' }}>
       {/* Toast */}
@@ -243,18 +277,67 @@ export default function NhapLieuPage({ user }) {
       </div>
 
       {/* Tab cards — sang trọng */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-        {TABS.map(t => {
+      {false && <>
+      <div className="strip" style={{ gridTemplateColumns: 'repeat(5, minmax(0,1fr))', marginBottom: 16 }}>
+        <div className="it"><div className="l">Tổng Thu</div><div className="v" style={{ color: '#2D7A4F' }}>{formatCurrency(summary.thu)}</div><div className="d">Bán hàng tự ghi nhận {formatCurrency(summary.pos)}</div></div>
+        <div className="it"><div className="l">Tổng Chi</div><div className="v" style={{ color: '#C0392B' }}>{formatCurrency(summary.chi)}</div><div className="d">chi phí trong ngày</div></div>
+        <div className="it"><div className="l">Chênh Ngày</div><div className="v" style={{ color: summary.net >= 0 ? '#2D7A4F' : '#C0392B' }}>{formatCurrency(summary.net)}</div><div className="d">{todayTx.length} giao dịch</div></div>
+        <div className="it"><div className="l">Tiền Mặt</div><div className="v">{formatCurrency(summary.byMethod.tien_mat || 0)}</div><div className="d">thu - chi tiền mặt</div></div>
+        <div className="it"><div className="l">MB / TP Bank</div><div className="v">{formatCurrency((summary.byMethod.chuyen_khoan || 0) + (summary.byMethod.quet_the || 0))}</div><div className="d">MB {formatCurrency(summary.byMethod.chuyen_khoan || 0)} · TP {formatCurrency(summary.byMethod.quet_the || 0)}</div></div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-h">
+          <div className="card-t">
+            <div className="arch-i"><I.Spark style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+            <h3>Kiểm Soát Lệch Số</h3>
+            <span className="sub">Soi nhanh doanh thu bán hàng tự động, nhập tay, chi phí và chuyển khoản nội bộ</span>
+          </div>
+        </div>
+        <div className="card-b" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 10 }}>
+          {[
+            ['Doanh thu bán hàng', summary.pos, 'Tự sinh từ đơn bán hàng đã chốt'],
+            ['Doanh thu nhập tay', Math.max(0, summary.thu - summary.pos), 'Cần đối chiếu với MySpa/phiếu thu'],
+            ['Chi phí', summary.chi, 'Theo danh mục chi phí'],
+            ['Dòng tiền ròng', summary.net, 'Thu trừ chi trong ngày'],
+          ].map(([label, value, note]) => (
+            <div key={label} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 12, background: 'var(--surface)' }}>
+              <div style={{ fontSize: 10.5, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700 }}>{label}</div>
+              <div style={{ marginTop: 5, fontSize: 18, fontWeight: 800, color: value < 0 ? '#C0392B' : 'var(--ink)' }}>{formatCurrency(value)}</div>
+              <div style={{ marginTop: 3, fontSize: 11, color: 'var(--ink3)' }}>{note}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      </>}
+
+      <div>
+        {dailyClose && ['submitted', 'approved'].includes(dailyClose.trang_thai) && (
+          <div style={{ marginBottom: 14, border: '1px solid #d8a58a', background: '#fff8f3', color: '#843a23', borderRadius: 12, padding: '12px 14px', fontSize: 12.5, fontWeight: 700 }}>
+            Ngày {formatDateInput(ngay)} đã chốt bởi {dailyClose.nguoi_chot || 'Lễ Tân'}. Nhân sự không thể nhập thêm chi phí sau khi chốt ngày.
+          </div>
+        )}
+        <div className="card" style={{ marginBottom: 16, overflow: 'hidden' }}>
+          <div className="card-h">
+            <div className="card-t">
+              <div className="arch-i"><I.Receipt style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+              <h3 style={{ whiteSpace: 'nowrap' }}>Nghiệp Vụ</h3>
+              <span className="sub">Chọn loại phiếu cần nhập</span>
+            </div>
+          </div>
+          <div className="card-b" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+        {visibleTabs.map(t => {
           const Icon = t.icon; const active = tab === t.id
           return (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderRadius: 'var(--r)',
-              border: active ? `2px solid ${t.color}` : '1px solid var(--line)',
-              background: active ? 'var(--surface2)' : 'var(--surface2)',
+	              display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8,
+	              border: active ? `2px solid ${t.color}` : '1px solid var(--line)',
+	              background: active ? 'var(--surface)' : 'var(--surface2)',
               boxShadow: active ? 'var(--sh-2)' : 'var(--sh-1)',
-              cursor: 'pointer', fontFamily: 'inherit', transition: 'all .2s', minWidth: 140, textAlign: 'left',
+	              cursor: 'pointer', fontFamily: 'inherit', transition: 'all .2s', width: '100%', textAlign: 'left',
             }}>
-              <div style={{ width: 40, height: 48, borderRadius: '999px 999px 8px 8px', background: t.grad, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+	              <div style={{ width: 36, height: 36, borderRadius: 8, background: t.grad, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Icon style={{ width: 18, height: 18, color: t.color }} />
               </div>
               <div>
@@ -264,18 +347,19 @@ export default function NhapLieuPage({ user }) {
             </button>
           )
         })}
-      </div>
+          </div>
+        </div>
 
-      <div>
+      <div className="cashbook-form-shell" style={{ minWidth: 0 }}>
         {/* FORM NHẬP LIỆU */}
-        <div>
+        <div className="cashbook-form-panel">
           {/* === TAB: DOANH THU === */}
           {tab === 'thu' && <div className="card">
             <div className="card-h"><div className="card-t"><div className="arch-i"><I.Coin style={{ width: 13, height: 13, color: '#8a6a52' }} /></div><h3>Nhập Doanh Thu</h3></div></div>
             <div className="card-b">
               <div style={{ background: 'var(--bg2)', borderRadius: 14, padding: 20, textAlign: 'center', marginBottom: 16 }}>
                 <div style={{ fontSize: 10.5, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.14em', fontWeight: 600, marginBottom: 10 }}>Số Tiền</div>
-                <input type="text" inputMode="numeric" placeholder="0" value={soTien ? parseInt(soTien.replace(/\D/g, '')).toLocaleString('vi-VN') : ''} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 44, fontWeight: 700, textAlign: 'center', background: 'transparent', color: soTien ? '#2D7A4F' : 'var(--line2)', fontFamily: 'var(--serif)', letterSpacing: '-.01em' }} autoFocus />
+                <input type="text" inputMode="numeric" placeholder="0" value={soTien ? parseInt(soTien.replace(/\D/g, '')).toLocaleString('vi-VN') : ''} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 34, fontWeight: 700, textAlign: 'center', background: 'transparent', color: soTien ? '#2D7A4F' : 'var(--line2)', fontFamily: 'var(--serif)', letterSpacing: '-.01em' }} autoFocus />
                 {soTien && <div style={{ fontSize: 14, color: '#2D7A4F', fontWeight: 600, marginTop: 4 }}>{formatCurrency(parseInt(soTien.replace(/\D/g, '')))}</div>}
               </div>
               {/* Chọn ngày — dưới input số tiền */}
@@ -297,7 +381,7 @@ export default function NhapLieuPage({ user }) {
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FDF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><I.Edit style={{ width: 16, height: 16, color: '#6C3483' }} /></div>
                 <input placeholder="Diễn giải (không bắt buộc)..." value={dienGiai} onChange={e => setDienGiai(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13.5, color: 'var(--ink)', background: 'transparent', fontFamily: 'var(--sans)' }} />
               </div>
-              <button onClick={handleSaveThu} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#2D7A4F,#1A5A3A)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : '💾 Lưu Doanh Thu'}</button>
+              <button onClick={handleSaveThu} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#f8efe1', fontSize: 15, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#d4a574,#8a6a52)', boxShadow: saving ? 'none' : '0 10px 22px rgba(138,106,82,.22)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : '💾 Lưu Doanh Thu'}</button>
             </div>
           </div>}
 
@@ -307,7 +391,7 @@ export default function NhapLieuPage({ user }) {
             <div className="card-b">
               <div style={{ background: 'var(--bg2)', borderRadius: 14, padding: 20, textAlign: 'center', marginBottom: 16 }}>
                 <div style={{ fontSize: 10.5, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.14em', fontWeight: 600, marginBottom: 10 }}>Số Tiền Chi</div>
-                <input type="text" inputMode="numeric" placeholder="0" value={soTien ? parseInt(soTien.replace(/\D/g, '')).toLocaleString('vi-VN') : ''} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 44, fontWeight: 700, textAlign: 'center', background: 'transparent', color: soTien ? '#C0392B' : 'var(--line2)', fontFamily: 'var(--serif)' }} autoFocus />
+                <input type="text" inputMode="numeric" placeholder="0" value={soTien ? parseInt(soTien.replace(/\D/g, '')).toLocaleString('vi-VN') : ''} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 34, fontWeight: 700, textAlign: 'center', background: 'transparent', color: soTien ? '#C0392B' : 'var(--line2)', fontFamily: 'var(--serif)' }} autoFocus />
                 {soTien && <div style={{ fontSize: 14, color: '#C0392B', fontWeight: 600, marginTop: 4 }}>{formatCurrency(parseInt(soTien.replace(/\D/g, '')))}</div>}
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
@@ -325,7 +409,7 @@ export default function NhapLieuPage({ user }) {
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FDF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><I.Edit style={{ width: 16, height: 16, color: '#C0392B' }} /></div>
                 <input placeholder="Diễn giải (bắt buộc) *" value={dienGiai} onChange={e => setDienGiai(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13.5, color: 'var(--ink)', background: 'transparent', fontFamily: 'var(--sans)' }} />
               </div>
-              <button onClick={handleSaveChi} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#E57373,#C0392B)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : '💾 Lưu Chi Phí'}</button>
+              <button onClick={handleSaveChi} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#f8efe1', fontSize: 15, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#d4a574,#8a6a52)', boxShadow: saving ? 'none' : '0 10px 22px rgba(138,106,82,.22)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : '💾 Lưu Chi Phí'}</button>
             </div>
           </div>}
 
@@ -335,7 +419,7 @@ export default function NhapLieuPage({ user }) {
             <div className="card-b">
               <div style={{ background: 'var(--bg2)', borderRadius: 14, padding: 20, textAlign: 'center', marginBottom: 16 }}>
                 <div style={{ fontSize: 10.5, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.14em', fontWeight: 600, marginBottom: 10 }}>Số Tiền Chuyển</div>
-                <input type="text" inputMode="numeric" placeholder="0" value={soTien ? parseInt(soTien.replace(/\D/g, '')).toLocaleString('vi-VN') : ''} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 44, fontWeight: 700, textAlign: 'center', background: 'transparent', color: soTien ? '#6C3483' : 'var(--line2)', fontFamily: 'var(--serif)' }} autoFocus />
+                <input type="text" inputMode="numeric" placeholder="0" value={soTien ? parseInt(soTien.replace(/\D/g, '')).toLocaleString('vi-VN') : ''} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 34, fontWeight: 700, textAlign: 'center', background: 'transparent', color: soTien ? '#6C3483' : 'var(--line2)', fontFamily: 'var(--serif)' }} autoFocus />
                 {soTien && <div style={{ fontSize: 14, color: '#6C3483', fontWeight: 600, marginTop: 4 }}>{formatCurrency(parseInt(soTien.replace(/\D/g, '')))}</div>}
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
@@ -352,7 +436,7 @@ export default function NhapLieuPage({ user }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><span style={{ fontWeight: 600, fontSize: 13, minWidth: 50 }}>Đến:</span>{[{ id: 'tien_mat', l: '💵 Tiền Mặt' }, { id: 'chuyen_khoan', l: '🏦 MB Bank' }].filter(v => v.id !== ckTu).map(v => <button key={v.id} onClick={() => setCkDen(v.id)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: ckDen === v.id ? '2px solid #6C3483' : '1px solid var(--line)', background: ckDen === v.id ? '#F5F3FF' : 'var(--surface2)', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: ckDen === v.id ? '#6C3483' : 'var(--ink2)' }}>{v.l}</button>)}</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}><div style={{ width: 36, height: 36, borderRadius: 10, background: '#FDF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><I.Edit style={{ width: 16, height: 16, color: '#6C3483' }} /></div><input placeholder="Ghi chú (không bắt buộc)..." value={dienGiai} onChange={e => setDienGiai(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13.5, color: 'var(--ink)', background: 'transparent', fontFamily: 'var(--sans)' }} /></div>
-              <button onClick={handleSaveCk} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#8B5CF6,#6C3483)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : '💾 Lưu Chuyển Khoản'}</button>
+              <button onClick={handleSaveCk} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#f8efe1', fontSize: 15, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#d4a574,#8a6a52)', boxShadow: saving ? 'none' : '0 10px 22px rgba(138,106,82,.22)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : '💾 Lưu Chuyển Khoản'}</button>
             </div>
           </div>}
 
@@ -371,17 +455,15 @@ export default function NhapLieuPage({ user }) {
                   <div style={{ fontFamily: 'var(--serif)', fontSize: 32, fontWeight: 700, marginTop: 4 }}>{nopTmData.phaiNop > 0 ? formatCurrency(nopTmData.phaiNop) : '0đ — Không cần nộp'}</div>
                 </div>
                 {nopTmData.daNop > 0 && <div style={{ background: '#e8f1de', borderRadius: 10, padding: '10px 14px', marginBottom: 14, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#426a2c' }}>✓ Đã nộp {formatCurrency(nopTmData.daNop)} — {nopTmData.daNop < nopTmData.phaiNop ? <>Còn thiếu <b>{formatCurrency(nopTmData.phaiNop - nopTmData.daNop)}</b></> : 'Đã nộp đủ'}</div>}
-                {nopTmData.phaiNop > 0 && nopTmData.daNop < nopTmData.phaiNop && <button onClick={handleNopTm} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', background: 'linear-gradient(135deg,#1a4f70,#0d3b5a)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : `🏦 Xác Nhận Đã Nộp ${formatCurrency(nopTmData.phaiNop - nopTmData.daNop)}`}</button>}
+                {nopTmData.phaiNop > 0 && nopTmData.daNop < nopTmData.phaiNop && <button onClick={handleNopTm} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#f8efe1', fontSize: 15, fontWeight: 700, cursor: 'pointer', background: 'linear-gradient(135deg,#d4a574,#8a6a52)', boxShadow: '0 10px 22px rgba(138,106,82,.22)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : `🏦 Xác Nhận Đã Nộp ${formatCurrency(nopTmData.phaiNop - nopTmData.daNop)}`}</button>}
               </div> : <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink3)' }}>Không có dữ liệu</div>}
             </div>
           </div>}
 
         </div>
 
-      </div>
-
-      {/* ── LỊCH SỬ GIAO DỊCH (dưới form, full width) ── */}
-      <div className="card" style={{ marginTop: 24 }}>
+        {/* ── LỊCH SỬ GIAO DỊCH — CỘT PHẢI ── */}
+        <div className="card" style={{ display: 'none' }}>
         <div className="card-h">
           <div className="card-t">
             <div className="arch-i"><I.Receipt style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
@@ -400,6 +482,8 @@ export default function NhapLieuPage({ user }) {
             todayTx.filter(tx => txFilter === 'all' || (txFilter === 'thu' ? tx._t === 'thu' : tx._t === 'chi')).length === 0 ? <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)' }}>Không có giao dịch</div> :
             <LedgerTable data={todayTx.filter(tx => txFilter === 'all' || (txFilter === 'thu' ? tx._t === 'thu' : tx._t === 'chi'))} onEdit={handleEdit} onDelete={handleDelete} />}
         </div>
+        </div>
+      </div>
       </div>
 
       {/* Modal Sửa */}

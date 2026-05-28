@@ -28,10 +28,15 @@ export const HINH_THUC_THU = [
   { id: 'the_tra_truoc', label: 'Thẻ Trả Trước',    icon: '🎫', loaiVi: null },
 ]
 
+export const HINH_THUC_THU_LABEL = Object.fromEntries(
+  HINH_THUC_THU.map(ht => [ht.id, ht.label])
+)
+
 export const LOAI_ITEM = {
   DICH_VU:       'dich_vu',
   SAN_PHAM:      'san_pham',
   THE_LIEU_TRINH: 'the_lieu_trinh',
+  THE_MOI:       'the_moi',
 }
 
 export const TRANG_THAI_DON_HANG = {

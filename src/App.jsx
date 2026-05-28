@@ -11,6 +11,9 @@ import CustomerMenuApp from './apps/customer/CustomerMenuApp'
 import PosApp from './apps/pos/PosApp'
 import AdminShell from './components/layout/AdminShell'
 
+// Các /admin/* paths mà Lễ Tân được phép truy cập (không yêu cầu admin)
+const LETAN_ALLOWED_ADMIN = ['/admin/crm', '/admin/the-lieu-trinh']
+
 function RequireAuth({ children, requireAdmin }) {
   const { user, loading, logout } = useAuth()
   const path = window.location.pathname
@@ -33,8 +36,11 @@ function RequireAuth({ children, requireAdmin }) {
     return null
   }
 
-  // Không phải admin cố vào /admin
-  if (requireAdmin && user.vai_tro !== 'admin') {
+  // Lễ Tân được phép vào một số /admin/* nhất định (CRM, Thẻ Liệu Trình)
+  const isLeTanAllowedAdminPath = LETAN_ALLOWED_ADMIN.some(p => path.startsWith(p))
+
+  // Không phải admin cố vào /admin (trừ các path được cho phép riêng)
+  if (requireAdmin && user.vai_tro !== 'admin' && !isLeTanAllowedAdminPath) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F4', padding: '20px', fontFamily: 'sans-serif' }}>
         <div style={{ textAlign: 'center', maxWidth: '320px' }}>

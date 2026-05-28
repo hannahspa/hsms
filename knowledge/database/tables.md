@@ -76,10 +76,10 @@
 | luong_co_ban | integer | | Lương cơ bản đã tính |
 | tien_tang_ca | integer | | Tiền tăng ca |
 | tien_phat | integer | | Tiền phạt |
-| hoa_hong | integer | | Hoa hồng chung (cũ) |
-| hoa_hong_dv | integer | | Hoa hồng dịch vụ (từ POS import) |
+| ~~hoa_hong~~ | integer | | ⚠️ LEGACY — không dùng |
+| hoa_hong_dv | integer | | Tổng Tiền Tour tháng (từ POS/MySpa import) — naming cũ giữ lại |
 | hoa_hong_the | integer | | Thưởng Đạt Doanh Số |
-| tien_tour | integer | | Tiền tour |
+| tien_tour | integer | | Tổng Tiền Tour tháng (alias của hoa_hong_dv, dùng thay thế) |
 | tru_ung_luong | integer | | Trừ ứng lương |
 | tru_ky_quy | integer | | Trừ ký quỹ |
 | tong_linh | integer | | Tổng lĩnh |
@@ -344,7 +344,7 @@ UNIQUE(ngay, nguoi_doi_soat, muc_kiem_tra)
 |---|---|---|---|
 | id | uuid | PK | |
 | don_hang_id | uuid | FK→don_hang ON DELETE CASCADE | |
-| loai_item | text | CHECK(dich_vu,san_pham,the_lieu_trinh) | |
+| loai_item | text | CHECK(dich_vu,san_pham,the_lieu_trinh,the_moi) | |
 | dich_vu_id | uuid | FK→dich_vu, nullable | |
 | san_pham_id | uuid | FK→kho_san_pham, nullable | |
 | the_lieu_trinh_id | uuid | FK→the_lieu_trinh, nullable | |
@@ -352,10 +352,16 @@ UNIQUE(ngay, nguoi_doi_soat, muc_kiem_tra)
 | so_luong | integer | DEFAULT 1, CHECK(>0) | |
 | don_gia | integer | NOT NULL | |
 | thanh_tien | integer | NOT NULL | |
-| ti_le_hoa_hong | numeric | | % hoa hồng từ dịch vụ |
-| tien_hoa_hong | integer | DEFAULT 0 | Tiền hoa hồng |
+| **tien_tour** | integer | DEFAULT 0 | **CHUẨN** — Tiền Tour KTV từ dich_vu / the_lieu_trinh |
+| **tien_commission** | integer | DEFAULT 0 | **CHUẨN** — Tiền Hoa Hồng KTV từ san_pham / the_moi |
+| ~~tien_hoa_hong~~ | integer | | ⚠️ LEGACY — bằng tien_tour HOẶC tien_commission, sẽ xóa |
+| ~~ti_le_hoa_hong~~ | numeric | | ⚠️ LEGACY — không dùng trong POS mới, sẽ xóa |
 | ghi_chu | text | | |
 | created_at | timestamptz | DEFAULT now() | |
+
+> **Quy tắc thu nhập NV theo loai_item:**
+> - `dich_vu`, `the_lieu_trinh` → **Tiền Tour** (`tien_tour`) — KTV thực hiện dịch vụ
+> - `san_pham`, `the_moi` → **Tiền Hoa Hồng** (`tien_commission`) — KTV bán SP/thẻ
 
 ## thanh_toan (POS — MỚI 08/05/2026)
 

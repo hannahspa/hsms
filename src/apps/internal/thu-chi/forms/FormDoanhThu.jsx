@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import { HINH_THUC_THU } from '../../../../constants/enums'
@@ -46,7 +46,7 @@ function getViName(loaiVi, viList) {
   return vi ? vi.ten : loaiVi
 }
 
-export default function FormDoanhThu({ user, onClose, onSaved, viList = [] }) {
+export default function FormDoanhThu({ user, onClose, onSaved, viList = [], initialData }) {
   const [soTien, setSoTien] = useState('')
   const [hinhThuc, setHinhThuc] = useState(null)
   const [ngay, setNgay] = useState(todayISO())
@@ -54,6 +54,17 @@ export default function FormDoanhThu({ user, onClose, onSaved, viList = [] }) {
   const [chungTuUrl, setChungTuUrl] = useState(null)
   const [saving, setSaving] = useState(false)
   const [showLich, setShowLich] = useState(false)
+  const isEdit = !!initialData
+
+  useEffect(() => {
+    if (!initialData) return
+    setSoTien(String(initialData.so_tien || ''))
+    setNgay(initialData.ngay || todayISO())
+    setDienGiai(initialData.dien_giai || '')
+    setChungTuUrl(initialData.chung_tu_url || null)
+    const ht = HINH_THUC_THU.find(h => h.id === initialData.hinh_thuc)
+    if (ht) setHinhThuc(ht)
+  }, [initialData])
 
   const handleSave = async () => {
     if (!soTien || parseInt(soTien) <= 0) return onSaved('error', 'Vui lòng nhập số tiền!')
@@ -61,13 +72,22 @@ export default function FormDoanhThu({ user, onClose, onSaved, viList = [] }) {
 
     setSaving(true)
     try {
-      const { error } = await supabase.from('doanh_thu').insert({
-        ngay: ngay, hinh_thuc: hinhThuc.id, so_tien: parseInt(soTien), dien_giai: dienGiai || null,
-        nguoi_nhap: user?.ho_ten || null,
-        chung_tu_url: chungTuUrl,
-      })
-      if (error) throw error
-      onSaved('success', `Đã thu ${formatCurrency(parseInt(soTien))} thành công!`)
+      if (isEdit) {
+        const { error } = await supabase.from('doanh_thu').update({
+          ngay: ngay, hinh_thuc: hinhThuc.id, so_tien: parseInt(soTien), dien_giai: dienGiai || null,
+          chung_tu_url: chungTuUrl,
+        }).eq('id', initialData.id)
+        if (error) throw error
+        onSaved('success', `Đã cập nhật doanh thu ${formatCurrency(parseInt(soTien))}!`)
+      } else {
+        const { error } = await supabase.from('doanh_thu').insert({
+          ngay: ngay, hinh_thuc: hinhThuc.id, so_tien: parseInt(soTien), dien_giai: dienGiai || null,
+          nguoi_nhap: user?.ho_ten || null,
+          chung_tu_url: chungTuUrl,
+        })
+        if (error) throw error
+        onSaved('success', `Đã thu ${formatCurrency(parseInt(soTien))} thành công!`)
+      }
       onClose()
     } catch (err) {
       onSaved('error', 'Lỗi: ' + err.message)
@@ -88,8 +108,8 @@ export default function FormDoanhThu({ user, onClose, onSaved, viList = [] }) {
           <div style={S.headerLeft}>
             <div style={S.iconBox('#F0FDF4')}><I.Coin style={{ width: 18, height: 18, color: '#2D7A4F' }} /></div>
             <div>
-              <div style={S.title}>Doanh Thu</div>
-              <div style={S.subtitle}>Nhập doanh thu mới</div>
+              <div style={S.title}>{isEdit ? 'Sửa Doanh Thu' : 'Doanh Thu'}</div>
+              <div style={S.subtitle}>{isEdit ? 'Chỉnh sửa doanh thu' : 'Nhập doanh thu mới'}</div>
             </div>
           </div>
           <button style={S.closeBtn} onClick={onClose}>&times;</button>
@@ -146,7 +166,7 @@ export default function FormDoanhThu({ user, onClose, onSaved, viList = [] }) {
           <ImageUpload onUploaded={(url) => setChungTuUrl(url)} onRemove={() => setChungTuUrl(null)} />
 
           <button onClick={handleSave} disabled={saving} style={S.saveBtn(saving)}>
-            {saving ? 'Đang lưu...' : 'Lưu Doanh Thu'}
+            {saving ? 'Đang lưu...' : (isEdit ? 'Cập Nhật' : 'Lưu Doanh Thu')}
           </button>
         </div>
       </div>

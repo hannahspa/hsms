@@ -33,6 +33,12 @@ function fmt(n) {
   if (!n && n !== 0) return '—'
   return new Intl.NumberFormat('vi-VN').format(n) + 'đ'
 }
+function fmtMoneyShort(n) {
+  const v = Number(n || 0)
+  if (!v) return '—'
+  if (v >= 1000000) return `${(v / 1000000).toFixed(v % 1000000 ? 1 : 0)}tr`
+  return new Intl.NumberFormat('vi-VN').format(v)
+}
 function fmtSL(n, dv) {
   if (n == null) return '—'
   const num = Number(n)
@@ -330,15 +336,26 @@ function TabTongQuan({ products, transactions, onNavigate, onKiemKho }) {
 function FormSanPham({ initial, products, onSave, onClose }) {
   const isEdit = !!initial?.id
   const [f, setF] = useState({
+    ma_sp: initial?.ma_sp || '',
+    sku: initial?.sku || '',
+    barcode: initial?.barcode || '',
     ten: initial?.ten || '',
     loai: initial?.loai || 'tieu_hao',
+    nhan_hieu: initial?.nhan_hieu || '',
+    danh_muc: initial?.danh_muc || '',
     don_vi: DON_VI_LIST.includes(initial?.don_vi) ? (initial?.don_vi || 'cái') : '__custom',
     don_vi_custom: DON_VI_LIST.includes(initial?.don_vi) ? '' : (initial?.don_vi || ''),
     mo_ta: initial?.mo_ta || '',
     gia_nhap: initial?.gia_nhap || '',
     gia_ban: initial?.gia_ban || '',
+    gia_uu_dai: initial?.gia_uu_dai || '',
+    gia_uu_dai_ecommerce: initial?.gia_uu_dai_ecommerce || '',
     ton_kho: initial?.ton_kho ?? '',
     canh_bao_ton: initial?.canh_bao_ton ?? 5,
+    hien_tren_pos: initial?.hien_tren_pos ?? true,
+    hoa_hong_kieu: initial?.hoa_hong_kieu || 'none',
+    ti_le_hoa_hong: initial?.ti_le_hoa_hong || '',
+    tien_hoa_hong: initial?.tien_hoa_hong || '',
     co_the_chiet: initial?.co_the_chiet || false,
     san_pham_chiet_id: initial?.san_pham_chiet_id || '',
     he_so_chiet: initial?.he_so_chiet || 1,
@@ -361,13 +378,34 @@ function FormSanPham({ initial, products, onSave, onClose }) {
       san_pham_chiet_id: f.co_the_chiet && f.san_pham_chiet_id ? f.san_pham_chiet_id : null,
       he_so_chiet: f.co_the_chiet ? +f.he_so_chiet || 1 : 1,
     }
+    const extendedPayload = {
+      ...payload,
+      ma_sp: f.ma_sp.trim() || null,
+      sku: f.sku.trim() || null,
+      barcode: f.barcode.trim() || null,
+      nhan_hieu: f.nhan_hieu.trim() || null,
+      danh_muc: f.danh_muc.trim() || null,
+      gia_uu_dai: +f.gia_uu_dai || 0,
+      gia_uu_dai_ecommerce: +f.gia_uu_dai_ecommerce || 0,
+      hien_tren_pos: !!f.hien_tren_pos,
+      hoa_hong_kieu: f.hoa_hong_kieu || 'none',
+      ti_le_hoa_hong: +f.ti_le_hoa_hong || 0,
+      tien_hoa_hong: +f.tien_hoa_hong || 0,
+    }
     if (!isEdit) payload.ton_kho = +f.ton_kho || 0
+    if (!isEdit) extendedPayload.ton_kho = +f.ton_kho || 0
 
     let error
     if (isEdit) {
-      ;({ error } = await supabase.from('kho_san_pham').update(payload).eq('id', initial.id))
+      ;({ error } = await supabase.from('kho_san_pham').update(extendedPayload).eq('id', initial.id))
+      if (error?.code === 'PGRST204' || error?.message?.includes('column')) {
+        ;({ error } = await supabase.from('kho_san_pham').update(payload).eq('id', initial.id))
+      }
     } else {
-      ;({ error } = await supabase.from('kho_san_pham').insert(payload))
+      ;({ error } = await supabase.from('kho_san_pham').insert(extendedPayload))
+      if (error?.code === 'PGRST204' || error?.message?.includes('column')) {
+        ;({ error } = await supabase.from('kho_san_pham').insert(payload))
+      }
     }
     setSaving(false)
     if (error) return setErr(error.message)
@@ -377,13 +415,16 @@ function FormSanPham({ initial, products, onSave, onClose }) {
   const otherProducts = products.filter(p => p.id !== initial?.id)
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.55)', zIndex: 200,
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div style={{ background: 'white', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '520px',
-        maxHeight: '92vh', overflow: 'auto', boxShadow: '0 -8px 40px rgba(0,0,0,0.2)' }}>
+    <div style={{ position: 'fixed', inset: 0,
+      background: 'rgba(250,247,244,0.78)', backdropFilter: 'blur(10px)',
+      zIndex: 200, display: 'flex', alignItems: 'center',
+      justifyContent: 'center', padding: '24px' }}>
+      <div style={{ background: 'white', borderRadius: '18px', width: '100%', maxWidth: '760px',
+        maxHeight: '88vh', overflow: 'auto', border: `1px solid ${COLORS.border}`,
+        boxShadow: '0 24px 80px rgba(139,94,60,0.20)' }}>
         <div style={{ background: COLORS.grad, padding: '18px 20px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderRadius: '20px 20px 0 0', position: 'sticky', top: 0 }}>
+          borderRadius: '18px 18px 0 0', position: 'sticky', top: 0, zIndex: 2 }}>
           <div style={{ color: 'white', fontWeight: '800', fontSize: '16px' }}>
             {isEdit ? '✏️ Sửa sản phẩm' : '➕ Thêm sản phẩm'}
           </div>
@@ -398,11 +439,17 @@ function FormSanPham({ initial, products, onSave, onClose }) {
             <div style={{ display: 'flex', gap: '8px' }}>
               {Object.entries(LOAI_SP).map(([k, v]) => (
                 <button key={k} onClick={() => set('loai', k)}
-                  style={{ flex: 1, padding: '10px 6px', borderRadius: '10px', border: 'none',
-                    cursor: 'pointer', fontSize: '11px', fontWeight: '700',
-                    background: f.loai === k ? v.color : v.bg,
-                    color: f.loai === k ? 'white' : v.color }}>
-                  {v.icon}<br/>{v.label.split(' ')[0]}<br/>{v.label.split(' ').slice(1).join(' ')}
+                  style={{ flex: 1, minWidth: 0, height: 56, padding: '0 12px',
+                    borderRadius: '10px',
+                    border: f.loai === k ? 'none' : `1px solid ${COLORS.border}`,
+                    cursor: 'pointer', fontSize: '12px', fontWeight: '800',
+                    background: f.loai === k ? COLORS.grad : COLORS.bg,
+                    color: f.loai === k ? 'white' : COLORS.textSub,
+                    boxShadow: f.loai === k ? '0 8px 20px rgba(160,113,79,0.18)' : 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: 8, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                  <span style={{ fontSize: 15, flexShrink: 0 }}>{v.icon}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.label}</span>
                 </button>
               ))}
             </div>
@@ -412,6 +459,37 @@ function FormSanPham({ initial, products, onSave, onClose }) {
             <label style={lbl}>TÊN SẢN PHẨM *</label>
             <input style={inp} value={f.ten} onChange={e => set('ten', e.target.value)}
               placeholder="VD: Dầu massage Body, Bông tẩy trang..." />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+            <div>
+              <label style={lbl}>MÃ SP</label>
+              <input style={inp} value={f.ma_sp} onChange={e => set('ma_sp', e.target.value)}
+                placeholder="SP-00001" />
+            </div>
+            <div>
+              <label style={lbl}>SKU</label>
+              <input style={inp} value={f.sku} onChange={e => set('sku', e.target.value)}
+                placeholder="SKU" />
+            </div>
+            <div>
+              <label style={lbl}>BARCODE</label>
+              <input style={inp} value={f.barcode} onChange={e => set('barcode', e.target.value)}
+                placeholder="Barcode" />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div>
+              <label style={lbl}>NHÃN HIỆU</label>
+              <input style={inp} value={f.nhan_hieu} onChange={e => set('nhan_hieu', e.target.value)}
+                placeholder="VD: Fino, Hannah Spa..." />
+            </div>
+            <div>
+              <label style={lbl}>DANH MỤC</label>
+              <input style={inp} value={f.danh_muc} onChange={e => set('danh_muc', e.target.value)}
+                placeholder="VD: Mỹ phẩm bán khách" />
+            </div>
           </div>
 
           <div>
@@ -444,6 +522,19 @@ function FormSanPham({ initial, products, onSave, onClose }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
+              <label style={lbl}>GIÁ ƯU ĐÃI</label>
+              <input style={inp} type="number" value={f.gia_uu_dai}
+                onChange={e => set('gia_uu_dai', e.target.value)} placeholder="0" />
+            </div>
+            <div>
+              <label style={lbl}>GIÁ TMĐT</label>
+              <input style={inp} type="number" value={f.gia_uu_dai_ecommerce}
+                onChange={e => set('gia_uu_dai_ecommerce', e.target.value)} placeholder="0" />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div>
               <label style={lbl}>TỒN KHO BAN ĐẦU</label>
               <input style={{ ...inp, opacity: isEdit ? 0.6 : 1 }} type="number" step="0.1"
                 value={f.ton_kho} onChange={e => set('ton_kho', e.target.value)}
@@ -463,6 +554,37 @@ function FormSanPham({ initial, products, onSave, onClose }) {
             <label style={lbl}>MÔ TẢ (tùy chọn)</label>
             <textarea style={{ ...inp, height: '60px', resize: 'vertical' }}
               value={f.mo_ta} onChange={e => set('mo_ta', e.target.value)} />
+          </div>
+
+          <div style={{ background: '#FDF8F1', borderRadius: '12px', padding: '14px', border: `1px solid ${COLORS.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+              <span style={{ fontWeight: '800', fontSize: '13px', color: COLORS.primary }}>Hoa hồng bán sản phẩm</span>
+              <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px',
+                fontSize: '13px', fontWeight: '700', color: COLORS.textSub, cursor: 'pointer' }}>
+                <input type="checkbox" checked={f.hien_tren_pos}
+                  onChange={e => set('hien_tren_pos', e.target.checked)} />
+                Hiển thị trên POS
+              </label>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label style={lbl}>KIỂU HOA HỒNG</label>
+                <select style={inp} value={f.hoa_hong_kieu} onChange={e => set('hoa_hong_kieu', e.target.value)}>
+                  <option value="none">Không tính</option>
+                  <option value="percent">% doanh thu sản phẩm</option>
+                  <option value="fixed">Số tiền cố định</option>
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>{f.hoa_hong_kieu === 'fixed' ? 'TIỀN HOA HỒNG' : 'TỈ LỆ HOA HỒNG (%)'}</label>
+                <input style={inp} type="number"
+                  value={f.hoa_hong_kieu === 'fixed' ? f.tien_hoa_hong : f.ti_le_hoa_hong}
+                  onChange={e => f.hoa_hong_kieu === 'fixed'
+                    ? set('tien_hoa_hong', e.target.value)
+                    : set('ti_le_hoa_hong', e.target.value)}
+                  disabled={f.hoa_hong_kieu === 'none'} placeholder="0" />
+              </div>
+            </div>
           </div>
 
           <div style={{ background: '#F5F0FF', borderRadius: '12px', padding: '14px', border: '1px solid #D8C8FF' }}>
@@ -537,8 +659,18 @@ function TabSanPham({ products, onReload, showToast }) {
   const filtered = products.filter(p => {
     if (!p.is_active) return false
     if (filter !== 'all' && p.loai !== filter) return false
-    if (search && !p.ten.toLowerCase().includes(search.toLowerCase())) return false
+    if (search) {
+      const q = search.toLowerCase()
+      const haystack = [p.ten, p.ma_sp, p.sku, p.barcode, p.nhan_hieu, p.danh_muc]
+        .filter(Boolean).join(' ').toLowerCase()
+      if (!haystack.includes(q)) return false
+    }
     return true
+  }).sort((a, b) => {
+    const ac = a.ma_sp || ''
+    const bc = b.ma_sp || ''
+    if (ac && bc) return bc.localeCompare(ac, 'vi', { numeric: true })
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0)
   })
 
   const handleToggleActive = async (p) => {
@@ -576,77 +708,124 @@ function TabSanPham({ products, onReload, showToast }) {
           ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ background: 'white', borderRadius: '14px', border: `1px solid ${COLORS.border}`,
+        boxShadow: COLORS.shadow, overflow: 'hidden' }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: COLORS.textMute }}>
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>📦</div>
             <div>Chưa có sản phẩm nào</div>
           </div>
-        ) : filtered.map(p => {
-          const loai = LOAI_SP[p.loai] || {}
-          const pct  = p.canh_bao_ton > 0
-            ? Math.min(100, (Number(p.ton_kho) / Number(p.canh_bao_ton)) * 100) : 100
-          const warn = Number(p.ton_kho) <= Number(p.canh_bao_ton) && Number(p.canh_bao_ton) > 0
-          const chietSP = p.co_the_chiet && p.san_pham_chiet_id ? spMap[p.san_pham_chiet_id] : null
-          return (
-            <div key={p.id} style={{ background: 'white', borderRadius: '14px', padding: '14px 16px',
-              border: warn ? '1px solid #FFB74D' : `1px solid ${COLORS.border}`,
-              boxShadow: COLORS.shadow }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px',
-                  background: loai.bg, display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
-                  {loai.icon}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: '800', fontSize: '14px', color: COLORS.text }}>{p.ten}</div>
-                  <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '2px' }}>
-                    {loai.label} · {p.don_vi}
-                    {p.gia_nhap > 0 && ` · Nhập: ${fmt(p.gia_nhap)}`}
-                    {p.gia_ban > 0 && ` · Bán: ${fmt(p.gia_ban)}`}
-                  </div>
-                  <div style={{ marginTop: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                      <span style={{ fontSize: '11px', color: COLORS.textMute }}>Tồn kho</span>
-                      <span style={{ fontSize: '12px', fontWeight: '800',
-                        color: Number(p.ton_kho) <= 0 ? '#C0392B' : warn ? '#E67E22' : '#2D7A4F' }}>
-                        {fmtSL(p.ton_kho, p.don_vi)}
-                      </span>
-                    </div>
-                    <div style={{ height: '5px', background: '#F0E9E0', borderRadius: '3px' }}>
-                      <div style={{ height: '100%', borderRadius: '3px', transition: 'width .3s',
-                        background: Number(p.ton_kho) <= 0 ? '#C0392B' : warn ? '#E67E22' : '#2D7A4F',
-                        width: `${Math.max(2, Math.min(100, pct))}%` }} />
-                    </div>
-                    {p.canh_bao_ton > 0 && (
-                      <div style={{ fontSize: '10px', color: COLORS.textMute, marginTop: '2px' }}>
-                        Cảnh báo khi ≤ {fmtSL(p.canh_bao_ton, p.don_vi)}
-                      </div>
-                    )}
-                  </div>
-                  {p.co_the_chiet && chietSP && (
-                    <div style={{ marginTop: '6px', fontSize: '11px', color: '#8E44AD',
-                      background: '#F5F0FF', borderRadius: '6px', padding: '4px 8px', display: 'inline-block' }}>
-                      🧪 1 {p.don_vi} → {p.he_so_chiet} {chietSP.don_vi} ({chietSP.ten})
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                  <button onClick={() => { setEditing(p); setShowForm(true) }}
-                    style={{ padding: '6px 10px', background: COLORS.bg, border: `1px solid ${COLORS.border}`,
-                      borderRadius: '8px', fontWeight: '700', fontSize: '11px', cursor: 'pointer' }}>
-                    ✏️
-                  </button>
-                  <button onClick={() => handleToggleActive(p)}
-                    style={{ padding: '6px 10px', background: '#FDECEA', border: '1px solid #FADBD8',
-                      borderRadius: '8px', fontWeight: '700', fontSize: '11px', cursor: 'pointer', color: '#C0392B' }}>
-                    🗑
-                  </button>
-                </div>
-              </div>
-            </div>
-          )
-        })}
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1060 }}>
+              <thead>
+                <tr style={{ background: COLORS.bg }}>
+                  {['Mã SP / Chi nhánh', 'Tên sản phẩm', 'SKU/Barcode', 'Nhãn hiệu', 'Danh mục', 'Giá nhập', 'Giá sản phẩm', 'Ưu đãi', 'Tồn kho', 'Trạng thái', ''].map(h => (
+                    <th key={h} style={{ padding: '11px 10px', textAlign: h ? 'left' : 'right',
+                      fontSize: 11, color: COLORS.textSub, textTransform: 'uppercase',
+                      letterSpacing: '.03em', borderBottom: `1px solid ${COLORS.border}` }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(p => {
+                  const loai = LOAI_SP[p.loai] || {}
+                  const warn = Number(p.ton_kho) <= Number(p.canh_bao_ton) && Number(p.canh_bao_ton) > 0
+                  const chietSP = p.co_the_chiet && p.san_pham_chiet_id ? spMap[p.san_pham_chiet_id] : null
+                  const commission = p.hoa_hong_kieu === 'fixed'
+                    ? fmt(p.tien_hoa_hong)
+                    : p.hoa_hong_kieu === 'percent' && Number(p.ti_le_hoa_hong) > 0
+                      ? `${p.ti_le_hoa_hong}%`
+                      : ''
+                  return (
+                    <tr key={p.id} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', width: 130 }}>
+                        <div style={{ fontWeight: 800, color: COLORS.primary, fontSize: 13 }}>
+                          {p.ma_sp || '—'}
+                        </div>
+                        <div style={{ color: COLORS.textMute, fontSize: 11 }}>{p.chi_nhanh || 'Hannah Spa'}</div>
+                      </td>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', minWidth: 260 }}>
+                        <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: loai.bg,
+                            color: loai.color, display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
+                            {loai.icon}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 800, color: COLORS.text, fontSize: 13,
+                              lineHeight: 1.35 }}>
+                              {p.ten}
+                            </div>
+                            <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 2 }}>
+                              {loai.label} · {p.don_vi}
+                              {commission && <span> · Hoa hồng {commission}</span>}
+                            </div>
+                            {chietSP && (
+                              <div style={{ marginTop: 5, fontSize: 11, color: '#8E44AD' }}>
+                                Chiết rót: 1 {p.don_vi} → {p.he_so_chiet} {chietSP.don_vi}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontSize: 12, color: COLORS.textSub }}>
+                        <div>{p.sku || '—'}</div>
+                        <div style={{ color: COLORS.textMute, marginTop: 2 }}>{p.barcode || ''}</div>
+                      </td>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontSize: 12, color: COLORS.textSub }}>
+                        {p.nhan_hieu || '—'}
+                      </td>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontSize: 12, color: COLORS.textSub }}>
+                        {p.danh_muc || '—'}
+                      </td>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontWeight: 700, fontSize: 12 }}>
+                        {fmtMoneyShort(p.gia_nhap)}
+                      </td>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontWeight: 800, color: COLORS.primary, fontSize: 12 }}>
+                        {fmtMoneyShort(p.gia_ban)}
+                      </td>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontWeight: 700, fontSize: 12 }}>
+                        {fmtMoneyShort(p.gia_uu_dai || p.gia_uu_dai_ecommerce)}
+                      </td>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', width: 110 }}>
+                        <div style={{ fontWeight: 800, fontSize: 12,
+                          color: Number(p.ton_kho) <= 0 ? '#C0392B' : warn ? '#E67E22' : '#2D7A4F' }}>
+                          {fmtSL(p.ton_kho, p.don_vi)}
+                        </div>
+                        {p.canh_bao_ton > 0 && (
+                          <div style={{ color: COLORS.textMute, fontSize: 10 }}>CB ≤ {p.canh_bao_ton}</div>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', width: 110 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '4px 8px', borderRadius: 999, fontSize: 11, fontWeight: 800,
+                          background: p.hien_tren_pos === false ? '#F4F1ED' : '#E8F5E9',
+                          color: p.hien_tren_pos === false ? COLORS.textMute : '#2D7A4F' }}>
+                          ● {p.hien_tren_pos === false ? 'Ẩn POS' : 'Active'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 10px', verticalAlign: 'top', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => { setEditing(p); setShowForm(true) }}
+                          style={{ padding: '7px 10px', background: COLORS.bg, border: `1px solid ${COLORS.border}`,
+                            borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', marginRight: 6 }}>
+                          Sửa
+                        </button>
+                        <button onClick={() => handleToggleActive(p)}
+                          style={{ padding: '7px 10px', background: '#FDECEA', border: '1px solid #FADBD8',
+                            borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', color: '#C0392B' }}>
+                          Ẩn
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {showForm && (

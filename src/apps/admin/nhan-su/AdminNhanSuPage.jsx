@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { LUX_MENU } from '../../../constants/lux'
 import { useAuth } from '../../../context/AuthContext'
@@ -97,6 +97,8 @@ export default function AdminNhanSuPage() {
   const [nvList, setNvList] = useState([])
   const [showTaoOff, setShowTaoOff] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
 
   useEffect(() => {
     const today = todayISO()
@@ -117,6 +119,17 @@ export default function AdminNhanSuPage() {
 
   const now = getNowVN()
   const MONTHS = ['','Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12']
+
+  const roleLabel = { ktv: 'Kỹ Thuật Viên', le_tan: 'Lễ Tân', tap_vu: 'Tạp Vụ', quan_ly: 'Quản Lý' }
+  const filteredNv = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return nvList.filter(nv => {
+      const haystack = [nv.ho_ten, nv.so_dien_thoai, nv.vi_tri].filter(Boolean).join(' ').toLowerCase()
+      const matchText = !q || haystack.includes(q)
+      const matchRole = roleFilter === 'all' || nv.vi_tri === roleFilter
+      return matchText && matchRole
+    })
+  }, [nvList, search, roleFilter])
 
   // Sub-view routing
   if (view) {
@@ -171,10 +184,67 @@ export default function AdminNhanSuPage() {
       </div>
 
       {/* Staff Grid — 100% mẫu Demo */}
-      <div className="staff-grid">
-        {nvList.map(nv => (
-          <StaffCard key={nv.id} nv={nv} onClick={() => navigate('employees')} />
-        ))}
+      <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card-h" style={{ alignItems: 'center' }}>
+          <div className="card-t">
+            <div className="arch-i"><I.Users style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+            <h3>Danh Sách Nhân Sự</h3>
+            <span className="sub">{filteredNv.length}/{nvList.length} nhân viên</span>
+          </div>
+          <div className="card-actions" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative' }}>
+              <I.Search style={{ width: 14, height: 14, position: 'absolute', left: 11, top: 9, color: 'var(--ink3)' }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm nhân viên..." style={{ width: 220, height: 32, padding: '0 12px 0 32px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface2)', color: 'var(--ink)', outline: 'none', fontSize: 13 }} />
+            </div>
+            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{ height: 32, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface2)', padding: '0 10px', color: 'var(--ink)', fontSize: 13 }}>
+              <option value="all">Tất cả vị trí</option>
+              <option value="ktv">Kỹ thuật viên</option>
+              <option value="le_tan">Lễ tân</option>
+              <option value="tap_vu">Tạp vụ</option>
+              <option value="quan_ly">Quản lý</option>
+            </select>
+            <button className="btn" onClick={() => navigate('employees')}><I.Edit style={{ width: 13, height: 13 }} /> Hồ sơ</button>
+          </div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="ledger" style={{ minWidth: 920 }}>
+            <thead>
+              <tr>
+                <th>Nhân Viên</th>
+                <th>Vị Trí</th>
+                <th className="r">Lương Cứng</th>
+                <th className="r">OFF/Tháng</th>
+                <th>Ký Quỹ</th>
+                <th>Trạng Thái</th>
+                <th className="r">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredNv.map(nv => (
+                <tr key={nv.id}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#8a6a52,#3b2a1f)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>{getInitials(nv.ho_ten)}</div>
+                      <div>
+                        <div style={{ fontWeight: 750, color: 'var(--ink)' }}>{nv.ho_ten}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 1 }}>{nv.so_dien_thoai || 'Chưa có SĐT'}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span className="tag sv">{roleLabel[nv.vi_tri] || nv.vi_tri || 'Khác'}</span></td>
+                  <td className="r" style={{ fontWeight: 700 }}>{formatCurrency(nv.luong_cung || 0)}</td>
+                  <td className="r">{nv.gioi_han_off_thang || 3} ngày</td>
+                  <td>{nv.ky_quy_trang_thai === 'dang_dong' ? 'Đang đóng' : 'Hoàn tất'}</td>
+                  <td><span className="method cash">Đang làm</span></td>
+                  <td className="r"><button className="btn" onClick={() => navigate('employees')}>Chi tiết</button></td>
+                </tr>
+              ))}
+              {!filteredNv.length && (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: 'var(--ink3)' }}>Chưa có nhân viên phù hợp bộ lọc</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <AdminTaoOff open={showTaoOff} onClose={() => setShowTaoOff(false)} onSuccess={() => setRefreshKey(k=>k+1)} />

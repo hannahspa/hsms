@@ -21,8 +21,10 @@ const ICON_MAP = {
   sothuchi: I.Wallet,
   thuchi: I.Wallet,
   doisoat: I.Receipt,
+  'legacy-sync': I.FileText,
   nhansu: I.Users,
   crm: I.Heart,
+  dichvu: I.Spark,
   'the-lieu-trinh': I.CreditCard,
   commission: I.Award,
   kho: I.Box,
@@ -58,8 +60,6 @@ export default function AdminShell({ children }) {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  if (isMobile) return <MobileShell>{children}</MobileShell>
-
   const role = user?.vai_tro || 'admin'
   const navItems = getNavByRole(role)
 
@@ -79,6 +79,8 @@ export default function AdminShell({ children }) {
     const t = setInterval(() => setNow(getNowVN()), 1000)
     return () => clearInterval(t)
   }, [])
+
+  if (isMobile) return <MobileShell>{children}</MobileShell>
 
   const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
   const dateStr = `${DAYS[now.getDay()]} · ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`
@@ -100,6 +102,29 @@ export default function AdminShell({ children }) {
 
   const isChildActive = (children) => {
     return children?.some(c => path === c.path)
+  }
+
+  // Tìm title trang hiện tại từ navConfig
+  const getPageTitle = () => {
+    for (const item of navItems) {
+      if (item.path === path) return item.label
+      if (item.children) {
+        const child = item.children.find(c => c.path === path)
+        if (child) return child.label
+      }
+    }
+    // Fallback cho các path đặc biệt
+    if (path.startsWith('/admin/nhan-su')) return 'Nhân Sự'
+    if (path.startsWith('/admin/kho-hang')) return 'Kho Hàng'
+    if (path.startsWith('/admin/marketing')) return 'Marketing'
+    if (path.startsWith('/admin/khuyen-mai')) return 'Khuyến Mãi'
+    if (path.startsWith('/admin/the-lieu-trinh')) return 'Thẻ Liệu Trình'
+    if (path.startsWith('/admin/dich-vu')) return 'Dịch Vụ'
+    if (path.startsWith('/admin/crm')) return 'CRM Khách Hàng'
+    if (path.startsWith('/admin/commission')) return 'Hoa Hồng Kinh Doanh'
+    if (path.startsWith('/SoThuChi')) return 'Sổ Thu Chi'
+    if (path.startsWith('/pos')) return 'Bán Hàng'
+    return 'Hannah Spa'
   }
 
   return (
@@ -232,7 +257,7 @@ export default function AdminShell({ children }) {
         <header className="topbar">
           <div className="crumbs">
             <div>
-              <div className="h">Dashboard</div>
+              <div className="h">{getPageTitle()}</div>
               <div className="path">{ROLE_LABEL[role] || 'Admin'} · <b>{dateStr}</b></div>
             </div>
           </div>

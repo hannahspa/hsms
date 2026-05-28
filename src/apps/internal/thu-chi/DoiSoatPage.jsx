@@ -1,11 +1,50 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { useAuth } from '../../../context/AuthContext'
-import { formatCurrency, todayISO, getNowVN } from '../../../lib/utils'
+import { formatCurrency, todayISO } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
 import I from '../../../components/shared/Icons'
 
 const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+const moneyText = {
+  fontFamily: 'var(--sans)',
+  fontVariantNumeric: 'tabular-nums',
+  letterSpacing: '-.01em',
+  lineHeight: 1.05,
+}
+const sectionTitle = {
+  fontFamily: 'var(--sans)',
+  fontSize: 15,
+  fontWeight: 750,
+  letterSpacing: 0,
+  color: 'var(--ink)',
+}
+
+const methodMeta = {
+  tien_mat: { label: 'Tiền Mặt', short: 'TM', icon: '💵', color: '#3e5a32', bg: '#eef5e8' },
+  chuyen_khoan: { label: 'MB Bank', short: 'MB', icon: '🏦', color: '#1a4f70', bg: '#e8f1f6' },
+  quet_the: { label: 'TP Bank', short: 'TP', icon: '💳', color: '#5e2f74', bg: '#f1eaf4' },
+  the_tra_truoc: { label: 'Thẻ Trả Trước', short: 'TTT', icon: '🎫', color: '#8a6a52', bg: '#f6efe4' },
+}
+
+function formatTime(value) {
+  return value ? new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'
+}
+
+function StatCard({ label, value, note, tone = 'dark' }) {
+  const colors = {
+    dark: 'var(--ink)',
+    gold: 'var(--espresso)',
+    good: '#3e5a32',
+    bad: '#843a23',
+  }
+  return (
+    <div className="it" style={{ minHeight: 104, padding: '20px 22px' }}>
+      <div className="l" style={{ fontSize: 10, letterSpacing: '.13em', fontWeight: 750 }}>{label}</div>
+      <div className="v" style={{ ...moneyText, color: colors[tone] || colors.dark, fontSize: 24, fontWeight: 750, marginTop: 8 }}>{formatCurrency(value)}</div>
+      <div className="d" style={{ fontSize: 11.5, lineHeight: 1.35, marginTop: 8 }}>{note}</div>
+    </div>
+  )
+}
 
 export default function DoiSoatPage({ user, refreshKey }) {
   const [ngay, setNgay] = useState(todayISO())
@@ -14,73 +53,93 @@ export default function DoiSoatPage({ user, refreshKey }) {
   const [showLich, setShowLich] = useState(false)
 
   useEffect(() => {
+    let alive = true
     setLoading(true)
+
     Promise.all([
-      supabase.from('doanh_thu').select('so_tien, hinh_thuc, dien_giai, created_at').eq('ngay', ngay).order('created_at'),
-      supabase.from('chi_phi').select('so_tien, hinh_thuc_thanh_toan, dien_giai, created_at').eq('ngay', ngay).order('created_at'),
-      supabase.from('so_du_vi_thuc_te').select('*'),
+      supabase.from('doanh_thu').select('so_tien, hinh_thuc, dien_giai, created_at, nguon').eq('ngay', ngay).order('created_at', { ascending: false }),
+      supabase.from('chi_phi').select('so_tien, hinh_thuc_thanh_toan, dien_giai, created_at').eq('ngay', ngay).order('created_at', { ascending: false }),
+      supabase.from('so_du_vi_thuc_te').select('*').order('ten'),
     ]).then(([rDT, rCP, rVi]) => {
+      if (!alive) return
       const dtList = rDT.data || []
       const cpList = rCP.data || []
 
-      // Doanh thu theo hình thức
-      const tienMat = dtList.filter(r => r.hinh_thuc === 'tien_mat').reduce((s, r) => s + (r.so_tien || 0), 0)
-      const chuyenKhoan = dtList.filter(r => r.hinh_thuc === 'chuyen_khoan').reduce((s, r) => s + (r.so_tien || 0), 0)
-      const quetThe = dtList.filter(r => r.hinh_thuc === 'quet_the').reduce((s, r) => s + (r.so_tien || 0), 0)
-      const theTraTruoc = dtList.filter(r => r.hinh_thuc === 'the_tra_truoc').reduce((s, r) => s + (r.so_tien || 0), 0)
-      const tongDoanhThu = tienMat + chuyenKhoan + quetThe + theTraTruoc
-      const thucThu = tienMat + chuyenKhoan + quetThe // không tính thẻ trả trước
+      const sumThu = key => dtList.filter(r => r.hinh_thuc === key).reduce((s, r) => s + (r.so_tien || 0), 0)
+      const sumChi = key => cpList.filter(r => (r.hinh_thuc_thanh_toan || 'tien_mat') === key).reduce((s, r) => s + (r.so_tien || 0), 0)
 
-      // Chi phí
+      const tienMat = sumThu('tien_mat')
+      const chuyenKhoan = sumThu('chuyen_khoan')
+      const quetThe = sumThu('quet_the')
+      const theTraTruoc = sumThu('the_tra_truoc')
+      const chiTienMat = sumChi('tien_mat')
+      const chiMb = sumChi('chuyen_khoan')
+      const chiTp = sumChi('quet_the')
       const tongChi = cpList.reduce((s, r) => s + (r.so_tien || 0), 0)
-
-      // Lợi nhuận
-      const loiNhuan = thucThu - tongChi
+      const tongDoanhThu = tienMat + chuyenKhoan + quetThe + theTraTruoc
+      const thucThu = tienMat + chuyenKhoan + quetThe
+      const posThu = dtList.filter(r => r.nguon === 'pos').reduce((s, r) => s + (r.so_tien || 0), 0)
+      const manualThu = dtList.filter(r => r.nguon !== 'pos').reduce((s, r) => s + (r.so_tien || 0), 0)
 
       setData({
-        dtList, cpList,
-        tienMat, chuyenKhoan, quetThe, theTraTruoc,
-        tongDoanhThu, thucThu, tongChi, loiNhuan,
+        dtList,
+        cpList,
+        tienMat,
+        chuyenKhoan,
+        quetThe,
+        theTraTruoc,
+        chiTienMat,
+        chiMb,
+        chiTp,
+        tongDoanhThu,
+        thucThu,
+        posThu,
+        manualThu,
+        tongChi,
+        loiNhuan: thucThu - tongChi,
+        tienMatCanKiem: tienMat - chiTienMat,
         viList: rVi.data || [],
       })
       setLoading(false)
-    }).catch(() => setLoading(false))
+    }).catch(() => {
+      if (alive) setLoading(false)
+    })
+
+    return () => { alive = false }
   }, [ngay, refreshKey])
 
-  const d = new Date(ngay + 'T00:00:00')
-  const thuMay = DAYS[d.getDay()]
-  const ngayFormatted = `${thuMay}, ${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`
-
-  const changeDay = (delta) => {
-    const nd = new Date(d)
-    nd.setDate(nd.getDate() + delta)
-    setNgay(nd.toISOString().slice(0, 10))
-  }
-
+  const currentDate = new Date(ngay + 'T00:00:00')
+  const ngayFormatted = `${DAYS[currentDate.getDay()]}, ${String(currentDate.getDate()).padStart(2, '0')}/${String(currentDate.getMonth() + 1).padStart(2, '0')}/${currentDate.getFullYear()}`
   const isToday = ngay === todayISO()
 
-  const viIcons = { tien_mat: '💵', chuyen_khoan: '🏦', quet_the: '💳' }
-  const viSubLabels = { tien_mat: 'Tiền mặt tại quầy', chuyen_khoan: 'Tài khoản ngân hàng', quet_the: 'Quẹt thẻ' }
+  const changeDay = delta => {
+    const nextDate = new Date(currentDate)
+    nextDate.setDate(nextDate.getDate() + delta)
+    setNgay(nextDate.toISOString().slice(0, 10))
+  }
 
-  if (loading) return (
-    <div style={{ padding: 60, textAlign: 'center', color: 'var(--ink3)', fontFamily: 'var(--sans)' }}>
-      Đang tải báo cáo ngày...
-    </div>
-  )
+  if (loading) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center', color: 'var(--ink3)', fontFamily: 'var(--sans)' }}>
+        Đang tải đối soát ngày...
+      </div>
+    )
+  }
+
+  const revenueCards = [
+    { key: 'tien_mat', value: data.tienMat, note: `Trừ chi tiền mặt: ${formatCurrency(data.chiTienMat)}` },
+    { key: 'chuyen_khoan', value: data.chuyenKhoan, note: 'Tiền vào MB Bank' },
+    { key: 'quet_the', value: data.quetThe, note: 'Tiền vào TP Bank' },
+    { key: 'the_tra_truoc', value: data.theTraTruoc, note: 'Không tính vào thực thu' },
+  ]
 
   return (
     <div style={{ padding: '22px 24px', flex: 1, overflow: 'auto' }}>
-      <DatePicker
-        open={showLich}
-        selectedDate={ngay}
-        onClose={() => setShowLich(false)}
-        onConfirm={d => { setNgay(d); setShowLich(false) }}
-      />
+      <DatePicker open={showLich} selectedDate={ngay} onClose={() => setShowLich(false)} onConfirm={d => { setNgay(d); setShowLich(false) }} />
 
-      {/* ── HEADER ── */}
       <div className="mod-head" style={{ marginBottom: 16 }}>
         <div>
-          <div className="ttl">Đối Soát Ngày</div>
+          <div className="ttl" style={{ letterSpacing: '-.01em' }}>Đối Soát Ngày</div>
           <div className="sub">{ngayFormatted}{isToday ? ' · Hôm nay' : ''}</div>
         </div>
         <div className="acts">
@@ -90,199 +149,164 @@ export default function DoiSoatPage({ user, refreshKey }) {
             {ngayFormatted}
           </button>
           <button onClick={() => changeDay(1)} className="icon-btn" style={{ width: 34, height: 34 }}>›</button>
+          <button onClick={() => window.history.pushState(null, '', '/SoThuChi/chot-ngay') || window.dispatchEvent(new PopStateEvent('popstate'))} className="btn gold" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <I.Wallet style={{ width: 13, height: 13 }} />
+            Chốt Ngày
+          </button>
         </div>
       </div>
 
-      {/* ── 3 Ô THỰC THU / TỔNG CHI / LỢI NHUẬN ── */}
-      <div className="strip" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 16 }}>
-        <div className="it">
-          <div className="l">THỰC THU</div>
-          <div className="v" style={{ color: '#426a2c' }}>{formatCurrency(data.thucThu)}</div>
-          <div className="d">Doanh thu − Thẻ trả trước</div>
-        </div>
-        <div className="it">
-          <div className="l">TỔNG CHI</div>
-          <div className="v" style={{ color: '#843a23' }}>{formatCurrency(data.tongChi)}</div>
-          <div className="d">{data.cpList.length} khoản chi</div>
-        </div>
-        <div className="it">
-          <div className="l">LỢI NHUẬN</div>
-          <div className="v" style={{ color: data.loiNhuan >= 0 ? '#426a2c' : '#843a23' }}>{formatCurrency(data.loiNhuan)}</div>
-          <div className="d" style={{ color: data.loiNhuan >= 0 ? '#426a2c' : '#843a23' }}>
-            {data.loiNhuan >= 0 ? '✅ Có lãi' : '⚠️ Lỗ trong ngày'}
-          </div>
-        </div>
-      </div>
-
-      {/* ── DOANH THU THEO HÌNH THỨC ── */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-h">
-          <div className="card-t">
-            <div className="arch-i"><I.TrendUp style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
-            <h3>DOANH THU</h3>
-          </div>
-        </div>
-        <div className="card-b">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 16 }}>
-            {[
-              { icon: '💵', label: 'Tiền Mặt', value: data.tienMat, color: '#3e5a32', bg: '#e8f1de' },
-              { icon: '🏦', label: 'Chuyển Khoản', value: data.chuyenKhoan, color: '#1a4f70', bg: '#ddeaf3' },
-              { icon: '💳', label: 'Quẹt Thẻ', value: data.quetThe, color: '#5e2f74', bg: '#ecdcef' },
-              { icon: '🎫', label: 'Thẻ Trả Trước', value: data.theTraTruoc, color: '#6e4a1f', bg: '#f0e2cd', note: 'Không tính Thực Thu' },
-            ].map((item, i) => (
-              <div key={i} style={{
-                background: item.bg, borderRadius: 14, padding: '16px 18px',
-                textAlign: 'center', border: `1px solid ${item.color}20`,
-              }}>
-                <div style={{ fontSize: 28, marginBottom: 6 }}>{item.icon}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>
-                  {item.label}
-                </div>
-                <div style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 700, color: item.color }}>
-                  {formatCurrency(item.value)}
-                </div>
-                {item.note && (
-                  <div style={{ fontSize: 10, color: 'var(--ink3)', marginTop: 4, fontStyle: 'italic' }}>
-                    {item.note}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="rec-row tot">
-            <span>Tổng Doanh Thu</span>
-            <span style={{ fontWeight: 700 }}>{formatCurrency(data.tongDoanhThu)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── CHI PHÍ CHI TIẾT ── */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-h">
-          <div className="card-t">
-            <div className="arch-i"><I.TrendDown style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
-            <h3>CHI PHÍ CHI TIẾT</h3>
-            <span className="sub">{data.cpList.length} khoản</span>
-          </div>
-        </div>
+      <div className="card" style={{ marginBottom: 16, overflow: 'hidden' }}>
         <div className="card-b" style={{ padding: 0 }}>
-          {data.cpList.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 30, color: 'var(--ink3)', fontSize: 13 }}>
-              Không có khoản chi nào trong ngày này
+          <div style={{ display: 'grid', gridTemplateColumns: '1.1fr repeat(3, minmax(0, 1fr))', gap: 0 }}>
+            <div style={{ padding: 22, background: 'linear-gradient(135deg,#3d2c20,#8a6a52)', color: '#f8efe1' }}>
+              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.14em', opacity: .72, fontWeight: 700 }}>Ngày đối soát</div>
+              <div style={{ fontFamily: 'var(--serif)', fontSize: 26, fontWeight: 700, letterSpacing: '-.01em', lineHeight: 1.08, marginTop: 10 }}>{ngayFormatted}</div>
+              <div style={{ fontSize: 12, lineHeight: 1.55, opacity: .76, marginTop: 10, maxWidth: 260 }}>Kiểm tra doanh thu, chi phí và dòng tiền trước khi chốt sổ.</div>
             </div>
-          ) : (
-            <table className="tbl">
-              <thead><tr>
-                <th style={{ paddingLeft: 20 }}>Giờ</th>
-                <th>Diễn Giải</th>
-                <th>Nguồn Tiền</th>
-                <th className="amount" style={{ paddingRight: 20 }}>Số Tiền</th>
-              </tr></thead>
-              <tbody>
-                {data.cpList.map((cp, i) => {
-                  const ptKey = cp.hinh_thuc_thanh_toan || 'tien_mat'
-                  const methodLabel = ptKey === 'tien_mat' ? 'Tiền Mặt' : ptKey === 'chuyen_khoan' ? 'CK' : ptKey === 'quet_the' ? 'Quẹt Thẻ' : '—'
-                  const methodClass = ptKey === 'tien_mat' ? 'cash' : ptKey === 'chuyen_khoan' ? 'transfer' : 'card'
+            <StatCard label="Thực Thu" value={data.thucThu} note="Không gồm thẻ trả trước" tone="gold" />
+            <StatCard label="Tổng Chi" value={data.tongChi} note={`${data.cpList.length} khoản chi`} tone="bad" />
+            <StatCard label="Lợi Nhuận" value={data.loiNhuan} note={data.loiNhuan >= 0 ? 'Ngày đang có lãi' : 'Ngày đang lỗ'} tone={data.loiNhuan >= 0 ? 'good' : 'bad'} />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(360px, .75fr)', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div className="card">
+            <div className="card-h">
+              <div className="card-t">
+                <div className="arch-i"><I.TrendUp style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+                <h3 style={sectionTitle}>Doanh Thu Theo Hình Thức</h3>
+                <span className="sub">{data.dtList.length} giao dịch</span>
+              </div>
+            </div>
+            <div className="card-b">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+                {revenueCards.map(item => {
+                  const meta = methodMeta[item.key]
                   return (
-                    <tr key={i}>
-                      <td className="time" style={{ paddingLeft: 20 }}>
-                        {cp.created_at ? new Date(cp.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                      </td>
-                      <td className="desc">{cp.dien_giai || 'Chi phí'}</td>
-                      <td><span className={`method ${methodClass}`}>{methodLabel}</span></td>
-                      <td className="amount" style={{ paddingRight: 20, color: 'var(--danger)' }}>−{formatCurrency(cp.so_tien)}</td>
-                    </tr>
+                    <div key={item.key} style={{ border: '1px solid var(--line)', background: meta.bg, borderRadius: 10, padding: 14, minHeight: 126 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,.58)', display: 'grid', placeItems: 'center', fontSize: 18 }}>{meta.icon}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--ink3)', fontWeight: 750 }}>{meta.label}</div>
+                          <div style={{ fontSize: 10.5, color: 'var(--ink3)', marginTop: 2, fontWeight: 600 }}>{meta.short}</div>
+                        </div>
+                      </div>
+                      <div style={{ ...moneyText, fontSize: 22, fontWeight: 750, color: meta.color, marginTop: 12 }}>{formatCurrency(item.value)}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ink3)', lineHeight: 1.35, marginTop: 6 }}>{item.note}</div>
+                    </div>
                   )
                 })}
-              </tbody>
-            </table>
-          )}
-          <div className="rec-row tot" style={{ margin: '0 20px' }}>
-            <span>Tổng Chi Phí</span>
-            <span style={{ color: 'var(--danger)', fontWeight: 700 }}>{formatCurrency(data.tongChi)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── LỢI NHUẬN NGÀY ── */}
-      <div style={{
-        background: data.loiNhuan >= 0
-          ? 'linear-gradient(135deg, #e8f1de, #d4e8c8)'
-          : 'linear-gradient(135deg, #fae0d8, #f5c8b8)',
-        borderRadius: 'var(--r)',
-        padding: '18px 22px',
-        marginBottom: 16,
-        border: `1px solid ${data.loiNhuan >= 0 ? '#6e8a5e30' : '#b85a4a30'}`,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <div>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.14em', fontWeight: 600, color: 'var(--ink3)' }}>
-            LỢI NHUẬN NGÀY
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 2 }}>Thực Thu − Tổng Chi</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: 'var(--serif)', fontSize: 28, fontWeight: 700, color: data.loiNhuan >= 0 ? '#426a2c' : '#843a23' }}>
-            {formatCurrency(data.loiNhuan)}
-          </div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: data.loiNhuan >= 0 ? '#426a2c' : '#843a23' }}>
-            {data.loiNhuan >= 0 ? '✅ Có lãi' : '⚠️ Lỗ trong ngày'}
-          </div>
-        </div>
-      </div>
-
-      {/* ── SỐ DƯ TÀI KHOẢN — chỉ Admin xem được ── */}
-      {user?.vai_tro === 'admin' && (
-        <div className="card">
-          <div className="card-h">
-            <div className="card-t">
-              <div className="arch-i"><I.Wallet style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
-              <h3>SỐ DƯ TÀI KHOẢN ĐẾN NGÀY</h3>
+              </div>
+              <div className="rec-row tot" style={{ marginTop: 14 }}>
+                <span>Tổng Doanh Thu</span>
+                <span style={{ ...moneyText, fontWeight: 800 }}>{formatCurrency(data.tongDoanhThu)}</span>
+              </div>
             </div>
           </div>
-          <div className="card-b">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {(data.viList || []).map(vi => (
-                <div key={vi.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  padding: '14px 16px', borderRadius: 12,
-                  background: 'var(--bg2)', border: '1px solid var(--line)',
-                }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 12,
-                    background: vi.loai === 'tien_mat'
-                      ? 'linear-gradient(180deg,#e0eedd,#bfd5b8)'
-                      : vi.loai === 'chuyen_khoan'
-                      ? 'linear-gradient(180deg,#dde9f3,#a8c5dc)'
-                      : 'linear-gradient(180deg,#f0dcc0,#d4a574)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 22,
-                  }}>
-                    {viIcons[vi.loai] || '💰'}
+
+          <div className="card">
+            <div className="card-h">
+              <div className="card-t">
+                <div className="arch-i"><I.TrendDown style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+                <h3 style={sectionTitle}>Chi Phí Chi Tiết</h3>
+                <span className="sub">{data.cpList.length} khoản</span>
+              </div>
+            </div>
+            <div className="card-b" style={{ padding: 0 }}>
+              {data.cpList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 34, color: 'var(--ink3)', fontSize: 13 }}>Không có khoản chi trong ngày này</div>
+              ) : (
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th style={{ paddingLeft: 20 }}>Giờ</th>
+                      <th>Diễn Giải</th>
+                      <th>Nguồn Tiền</th>
+                      <th className="amount" style={{ paddingRight: 20 }}>Số Tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.cpList.map((cp, i) => {
+                      const key = cp.hinh_thuc_thanh_toan || 'tien_mat'
+                      const meta = methodMeta[key] || methodMeta.tien_mat
+                      return (
+                        <tr key={`${cp.created_at || i}-${cp.so_tien}`}>
+                          <td className="time" style={{ paddingLeft: 20 }}>{formatTime(cp.created_at)}</td>
+                          <td className="desc">{cp.dien_giai || 'Chi phí'}</td>
+                          <td><span className="method cash" style={{ color: meta.color, background: meta.bg }}>{meta.label}</span></td>
+                          <td className="amount" style={{ ...moneyText, paddingRight: 20, color: '#843a23', fontWeight: 750 }}>−{formatCurrency(cp.so_tien)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div className="card">
+            <div className="card-h">
+              <div className="card-t">
+                <div className="arch-i"><I.Receipt style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+                <h3 style={sectionTitle}>Cần Kiểm Cuối Ngày</h3>
+              </div>
+            </div>
+            <div className="card-b" style={{ display: 'grid', gap: 10 }}>
+              {[
+                ['Doanh thu bán hàng', data.posThu, 'Nguồn chuẩn tự sinh từ đơn hàng đã chốt'],
+                ['Doanh thu nhập tay', data.manualThu, data.manualThu > 0 ? 'Cần kiểm tra vì có thể gây lệch số' : 'Không phát sinh nhập tay'],
+                ['Tiền mặt cần kiểm', data.tienMatCanKiem, 'Thu tiền mặt trừ chi tiền mặt'],
+                ['MB Bank', data.chuyenKhoan - data.chiMb, 'Chuyển khoản trừ chi từ MB'],
+                ['TP Bank', data.quetThe - data.chiTp, 'Quẹt thẻ trừ chi từ TP'],
+                ['Thẻ trả trước', data.theTraTruoc, 'Theo dõi riêng, không tính thực thu'],
+              ].map(([label, value, note]) => (
+                <div key={label} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', background: 'var(--surface)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>{label}</div>
+                    <div style={{ ...moneyText, fontSize: 18, fontWeight: 750, color: 'var(--espresso)' }}>{formatCurrency(value)}</div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)', fontFamily: 'var(--sans)' }}>
-                      {vi.ten}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
-                      {viSubLabels[vi.loai] || ''}
-                    </div>
-                  </div>
-                  <div style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 700, color: 'var(--ink)' }}>
-                    {formatCurrency(vi.so_du_hien_tai || 0)}
-                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 4 }}>{note}</div>
                 </div>
               ))}
             </div>
-            <div className="rec-row tot" style={{ marginTop: 12 }}>
-              <span>Tổng Tài Sản</span>
-              <span style={{ fontWeight: 700, fontFamily: 'var(--serif)', fontSize: 18 }}>
-                {formatCurrency((data.viList || []).reduce((s, v) => s + (v.so_du_hien_tai || 0), 0))}
-              </span>
-            </div>
           </div>
+
+          {user?.vai_tro === 'admin' && (
+            <div className="card">
+              <div className="card-h">
+                <div className="card-t">
+                  <div className="arch-i"><I.Wallet style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
+                  <h3 style={sectionTitle}>Số Dư Tài Khoản</h3>
+                </div>
+              </div>
+              <div className="card-b" style={{ display: 'grid', gap: 10 }}>
+                {(data.viList || []).map(vi => {
+                  const meta = methodMeta[vi.loai] || methodMeta.tien_mat
+                  return (
+                    <div key={vi.id} style={{ display: 'flex', gap: 12, alignItems: 'center', border: '1px solid var(--line)', borderRadius: 10, padding: 12, background: 'var(--surface)' }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 9, display: 'grid', placeItems: 'center', background: meta.bg }}>{meta.icon}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>{vi.ten}</div>
+                        <div style={{ fontSize: 10.5, color: 'var(--ink3)' }}>{meta.label}</div>
+                      </div>
+                      <div style={{ ...moneyText, fontSize: 17, fontWeight: 750, color: 'var(--ink)' }}>{formatCurrency(vi.so_du_hien_tai || 0)}</div>
+                    </div>
+                  )
+                })}
+                <div className="rec-row tot">
+                  <span>Tổng Tài Sản</span>
+                  <span style={{ ...moneyText, fontWeight: 800 }}>{formatCurrency((data.viList || []).reduce((s, v) => s + (v.so_du_hien_tai || 0), 0))}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
