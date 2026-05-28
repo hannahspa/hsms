@@ -78,12 +78,13 @@ export default function TabBangLuong() {
   const [selected,  setSelected]  = useState(null)
   const [editState, setEditState] = useState({})
   const [saving,    setSaving]    = useState(false)
-  const [showImport, setShowImport] = useState(false)
-  const [leTanDS,   setLeTanDS]   = useState(null) // { 'Khánh Duy': ds, 'Ngọc Phương': ds }
-  const [leTanInput, setLeTanInput] = useState({ tongDT: 0, dtMyPham: 0, dsKD: 0, dsNP: 0 })
-  const [calcLeTan,  setCalcLeTan]  = useState(null) // preview result
-  const [toast,     setToast]     = useState(null)
-  const [confirm,   setConfirm]   = useState(null)
+  const [showImport,  setShowImport]  = useState(false)
+  const [syncingPOS,  setSyncingPOS]  = useState(false)
+  const [leTanDS,     setLeTanDS]     = useState(null) // { 'Khánh Duy': ds, 'Ngọc Phương': ds }
+  const [leTanInput,  setLeTanInput]  = useState({ tongDT: 0, dtMyPham: 0, dsKD: 0, dsNP: 0 })
+  const [calcLeTan,   setCalcLeTan]   = useState(null) // preview result
+  const [toast,       setToast]       = useState(null)
+  const [confirm,     setConfirm]     = useState(null)
 
   const prevMonth = () => { if (thang === 1) { setThang(12); setNam(n=>n-1) } else setThang(t=>t-1) }
   const nextMonth = () => { if (thang === 12) { setThang(1); setNam(n=>n+1) } else setThang(t=>t+1) }
@@ -317,6 +318,63 @@ export default function TabBangLuong() {
     })
   }
 
+  // ── Đồng Bộ Kỳ 2 Từ HSMS POS ──
+  const handleSyncTuHSMS = async () => {
+    setSyncingPOS(true)
+    try {
+      const soNgay    = new Date(nam, thang, 0).getDate()
+      const startDate = `${nam}-${String(thang).padStart(2,'0')}-01`
+      const endDate   = `${nam}-${String(thang).padStart(2,'0')}-${String(soNgay).padStart(2,'0')}`
+
+      // Fetch thu nhập KTV tháng này từ HSMS POS
+      const { data: thuNhapRows, error } = await supabase
+        .from('nhan_vien_thu_nhap')
+        .select('nhan_vien_id, loai, so_tien')
+        .gte('ngay', startDate)
+        .lte('ngay', endDate)
+      if (error) throw error
+
+      // Group theo NV: sum tour và hoa_hong riêng
+      const mapTour    = {}, mapHoaHong = {}
+      ;(thuNhapRows || []).forEach(r => {
+        if (r.loai === 'tour')     mapTour[r.nhan_vien_id]    = (mapTour[r.nhan_vien_id]    || 0) + (r.so_tien || 0)
+        if (r.loai === 'hoa_hong') mapHoaHong[r.nhan_vien_id] = (mapHoaHong[r.nhan_vien_id] || 0) + (r.so_tien || 0)
+      })
+
+      // Upsert bang_luong cho từng KTV (không bao gồm Lễ Tân)
+      const ktvList = nvList.filter(nv => nv.vi_tri === 'ktv')
+      let updated = 0
+
+      for (const nv of ktvList) {
+        const tienTourMoi    = mapTour[nv.id]    || 0
+        const hoaHongDVMoi   = mapHoaHong[nv.id] || 0
+        const ld = luongData[nv.id]
+        const tongLC = ld
+          ? Math.max(0, ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - (ld.truUngLuong || 0))
+          : 0
+        const tongLinh = tongLC + tienTourMoi + hoaHongDVMoi + (ld?.thuongDatDoanhSo || 0)
+
+        const payload = {
+          nhan_vien_id: nv.id, thang, nam,
+          tien_tour:    tienTourMoi,
+          hoa_hong_dv:  hoaHongDVMoi,
+          tong_linh:    tongLinh,
+        }
+
+        if (ld?.bangLuongId) {
+          await supabase.from('bang_luong').update(payload).eq('id', ld.bangLuongId)
+        } else {
+          await supabase.from('bang_luong').insert({ ...payload, hoa_hong_the: 0, trang_thai_lkd: 'da_tinh' })
+        }
+        updated++
+      }
+
+      showToast(`✓ Đã đồng bộ ${updated} KTV từ HSMS POS — Tháng ${thang}/${nam}`)
+      await fetchAll()
+    } catch (e) { showToast('Lỗi sync POS: ' + e.message, 'error') }
+    finally { setSyncingPOS(false) }
+  }
+
   // ── Tính Lễ Tân ──
   const tinhLeTan = () => {
     const tongDT = leTanInput.tongDT || 0
@@ -534,13 +592,21 @@ export default function TabBangLuong() {
         return null
       })()}
 
-      {/* Import POS button (Kỳ 2 only) */}
+      {/* Đồng bộ Kỳ 2 — HSMS POS (primary) + Excel MySpa (fallback) */}
       {ky === 2 && (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Nút chính: Đồng Bộ Từ HSMS POS */}
+          <button onClick={handleSyncTuHSMS} disabled={syncingPOS}
+            style={{ width: '100%', padding: '14px', borderRadius: LUX.radius, border: 'none', background: syncingPOS ? LUX.line : 'linear-gradient(135deg,#2D7A4F,#1a5c38)', color: '#fff', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, cursor: syncingPOS ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'opacity 0.2s' }}>
+            <span style={{ fontSize: 18 }}>🔄</span>
+            {syncingPOS ? 'Đang đồng bộ...' : `Đồng Bộ KTV Từ HSMS POS — T${thang}/${nam}`}
+          </button>
+
+          {/* Fallback: Import Excel MySpa (thu gọn) */}
           {!showImport ? (
-            <button onClick={() => setShowImport(true)}
-              style={{ width: '100%', padding: '12px', borderRadius: LUX.radius, border: `1px dashed ${LUX.champagne}`, background: '#fdf3e0', color: LUX.taupe, fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <span style={{ fontSize: 16 }}>📎</span> Import Excel POS (myspa.vn)
+            <button onClick={() => setShowImport(s => !s)}
+              style={{ width: '100%', padding: '9px', borderRadius: LUX.radius, border: `1px dashed ${LUX.champagne}`, background: 'transparent', color: LUX.ink3, fontFamily: LUX.fontSans, fontWeight: 600, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14 }}>📎</span> Import Excel từ MySpa.vn (dự phòng)
             </button>
           ) : (
             <BangLuongImportPOS
@@ -548,7 +614,6 @@ export default function TabBangLuong() {
               onImported={(ltDS) => {
                 setShowImport(false)
                 setLeTanDS(ltDS)
-                // Auto-fill DS sau giảm từ Excel
                 const dsKD = Object.entries(ltDS || {}).find(([ten]) => ten.includes('Khánh Duy'))?.[1] || 0
                 const dsNP = Object.entries(ltDS || {}).find(([ten]) => ten.includes('Ngọc Phương'))?.[1] || 0
                 setLeTanInput(s => ({ ...s, dsKD, dsNP }))
@@ -842,7 +907,7 @@ export default function TabBangLuong() {
                           ) : (
                             <>
                               <MoneyInput label="Lương Kinh Doanh (công thức)" value={editState.tienTour} onChange={v => setEditState(s => ({ ...s, tienTour: v }))} color="#6a4a8a" />
-                              <MoneyInput label="Hoa Hồng (từ Excel POS)" value={editState.hoaHongDV} onChange={v => setEditState(s => ({ ...s, hoaHongDV: v }))} color="#1A5276" />
+                              <MoneyInput label="Hoa Hồng (SP + Thẻ Mới từ POS)" value={editState.hoaHongDV} onChange={v => setEditState(s => ({ ...s, hoaHongDV: v }))} color="#1A5276" />
                               <MoneyInput label="Thưởng Đạt Doanh Số" value={editState.thuongDS || 0} onChange={v => setEditState(s => ({ ...s, thuongDS: v }))} color="#166534" />
                             </>
                           )}
@@ -867,7 +932,7 @@ export default function TabBangLuong() {
                       <>
                         <BLSection title="Dữ Liệu Kinh Doanh — KTV">
                           <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: LUX.ink3, marginBottom: '12px', background: LUX.bg, borderRadius: '10px', padding: '8px 12px', lineHeight: 1.6 }}>
-                            Dữ liệu từ myspa.vn, import qua Excel hoặc nhập tay
+                            Dữ liệu tự động từ HSMS POS (nút Đồng Bộ) hoặc chỉnh tay
                           </div>
                           {isChot ? (
                             <div style={{ textAlign: 'center', padding: '12px', fontFamily: LUX.fontSans, color: LUX.ink3, fontSize: '13px', background: LUX.bg, borderRadius: LUX.radiusSm }}>
@@ -875,8 +940,8 @@ export default function TabBangLuong() {
                             </div>
                           ) : (
                             <>
-                              <MoneyInput label="Hoa hồng (từ Excel POS)" value={editState.hoaHongDV} onChange={v => setEditState(s => ({ ...s, hoaHongDV: v }))} color="#1A5276" />
-                              <MoneyInput label="Tiền tour" value={editState.tienTour} onChange={v => setEditState(s => ({ ...s, tienTour: v }))} color="#1A5276" />
+                              <MoneyInput label="Hoa Hồng (SP + Thẻ Mới)" value={editState.hoaHongDV} onChange={v => setEditState(s => ({ ...s, hoaHongDV: v }))} color="#1A5276" />
+                              <MoneyInput label="Tiền Tour" value={editState.tienTour} onChange={v => setEditState(s => ({ ...s, tienTour: v }))} color="#1A5276" />
                               <MoneyInput label="Thưởng Đạt Doanh Số" value={editState.thuongDS || 0} onChange={v => setEditState(s => ({ ...s, thuongDS: v }))} color="#166534" />
                             </>
                           )}
