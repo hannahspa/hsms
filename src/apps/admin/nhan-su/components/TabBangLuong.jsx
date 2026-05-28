@@ -3,7 +3,6 @@ import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { formatCurrency, getNowVN } from '../../../../lib/utils'
 import { tinhLuong as calcLuong } from '../../../../lib/luong'
-import BangLuongImportPOS from './BangLuongImportPOS'
 import ConfirmDialog from '../../../../components/shared/ConfirmDialog'
 
 const DON_GIA_TANG_CA = 25000
@@ -78,11 +77,8 @@ export default function TabBangLuong() {
   const [selected,  setSelected]  = useState(null)
   const [editState, setEditState] = useState({})
   const [saving,    setSaving]    = useState(false)
-  const [showImport,  setShowImport]  = useState(false)
-  const [syncingPOS,  setSyncingPOS]  = useState(false)
-  const [leTanDS,     setLeTanDS]     = useState(null) // { 'Khánh Duy': ds, 'Ngọc Phương': ds }
   const [leTanInput,  setLeTanInput]  = useState({ tongDT: 0, dtMyPham: 0, dsKD: 0, dsNP: 0 })
-  const [calcLeTan,   setCalcLeTan]   = useState(null) // preview result
+  const [calcLeTan,   setCalcLeTan]   = useState(null) // preview result Lễ Tân
   const [toast,       setToast]       = useState(null)
   const [confirm,     setConfirm]     = useState(null)
 
@@ -101,7 +97,7 @@ export default function TabBangLuong() {
       const startDate = `${nam}-${String(thang).padStart(2,'0')}-01`
       const endDate   = `${nam}-${String(thang).padStart(2,'0')}-${String(soNgay).padStart(2,'0')}`
 
-      const [resNv, resChamCong, resOff, resBangLuong, resQuyOff] = await Promise.all([
+      const [resNv, resChamCong, resOff, resBangLuong, resQuyOff, resThuNhap] = await Promise.all([
         supabase.from('nhan_vien')
           .select('id, ho_ten, vi_tri, luong_cung, avatar_url, trang_thai, gioi_han_off_thang, ky_quy_trang_thai, ky_quy_so_thang')
           .eq('trang_thai', 'dang_lam').order('vi_tri').order('ho_ten'),
@@ -114,6 +110,11 @@ export default function TabBangLuong() {
         supabase.from('bang_luong').select('*').eq('thang', thang).eq('nam', nam),
         supabase.from('quy_ngay_off')
           .select('nhan_vien_id, nam, so_ngay_tich, so_ngay_da_dung, so_dung_thang_nay').eq('nam', nam),
+        // ── Real-time từ HSMS POS ──
+        supabase.from('nhan_vien_thu_nhap')
+          .select('nhan_vien_id, loai, so_tien')
+          .gte('ngay', startDate).lte('ngay', endDate)
+          .eq('is_test', false),
       ])
 
       const nvData = resNv.data || []
@@ -123,6 +124,14 @@ export default function TabBangLuong() {
       const bangLuongMap = {}; (resBangLuong.data || []).forEach(r => { bangLuongMap[r.nhan_vien_id] = r })
       const quyOffMap    = {}; (resQuyOff.data || []).forEach(r => { quyOffMap[r.nhan_vien_id] = r })
 
+      // ── Tổng hợp thu nhập real-time từ HSMS POS ──
+      const posDataByNv = {}
+      ;(resThuNhap.data || []).forEach(r => {
+        if (!posDataByNv[r.nhan_vien_id]) posDataByNv[r.nhan_vien_id] = { tour: 0, hoaHong: 0 }
+        if (r.loai === 'tour')     posDataByNv[r.nhan_vien_id].tour    += r.so_tien || 0
+        if (r.loai === 'hoa_hong') posDataByNv[r.nhan_vien_id].hoaHong += r.so_tien || 0
+      })
+
       // For current month: cap at today's date for real-time data
       const nowRef = getNowVN()
       const isCurrentMonth = thang === nowRef.getMonth() + 1 && nam === nowRef.getFullYear()
@@ -130,22 +139,34 @@ export default function TabBangLuong() {
 
       const result = {}
       nvData.forEach(nv => {
-        const bl = bangLuongMap[nv.id]
+        const bl  = bangLuongMap[nv.id]
         const quy = quyOffMap[nv.id]
-        result[nv.id] = calcLuong(nv, ccByNv[nv.id] || [], offByNv[nv.id] || [], bl, nam, thang, {
+        const pos = posDataByNv[nv.id] || { tour: 0, hoaHong: 0 }
+
+        // Kỳ 2 đã chốt → dùng snapshot trong bang_luong, chưa chốt → real-time POS
+        const isLKDChot = ['da_chot', 'da_phat_luong'].includes(bl?.trang_thai_lkd || '')
+        const tienTourEff  = isLKDChot ? (bl?.tien_tour   || 0) : pos.tour
+        const hoaHongDVEff = isLKDChot ? (bl?.hoa_hong_dv || 0) : pos.hoaHong
+
+        // Truyền POS data vào calcLuong qua bangLuongRow (override tien_tour, hoa_hong_dv)
+        const blForCalc = bl ? { ...bl, tien_tour: tienTourEff, hoa_hong_dv: hoaHongDVEff }
+                             : { tien_tour: tienTourEff, hoa_hong_dv: hoaHongDVEff }
+
+        result[nv.id] = calcLuong(nv, ccByNv[nv.id] || [], offByNv[nv.id] || [], blForCalc, nam, thang, {
           so_da_tich_luy: quy?.so_ngay_tich || 0,
           so_da_dung: quy?.so_ngay_da_dung || 0,
           so_dung_thang_nay: quy?.so_dung_thang_nay || 0,
         }, todayRef)
-        result[nv.id].kyQuyTrangThai = nv.ky_quy_trang_thai || 'hoan_tat'
-        result[nv.id].trangThaiLC  = bl?.trang_thai_lc || bl?.trang_thai || 'chua_tinh'
-        result[nv.id].trangThaiLKD = bl?.trang_thai_lkd || 'chua_tinh'
-        result[nv.id].bangLuongId  = bl?.id || null
-        // Store raw KD values from DB for edit state
-        result[nv.id].hoaHongDV  = bl?.hoa_hong_dv || 0
-        result[nv.id].tienTour   = bl?.tien_tour || 0
-        result[nv.id].thuongDatDoanhSo = bl?.hoa_hong_the || 0  // Thưởng Đạt Doanh Số
-        result[nv.id].truUngLuong = bl?.tru_ung_luong || 0
+
+        result[nv.id].kyQuyTrangThai   = nv.ky_quy_trang_thai || 'hoan_tat'
+        result[nv.id].trangThaiLC      = bl?.trang_thai_lc || bl?.trang_thai || 'chua_tinh'
+        result[nv.id].trangThaiLKD     = bl?.trang_thai_lkd || 'chua_tinh'
+        result[nv.id].bangLuongId      = bl?.id || null
+        // KD values — real-time POS (hoặc snapshot nếu đã chốt)
+        result[nv.id].hoaHongDV        = hoaHongDVEff
+        result[nv.id].tienTour         = tienTourEff
+        result[nv.id].thuongDatDoanhSo = bl?.hoa_hong_the || 0
+        result[nv.id].truUngLuong      = bl?.tru_ung_luong || 0
       })
 
       setNvList(nvData)
@@ -318,63 +339,6 @@ export default function TabBangLuong() {
     })
   }
 
-  // ── Đồng Bộ Kỳ 2 Từ HSMS POS ──
-  const handleSyncTuHSMS = async () => {
-    setSyncingPOS(true)
-    try {
-      const soNgay    = new Date(nam, thang, 0).getDate()
-      const startDate = `${nam}-${String(thang).padStart(2,'0')}-01`
-      const endDate   = `${nam}-${String(thang).padStart(2,'0')}-${String(soNgay).padStart(2,'0')}`
-
-      // Fetch thu nhập KTV tháng này từ HSMS POS
-      const { data: thuNhapRows, error } = await supabase
-        .from('nhan_vien_thu_nhap')
-        .select('nhan_vien_id, loai, so_tien')
-        .gte('ngay', startDate)
-        .lte('ngay', endDate)
-      if (error) throw error
-
-      // Group theo NV: sum tour và hoa_hong riêng
-      const mapTour    = {}, mapHoaHong = {}
-      ;(thuNhapRows || []).forEach(r => {
-        if (r.loai === 'tour')     mapTour[r.nhan_vien_id]    = (mapTour[r.nhan_vien_id]    || 0) + (r.so_tien || 0)
-        if (r.loai === 'hoa_hong') mapHoaHong[r.nhan_vien_id] = (mapHoaHong[r.nhan_vien_id] || 0) + (r.so_tien || 0)
-      })
-
-      // Upsert bang_luong cho từng KTV (không bao gồm Lễ Tân)
-      const ktvList = nvList.filter(nv => nv.vi_tri === 'ktv')
-      let updated = 0
-
-      for (const nv of ktvList) {
-        const tienTourMoi    = mapTour[nv.id]    || 0
-        const hoaHongDVMoi   = mapHoaHong[nv.id] || 0
-        const ld = luongData[nv.id]
-        const tongLC = ld
-          ? Math.max(0, ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - (ld.truUngLuong || 0))
-          : 0
-        const tongLinh = tongLC + tienTourMoi + hoaHongDVMoi + (ld?.thuongDatDoanhSo || 0)
-
-        const payload = {
-          nhan_vien_id: nv.id, thang, nam,
-          tien_tour:    tienTourMoi,
-          hoa_hong_dv:  hoaHongDVMoi,
-          tong_linh:    tongLinh,
-        }
-
-        if (ld?.bangLuongId) {
-          await supabase.from('bang_luong').update(payload).eq('id', ld.bangLuongId)
-        } else {
-          await supabase.from('bang_luong').insert({ ...payload, hoa_hong_the: 0, trang_thai_lkd: 'da_tinh' })
-        }
-        updated++
-      }
-
-      showToast(`✓ Đã đồng bộ ${updated} KTV từ HSMS POS — Tháng ${thang}/${nam}`)
-      await fetchAll()
-    } catch (e) { showToast('Lỗi sync POS: ' + e.message, 'error') }
-    finally { setSyncingPOS(false) }
-  }
-
   // ── Tính Lễ Tân ──
   const tinhLeTan = () => {
     const tongDT = leTanInput.tongDT || 0
@@ -395,27 +359,25 @@ export default function TabBangLuong() {
   }
 
   const handleSaveLeTan = async () => {
-    if (!calcLeTan || !leTanDS) return
+    if (!calcLeTan) return
     setSaving(true)
     try {
-      const leTanNames = Object.keys(leTanDS)
-      // Find NV IDs for Lễ Tân
-      const leTanNVs = nvList.filter(nv => nv.vi_tri === 'le_tan' && leTanNames.includes(nv.ho_ten))
+      // Áp dụng cho tất cả Lễ Tân trong danh sách
+      const leTanNVs = nvList.filter(nv => nv.vi_tri === 'le_tan')
 
       for (const nv of leTanNVs) {
         const ld = luongData[nv.id]
-        // Lễ Tân: Hoa hồng từ Excel + Lương Kinh Doanh (công thức) + Thưởng
-        const hhExcel = ld?.hoaHongDV || 0
         const thuongDS = ld?.thuongDatDoanhSo || 0
-        const tongKinhDoanh = hhExcel + calcLeTan.moiNguoi + thuongDS
+        // tien_tour = lương KD theo công thức doanh số
+        // hoa_hong_dv = hoa hồng bán SP (từ POS real-time, đã có trong ld.hoaHongDV)
+        const tongKinhDoanh = (ld?.hoaHongDV || 0) + calcLeTan.moiNguoi + thuongDS
         const tongLC = ld ? (ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - (ld.truUngLuong || 0)) : 0
         const tongLinh = tongLC + tongKinhDoanh
 
         const payload = {
           nhan_vien_id: nv.id, thang, nam,
-          hoa_hong_dv: hhExcel,              // Hoa hồng từ Excel
-          hoa_hong_the: thuongDS,             // Thưởng Đạt Doanh Số
-          tien_tour: calcLeTan.moiNguoi,      // Lương Kinh Doanh (công thức)
+          hoa_hong_the: thuongDS,
+          tien_tour: calcLeTan.moiNguoi,  // Lương KD (công thức DS)
           tong_linh: tongLinh,
         }
 
@@ -429,8 +391,7 @@ export default function TabBangLuong() {
         }
       }
 
-      showToast(`Đã tính Lễ Tân: ${formatCurrency(calcLeTan.moiNguoi)}/người`)
-      setLeTanDS(null)
+      showToast(`Đã lưu Lương KD Lễ Tân: ${formatCurrency(calcLeTan.moiNguoi)}/người`)
       setCalcLeTan(null)
       await fetchAll()
     } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
@@ -592,35 +553,14 @@ export default function TabBangLuong() {
         return null
       })()}
 
-      {/* Đồng bộ Kỳ 2 — HSMS POS (primary) + Excel MySpa (fallback) */}
+      {/* Kỳ 2 — badge thông tin real-time */}
       {ky === 2 && (
-        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {/* Nút chính: Đồng Bộ Từ HSMS POS */}
-          <button onClick={handleSyncTuHSMS} disabled={syncingPOS}
-            style={{ width: '100%', padding: '14px', borderRadius: LUX.radius, border: 'none', background: syncingPOS ? LUX.line : 'linear-gradient(135deg,#2D7A4F,#1a5c38)', color: '#fff', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, cursor: syncingPOS ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'opacity 0.2s' }}>
-            <span style={{ fontSize: 18 }}>🔄</span>
-            {syncingPOS ? 'Đang đồng bộ...' : `Đồng Bộ KTV Từ HSMS POS — T${thang}/${nam}`}
-          </button>
-
-          {/* Fallback: Import Excel MySpa (thu gọn) */}
-          {!showImport ? (
-            <button onClick={() => setShowImport(s => !s)}
-              style={{ width: '100%', padding: '9px', borderRadius: LUX.radius, border: `1px dashed ${LUX.champagne}`, background: 'transparent', color: LUX.ink3, fontFamily: LUX.fontSans, fontWeight: 600, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14 }}>📎</span> Import Excel từ MySpa.vn (dự phòng)
-            </button>
-          ) : (
-            <BangLuongImportPOS
-              thang={thang} nam={nam} nvList={nvList}
-              onImported={(ltDS) => {
-                setShowImport(false)
-                setLeTanDS(ltDS)
-                const dsKD = Object.entries(ltDS || {}).find(([ten]) => ten.includes('Khánh Duy'))?.[1] || 0
-                const dsNP = Object.entries(ltDS || {}).find(([ten]) => ten.includes('Ngọc Phương'))?.[1] || 0
-                setLeTanInput(s => ({ ...s, dsKD, dsNP }))
-                fetchAll()
-              }}
-            />
-          )}
+        <div style={{ marginBottom: 16, background: '#e8f5e9', borderRadius: LUX.radiusSm, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #a5d6a7' }}>
+          <span style={{ fontSize: 16 }}>🔄</span>
+          <div style={{ fontFamily: LUX.fontSans, fontSize: 12, color: '#1b5e20', fontWeight: 600 }}>
+            Lương Kinh Doanh cập nhật tự động từ HSMS POS
+            <span style={{ fontWeight: 400, marginLeft: 6, color: '#388e3c' }}>— real-time, không cần nhập tay</span>
+          </div>
         </div>
       )}
 
@@ -658,7 +598,7 @@ export default function TabBangLuong() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
             <div>
               <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 600, color: '#1A5276', marginBottom: 4, textTransform: 'uppercase' }}>
-                DS sau giảm Khánh Duy {leTanDS?.['Đỗ Thị Khánh Duy'] ? '(từ Excel)' : ''}
+                DS sau giảm Khánh Duy
               </div>
               <input type="text" placeholder="0"
                 value={leTanInput.dsKD === 0 ? '' : new Intl.NumberFormat('vi-VN').format(leTanInput.dsKD)}
@@ -667,7 +607,7 @@ export default function TabBangLuong() {
             </div>
             <div>
               <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 600, color: '#1A5276', marginBottom: 4, textTransform: 'uppercase' }}>
-                DS sau giảm Ngọc Phương {leTanDS?.['Hồ Ngọc Phương'] ? '(từ Excel)' : ''}
+                DS sau giảm Ngọc Phương
               </div>
               <input type="text" placeholder="0"
                 value={leTanInput.dsNP === 0 ? '' : new Intl.NumberFormat('vi-VN').format(leTanInput.dsNP)}
@@ -932,7 +872,7 @@ export default function TabBangLuong() {
                       <>
                         <BLSection title="Dữ Liệu Kinh Doanh — KTV">
                           <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: LUX.ink3, marginBottom: '12px', background: LUX.bg, borderRadius: '10px', padding: '8px 12px', lineHeight: 1.6 }}>
-                            Dữ liệu tự động từ HSMS POS (nút Đồng Bộ) hoặc chỉnh tay
+                            ⚡ Tự động từ HSMS POS — có thể điều chỉnh thủ công nếu cần
                           </div>
                           {isChot ? (
                             <div style={{ textAlign: 'center', padding: '12px', fontFamily: LUX.fontSans, color: LUX.ink3, fontSize: '13px', background: LUX.bg, borderRadius: LUX.radiusSm }}>
