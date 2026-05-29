@@ -16,7 +16,9 @@ const backArrow = (
 )
 
 const LOAI_CONFIG = {
-  tour:       { label: 'Tiền Tour',    icon: '✈️', color: '#1A5276', bg: '#D6EAF8' },
+  tour:     { label: 'Tiền Tour',    icon: '✈️', color: '#1A5276', bg: '#D6EAF8' },
+  hoa_hong: { label: 'Hoa Hồng DV', icon: '💆', color: '#145A32', bg: '#D5F5E3' },
+  // Legacy key (không còn data mới nhưng giữ để hiển thị data cũ nếu có)
   commission: { label: 'Hoa Hồng DV', icon: '💆', color: '#145A32', bg: '#D5F5E3' },
 }
 

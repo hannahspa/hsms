@@ -80,8 +80,9 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
 
   // ═══════════════════════════════════════════
   // PASS 1: Collect all OFF records sorted by date
+  // Nguồn duy nhất: cham_cong thực tế (loai != 'di_lam')
+  // dang_ky_off chỉ là lịch điều phối nhân sự — KHÔNG dùng để tính lương
   // ═══════════════════════════════════════════
-  const ccDateSet = new Set()
   const allOff = []
 
   // From cham_cong — OFF days (only up to todayRef if provided)
@@ -93,20 +94,8 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
       if (d > todayRef) return  // skip future days in current month
     }
     if (r.loai !== 'di_lam') {
-      ccDateSet.add(r.ngay)
       allOff.push({ ngay: day, loai: r.loai, source: 'cham_cong' })
     }
-  })
-
-  // From dang_ky_off — only up to todayRef, avoid duplicates
-  dangKyOffList.forEach(r => {
-    const day = String(r.ngay_off || r.ngay || '').substring(0, 10)
-    if (!day || ccDateSet.has(day)) return
-    if (todayRef) {
-      const d = parseInt(day.substring(8, 10))
-      if (d > todayRef) return  // skip future OFF registrations
-    }
-    allOff.push({ ngay: day, loai: r.loai_off || r.loai, source: 'dang_ky_off' })
   })
 
   allOff.sort((a, b) => a.ngay.localeCompare(b.ngay))

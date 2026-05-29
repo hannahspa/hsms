@@ -9,6 +9,7 @@ import AdminMarketingPage from './marketing/AdminMarketingPage'
 import AdminDashboardPage from './dashboard/AdminDashboardPage'
 import AdminLichSuNopTienMat from './bao-cao/AdminLichSuNopTienMat'
 import AdminTheLieuTrinhPage from './the-lieu-trinh/AdminTheLieuTrinhPage'
+import AdminBaoCaoTheLieuTrinh from './the-lieu-trinh/AdminBaoCaoTheLieuTrinh'
 import AdminDichVuPage from './dich-vu/AdminDichVuPage'
 import AdminCommissionPage from './commission/AdminCommissionPage'
 import AdminDoiSoatDataPage from './doi-soat-data/AdminDoiSoatDataPage'
@@ -89,7 +90,8 @@ export default function AdminApp() {
   if (path.startsWith('/admin/pos-doi-soat')) return <AdminPosReadinessPage />
   if (path.startsWith('/admin/doi-soat-data')) return <AdminDoiSoatDataPage />
   if (path.startsWith('/admin/lich-su-nop-tien-mat')) return <AdminLichSuNopTienMat />
-  if (path.startsWith('/admin/the-lieu-trinh'))      return <AdminTheLieuTrinhPage />
+  if (path.startsWith('/admin/the-lieu-trinh/bao-cao')) return <AdminBaoCaoTheLieuTrinh />
+  if (path.startsWith('/admin/the-lieu-trinh'))         return <AdminTheLieuTrinhPage />
   if (path.startsWith('/admin/dich-vu'))             return <AdminDichVuPage />
   if (path.startsWith('/admin/commission'))          return <AdminCommissionPage />
 

@@ -34,25 +34,42 @@ export default function CheckinLuong({ nhanVien, onBack }) {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(getDaysInMonth(year, month)).padStart(2, '0')}`
 
-    const [ccRes, offRes, blRes, quyRes] = await Promise.all([
+    const [ccRes, blRes, quyRes, thuNhapRes] = await Promise.all([
       supabase.from('cham_cong').select('ngay,loai,tang_ca_gio,he_so,gio_vao,gio_ra').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate),
-      supabase.from('dang_ky_off').select('ngay_off,loai_off').eq('nhan_vien_id', nhanVien.id).eq('trang_thai', 'duoc_duyet').gte('ngay_off', startDate).lte('ngay_off', endDate),
       supabase.from('bang_luong').select('*').eq('nhan_vien_id', nhanVien.id).eq('thang', month).eq('nam', year).maybeSingle(),
       supabase.from('quy_ngay_off').select('*').eq('nhan_vien_id', nhanVien.id).eq('nam', year).maybeSingle(),
+      // Real-time Kỳ 2 từ HSMS POS
+      supabase.from('nhan_vien_thu_nhap').select('loai,so_tien').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate).eq('is_test', false),
     ])
 
     const quy = quyRes.data
+    const bl  = blRes.data
+
+    // Tổng hợp thu nhập POS real-time
+    const posRows = thuNhapRes.data || []
+    const posTour    = posRows.filter(r => r.loai === 'tour').reduce((s, r) => s + (r.so_tien || 0), 0)
+    const posHoaHong = posRows.filter(r => r.loai === 'hoa_hong').reduce((s, r) => s + (r.so_tien || 0), 0)
+
+    // Nếu Kỳ 2 đã chốt → dùng snapshot bang_luong, chưa chốt → real-time POS
+    const isLKDChot = ['da_chot', 'da_phat_luong'].includes(bl?.trang_thai_lkd || '')
+    const tienTourEff  = isLKDChot ? (bl?.tien_tour   || 0) : posTour
+    const hoaHongDVEff = isLKDChot ? (bl?.hoa_hong_dv || 0) : posHoaHong
+
+    // Truyền POS data vào tinhLuong qua bangLuongRow
+    const blForCalc = bl
+      ? { ...bl, tien_tour: tienTourEff, hoa_hong_dv: hoaHongDVEff }
+      : { tien_tour: tienTourEff, hoa_hong_dv: hoaHongDVEff }
+
     // For current month: cap at today for real-time
     const nowRef = getNowVN()
     const isCurrent = month === nowRef.getMonth() + 1 && year === nowRef.getFullYear()
     const todayRef = isCurrent ? nowRef.getDate() : null
-    const calc = tinhLuong(nhanVien, ccRes.data || [], offRes.data || [], blRes.data, year, month, {
+    const calc = tinhLuong(nhanVien, ccRes.data || [], [], blForCalc, year, month, {
       so_da_tich_luy: quy?.so_ngay_tich || 0,
       so_da_dung: quy?.so_ngay_da_dung || 0,
       so_dung_thang_nay: quy?.so_dung_thang_nay || 0,
     }, todayRef)
 
-    const bl = blRes.data
     setData({
       calc,
       official: bl || null,
@@ -334,8 +351,8 @@ export default function CheckinLuong({ nhanVien, onBack }) {
                         { icon: '🎯', label: 'Thưởng Đạt Doanh Số', note: 'Admin nhập tay', value: showLKD.thuongDS, plus: true, hide: !showLKD.thuongDS },
                       ]
                     : [
-                        { icon: '💆', label: 'Hoa Hồng (từ Excel POS)', note: 'Import từ myspa.vn', value: showLKD.hoaHongDV, plus: true, hide: !showLKD.hoaHongDV },
-                        { icon: '✈️', label: 'Tiền Tour', note: 'Tour tháng', value: showLKD.tienTour, plus: true, hide: !showLKD.tienTour },
+                        { icon: '💆', label: 'Hoa Hồng DV', note: '⚡ Real-time từ HSMS POS', value: showLKD.hoaHongDV, plus: true, hide: !showLKD.hoaHongDV },
+                        { icon: '✈️', label: 'Tiền Tour', note: '⚡ Real-time từ HSMS POS', value: showLKD.tienTour, plus: true, hide: !showLKD.tienTour },
                         { icon: '🎯', label: 'Thưởng Đạt Doanh Số', note: 'Admin nhập tay', value: showLKD.thuongDS, plus: true, hide: !showLKD.thuongDS },
                       ]
                   return (
@@ -354,7 +371,7 @@ export default function CheckinLuong({ nhanVien, onBack }) {
                       ))}
                       {!showLKD.hoaHongDV && !showLKD.tienTour && !showLKD.thuongDS && (
                         <div style={{ padding: '18px 0', textAlign: 'center', color: LUX.ink3, fontSize: 12, fontStyle: 'italic' }}>
-                          Chưa có dữ liệu — Admin sẽ import từ POS myspa.vn
+                          Tháng này chưa có hoa hồng hoặc tiền tour được ghi nhận
                         </div>
                       )}
                       <div style={{ borderTop: `1.5px solid ${LUX.line}`, padding: '16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

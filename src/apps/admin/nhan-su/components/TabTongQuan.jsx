@@ -180,53 +180,84 @@ export default function TabTongQuan() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px', color: LUX.ink3, fontFamily: LUX.fontSans }}>Đang tải...</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {nvList.map(nv => {
-            const st  = getStatus(nv.id)
-            const cc  = ccMap[nv.id]
-            const off = offMap[nv.id]
-            const shortName = nv.ho_ten.trim().split(' ').slice(-2).join(' ')
-
-            return (
-              <div key={nv.id} style={{
-                background: LUX.surface, borderRadius: LUX.radiusSm,
-                padding: '12px 14px', border: `1px solid ${LUX.line}`,
-                boxShadow: LUX.shadowSm, display: 'flex', alignItems: 'center', gap: '12px',
-              }}>
-                {/* Avatar */}
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', overflow: 'hidden', border: `2px solid ${st.dot}40` }}>
-                    {nv.avatar_url
-                      ? <img src={nv.avatar_url} alt={nv.ho_ten} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <div style={{ width: '100%', height: '100%', background: getAvatarColor(nv.ho_ten), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', fontWeight: '700', color: 'white', fontFamily: LUX.fontSans }}>{getInitials(nv.ho_ten)}</div>
-                    }
-                  </div>
-                  <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '11px', height: '11px', borderRadius: '50%', background: st.dot, border: '2px solid white' }} />
-                </div>
-
-                {/* Tên + vị trí */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: LUX.fontSans, fontWeight: 600, fontSize: '13px', color: LUX.ink }}>{shortName}</div>
-                  <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: LUX.ink3, marginTop: '1px' }}>{VI_TRI_LABEL[nv.vi_tri] || nv.vi_tri}</div>
-                </div>
-
-                {/* Trạng thái + giờ */}
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ background: st.bg, color: st.color, padding: '3px 9px', borderRadius: '8px', fontSize: '11px', fontWeight: 600, marginBottom: '3px', display: 'inline-block', fontFamily: LUX.fontSans }}>
-                    {st.label}
-                  </div>
-                  <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: LUX.ink3 }}>
-                    {cc?.gio_vao && <span>{fmtTime(cc.gio_vao)}{cc.gio_ra ? ` → ${fmtTime(cc.gio_ra)}` : ''}</span>}
-                    {off?.trang_thai === 'duoc_duyet' && !cc && <span>Đã duyệt</span>}
-                    {off?.trang_thai === 'cho_duyet'  && !cc && <span style={{ color: LUX.champagne }}>⏳ Chờ</span>}
-                  </div>
-                  {cc?.tang_ca_gio > 0 && (
-                    <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#6a4a8a', fontWeight: 600 }}>+{cc.tang_ca_gio}h TC</div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+        <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {[
+                  { label: 'Nhân Viên' },
+                  { label: 'Vị Trí', w: 80 },
+                  { label: 'Trạng Thái', w: 130 },
+                  { label: 'Giờ Vào', w: 90, align: 'center' },
+                  { label: 'Giờ Ra', w: 90, align: 'center' },
+                  { label: 'Tăng Ca', w: 90, align: 'center' },
+                  { label: 'Ghi Chú', w: 140 },
+                ].map(h => (
+                  <th key={h.label} style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: LUX.fontSans, textAlign: h.align || 'left', width: h.w, whiteSpace: 'nowrap', background: '#F7F4F0', borderBottom: `2px solid ${LUX.line}` }}>
+                    {h.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {nvList.map((nv, i) => {
+                const st  = getStatus(nv.id)
+                const cc  = ccMap[nv.id]
+                const off = offMap[nv.id]
+                const shortName = nv.ho_ten.trim().split(' ').slice(-2).join(' ')
+                return (
+                  <tr key={nv.id} style={{ borderTop: i > 0 ? `1px solid ${LUX.line}` : 'none', background: i % 2 === 0 ? 'white' : LUX.bg }}>
+                    {/* Nhân Viên */}
+                    <td style={{ padding: '11px 14px', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: 10, overflow: 'hidden', border: `2px solid ${st.dot}40` }}>
+                            {nv.avatar_url
+                              ? <img src={nv.avatar_url} alt={nv.ho_ten} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : <div style={{ width: '100%', height: '100%', background: getAvatarColor(nv.ho_ten), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'white', fontFamily: LUX.fontSans }}>{getInitials(nv.ho_ten)}</div>
+                            }
+                          </div>
+                          <div style={{ position: 'absolute', bottom: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: st.dot, border: '2px solid white' }} />
+                        </div>
+                        <div style={{ fontFamily: LUX.fontSans, fontWeight: 600, fontSize: 13, color: LUX.ink }}>{shortName}</div>
+                      </div>
+                    </td>
+                    {/* Vị Trí */}
+                    <td style={{ padding: '11px 14px', fontSize: 12, color: LUX.ink3, fontFamily: LUX.fontSans, verticalAlign: 'middle' }}>
+                      {VI_TRI_LABEL[nv.vi_tri] || nv.vi_tri}
+                    </td>
+                    {/* Trạng Thái */}
+                    <td style={{ padding: '11px 14px', verticalAlign: 'middle' }}>
+                      <span style={{ background: st.bg, color: st.color, padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700, fontFamily: LUX.fontSans }}>
+                        {st.label}
+                      </span>
+                    </td>
+                    {/* Giờ Vào */}
+                    <td style={{ padding: '11px 14px', textAlign: 'center', fontFamily: LUX.fontMono, fontSize: 13, color: LUX.ink2, verticalAlign: 'middle' }}>
+                      {cc?.gio_vao ? fmtTime(cc.gio_vao) : <span style={{ color: LUX.ink3 }}>—</span>}
+                    </td>
+                    {/* Giờ Ra */}
+                    <td style={{ padding: '11px 14px', textAlign: 'center', fontFamily: LUX.fontMono, fontSize: 13, color: LUX.ink2, verticalAlign: 'middle' }}>
+                      {cc?.gio_ra ? fmtTime(cc.gio_ra) : <span style={{ color: LUX.ink3 }}>—</span>}
+                    </td>
+                    {/* Tăng Ca */}
+                    <td style={{ padding: '11px 14px', textAlign: 'center', verticalAlign: 'middle' }}>
+                      {cc?.tang_ca_gio > 0
+                        ? <span style={{ fontFamily: LUX.fontMono, fontSize: 12, fontWeight: 700, color: '#6a4a8a', background: '#ede9f8', padding: '3px 8px', borderRadius: 6 }}>+{cc.tang_ca_gio}h</span>
+                        : <span style={{ color: LUX.ink3, fontSize: 12 }}>—</span>
+                      }
+                    </td>
+                    {/* Ghi Chú */}
+                    <td style={{ padding: '11px 14px', fontSize: 11, color: LUX.ink3, fontFamily: LUX.fontSans, verticalAlign: 'middle' }}>
+                      {off?.trang_thai === 'duoc_duyet' && !cc && <span style={{ color: LUX.taupe }}>✓ OFF đã duyệt</span>}
+                      {off?.trang_thai === 'cho_duyet'  && !cc && <span style={{ color: LUX.champagne }}>⏳ Chờ duyệt OFF</span>}
+                      {!off && !cc && selectedDate === today && <span style={{ color: LUX.ink3 }}>Chưa check-in</span>}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

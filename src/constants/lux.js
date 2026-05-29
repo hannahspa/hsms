@@ -92,4 +92,11 @@ export const LUX_MENU = [
     accent: '#c8a675', iconBg: '#ede0c9', iconFg: '#8a6a35',
     icon: 'wallet',
   },
+  {
+    key: 'holiday',
+    title: 'Quỹ Ngày Lễ',
+    desc: 'Tích lũy ngày OFF cho NV đi làm ngày lễ',
+    accent: '#5a8a6a', iconBg: '#e0f0e8', iconFg: '#3a6a4a',
+    icon: 'calendar',
+  },
 ]

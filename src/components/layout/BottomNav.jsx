@@ -11,7 +11,7 @@ const TABS_ADMIN = [
 
 const TABS_LETHAN = [
   { id: 'doi-soat',  icon: '📋', label: 'Đối Soát'  },
-  { id: null,        icon: null,  label: ''          },
+  { id: 'lich-hen',  icon: '📅', label: 'Lịch Hẹn'  },
   { id: '__fab__',   icon: null,  label: ''          },
   { id: 'nhap-lieu', icon: '📝', label: 'Nhập Liệu' },
   { id: 'cai-dat',   icon: '⚙️', label: 'Cài Đặt'  },

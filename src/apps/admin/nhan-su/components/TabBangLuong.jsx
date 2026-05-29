@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { formatCurrency, getNowVN } from '../../../../lib/utils'
@@ -311,6 +312,73 @@ export default function TabBangLuong() {
     })
   }
 
+  // ── Tính & Lưu Hàng Loạt ──
+  const handleTinhHangLoat = () => {
+    const nvIds = Object.keys(luongData)
+    if (nvIds.length === 0) return
+    setConfirm({
+      title: `Tính Lương Hàng Loạt — Kỳ ${ky}`,
+      message: `Tự động tính và lưu lương Kỳ ${ky} cho ${nvIds.length} nhân viên?`,
+      note: 'Chỉ cập nhật trạng thái "Đã Tính" — chưa chốt, vẫn sửa được.',
+      confirmLabel: `🚀 Tính ${nvIds.length} Nhân Viên`,
+      onConfirm: async () => {
+        setConfirm(null)
+        setSaving(true)
+        let saved = 0; let errors = 0
+        try {
+          for (const nv of nvList) {
+            const ld = luongData[nv.id]
+            if (!ld) continue
+            // Skip nếu đã chốt hoặc đã phát
+            const kyTT = ky === 1 ? ld.trangThaiLC : ld.trangThaiLKD
+            if (['da_chot', 'da_phat_luong'].includes(kyTT)) continue
+
+            let payload
+            if (ky === 1) {
+              payload = {
+                nhan_vien_id: nv.id, thang, nam,
+                luong_co_ban: ld.luongCoBan,
+                tien_tang_ca: ld.tienTangCa,
+                tien_phat: ld.tienPhat,
+                tru_ung_luong: ld.truUngLuong || 0,
+                tru_ky_quy: ld.truKyQuy,
+                tong_linh: ld.tongLinh,
+                trang_thai_lc: 'da_tinh',
+              }
+            } else {
+              const tongKD = (ld.hoaHongDV || 0) + (ld.tienTour || 0) + (ld.thuongDatDoanhSo || 0)
+              const tongLC = ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - (ld.truUngLuong || 0)
+              payload = {
+                nhan_vien_id: nv.id, thang, nam,
+                hoa_hong_dv: ld.hoaHongDV || 0,
+                hoa_hong_the: ld.thuongDatDoanhSo || 0,
+                tien_tour: ld.tienTour || 0,
+                tong_linh: tongLC + tongKD,
+                trang_thai_lkd: 'da_tinh',
+              }
+            }
+
+            try {
+              if (ld.bangLuongId) {
+                const { error } = await supabase.from('bang_luong').update(payload).eq('id', ld.bangLuongId)
+                if (error) throw error
+              } else {
+                const { error } = await supabase.from('bang_luong').insert(payload)
+                if (error) throw error
+              }
+              saved++
+            } catch { errors++ }
+          }
+          showToast(errors > 0
+            ? `Đã tính ${saved} NV, ${errors} lỗi — kiểm tra lại`
+            : `✓ Đã tính lương Kỳ ${ky} cho ${saved} nhân viên`, errors > 0 ? 'error' : 'success')
+          await fetchAll()
+        } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
+        finally { setSaving(false) }
+      },
+    })
+  }
+
   const handleMoPhatLuong = () => {
     const nvIds = Object.keys(luongData)
     if (nvIds.length === 0) return
@@ -474,6 +542,20 @@ export default function TabBangLuong() {
           </button>
         ))}
       </div>
+
+      {/* Nút Tính Hàng Loạt */}
+      {(() => {
+        const nvIds = Object.keys(luongData)
+        const col = ky === 1 ? 'trangThaiLC' : 'trangThaiLKD'
+        const chuaTinh = nvIds.filter(id => !['da_tinh','da_chot','da_phat_luong'].includes(luongData[id]?.[col] || 'chua_tinh'))
+        if (chuaTinh.length === 0) return null
+        return (
+          <button onClick={handleTinhHangLoat} disabled={saving}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '13px 20px', marginBottom: 12, borderRadius: LUX.radius, border: `1.5px dashed ${LUX.champagne}`, background: '#fdf9f2', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, color: LUX.taupe, cursor: 'pointer', transition: 'all .2s' }}>
+            🚀 Tính Hàng Loạt Kỳ {ky} <span style={{ background: LUX.champagne, color: 'white', fontSize: 11, fontWeight: 900, borderRadius: 10, padding: '2px 8px' }}>{chuaTinh.length} NV chưa tính</span>
+          </button>
+        )
+      })()}
 
       {/* Tổng chi lương */}
       <div style={{ background: ky === 1 ? LUX.heroGrad : 'linear-gradient(135deg,#1A5276,#154360)', borderRadius: LUX.radius, padding: '20px 24px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -751,24 +833,20 @@ export default function TabBangLuong() {
       {/* ── Confirm Dialog ── */}
       <ConfirmDialog open={!!confirm} {...(confirm || {})} onCancel={() => setConfirm(null)} />
 
-      {/* ── Bottom sheet chi tiết ── */}
+      {/* ── Modal Desktop chi tiết ── */}
       {selected && (() => {
         const ld = luongData[selected.id]
         if (!ld) return null
         const isChot = ky === 1 ? ld.trangThaiLC === 'da_chot' : ld.trangThaiLKD === 'da_chot'
         const isLeTan = selected.vi_tri === 'le_tan'
 
-        return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 999, display: 'flex', alignItems: 'flex-end' }}
+        return createPortal(
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => setSelected(null)}>
-            <div style={{ background: LUX.bg, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: '92vh', overflowY: 'auto', paddingBottom: '40px' }}
+            <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '560px', maxWidth: '95vw', maxHeight: '88vh', overflowY: 'auto', boxShadow: LUX.shadowLg }}
               onClick={e => e.stopPropagation()}>
-              {/* Handle */}
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-                <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: LUX.line2 }} />
-              </div>
               {/* Header */}
-              <div style={{ background: ky === 1 ? LUX.heroGrad : 'linear-gradient(135deg,#1A5276,#154360)', margin: '12px 16px 0', borderRadius: LUX.radius, padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ background: ky === 1 ? LUX.heroGrad : 'linear-gradient(135deg,#1A5276,#154360)', borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '22px', color: 'white' }}>{selected.ho_ten}</div>
                   <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
@@ -778,7 +856,7 @@ export default function TabBangLuong() {
                 <TrangThaiBadge tt={ky === 1 ? ld.trangThaiLC : ld.trangThaiLKD} />
               </div>
 
-              <div style={{ padding: '16px' }}>
+              <div style={{ padding: '20px 24px' }}>
                 {ky === 1 ? (
                   <>
                     {/* KỲ 1 — Chấm công */}
@@ -970,7 +1048,7 @@ export default function TabBangLuong() {
               </div>
             </div>
           </div>
-        )
+        , document.body)
       })()}
     </div>
   )

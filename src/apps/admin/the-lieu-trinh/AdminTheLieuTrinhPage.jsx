@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../../../lib/supabase'
 import { formatCurrency, getNowVN, todayISO } from '../../../lib/utils'
 import I from '../../../components/shared/Icons'
+import { ModalCheckoutBuoi } from './TabBaoCaoTheLieuTrinh'
 
 const CARD_PAGE_SIZE = 25
 const CARD_FETCH_SIZE = 500
@@ -41,6 +42,31 @@ function sortCardsNewestFirst(a, b) {
 
 function getRemain(card) {
   return card.so_buoi_con_lai ?? Math.max(0, (card.so_buoi_tong || 0) - (card.so_buoi_da_dung || 0))
+}
+
+// Tất cả thẻ Hannah Spa đều có giới hạn số buổi
+// is_khong_gioi_han=true là do import MySpa nhầm → luôn dùng so_buoi_tong thực tế
+// Nếu so_buoi_tong=0 → data chưa cập nhật, hiển thị "?"
+function displayTongBuoi(card) {
+  const n = card.so_buoi_tong || 0
+  return n > 0 ? `${n} buổi` : '? buổi'
+}
+function displayConLai(card) {
+  const n = card.so_buoi_tong || 0
+  if (n === 0) return '?'   // chưa có dữ liệu
+  return String(getRemain(card))
+}
+function displaySuDung(card) {
+  const tong = card.so_buoi_tong || 0
+  const dung = card.so_buoi_da_dung || 0
+  if (tong === 0) return `${dung}/? buổi`
+  const pct = Math.min(100, Math.round((dung / tong) * 100))
+  return `${dung}/${tong} buổi · ${pct}%`
+}
+function displayPct(card) {
+  const tong = card.so_buoi_tong || 0
+  if (tong === 0) return 0
+  return Math.min(100, Math.round(((card.so_buoi_da_dung || 0) / tong) * 100))
 }
 
 function getStatusKey(card) {
@@ -645,12 +671,13 @@ export default function AdminTheLieuTrinhPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [cardPage, setCardPage] = useState(1)
-  const [tab] = useState(window.location.pathname.endsWith('/combo') ? 'combos' : 'cards')
+  const [tab, setTab] = useState(window.location.pathname.endsWith('/combo') ? 'combos' : 'cards')
   const [selected, setSelected] = useState(null)
   const [editingCombo, setEditingCombo] = useState(null)
   const [editingCard, setEditingCard] = useState(null)
   const [reviewAction, setReviewAction] = useState(null)
   const [comboError, setComboError] = useState('')
+  const [checkoutCard, setCheckoutCard] = useState(null)
 
   useEffect(() => {
     loadCards()
@@ -891,8 +918,7 @@ export default function AdminTheLieuTrinhPage() {
                   </thead>
                   <tbody>
                     {pagedCards.map(c => {
-                      const totalSessions = Math.max(1, c.so_buoi_tong || 1)
-                      const pct = c.is_khong_gioi_han ? 0 : Math.min(100, Math.round(((c.so_buoi_da_dung || 0) / totalSessions) * 100))
+                      const pct = displayPct(c)
                       const con = getRemain(c)
                       const almost = isAlmostDone(c)
                       const expired = isExpired(c)
@@ -910,7 +936,7 @@ export default function AdminTheLieuTrinhPage() {
                           <td>
                             <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 700 }}>{c.ten_dich_vu}</div>
                             <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 2 }}>
-                              {c.combo?.ten_combo || (c.is_khong_gioi_han ? 'Không giới hạn' : `${c.so_buoi_tong || 0} buổi`)}
+                              {c.combo?.ten_combo || displayTongBuoi(c)}
                             </div>
                           </td>
                           <td>
@@ -925,21 +951,21 @@ export default function AdminTheLieuTrinhPage() {
                           <td style={{ minWidth: 128 }}>
                             <div className="bar-h" style={{ height: 6, borderRadius: 3 }}>
                               <i style={{
-                                width: c.is_khong_gioi_han ? '100%' : `${pct}%`,
+                                width: `${pct}%`,
                                 borderRadius: 3,
                                 background: expired ? 'var(--ink3)' : almost ? '#e67e22' : 'var(--grad-gold)',
                               }} />
                             </div>
                             <div style={{ fontSize: 10, color: 'var(--ink3)', marginTop: 3 }}>
-                              {c.is_khong_gioi_han ? 'Không giới hạn' : `${c.so_buoi_da_dung || 0}/${c.so_buoi_tong || 0} buổi · ${pct}%`}
+                              {displaySuDung(c)}
                             </div>
                           </td>
                           <td className="amount" style={{ whiteSpace: 'nowrap', minWidth: 82 }}>
                             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
-                            <span style={{ fontFamily: 'var(--serif)', fontSize: 18, fontWeight: 800, color: expired ? 'var(--ink3)' : almost ? '#e67e22' : con > 0 ? 'var(--thu)' : 'var(--ink3)' }}>
-                              {c.is_khong_gioi_han ? '∞' : con}
+                            <span style={{ fontFamily: 'var(--serif)', fontSize: 18, fontWeight: 800, color: expired ? 'var(--ink3)' : almost ? '#e67e22' : (c.so_buoi_tong === 0 ? '#B8860B' : con > 0 ? 'var(--thu)' : 'var(--ink3)') }}>
+                              {displayConLai(c)}
                             </span>
-                            {!c.is_khong_gioi_han && <span style={{ fontSize: 10, color: 'var(--ink3)' }}>buổi</span>}
+                            <span style={{ fontSize: 10, color: 'var(--ink3)' }}>{c.so_buoi_tong ? 'buổi' : '—chưa cập nhật'}</span>
                             </span>
                           </td>
                           <td className="amount">
@@ -1032,7 +1058,7 @@ export default function AdminTheLieuTrinhPage() {
                           <td>
                             {services.length ? services.map(s => (
                               <div key={s.id} style={{ fontSize: 12, color: 'var(--ink2)', marginBottom: 3 }}>
-                                {s.ten_dich_vu} · {s.khong_gioi_han ? 'Không giới hạn' : `${s.so_lan || 0} lần`}
+                                {s.ten_dich_vu} · {s.so_lan > 0 ? `${s.so_lan} lần` : '? lần'}
                               </div>
                             )) : <span style={{ color: 'var(--ink3)' }}>Chưa gắn dịch vụ</span>}
                           </td>
@@ -1170,21 +1196,21 @@ export default function AdminTheLieuTrinhPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                     <span style={{ fontSize: 12, color: 'var(--ink3)', fontWeight: 900, textTransform: 'uppercase' }}>Tiến độ sử dụng</span>
                     <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--ink)' }}>
-                      {selected.is_khong_gioi_han ? 'Không giới hạn' : `${selected.so_buoi_da_dung || 0}/${selected.so_buoi_tong || 0} buổi`}
+                      {`${selected.so_buoi_da_dung || 0}/${selected.so_buoi_tong || '?'} buổi`}
                     </span>
                   </div>
                   <div className="bar-h" style={{ height: 10, borderRadius: 6 }}>
                     <i style={{
-                      width: selected.is_khong_gioi_han ? '100%' : `${Math.min(100, ((selected.so_buoi_da_dung || 0) / Math.max(1, selected.so_buoi_tong || 1)) * 100)}%`,
+                      width: `${displayPct(selected)}%`,
                       borderRadius: 6,
                       background: 'var(--grad-gold)',
                     }} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginTop: 14 }}>
                     {[
-                      ['Tổng buổi', selected.is_khong_gioi_han ? '∞' : selected.so_buoi_tong || 0],
-                      ['Đã dùng', selected.is_khong_gioi_han ? '∞' : selected.so_buoi_da_dung || 0],
-                      ['Còn lại', selected.is_khong_gioi_han ? '∞' : getRemain(selected)],
+                      ['Tổng buổi', selected.so_buoi_tong || '?'],
+                      ['Đã dùng',   selected.so_buoi_da_dung || 0],
+                      ['Còn lại',   displayConLai(selected)],
                     ].map(([label, value]) => (
                       <div key={label} style={{ background: 'var(--bg)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
                         <div style={{ fontSize: 11, color: 'var(--ink3)', fontWeight: 900, textTransform: 'uppercase' }}>{label}</div>
@@ -1255,6 +1281,13 @@ export default function AdminTheLieuTrinhPage() {
               <button className="btn ghost" onClick={() => window.open(`tel:${selected.khach_hang?.so_dien_thoai || ''}`)}>
                 <I.Phone style={{ width: 13, height: 13 }} /> Gọi nhắc lịch
               </button>
+              {getRemain(selected) > 0 && (
+                <button className="btn"
+                  style={{ background: '#eef5e8', border: '1px solid #a5c87a', color: '#3a6a2a' }}
+                  onClick={() => setCheckoutCard(selected)}>
+                  ✓ Dùng 1 Buổi
+                </button>
+              )}
               <button className="btn gold" onClick={() => setEditingCard(selected)}>
                 <I.Edit style={{ width: 13, height: 13 }} /> Sửa thông tin thẻ
               </button>
@@ -1285,6 +1318,18 @@ export default function AdminTheLieuTrinhPage() {
           card={editingCard}
           onClose={() => setEditingCard(null)}
           onSaved={mergeUpdatedCard}
+        />
+      ), document.body)}
+
+      {checkoutCard && createPortal((
+        <ModalCheckoutBuoi
+          card={checkoutCard}
+          onClose={() => setCheckoutCard(null)}
+          onDone={() => {
+            setCheckoutCard(null)
+            setSelected(null)
+            loadCards()
+          }}
         />
       ), document.body)}
     </div>

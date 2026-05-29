@@ -12,7 +12,9 @@ import PosApp from './apps/pos/PosApp'
 import AdminShell from './components/layout/AdminShell'
 
 // Các /admin/* paths mà Lễ Tân được phép truy cập (không yêu cầu admin)
+// LƯU Ý: /admin/the-lieu-trinh/bao-cao chỉ Admin — phải exclude trước khi check
 const LETAN_ALLOWED_ADMIN = ['/admin/crm', '/admin/the-lieu-trinh']
+const LETAN_BLOCKED_ADMIN = ['/admin/the-lieu-trinh/bao-cao'] // báo cáo chỉ Admin
 
 function RequireAuth({ children, requireAdmin }) {
   const { user, loading, logout } = useAuth()
@@ -37,7 +39,9 @@ function RequireAuth({ children, requireAdmin }) {
   }
 
   // Lễ Tân được phép vào một số /admin/* nhất định (CRM, Thẻ Liệu Trình)
-  const isLeTanAllowedAdminPath = LETAN_ALLOWED_ADMIN.some(p => path.startsWith(p))
+  // Nhưng KHÔNG được vào /admin/the-lieu-trinh/bao-cao (chỉ Admin)
+  const isLeTanBlocked = LETAN_BLOCKED_ADMIN.some(p => path.startsWith(p))
+  const isLeTanAllowedAdminPath = !isLeTanBlocked && LETAN_ALLOWED_ADMIN.some(p => path.startsWith(p))
 
   // Không phải admin cố vào /admin (trừ các path được cho phép riêng)
   if (requireAdmin && user.vai_tro !== 'admin' && !isLeTanAllowedAdminPath) {

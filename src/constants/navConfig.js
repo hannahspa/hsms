@@ -36,8 +36,9 @@ export const ADMIN_NAV = [
     { id: 'dv-danhmuc', label: 'Danh Mục Dịch Vụ', path: '/admin/dich-vu/danh-muc' },
   ]},
   { id: 'the-lieu-trinh', icon: '🎫', label: 'Thẻ Liệu Trình', children: [
-    { id: 'tlt-danhsach', label: 'Thẻ Liệu Trình', path: '/admin/the-lieu-trinh' },
-    { id: 'tlt-combo', label: 'Combo Liệu Trình', path: '/admin/the-lieu-trinh/combo' },
+    { id: 'tlt-danhsach', label: 'Danh Sách Thẻ',    path: '/admin/the-lieu-trinh' },
+    { id: 'tlt-combo',    label: 'Combo Liệu Trình',  path: '/admin/the-lieu-trinh/combo' },
+    { id: 'tlt-baocao',   label: 'Báo Cáo Thẻ',         path: '/admin/the-lieu-trinh/bao-cao' },
   ]},
 
   { id: 'kho', icon: '📦', label: 'Kho Hàng', children: [

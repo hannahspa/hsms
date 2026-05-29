@@ -9,6 +9,7 @@ import TabXetDuyet    from './components/TabXetDuyet'
 import TabLichDieuDong from './components/TabLichDieuDong'
 import TabHoSo        from './components/TabHoSo'
 import TabBangLuong   from './components/TabBangLuong'
+import TabQuyNgayLe  from './components/TabQuyNgayLe'
 import AdminTaoOff    from './components/AdminTaoOff'
 
 function getInitials(name) {
@@ -143,12 +144,13 @@ export default function AdminNhanSuPage() {
           action={view === 'off' ? '＋ Tạo đơn' : null}
           onAction={() => setShowTaoOff(true)}
         />
-        <div style={{ padding: '20px 20px 80px' }}>
+        <div style={{ padding: '24px 28px 48px' }}>
           {view === 'status'    && <TabTongQuan    key={refreshKey} />}
           {view === 'off'       && <TabXetDuyet    key={refreshKey} onUpdate={() => setRefreshKey(k=>k+1)} />}
           {view === 'schedule'  && <TabLichDieuDong />}
           {view === 'employees' && <TabHoSo />}
           {view === 'salary'    && <TabBangLuong />}
+          {view === 'holiday'   && <TabQuyNgayLe />}
         </div>
         <AdminTaoOff open={showTaoOff} onClose={() => setShowTaoOff(false)} onSuccess={() => setRefreshKey(k=>k+1)} />
       </div>
@@ -169,6 +171,7 @@ export default function AdminNhanSuPage() {
             <div className="st" onClick={() => navigate('schedule')}>Lịch Ca</div>
             <div className="st" onClick={() => navigate('off')}>Xét Duyệt</div>
             <div className="st" onClick={() => navigate('salary')}>Bảng Lương</div>
+            <div className="st" onClick={() => navigate('holiday')}>Quỹ Ngày Lễ</div>
           </div>
           <button className="btn"><I.Filter style={{ width: 13, height: 13 }} /> Lọc</button>
           <button className="btn gold" onClick={() => setShowTaoOff(true)}><I.Plus style={{ width: 13, height: 13 }} /> Tạo OFF</button>

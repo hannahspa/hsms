@@ -14,6 +14,7 @@ import FormDoanhThu from './thu-chi/forms/FormDoanhThu'
 import FormChiPhi from './thu-chi/forms/FormChiPhi'
 import FormChuyenKhoan from './thu-chi/forms/FormChuyenKhoan'
 import PheDuyetThuChi from './cai-dat/components/PheDuyetThuChi'
+import LichHenPage   from './lich-hen/LichHenPage'
 
 const BREAKPOINT = 768
 
@@ -24,6 +25,7 @@ const PATH_TO_TAB = {
   '/SoThuChi/bao-cao': 'bao-cao',
   '/SoThuChi/nhap-lieu': 'nhap-lieu',
   '/SoThuChi/cai-dat': 'cai-dat',
+  '/SoThuChi/lich-hen': 'lich-hen',
 }
 const TAB_TO_PATH = {
   'tong-quan': '/SoThuChi',
@@ -32,6 +34,7 @@ const TAB_TO_PATH = {
   'bao-cao': '/SoThuChi/bao-cao',
   'nhap-lieu': '/SoThuChi/nhap-lieu',
   'cai-dat': '/SoThuChi/cai-dat',
+  'lich-hen': '/SoThuChi/lich-hen',
 }
 
 function getTabFromPath() {
@@ -90,7 +93,7 @@ export default function InternalApp() {
 
   // Lễ Tân bị giới hạn tab — admin xem được tất cả
   const isLeTan = user?.vai_tro === 'le_tan'
-  const leTanAllowed = ['doi-soat', 'chot-ngay', 'nhap-lieu', 'cai-dat']
+  const leTanAllowed = ['doi-soat', 'chot-ngay', 'nhap-lieu', 'cai-dat', 'lich-hen']
   const effectiveTab = isLeTan && !leTanAllowed.includes(tab) ? 'doi-soat' : tab
 
   const handleOpenForm = (type) => {
@@ -158,6 +161,7 @@ export default function InternalApp() {
               {effectiveTab === 'chot-ngay' && <ChotNgayPage user={user} refreshKey={refreshKey} />}
               {effectiveTab === 'nhap-lieu' && <NhapLieuPage onOpenForm={handleOpenForm} isDesktop={isDesktop} user={user} />}
               {effectiveTab === 'bao-cao'   && <BaoCaoPage isDesktop={isDesktop} />}
+              {effectiveTab === 'lich-hen'  && <LichHenPage user={user} />}
               {effectiveTab === 'cai-dat'   && (
                 <>
                   {isLeTan && (
