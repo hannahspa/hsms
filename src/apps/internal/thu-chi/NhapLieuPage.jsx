@@ -53,7 +53,9 @@ export default function NhapLieuPage({ user }) {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
   const isAdmin = user?.vai_tro === 'admin'
-  const visibleTabs = isAdmin ? TABS : TABS.filter(t => !t.adminOnly)
+  // Doanh thu tự động đổ về từ POS (bảng doanh_thu nguon='pos') → đóng tab nhập doanh thu thủ công.
+  // Chỉ còn nhập Chi Phí, Chuyển Khoản, Nộp Tiền Mặt.
+  const visibleTabs = (isAdmin ? TABS : TABS.filter(t => !t.adminOnly)).filter(t => t.id !== 'thu')
 
   // Chi Phí
   const [nhomList, setNhomList] = useState([])
