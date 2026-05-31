@@ -297,7 +297,7 @@ export const posService = {
     return data || []
   },
 
-  async getCustomerSnapshot(khachHangId, { cardLimit = 8, historyLimit = 8, debtLimit = 20 } = {}) {
+  async getCustomerSnapshot(khachHangId, { cardLimit = 100, historyLimit = 500, debtLimit = 50 } = {}) {
     if (!khachHangId) return null
 
     const [customerRes, cardsRes, historyRes, debtRes] = await Promise.all([

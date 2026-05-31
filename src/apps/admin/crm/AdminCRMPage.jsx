@@ -704,12 +704,22 @@ function AdminCRMListPage() {
 
   const loadCustomers = async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('khach_hang')
-      .select('*')
-      .order('tong_chi_tieu', { ascending: false })
-      .limit(200)
-    setCustomers(data || [])
+    // Tải toàn bộ KH (Supabase mặc định giới hạn 1000/req → phải dùng range để lấy hết)
+    const all = []
+    let from = 0
+    const PAGE = 1000
+    while (true) {
+      const { data, error } = await supabase
+        .from('khach_hang')
+        .select('*')
+        .order('tong_chi_tieu', { ascending: false })
+        .range(from, from + PAGE - 1)
+      if (error || !data || data.length === 0) break
+      all.push(...data)
+      if (data.length < PAGE) break
+      from += PAGE
+    }
+    setCustomers(all)
     setLoading(false)
   }
 
