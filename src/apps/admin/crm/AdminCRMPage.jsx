@@ -704,23 +704,31 @@ function AdminCRMListPage() {
 
   const loadCustomers = async () => {
     setLoading(true)
-    // Tải toàn bộ KH (Supabase mặc định giới hạn 1000/req → phải dùng range để lấy hết)
-    const all = []
-    let from = 0
+    // Tải batch 1 (1000 KH top chi tiêu) → hiển thị ngay, các batch sau load background
     const PAGE = 1000
-    while (true) {
+    const { data: firstBatch } = await supabase
+      .from('khach_hang')
+      .select('*')
+      .order('tong_chi_tieu', { ascending: false, nullsFirst: false })
+      .range(0, PAGE - 1)
+    setCustomers(firstBatch || [])
+    setLoading(false)  // ← UI mở khoá ngay với 1000 KH đầu
+
+    // Background: load các batch còn lại
+    let from = PAGE
+    const all = [...(firstBatch || [])]
+    while (firstBatch && firstBatch.length === PAGE) {
       const { data, error } = await supabase
         .from('khach_hang')
         .select('*')
-        .order('tong_chi_tieu', { ascending: false })
+        .order('tong_chi_tieu', { ascending: false, nullsFirst: false })
         .range(from, from + PAGE - 1)
       if (error || !data || data.length === 0) break
       all.push(...data)
+      setCustomers([...all])
       if (data.length < PAGE) break
       from += PAGE
     }
-    setCustomers(all)
-    setLoading(false)
   }
 
   // Stats
