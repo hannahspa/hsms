@@ -71,8 +71,9 @@ function DetailModal({ nv, thang, nam, startDate, endDate, onClose }) {
 
   const loadRows = useCallback(async () => {
     setLoading(true)
+    // Dùng VIEW realtime từ don_hang_chi_tiet để khớp MySpa
     const { data: ledgerRows, error: ledgerError } = await supabase
-      .from('nhan_vien_thu_nhap')
+      .from('v_nhan_vien_thu_nhap')
       .select(`
         id, loai, nguon, so_tien, ti_le, doanh_so_tinh, ngay, trang_thai, ghi_chu,
         don_hang:don_hang_id(id, ngay, ma_don, trang_thai, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)),
@@ -352,7 +353,7 @@ export default function AdminCommissionPage() {
     setDetailNV(null)
     try {
       const { data: ledgerRows, error: ledgerError } = await supabase
-        .from('nhan_vien_thu_nhap')
+        .from('v_nhan_vien_thu_nhap')
         .select(`
           id, don_hang_id, nhan_vien_id, loai, nguon, so_tien, doanh_so_tinh, ngay, trang_thai,
           nhan_vien:nhan_vien_id(ho_ten, vi_tri)
