@@ -50,7 +50,7 @@ export default function CheckinThuNhap({ nhanVien, onBack }) {
   // Tải tổng all-time 1 lần
   useEffect(() => {
     supabase
-      .from('nhan_vien_thu_nhap')
+      .from('v_nhan_vien_thu_nhap')
       .select('loai, so_tien')
       .eq('nhan_vien_id', nhanVien.id)
       .eq('is_test', false)
@@ -65,7 +65,7 @@ export default function CheckinThuNhap({ nhanVien, onBack }) {
   const loadData = useCallback(async () => {
     setLoading(true)
     let q = supabase
-      .from('nhan_vien_thu_nhap')
+      .from('v_nhan_vien_thu_nhap')
       .select('id,ngay,loai,so_tien,doanh_so_tinh,ti_le,ghi_chu,nguon')
       .eq('nhan_vien_id', nhanVien.id)
       .eq('is_test', false)

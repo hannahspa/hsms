@@ -12,10 +12,10 @@ const HINH_THUC = [
 ]
 const QUICK = [80000, 350000, 500000, 1000000, 1500000, 2000000, 3000000, 5000000]
 const TABS = [
-  { id: 'thu', label: 'Doanh Thu', desc: 'Chỉ admin điều chỉnh', icon: I.Coin, color: '#8a6a52', grad: 'linear-gradient(180deg,#f8ead2,#d4a574)', adminOnly: true },
+  { id: 'thu', label: 'Doanh Thu', desc: 'Nhập doanh thu MySpa', icon: I.Coin, color: '#8a6a52', grad: 'linear-gradient(180deg,#f8ead2,#d4a574)' },
   { id: 'chi', label: 'Chi Phí', desc: 'Nhập khoản chi', icon: I.Receipt, color: '#C0392B', grad: 'linear-gradient(180deg,#f5d8c8,#e3a890)' },
-  { id: 'ck', label: 'Chuyển Khoản', desc: 'Chuyển nội bộ giữa các ví', icon: I.Bank, color: '#6C3483', grad: 'linear-gradient(180deg,#d8d0f0,#b8a8e0)', adminOnly: true },
-  { id: 'noptm', label: 'Nộp Tiền Mặt', desc: 'Tính toán & nộp vào MB Bank', icon: I.Wallet, color: '#1a4f70', grad: 'linear-gradient(180deg,#dde9f3,#a8c5dc)', adminOnly: true },
+  { id: 'ck', label: 'Chuyển Khoản', desc: 'Chuyển nội bộ giữa các ví', icon: I.Bank, color: '#6C3483', grad: 'linear-gradient(180deg,#d8d0f0,#b8a8e0)' },
+  { id: 'noptm', label: 'Nộp Tiền Mặt', desc: 'Tính toán & nộp vào MB Bank', icon: I.Wallet, color: '#1a4f70', grad: 'linear-gradient(180deg,#dde9f3,#a8c5dc)' },
 ]
 
 function LedgerTable({ data, onEdit, onDelete }) {
@@ -94,7 +94,8 @@ export default function NhapLieuPage({ user }) {
   }, [])
   useEffect(() => { loadTodayTx() }, [ngay])
   useEffect(() => { if (tab === 'noptm') loadNopTm() }, [tab, ngay])
-  useEffect(() => { if (!isAdmin && tab !== 'chi') setTab('chi') }, [isAdmin, tab])
+  // Lễ Tân được nhập đầy đủ 4 loại (Doanh Thu / Chi Phí / Chuyển Khoản / Nộp TM)
+  // để chốt sổ 31/05/2026 từ MySpa. Sau cutover, chỉ Doanh Thu sẽ tự sinh qua POS.
   useEffect(() => {
     supabase.from('so_thu_chi_chot_ngay').select('id,trang_thai,nguoi_chot,chot_luc').eq('ngay', ngay).maybeSingle()
       .then(r => setDailyClose(r.data || null))
@@ -119,7 +120,6 @@ export default function NhapLieuPage({ user }) {
 
   // ── SAVE HANDLERS ──
   const handleSaveThu = async () => {
-    if (!isAdmin) return showMsg('Doanh thu được ghi nhận tự động từ Bán Hàng. Nhân sự chỉ nhập chi phí phát sinh.', 'error')
     const amt = parseInt(soTien.replace(/\D/g, '')); if (!amt || amt <= 0) return showMsg('Nhập số tiền!', 'error')
     setSaving(true)
     try {
@@ -143,7 +143,6 @@ export default function NhapLieuPage({ user }) {
   }
 
   const handleSaveCk = async () => {
-    if (!isAdmin) return showMsg('Chuyển khoản nội bộ chỉ dành cho admin/quản lý ca.', 'error')
     const amt = parseInt(soTien.replace(/\D/g, '')); if (!amt || amt <= 0) return showMsg('Nhập số tiền!', 'error')
     setSaving(true)
     try {
@@ -182,7 +181,6 @@ export default function NhapLieuPage({ user }) {
   }
 
   const handleNopTm = async () => {
-    if (!isAdmin) return showMsg('Nộp tiền mặt chỉ dành cho admin/quản lý ca.', 'error')
     if (!nopTmData || nopTmData.phaiNop <= 0) return showMsg('Không có tiền cần nộp!', 'error')
     if (nopTmData.daNop >= nopTmData.phaiNop) return showMsg('Đã nộp đủ!')
     setSaving(true)

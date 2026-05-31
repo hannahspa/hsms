@@ -111,8 +111,8 @@ export default function TabBangLuong() {
         supabase.from('bang_luong').select('*').eq('thang', thang).eq('nam', nam),
         supabase.from('quy_ngay_off')
           .select('nhan_vien_id, nam, so_ngay_tich, so_ngay_da_dung, so_dung_thang_nay').eq('nam', nam),
-        // ── Real-time từ HSMS POS ──
-        supabase.from('nhan_vien_thu_nhap')
+        // ── Real-time từ don_hang_chi_tiet (VIEW v_nhan_vien_thu_nhap) ──
+        supabase.from('v_nhan_vien_thu_nhap')
           .select('nhan_vien_id, loai, so_tien')
           .gte('ngay', startDate).lte('ngay', endDate)
           .eq('is_test', false),

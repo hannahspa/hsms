@@ -38,8 +38,8 @@ export default function CheckinLuong({ nhanVien, onBack }) {
       supabase.from('cham_cong').select('ngay,loai,tang_ca_gio,he_so,gio_vao,gio_ra').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate),
       supabase.from('bang_luong').select('*').eq('nhan_vien_id', nhanVien.id).eq('thang', month).eq('nam', year).maybeSingle(),
       supabase.from('quy_ngay_off').select('*').eq('nhan_vien_id', nhanVien.id).eq('nam', year).maybeSingle(),
-      // Real-time Kỳ 2 từ HSMS POS
-      supabase.from('nhan_vien_thu_nhap').select('loai,so_tien').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate).eq('is_test', false),
+      // Real-time Kỳ 2 từ don_hang_chi_tiet (VIEW v_nhan_vien_thu_nhap)
+      supabase.from('v_nhan_vien_thu_nhap').select('loai,so_tien').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate).eq('is_test', false),
     ])
 
     const quy = quyRes.data
