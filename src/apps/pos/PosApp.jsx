@@ -700,7 +700,35 @@ function CartLine({ item, onRemove, onQtyChange, onDiscountChange, onSelectKTV, 
         </div>
       )}
 
-      {/* ── Nhân viên: đã chuyển xuống section "Hoa Hồng NV Bán Hàng" ở panel thanh toán ── */}
+      {/* ── Chọn KTV làm dịch vụ → tiền tour / hoa hồng theo từng dòng (kiểu MySpa) ── */}
+      {(isDichVu || isTheLT || isSanPham) && (
+        <div style={{ marginTop: 5, paddingLeft: 16 }}>
+          {nv ? (
+            <button onClick={() => onSelectKTV(item)} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              border: `1px solid ${C.champagne}`, background: 'rgba(201,169,110,.1)',
+              borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontFamily: 'var(--sans)',
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>👤 {nv.ho_ten}</span>
+              {(item.tien_tour > 0 || item.tien_commission > 0) && (
+                <span style={{ fontSize: 11, fontWeight: 700, color: C.champagne }}>
+                  · {isSanPham ? 'HH' : 'Tour'} {formatCurrency(item.tien_tour || item.tien_commission || 0)}
+                </span>
+              )}
+              <span style={{ fontSize: 10, color: C.ink3 }}>✎</span>
+            </button>
+          ) : (
+            <button onClick={() => onSelectKTV(item)} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              border: `1px dashed ${C.line2}`, background: 'transparent',
+              borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontFamily: 'var(--sans)',
+              fontSize: 11, fontWeight: 600, color: C.ink3,
+            }}>
+              + Chọn KTV {isSanPham ? 'bán SP' : 'làm dịch vụ'}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
