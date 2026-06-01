@@ -9,6 +9,7 @@ export const ADMIN_NAV = [
     { id: 'pos-doi-soat', label: 'Đối Soát Bán Hàng', path: '/admin/pos-doi-soat' },
     { id: 'legacy-sync', label: 'Đối Soát Data Cũ', path: '/admin/doi-soat-data' },
   ]},
+  { id: 'lichhen', icon: '📅', label: 'Lịch Hẹn', path: '/SoThuChi/lich-hen' },
 
   { id: 'sothuchi', icon: '💰', label: 'Sổ Thu Chi', children: [
     { id: 'tongquan', label: 'Tổng Quan', path: '/SoThuChi' },
@@ -71,6 +72,7 @@ export const LETAN_NAV = [
     { id: 'pos-tao',    label: 'Tạo Đơn Hàng',       path: '/pos' },
     { id: 'pos-ds',     label: 'Danh Sách Bán Hàng',  path: '/pos/danh-sach' },
   ]},
+  { id: 'lichhen', icon: '📅', label: 'Lịch Hẹn', path: '/SoThuChi/lich-hen' },
 
   { id: 'sothuchi', icon: '💰', label: 'Sổ Thu Chi', children: [
     { id: 'danhsach',   label: 'Danh Sách Thu Chi', path: '/SoThuChi/danh-sach' },

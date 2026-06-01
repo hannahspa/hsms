@@ -57,6 +57,7 @@ export default function CheckinHome({ nhanVien, onLogout }) {
   const [loading,   setLoading]   = useState(true)
   const [time,      setTime]      = useState(getNowVN())
   const [avatarUrl, setAvatarUrl] = useState(nhanVien.avatar_url || null)
+  const [henHomNay, setHenHomNay] = useState([])
 
   const today = todayISO()
 
@@ -65,7 +66,7 @@ export default function CheckinHome({ nhanVien, onLogout }) {
     return () => clearInterval(timer)
   }, [])
 
-  useEffect(() => { loadChamCong() }, [])
+  useEffect(() => { loadChamCong(); loadHen() }, [])
 
   const loadChamCong = async () => {
     setLoading(true)
@@ -73,6 +74,12 @@ export default function CheckinHome({ nhanVien, onLogout }) {
       .eq('nhan_vien_id', nhanVien.id).eq('ngay', today).maybeSingle()
     setChamCong(data || null)
     setLoading(false)
+  }
+
+  const loadHen = async () => {
+    const { data } = await supabase.from('lich_hen').select('*')
+      .eq('ngay_hen', today).neq('trang_thai', 'huy').order('gio_hen')
+    setHenHomNay(data || [])
   }
 
   const hh = String(time.getHours()).padStart(2, '0')
@@ -194,6 +201,46 @@ export default function CheckinHome({ nhanVien, onLogout }) {
               {st.btnLabel}
             </span>
           </button>
+        )}
+      </div>
+
+      {/* ── Lịch Hẹn Hôm Nay ── */}
+      <div style={{ margin: '12px 18px 0', background: LUX.surface2, borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, padding: 18, position: 'relative', overflow: 'hidden' }} className="stagger">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: henHomNay.length ? 12 : 0 }}>
+          <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: LUX.ink3, fontWeight: 600 }}>
+            Lịch hẹn hôm nay
+          </div>
+          {henHomNay.length > 0 && (
+            <div style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: LUX.champagne2 }}>{henHomNay.length} khách</div>
+          )}
+        </div>
+        {henHomNay.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+            <span style={{ fontSize: 22 }}>🌿</span>
+            <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3 }}>Hôm nay chưa có lịch hẹn nào</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {henHomNay.map(h => {
+              const tt = {
+                cho_xac_nhan: { l: 'Chờ', c: '#B8860B', bg: '#FFF9F0' },
+                da_xac_nhan:  { l: 'Đã xác nhận', c: '#2D7A4F', bg: '#eef2e7' },
+                da_xong:      { l: 'Xong', c: '#1a4f96', bg: '#e8f0fe' },
+              }[h.trang_thai] || { l: '', c: LUX.ink3, bg: LUX.surface }
+              return (
+                <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: LUX.surface, borderRadius: 12, border: `1px solid ${LUX.line}` }}>
+                  <div style={{ minWidth: 48, textAlign: 'center' }}>
+                    <div style={{ fontFamily: LUX.fontSans, fontWeight: 800, fontSize: 16, color: LUX.primary, letterSpacing: '-0.5px' }}>{(h.gio_hen || '').slice(0, 5)}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, color: LUX.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.ten_khach}</div>
+                    {h.ten_dich_vu && <div style={{ fontFamily: LUX.fontSans, fontSize: 11.5, color: LUX.ink3, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>💆 {h.ten_dich_vu}</div>}
+                  </div>
+                  <span style={{ background: tt.bg, color: tt.c, padding: '3px 9px', borderRadius: 20, fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{tt.l}</span>
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
 
