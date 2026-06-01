@@ -553,7 +553,7 @@ export const posService = {
   async getKTVs() {
     const { data, error } = await supabase
       .from('nhan_vien')
-      .select('id, ho_ten, vi_tri')
+      .select('id, ho_ten, vi_tri, avatar_url')
       .eq('trang_thai', 'dang_lam')
       .in('vi_tri', ['ktv', 'le_tan'])
       .order('ho_ten')

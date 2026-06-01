@@ -25,6 +25,23 @@ function getInitials(name) {
   const p = name.trim().split(' ')
   return (p[p.length - 1][0] || '').toUpperCase()
 }
+// Tên ngắn: 2 chữ cuối — "Lê Hoàng Phương Linh" → "Phương Linh"
+function shortName(name) {
+  if (!name) return ''
+  const p = name.trim().split(/\s+/)
+  return p.slice(-2).join(' ')
+}
+// Avatar nhân viên: ảnh nếu có, fallback initials
+function NvAvatar({ nv, size = 36 }) {
+  if (nv?.avatar_url) {
+    return <img src={nv.avatar_url} alt={nv.ho_ten || ''} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(160,113,79,.25)' }} />
+  }
+  return (
+    <div style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#2a1d14', fontSize: Math.round(size * 0.36), fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {getInitials(nv?.ho_ten)}
+    </div>
+  )
+}
 function paymentDisplayLabel(method) {
   if (method.id === 'chuyen_khoan') return 'Chuyển Khoản - MB Bank'
   if (method.id === 'quet_the') return 'Quẹt Thẻ - TP Bank'
@@ -182,14 +199,9 @@ function KtvPopup({ item, ktvList, onAssign, onClose }) {
                 border: `1.5px solid ${isSelected ? 'var(--champagne)' : 'transparent'}`,
                 transition: 'all .15s',
               }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                  background: 'linear-gradient(135deg,#C9A96E,#A0714F)',
-                  color: '#2a1d14', fontSize: 13, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>{getInitials(k.ho_ten)}</div>
+                <NvAvatar nv={k} size={36} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{k.ho_ten}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{shortName(k.ho_ten)}</div>
                   <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{k.vi_tri === 'ktv' ? 'KTV' : 'Lễ Tân'}</div>
                 </div>
                 {isSelected && (
@@ -204,7 +216,7 @@ function KtvPopup({ item, ktvList, onAssign, onClose }) {
         {selectedKtv && (
           <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', background: 'rgba(201,169,110,.05)', flexShrink: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink2)', marginBottom: 8 }}>
-              {selectedKtv.ho_ten} — {incomeLabel}
+              {shortName(selectedKtv.ho_ten)} — {incomeLabel}
               {loadingRate && <span style={{ fontWeight: 400, color: 'var(--ink3)', marginLeft: 6 }}>(đang tải tỷ lệ…)</span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -709,7 +721,8 @@ function CartLine({ item, onRemove, onQtyChange, onDiscountChange, onSelectKTV, 
               border: `1px solid ${C.champagne}`, background: 'rgba(201,169,110,.1)',
               borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontFamily: 'var(--sans)',
             }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>👤 {nv.ho_ten}</span>
+              <NvAvatar nv={nv} size={18} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>{shortName(nv.ho_ten)}</span>
               {(item.tien_tour > 0 || item.tien_commission > 0) && (
                 <span style={{ fontSize: 11, fontWeight: 700, color: C.champagne }}>
                   · {isSanPham ? 'HH' : 'Tour'} {formatCurrency(item.tien_tour || item.tien_commission || 0)}
@@ -1790,8 +1803,8 @@ function PosCreateOrder({ resumeOrderId }) {
                               setStaffSearch(''); setStaffOpen(false)
                             }}
                             style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', border: 'none', background: blocked ? '#f8f6f3' : 'none', cursor: blocked ? 'not-allowed' : 'pointer', borderBottom: `1px solid ${C.line}`, fontFamily: FONT.sans, opacity: blocked ? 0.55 : 1 }}>
-                            <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#2a1d14', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{getInitials(k.ho_ten)}</div>
-                            <span style={{ fontSize: 12.5, color: blocked ? C.ink3 : C.ink }}>{k.ho_ten}</span>
+                            <NvAvatar nv={k} size={26} />
+                            <span style={{ fontSize: 12.5, color: blocked ? C.ink3 : C.ink }}>{shortName(k.ho_ten)}</span>
                             <span style={{ fontSize: 10, color: C.ink3, marginLeft: 'auto' }}>
                               {blocked ? blockLabel : (k.vi_tri === 'ktv' ? 'KTV' : 'Lễ Tân')}
                             </span>
@@ -1812,8 +1825,8 @@ function PosCreateOrder({ resumeOrderId }) {
                   return (
                   <div key={s.nv.id} style={{ padding: '7px 0', borderBottom: `1px solid ${C.line}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#2a1d14', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{getInitials(s.nv.ho_ten)}</div>
-                      <span style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, flex: 1 }}>{s.nv.ho_ten}</span>
+                      <NvAvatar nv={s.nv} size={28} />
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, flex: 1 }}>{shortName(s.nv.ho_ten)}</span>
                       {/* % chỉnh được — màu theo rules */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <input
