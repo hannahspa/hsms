@@ -721,8 +721,8 @@ function CartLine({ item, onRemove, onQtyChange, onDiscountChange, onSelectKTV, 
               border: `1px solid ${C.champagne}`, background: 'rgba(201,169,110,.1)',
               borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontFamily: 'var(--sans)',
             }}>
-              <NvAvatar nv={nv} size={18} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.ink }}>{shortName(nv.ho_ten)}</span>
+              <NvAvatar nv={nv} size={24} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{shortName(nv.ho_ten)}</span>
               {(item.tien_tour > 0 || item.tien_commission > 0) && (
                 <span style={{ fontSize: 11, fontWeight: 700, color: C.champagne }}>
                   · {isSanPham ? 'HH' : 'Tour'} {formatCurrency(item.tien_tour || item.tien_commission || 0)}

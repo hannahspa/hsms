@@ -218,7 +218,7 @@ export const posService = {
         dich_vu:dich_vu_id(ten, danh_muc),
         san_pham:san_pham_id(ten, don_vi),
         the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu, so_buoi_con_lai, so_buoi_tong, so_buoi_da_dung, gia_tri_the, khach_hang:khach_hang_id(ho_ten)),
-        nhan_vien:nhan_vien_id(ho_ten)
+        nhan_vien:nhan_vien_id(ho_ten, avatar_url)
       `)
       .eq('don_hang_id', orderId)
       .order('created_at', { ascending: true })

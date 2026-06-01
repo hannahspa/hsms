@@ -58,6 +58,26 @@ function getYesterdayISO() {
   const d = getNowVN(); d.setDate(d.getDate() - 1)
   return d.toISOString().slice(0, 10)
 }
+function getWeekStartISO() {
+  const d = getNowVN()
+  const day = d.getDay()            // 0=CN, 1=T2...
+  const diff = day === 0 ? 6 : day - 1   // lùi về Thứ Hai
+  d.setDate(d.getDate() - diff)
+  return d.toISOString().slice(0, 10)
+}
+function getMonthStartISO() {
+  const d = getNowVN()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+const DATE_TABS = [
+  { key: 'today',     label: 'Hôm nay' },
+  { key: 'yesterday', label: 'Hôm qua' },
+  { key: 'week',      label: 'Tuần này' },
+  { key: 'month',     label: 'Tháng này' },
+  { key: 'range',     label: 'Từ ngày – đến ngày' },
+  { key: 'all',       label: 'Tất cả' },
+]
 
 function historyTypeLabel(type) {
   if (type === 'mua_the_lieu_trinh') return 'Mua thẻ'
@@ -282,9 +302,13 @@ function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVoid = true }) {
                     <span style={{ fontSize: 10, color: 'var(--ink3)' }}>·</span>
                     {staffName ? (
                       <>
-                        <span style={{ fontSize: 10.5, color: 'var(--champagne)', fontWeight: 600 }}>{shortStaffName(staffName)}</span>
+                        {item.nhan_vien?.avatar_url && (
+                          <img src={item.nhan_vien.avatar_url} alt={staffName}
+                            style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(160,113,79,.3)', flexShrink: 0 }} />
+                        )}
+                        <span style={{ fontSize: 12, color: 'var(--champagne)', fontWeight: 700 }}>{shortStaffName(staffName)}</span>
                         {(income.amount || 0) > 0 && (
-                          <span style={{ fontSize: 10, color: '#2D7A4F', fontWeight: 700 }}>
+                          <span style={{ fontSize: 11, color: '#2D7A4F', fontWeight: 700 }}>
                             {income.label}: {formatCurrency(income.amount)}
                           </span>
                         )}
@@ -470,7 +494,7 @@ function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVoid = true }) {
 export default function PosOrderHistory({ onResumeOrder }) {
   const { user } = useAuth()
   const isAdmin   = user?.vai_tro === 'admin'
-  const [dateTab, setDateTab]       = useState('all')
+  const [dateTab, setDateTab]       = useState('today')  // mặc định Hôm nay → tối ưu load
   const [date, setDate]             = useState(todayISO())
   const [showPicker, setShowPicker] = useState(false)
   const [search, setSearch]         = useState('')
@@ -485,22 +509,45 @@ export default function PosOrderHistory({ onResumeOrder }) {
   const [loading, setLoading]       = useState(false)
   const [detailOrder, setDetailOrder] = useState(null)
 
+  // Tính khoảng ngày theo tab — mặc định Hôm nay để không load toàn bộ
+  const computeRange = useCallback(() => {
+    const today = todayISO()
+    switch (dateTab) {
+      case 'today':     return { fromDate: today, toDate: today }
+      case 'yesterday': { const y = getYesterdayISO(); return { fromDate: y, toDate: y } }
+      case 'week':      return { fromDate: getWeekStartISO(), toDate: today }
+      case 'month':     return { fromDate: getMonthStartISO(), toDate: today }
+      case 'range':
+      case 'advanced':  return { fromDate, toDate }
+      case 'pick':      return { fromDate: date, toDate: date }
+      case 'all':       return {}
+      default:          return { fromDate: today, toDate: today }
+    }
+  }, [dateTab, fromDate, toDate, date])
+
   const load = useCallback(async (page = 1) => {
     setLoading(true)
     setDetailOrder(null)
     try {
-      const range = dateTab === 'advanced' ? { fromDate, toDate } : {}
-      const result = await posService.getOrdersPage({ page, pageSize: PAGE_SIZE, ...range })
+      const result = await posService.getOrdersPage({ page, pageSize: PAGE_SIZE, ...computeRange() })
       setOrders(result.orders)
       setTotalOrders(result.total)
       setCurrentPage(page)
     } catch (_) {} finally { setLoading(false) }
-  }, [dateTab, fromDate, toDate])
+  }, [computeRange])
 
   useEffect(() => { load() }, [load])
 
   const handleSearch = (q) => {
     setSearch(q)
+  }
+
+  // Chọn tab thời gian — load tự chạy qua useEffect (computeRange đổi)
+  const handleDatePick = (key) => {
+    setSearch('')
+    setStatusTab('all')
+    setShowAdvanced(false)
+    setDateTab(key)
   }
 
   const handleDateTab = (tab) => {
@@ -529,22 +576,16 @@ export default function PosOrderHistory({ onResumeOrder }) {
     } catch (_) {} finally { setLoading(false) }
   }
 
-  const resetAdvancedSearch = async () => {
+  const resetAdvancedSearch = () => {
     const today = todayISO()
     setSearch('')
     setStatusTab('all')
     setOrderTypeFilter('all')
     setFromDate(today)
     setToDate(today)
-    setDateTab('all')
     setDate(today)
-    setLoading(true)
-    try {
-      const result = await posService.getOrdersPage({ page: 1, pageSize: PAGE_SIZE })
-      setOrders(result.orders)
-      setTotalOrders(result.total)
-      setCurrentPage(1)
-    } catch (_) {} finally { setLoading(false) }
+    setShowAdvanced(false)
+    setDateTab('today')   // về mặc định Hôm nay — load tự chạy qua useEffect
   }
 
   const handleVoid = async () => {
@@ -585,11 +626,11 @@ export default function PosOrderHistory({ onResumeOrder }) {
   const pageStart = totalOrders === 0 ? 0 : ((currentPage - 1) * PAGE_SIZE) + 1
   const pageEnd = Math.min(totalOrders, currentPage * PAGE_SIZE)
 
-  const labelDate = dateTab === 'all' ? 'Tất cả đơn hàng'
-    : dateTab === 'today' ? 'Hôm nay'
-    : dateTab === 'yesterday' ? 'Hôm qua'
-    : dateTab === 'advanced' ? `${fromDate.split('-').reverse().join('/')} - ${toDate.split('-').reverse().join('/')}`
-    : date ? date.split('-').reverse().join('/') : '—'
+  const RANGE_LABEL = { today: 'Hôm nay', yesterday: 'Hôm qua', week: 'Tuần này', month: 'Tháng này', all: 'Tất cả đơn hàng' }
+  const labelDate = RANGE_LABEL[dateTab]
+    || ((dateTab === 'range' || dateTab === 'advanced')
+        ? `${fromDate.split('-').reverse().join('/')} - ${toDate.split('-').reverse().join('/')}`
+        : (date ? date.split('-').reverse().join('/') : '—'))
 
   return (
     <div>
@@ -631,6 +672,35 @@ export default function PosOrderHistory({ onResumeOrder }) {
             style={{ height: 38, justifyContent: 'center' }}>
             Tìm kiếm nâng cao
           </button>
+        </div>
+
+        {/* Bộ lọc thời gian — mặc định Hôm nay để tối ưu load */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+          {DATE_TABS.map(t => {
+            const active = dateTab === t.key
+            return (
+              <button key={t.key} onClick={() => handleDatePick(t.key)}
+                style={{
+                  padding: '5px 14px', borderRadius: 20, border: '1px solid var(--line)',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                  background: active ? 'var(--grad-gold)' : 'var(--surface)',
+                  color: active ? '#2a1d14' : 'var(--ink3)',
+                  boxShadow: active ? '0 2px 8px rgba(160,113,79,.25)' : 'none',
+                  transition: 'all .15s',
+                }}>
+                {t.label}
+              </button>
+            )
+          })}
+          {dateTab === 'range' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+              <input type="date" value={fromDate} max={toDate} onChange={e => setFromDate(e.target.value)}
+                style={{ height: 32, border: '1px solid var(--line)', borderRadius: 8, padding: '0 8px', background: '#fff', color: 'var(--ink2)', fontSize: 12.5 }} />
+              <span style={{ color: 'var(--ink3)' }}>→</span>
+              <input type="date" value={toDate} min={fromDate} onChange={e => setToDate(e.target.value)}
+                style={{ height: 32, border: '1px solid var(--line)', borderRadius: 8, padding: '0 8px', background: '#fff', color: 'var(--ink2)', fontSize: 12.5 }} />
+            </div>
+          )}
         </div>
 
         {showAdvanced && (
