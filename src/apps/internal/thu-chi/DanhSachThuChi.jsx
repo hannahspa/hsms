@@ -29,11 +29,14 @@ function formatTime(value) {
 export default function DanhSachThuChi({ user }) {
   const isAdmin = user?.vai_tro === 'admin'
   const now = getNowVN()
-  // Mặc định: từ đầu THÁNG TRƯỚC đến hôm nay (luôn thấy dữ liệu gần đây)
+  // Mặc định: Admin xem từ đầu tháng trước; Lễ Tân chỉ 7 ngày gần nhất (gọn + bảo mật)
   const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
   const firstPrevMonth = `${prevStart.getFullYear()}-${String(prevStart.getMonth() + 1).padStart(2, '0')}-01`
+  const d7 = new Date(now); d7.setDate(d7.getDate() - 6)
+  const last7 = d7.toISOString().slice(0, 10)
+  const defaultTuNgay = isAdmin ? firstPrevMonth : last7
 
-  const [tuNgay, setTuNgay] = useState(firstPrevMonth)
+  const [tuNgay, setTuNgay] = useState(defaultTuNgay)
   const [denNgay, setDenNgay] = useState(todayISO())
   const [loaiFilter, setLoaiFilter] = useState('all') // all | thu | chi | ck
   const [search, setSearch] = useState('')
@@ -139,13 +142,15 @@ export default function DanhSachThuChi({ user }) {
         </div>
       </div>
 
-      {/* TỔNG KẾT */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
-        <SummaryCard label="Tổng Giao Dịch" value={`${tongCount}`} isText tone="dark" />
-        <SummaryCard label="Tổng Thu" value={tongThu} tone="good" />
-        <SummaryCard label="Tổng Chi" value={tongChi} tone="bad" />
-        <SummaryCard label="Chênh Lệch (Thu − Chi)" value={tongThu - tongChi} tone={tongThu - tongChi >= 0 ? 'good' : 'bad'} />
-      </div>
+      {/* TỔNG KẾT — chỉ Admin (Lễ Tân không xem tổng thu/chi/lãi lỗ) */}
+      {isAdmin && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+          <SummaryCard label="Tổng Giao Dịch" value={`${tongCount}`} isText tone="dark" />
+          <SummaryCard label="Tổng Thu" value={tongThu} tone="good" />
+          <SummaryCard label="Tổng Chi" value={tongChi} tone="bad" />
+          <SummaryCard label="Chênh Lệch (Thu − Chi)" value={tongThu - tongChi} tone={tongThu - tongChi >= 0 ? 'good' : 'bad'} />
+        </div>
+      )}
 
       {/* FILTER BAR */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
