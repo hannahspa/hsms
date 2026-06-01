@@ -18,6 +18,7 @@ const ROLE_LABEL = {
 const ICON_MAP = {
   dashboard: I.Dashboard,
   pos: I.Cart,
+  lichhen: I.Calendar,
   sothuchi: I.Wallet,
   thuchi: I.Wallet,
   doisoat: I.Receipt,
