@@ -12,9 +12,11 @@ export const ADMIN_NAV = [
 
   { id: 'sothuchi', icon: '💰', label: 'Sổ Thu Chi', children: [
     { id: 'tongquan', label: 'Tổng Quan', path: '/SoThuChi' },
+    { id: 'danhsach', label: 'Danh Sách Thu Chi', path: '/SoThuChi/danh-sach' },
     { id: 'doisoat', label: 'Đối Soát Ngày', path: '/SoThuChi/doi-soat' },
     { id: 'chotngay', label: 'Chốt Ngày', path: '/SoThuChi/chot-ngay' },
     { id: 'nhap lieu', label: 'Nhập Thu Chi', path: '/SoThuChi/nhap-lieu' },
+    { id: 'kiemsoatchi', label: 'Kiểm Soát Chi Phí', path: '/SoThuChi/kiem-soat-chi' },
     { id: 'baocao', label: 'Báo Cáo', path: '/SoThuChi/bao-cao' },
     { id: 'settings', label: 'Cài Đặt', path: '/SoThuChi/cai-dat' },
   ]},
@@ -71,6 +73,7 @@ export const LETAN_NAV = [
   ]},
 
   { id: 'sothuchi', icon: '💰', label: 'Sổ Thu Chi', children: [
+    { id: 'danhsach',   label: 'Danh Sách Thu Chi', path: '/SoThuChi/danh-sach' },
     { id: 'doisoat',    label: 'Đối Soát Ngày',   path: '/SoThuChi/doi-soat' },
     { id: 'chotngay',   label: 'Chốt Ngày',        path: '/SoThuChi/chot-ngay' },
     { id: 'nhap lieu',  label: 'Nhập Thu Chi',     path: '/SoThuChi/nhap-lieu' },
