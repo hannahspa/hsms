@@ -4,7 +4,7 @@
 
 const SPA = {
   ten: 'Hannah Beauty & Spa',
-  diaChi: '39 Nam Kỳ Khởi Nghĩa, P.Tân An, Ninh Kiều, TP. Cần Thơ',
+  diaChi: '39 Nam Kỳ Khởi Nghĩa, Ninh Kiều, TP. Cần Thơ',
   dienThoai: '0379080909',
   website: 'hannahspa.vn',
   logo: '/logo.png',
@@ -86,7 +86,6 @@ export function printReceipt({ order, items = [], payments = [], customer = null
   <body>
     <div class="center">
       <img class="logo" src="${spa.logo}" onerror="this.style.display='none'"/>
-      <div class="spa-name">${esc(spa.ten)}</div>
       <div class="small">${esc(spa.diaChi)}</div>
       <div class="small">Điện thoại: ${esc(spa.dienThoai)}</div>
       <div class="small">Website: ${esc(spa.website)}</div>
