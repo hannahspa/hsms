@@ -1,10 +1,11 @@
+import os
 """Xem các ten_dich_vu trong the_lieu_trinh vs dich_vu để chuẩn bị fix gia_tri_the"""
 import sys, io, requests
 from collections import defaultdict
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SERVICE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SERVICE_KEY  = os.environ["SUPABASE_KEY"]
 H = {"apikey": SERVICE_KEY, "Authorization": "Bearer " + SERVICE_KEY}
 
 def fetch(table, select, filter_str="", limit=100000):

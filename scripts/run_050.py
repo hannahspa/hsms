@@ -1,3 +1,4 @@
+import os
 """Run migration 050 lich_hen via Supabase Management API."""
 import sys, os
 sys.stdout.reconfigure(encoding='utf-8')
@@ -6,7 +7,7 @@ import requests
 
 PROJECT_REF = "aqyemkfbjqxpegingoil"
 # Management API dung Personal Access Token - thu dung service key trc
-SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SERVICE_KEY = os.environ["SUPABASE_KEY"]
 
 base = os.path.join(os.path.dirname(__file__), "..", "supabase", "migrations")
 sql_file = os.path.join(base, "050_lich_hen.sql")

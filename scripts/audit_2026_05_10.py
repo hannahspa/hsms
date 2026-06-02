@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """Kiem toan toan dien — 10/05/2026 — FIX PARSE DATE"""
 import sys
@@ -8,7 +9,7 @@ from collections import defaultdict
 from datetime import datetime
 
 SUPABASE_URL = 'https://aqyemkfbjqxpegingoil.supabase.co'
-SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI'
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def fmt(n):

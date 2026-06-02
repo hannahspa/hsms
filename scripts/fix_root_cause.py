@@ -1,3 +1,4 @@
+import os
 """Fix gốc rễ: vi.loai + chuẩn hóa toàn bộ dữ liệu liên quan"""
 import sys, io
 sys.path.insert(0, '.')
@@ -5,7 +6,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 from supabase import create_client
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 def fmt(n):
     if n is None: return "0d"

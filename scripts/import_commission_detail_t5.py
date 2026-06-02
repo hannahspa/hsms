@@ -1,3 +1,4 @@
+import os
 """
 Import chi tiet commission T5 vao nhan_vien_thu_nhap
 - Xoa records T5 cu (don_hang_id IS NULL + nguon=myspa_commission)
@@ -12,7 +13,7 @@ from pathlib import Path
 from collections import defaultdict
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 H  = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
 HR = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
 folder = Path(r"D:\Hannah Spa\Database\Commission Tu 01.05 den 26.05")

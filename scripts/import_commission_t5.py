@@ -1,3 +1,4 @@
+import os
 """
 Buoc 4: Cap nhat commission T5 vao bang_luong
 - hoa_hong_dv = commission tu dich vu (% theo doanh thu)
@@ -7,7 +8,7 @@ import requests, pandas as pd
 from pathlib import Path
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 H = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
 folder = Path(r"D:\Hannah Spa\Database\Tu 01.05 den 26.05")
 SEP = "=" * 60

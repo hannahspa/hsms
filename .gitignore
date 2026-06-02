@@ -38,6 +38,8 @@ supabase/.temp/
 
 # Local audit/test artifacts
 reports/
+__pycache__/
+*.pyc
 lech_TLT_chi_tiet.txt
 verify_TLT_report.txt
 scripts/*.png

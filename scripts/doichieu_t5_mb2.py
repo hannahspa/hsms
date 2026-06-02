@@ -1,3 +1,4 @@
+import os
 """
 Đối chiếu T5 MB Bank vs HSMS — đọc đúng cột file Excel
 """
@@ -6,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 H = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
 MB_ID = "6d69df42-9d5a-4f03-9370-a0b6e007e12d"
 SAO_KE = Path(r"D:\Hannah Spa\Thu Chi\Sao Ke Khanh Duy.xlsx")

@@ -1,3 +1,4 @@
+import os
 """Kiểm toán toàn bộ Sổ Thu Chi từ 26/11/2025 đến 28/02/2026 — tìm mọi sai sót"""
 import sys, io
 sys.path.insert(0, '.')
@@ -7,7 +8,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 def fmt(n):
     if n is None: return "0đ"

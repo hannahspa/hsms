@@ -1,3 +1,4 @@
+import os
 """
 Fix 2 records chi_phi co hinh_thuc=NULL nhung vi_id=MB Bank
 Phai set hinh_thuc='chuyen_khoan' de view tinh dung chi_ra
@@ -6,7 +7,7 @@ import requests
 import json
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
 H = {
     "apikey": SUPABASE_KEY,

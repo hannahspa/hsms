@@ -1,9 +1,10 @@
+import os
 """Fix gia_tri_the + tien_tour retroactive dung REST API thuan"""
 import sys, io, requests, time
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SERVICE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SERVICE_KEY  = os.environ["SUPABASE_KEY"]
 H  = {"apikey": SERVICE_KEY, "Authorization": "Bearer " + SERVICE_KEY}
 HJ = {**H, "Content-Type": "application/json", "Prefer": "return=minimal"}
 

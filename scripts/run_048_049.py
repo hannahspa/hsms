@@ -1,3 +1,4 @@
+import os
 """Run migrations 048 and 049."""
 import sys, os, requests
 
@@ -5,7 +6,7 @@ import sys, os, requests
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SERVICE_KEY = os.environ["SUPABASE_KEY"]
 
 HEADERS_TEXT = {
     "apikey": SERVICE_KEY,

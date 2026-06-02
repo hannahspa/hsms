@@ -4,7 +4,7 @@ from datetime import datetime
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SERVICE_KEY = os.environ["SUPABASE_KEY"]
 HEADERS = {"apikey": SERVICE_KEY, "Authorization": "Bearer " + SERVICE_KEY}
 JSON_H = {**HEADERS, "Content-Type": "application/json"}
 fpath = r"D:\Hannah Spa\Database\danh_sach_ban_hang_tat_ca_chi_nhanh_1778311594.xlsx"

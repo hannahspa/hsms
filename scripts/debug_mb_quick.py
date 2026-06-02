@@ -1,3 +1,4 @@
+import os
 """
 Quick debug: Tinh tay chinh xac theo logic view migration 007
 v.loai = vi.loai, chi_ra theo hinh_thuc_thanh_toan = v.loai
@@ -5,7 +6,7 @@ v.loai = vi.loai, chi_ra theo hinh_thuc_thanh_toan = v.loai
 import requests
 
 SUPABASE_URL = "https://aqyemkfbjqxpegingoil.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI"
+SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
 H = {
     "apikey": SUPABASE_KEY,

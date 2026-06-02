@@ -1,3 +1,4 @@
+import os
 """Tim chinh xac cac khoan chi con thieu"""
 import sys, openpyxl
 from collections import defaultdict
@@ -5,7 +6,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 from supabase import create_client
 
 url = 'https://aqyemkfbjqxpegingoil.supabase.co'
-key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI'
+key = os.environ["SUPABASE_KEY"]
 supabase = create_client(url, key)
 
 base = r'D:\Hannah Spa\Thu Chi\Kiem Toan'
