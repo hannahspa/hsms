@@ -8,13 +8,21 @@ import {
 } from './orderHistoryUtils'
 
 // Panel chi tiết đơn — tách từ PosOrderHistory.jsx (Phase 2). Không đổi logic.
-export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVoid = true }) {
+const PTTT_OPTIONS = [
+  { value: 'tien_mat', label: 'Tiền Mặt' },
+  { value: 'chuyen_khoan', label: 'Chuyển Khoản' },
+  { value: 'quet_the', label: 'Quẹt Thẻ' },
+  { value: 'the_tra_truoc', label: 'Thẻ Trả Trước' },
+]
+
+export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVoid = true, isAdmin = false }) {
   const [detail, setDetail] = useState({ items: [], payments: [], ledger: [], customerSnapshot: null })
   const [loading, setLoading] = useState(true)
+  const [savingPttt, setSavingPttt] = useState(null)   // id payment đang đổi PTTT
 
-  useEffect(() => {
+  const reloadDetail = () => {
     setLoading(true)
-    Promise.all([
+    return Promise.all([
       posService.getLineItems(order.id),
       posService.getPayments(order.id),
       posService.getOrderStaffLedger(order.id),
@@ -22,7 +30,22 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVo
     ]).then(([items, payments, ledger, customerSnapshot]) => setDetail({ items, payments, ledger, customerSnapshot }))
       .catch(() => setDetail({ items: [], payments: [], ledger: [], customerSnapshot: null }))
       .finally(() => setLoading(false))
-  }, [order.id, order.khach_hang_id])
+  }
+
+  useEffect(() => { reloadDetail() }, [order.id, order.khach_hang_id])
+
+  const handleChangePttt = async (payment, newHinhThuc) => {
+    if (!newHinhThuc || newHinhThuc === payment.hinh_thuc) return
+    setSavingPttt(payment.id)
+    try {
+      await posService.updatePaymentMethod(payment.id, newHinhThuc)
+      await reloadDetail()
+    } catch (e) {
+      alert('Lỗi đổi hình thức thanh toán: ' + e.message)
+    } finally {
+      setSavingPttt(null)
+    }
+  }
 
   const st = STATUS_MAP[order.trang_thai] || STATUS_MAP.draft
   const { date, time } = fmtDateTime(order.created_at, order.ngay)
@@ -322,9 +345,21 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVo
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 7 }}>Đã thanh toán</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {detail.payments.map(p => (
-                    <div key={p.id} style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'var(--bg)', border: '1px solid var(--line)', color: 'var(--ink2)', display: 'flex', gap: 6 }}>
-                      <span>{paymentMethodLabel(p.hinh_thuc)}</span>
+                    <div key={p.id} style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'var(--bg)', border: '1px solid var(--line)', color: 'var(--ink2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {isAdmin && order.trang_thai !== 'huy' ? (
+                        <select
+                          value={p.hinh_thuc}
+                          disabled={savingPttt === p.id}
+                          onChange={e => handleChangePttt(p, e.target.value)}
+                          title="Đổi hình thức thanh toán (đồng bộ doanh thu)"
+                          style={{ border: '1px solid var(--bord)', borderRadius: 12, padding: '2px 6px', fontSize: 11.5, fontWeight: 700, color: 'var(--ink2)', background: '#fff', cursor: 'pointer', fontFamily: 'var(--sans)', outline: 'none' }}>
+                          {PTTT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                      ) : (
+                        <span>{paymentMethodLabel(p.hinh_thuc)}</span>
+                      )}
                       <span style={{ fontWeight: 700, color: 'var(--ink)' }}>{formatCurrency(p.so_tien)}</span>
+                      {savingPttt === p.id && <span style={{ fontSize: 10, color: 'var(--ink3)' }}>…</span>}
                     </div>
                   ))}
                 </div>

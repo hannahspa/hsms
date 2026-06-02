@@ -19,14 +19,22 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
 
   const [cardBuoiMua, setCardBuoiMua] = useState(item.meta?.soBuoiMua || 10)
   const [cardBuoiTang, setCardBuoiTang] = useState(item.meta?.soBuoiTang || 0)
-  const [cardPhanTramGiam, setCardPhanTramGiam] = useState(item.meta?.phanTramGiam || 0)
+  // Giá bán/buổi (giá khách trả) — mặc định = giá gốc, lễ tân sửa thành giá KM (vd 159k → 99k).
+  const [cardGiaBan, setCardGiaBan] = useState(
+    item.meta?.giaBanBuoi
+    || (item.meta?.phanTramGiam > 0 ? Math.round(donGia * (1 - Number(item.meta.phanTramGiam) / 100)) : donGia)
+  )
   const [cardNgayHH, setCardNgayHH] = useState(item.meta?.ngayHetHan || '')
   const [cardKhongGH, setCardKhongGH] = useState(!item.meta?.ngayHetHan)
   const [ngayHHOpen, setNgayHHOpen] = useState(false)
 
-  const cardKmRefPct = calcKmRefPct({ soBuoiMua: cardBuoiMua, soBuoiTang: cardBuoiTang, phanTramGiam: Number(cardPhanTramGiam) })
-  const cardKmAl = (cardBuoiTang > 0 || Number(cardPhanTramGiam) > 0) && cardKmRefPct > 0 ? kmRefAlert(cardKmRefPct) : null
-  const cardThanhTien = Math.round(cardBuoiMua * donGia * (1 - Number(cardPhanTramGiam) / 100))
+  // % giảm hiệu dụng = (1 − giá bán / giá gốc) — chỉ dùng cho KM% + hoa hồng. Giá thẻ tính trực tiếp từ giá bán.
+  const cardEffPct = donGia > 0
+    ? Math.min(100, Math.max(0, (1 - (Number(cardGiaBan) || 0) / donGia) * 100))
+    : 0
+  const cardKmRefPct = calcKmRefPct({ soBuoiMua: cardBuoiMua, soBuoiTang: cardBuoiTang, phanTramGiam: cardEffPct })
+  const cardKmAl = (cardBuoiTang > 0 || cardEffPct > 0) && cardKmRefPct > 0 ? kmRefAlert(cardKmRefPct) : null
+  const cardThanhTien = Math.round((Number(cardBuoiMua) || 0) * (Number(cardGiaBan) || 0))
 
   const handleQty = (n) => {
     if (n < 1) return
@@ -39,14 +47,16 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
     if (newTT !== item.thanh_tien && onDiscountChange) onDiscountChange(item._lid, newTT)
   }
 
-  const commitCard = (buoiMua, buoiTang, ngayHH, khongGH, pctGiam) => {
-    const km = calcKmRefPct({ soBuoiMua: buoiMua, soBuoiTang: buoiTang, phanTramGiam: Number(pctGiam || 0) })
+  const commitCard = (buoiMua, buoiTang, ngayHH, khongGH, giaBan = cardGiaBan) => {
+    const pct = donGia > 0 ? Math.min(100, Math.max(0, (1 - (Number(giaBan) || 0) / donGia) * 100)) : 0
+    const km = calcKmRefPct({ soBuoiMua: buoiMua, soBuoiTang: buoiTang, phanTramGiam: pct })
     onToggleCard(item._lid, true, {
       soBuoiMua: buoiMua,
       soBuoiTang: buoiTang,
       ngayHetHan: khongGH ? null : (ngayHH || null),
       donGia,
-      phanTramGiam: Number(pctGiam || 0),
+      giaBanBuoi: Number(giaBan) || 0,
+      phanTramGiam: pct,
       kmRefPct: km,
     })
   }
@@ -78,7 +88,7 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
           {!isTheLT && !isCard && <div style={{ fontSize: 10.5, color: 'var(--ink3)' }}>{formatCurrency(donGia)}</div>}
           {isCard && <div style={{ fontSize: 10.5, color: 'var(--champagne)', fontWeight: 600 }}>
             {cardBuoiMua}+{cardBuoiTang} buổi
-            {Number(cardPhanTramGiam) > 0 && <span style={{ color: C.chi }}> -{cardPhanTramGiam}%</span>}
+            {cardEffPct > 0 && <span style={{ color: C.chi }}> -{cardEffPct.toFixed(0)}%</span>}
             {' · '}{formatCurrency(cardThanhTien)}
           </div>}
         </div>
@@ -114,7 +124,7 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
               type="checkbox" checked={isCard}
               onChange={e => {
                 if (e.target.checked) {
-                  commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam)
+                  commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH)
                 } else {
                   onToggleCard(item._lid, false, { donGia })
                 }
@@ -129,40 +139,44 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
       {isCard && (
         <div style={{ marginTop: 6, paddingLeft: 16, paddingRight: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ fontSize: 10, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>Giá bán/buổi</span>
+              <input
+                type="text" inputMode="numeric"
+                value={cardGiaBan ? fmtInput(cardGiaBan) : ''}
+                onChange={e => setCardGiaBan(parseVND(e.target.value))}
+                onBlur={() => commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH)}
+                placeholder={fmtInput(donGia)}
+                title="Giá khách trả mỗi buổi (giá khuyến mãi). Mặc định = giá gốc."
+                style={{ width: 86, border: `1px solid ${cardEffPct > 0 ? C.champagne : 'var(--bord)'}`, borderRadius: 4, padding: '2px 6px', fontSize: 12, fontWeight: 800, textAlign: 'right', outline: 'none', color: C.champagne }}
+              />
+              {cardEffPct > 0 && (
+                <span style={{ fontSize: 10, color: 'var(--ink3)', textDecoration: 'line-through', whiteSpace: 'nowrap' }}>{fmtInput(donGia)}</span>
+              )}
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <span style={{ fontSize: 10, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>Buổi mua</span>
-              <button onClick={() => { const v = Math.max(1, cardBuoiMua - 1); setCardBuoiMua(v); commitCard(v, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam) }} style={smBtn}>-</button>
+              <button onClick={() => { const v = Math.max(1, cardBuoiMua - 1); setCardBuoiMua(v); commitCard(v, cardBuoiTang, cardNgayHH, cardKhongGH) }} style={smBtn}>-</button>
               <input
                 type="number" min={1} value={cardBuoiMua}
                 onChange={e => { const v = Math.max(1, parseInt(e.target.value) || 1); setCardBuoiMua(v) }}
-                onBlur={() => commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam)}
+                onBlur={() => commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH)}
                 style={{ width: 38, border: '1px solid var(--bord)', borderRadius: 4, padding: '2px 3px', fontSize: 12, fontWeight: 700, textAlign: 'center', outline: 'none' }}
               />
-              <button onClick={() => { const v = cardBuoiMua + 1; setCardBuoiMua(v); commitCard(v, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam) }} style={smBtn}>+</button>
+              <button onClick={() => { const v = cardBuoiMua + 1; setCardBuoiMua(v); commitCard(v, cardBuoiTang, cardNgayHH, cardKhongGH) }} style={smBtn}>+</button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <span style={{ fontSize: 10, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>Tặng</span>
-              <button onClick={() => { const v = Math.max(0, cardBuoiTang - 1); setCardBuoiTang(v); commitCard(cardBuoiMua, v, cardNgayHH, cardKhongGH, cardPhanTramGiam) }} style={smBtn}>-</button>
+              <button onClick={() => { const v = Math.max(0, cardBuoiTang - 1); setCardBuoiTang(v); commitCard(cardBuoiMua, v, cardNgayHH, cardKhongGH) }} style={smBtn}>-</button>
               <input
                 type="number" min={0} value={cardBuoiTang}
                 onChange={e => { const v = Math.max(0, parseInt(e.target.value) || 0); setCardBuoiTang(v) }}
-                onBlur={() => commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam)}
+                onBlur={() => commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH)}
                 style={{ width: 38, border: '1px solid var(--bord)', borderRadius: 4, padding: '2px 3px', fontSize: 12, fontWeight: 700, textAlign: 'center', outline: 'none' }}
               />
-              <button onClick={() => { const v = cardBuoiTang + 1; setCardBuoiTang(v); commitCard(cardBuoiMua, v, cardNgayHH, cardKhongGH, cardPhanTramGiam) }} style={smBtn}>+</button>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <span style={{ fontSize: 10, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>Giảm</span>
-              <input
-                type="number" min={0} max={100} step={0.5}
-                value={cardPhanTramGiam}
-                onChange={e => { const v = Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)); setCardPhanTramGiam(v) }}
-                onBlur={() => commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam)}
-                style={{ width: 38, border: '1px solid var(--bord)', borderRadius: 4, padding: '2px 3px', fontSize: 12, fontWeight: 700, textAlign: 'center', outline: 'none' }}
-              />
-              <span style={{ fontSize: 10, color: 'var(--ink3)' }}>%</span>
+              <button onClick={() => { const v = cardBuoiTang + 1; setCardBuoiTang(v); commitCard(cardBuoiMua, v, cardNgayHH, cardKhongGH) }} style={smBtn}>+</button>
             </div>
 
             {cardKmAl && (
@@ -175,6 +189,14 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
                 {cardKmAl.level === 'ok' ? ' ✓' : cardKmAl.level === 'warning' ? ' ⚠' : ' ⛔'}
               </span>
             )}
+          </div>
+
+          {/* Tóm tắt: giá gốc → giá bán × buổi = thành tiền (theo giá khách trả thật) */}
+          <div style={{ marginBottom: 6, fontSize: 11.5, color: 'var(--ink2)' }}>
+            {cardEffPct > 0 && <span style={{ textDecoration: 'line-through', color: 'var(--ink3)', marginRight: 6 }}>{fmtInput(donGia)}đ</span>}
+            <span style={{ fontWeight: 800, color: C.champagne }}>{fmtInput(cardGiaBan)}đ</span>
+            <span style={{ color: 'var(--ink3)' }}> × {cardBuoiMua} buổi{cardBuoiTang > 0 ? ` (+${cardBuoiTang} tặng)` : ''} = </span>
+            <span style={{ fontWeight: 800, color: 'var(--ink)' }}>{formatCurrency(cardThanhTien)}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -193,7 +215,7 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
             <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <input
                 type="checkbox" checked={cardKhongGH}
-                onChange={e => { setCardKhongGH(e.target.checked); commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, e.target.checked, cardPhanTramGiam) }}
+                onChange={e => { setCardKhongGH(e.target.checked); commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, e.target.checked) }}
                 style={{ cursor: 'pointer', width: 12, height: 12, accentColor: C.champagne }}
               />
               <span style={{ fontSize: 10, color: 'var(--ink3)' }}>Không giới hạn ∞</span>
@@ -204,7 +226,7 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
             open={ngayHHOpen}
             selectedDate={cardNgayHH || null}
             onClose={() => setNgayHHOpen(false)}
-            onConfirm={d => { setCardNgayHH(d); setNgayHHOpen(false); commitCard(cardBuoiMua, cardBuoiTang, d, false, cardPhanTramGiam) }}
+            onConfirm={d => { setCardNgayHH(d); setNgayHHOpen(false); commitCard(cardBuoiMua, cardBuoiTang, d, false) }}
           />
         </div>
       )}

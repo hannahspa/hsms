@@ -648,6 +648,15 @@ export const posService = {
     if (error) throw error
   },
 
+  // Đổi PTTT của đơn đã chốt — RPC atomic, đồng bộ luôn doanh_thu (Admin). Migration 065.
+  async updatePaymentMethod(paymentId, newHinhThuc) {
+    const { data, error } = await supabase
+      .rpc('pos_update_payment_method', { p_payment_id: paymentId, p_new_hinh_thuc: newHinhThuc })
+    if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Không đổi được hình thức thanh toán')
+    return data
+  },
+
   // ═══════════════════════════════════════════════════
   // CHỐT ĐƠN & HỦY ĐƠN (RPC)
   // ═══════════════════════════════════════════════════

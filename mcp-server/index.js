@@ -107,6 +107,11 @@ const RESOURCE_MAP = {
     name: "MySpa → HSMS Data Migration Strategy",
     description: "MySpa export file formats, column mappings, import order, 4-step migration process",
   },
+  "hsms://domain/pos-income-model": {
+    file: "domain/pos-income-model.md",
+    name: "POS Income Model — CHUẨN CHỐT (Tour / Hoa Hồng)",
+    description: "Nguồn sự thật: 2 loại thu nhập Tiền Tour (thực hiện) + Tiền Hoa Hồng (bán), 2 luồng UI bán hàng, hoa hồng theo tiền khách trả (debt-aware), tỉ lệ KM, Lương KD KTV=Tour+HoaHồng / Lễ Tân=LươngKD+HoaHồng, 4 PTTT tách khỏi ví. KHÔNG còn 'commission'.",
+  },
   "hsms://changelog/2026-06-audit-optimize": {
     file: "changelog/2026-06-audit-optimize.md",
     name: "Changelog — Tối ưu 5 module (06/2026, Claude)",
@@ -360,4 +365,4 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error("[hsms-mcp] HSMS Knowledge Server started — 19 resources, 4 tools");
+console.error("[hsms-mcp] HSMS Knowledge Server started — 20 resources, 4 tools");

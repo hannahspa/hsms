@@ -527,8 +527,11 @@ Số dư ví     = so_du_dau + thu vào - chi ra + CK vào - CK ra
 
 **Kiểm tra số dư trước khi cho chi/chuyển — không được chi vượt số dư.**
 
-Doanh thu 4 hình thức:
-- `tien_mat` → ví Tiền Mặt
+Phương thức thanh toán = 4 loại CỐ ĐỊNH: `tien_mat | chuyen_khoan | quet_the | the_tra_truoc`.
+> PTTT chỉ là CÁCH khách trả. Việc tiền về ví nào là CẤU HÌNH RIÊNG (ánh xạ PTTT→ví), KHÔNG gắn cứng vào định nghĩa PTTT.
+
+Ánh xạ PTTT → ví (cấu hình mặc định hiện tại, có thể đổi):
+- `tien_mat` → ví Tiền Mặt (Két)
 - `chuyen_khoan` → ví MB Bank
 - `quet_the` → ví TP Bank (về sau 3-7 ngày)
 - `the_tra_truoc` → ví Tiền Mặt (KH cũ, không bán mới)
@@ -549,12 +552,13 @@ Thực Nhận = (Lương Cứng ÷ Số Ngày Tháng) × Ngày Công
           - Ký Quỹ Tháng Này (500,000đ)
 ```
 
-**Lương Kinh Doanh** (ngày 15 hàng tháng):
+**Lương Kinh Doanh** (ngày 15 hàng tháng) — CHỐT, chỉ 2 khái niệm (xem `knowledge/domain/pos-income-model.md`):
 ```
-= Hoa hồng dịch vụ (POS myspa.vn)
-+ Hoa hồng bán thẻ liệu trình
-+ Tiền tour (nếu có)
+KTV     = Tiền Tour (thực hiện dịch vụ/dùng thẻ) + Tiền Hoa Hồng (bán thẻ/SP)
+Lễ Tân = Lương KD (công thức doanh số: bậc1 (150tr−DS)×1% + bậc2 vượt×1.5%) + Tiền Hoa Hồng
 ```
+> KHÔNG còn khái niệm "commission". Tiền Hoa Hồng tính trên SỐ TIỀN KHÁCH ĐÃ TRẢ
+> (khách nợ → nhận 1 phần; thu nợ thêm → cộng thêm). Tiền Tour không phụ thuộc nợ.
 
 **Ngày Công — công thức chính xác:**
 ```

@@ -460,7 +460,7 @@ function PosCreateOrder({ resumeOrderId }) {
 
   // ── Toggle thẻ liệu trình inline ────────────────────────────────────────────
   const handleToggleCard = useCallback(async (_lid, toCard, {
-    soBuoiMua, soBuoiTang, ngayHetHan, donGia, phanTramGiam = 0,
+    soBuoiMua, soBuoiTang, ngayHetHan, donGia, phanTramGiam = 0, giaBanBuoi,
     kmRefPct: kmRef,
   }) => {
     if (toCard && !selectedCustomer?.id) {
@@ -469,14 +469,17 @@ function PosCreateOrder({ resumeOrderId }) {
     }
     const item = lineItems.find(i => i._lid === _lid)
     const soBuoiTong = soBuoiMua + soBuoiTang
-    // Thành tiền = buổi mua × đơn giá × (1 − giảm%)
-    const thanhTien  = Math.round(soBuoiMua * donGia * (1 - Number(phanTramGiam) / 100))
+    // Giá khách trả thật: ưu tiên giá bán/buổi (giá KM). Thành tiền = buổi mua × giá bán.
+    const giaBan = (giaBanBuoi != null && giaBanBuoi > 0) ? Number(giaBanBuoi) : Math.round(donGia * (1 - Number(phanTramGiam) / 100))
+    const thanhTien = Math.round(soBuoiMua * giaBan)
 
     const metaData = toCard ? {
       loai:        'the_moi',
       dichVuId:    item?.dich_vu_id  || null,
       tenDichVu:   item?.dich_vu?.ten || null,
       soBuoiMua, soBuoiTang, soBuoiTong,
+      giaGocBuoi:  donGia,
+      giaBanBuoi:  giaBan,
       phanTramGiam: Number(phanTramGiam),
       giaTriThe:   thanhTien,
       ngayHetHan:  ngayHetHan || null,
@@ -556,18 +559,20 @@ function PosCreateOrder({ resumeOrderId }) {
         paymentsInserted.current = false  // order mới → chưa có payments
       }
 
-      // Insert payments — chỉ khi chưa insert (tránh duplicate khi retry sau CHUA_DU_BUOI)
-      if (!paymentsInserted.current) {
-        const oldPayments = await posService.getPayments(oid)
-        await posService.removePayments(oldPayments.map(payment => payment.id))
+      // Đồng bộ thanh toán IDEMPOTENT: luôn xoá sạch payment cũ của đơn rồi ghi lại đúng payLines.
+      // → Mỗi lần bấm lại (sau lỗi finalize hoặc CHUA_DU_BUOI) KHÔNG bao giờ cộng dồn payment.
+      // Fix bug trùng 3×495k khi finalize lỗi liên tục.
+      const existingPayments = await posService.getPayments(oid)
+      if (existingPayments.length > 0) {
+        await posService.removePayments(existingPayments.map(payment => payment.id))
       }
-      if (tongCuoi > 0 && !paymentsInserted.current) {
+      if (tongCuoi > 0) {
         for (const p of validPayments) {
           const payment = await posService.addPayment(oid, { hinhThuc: p.hinhThuc, soTien: p.soTien, ghiChu: ghiChuDon })
           insertedPaymentIds.push(payment.id)
         }
-        paymentsInserted.current = true
       }
+      paymentsInserted.current = true
 
       // 4. Finalize — RPC xử lý kho, thẻ LT dùng, thẻ mới, công nợ, doanh_thu
       const result = await posService.finalizeOrder(oid, { giamGia: giamDVAmt, vat: vatAmt, conNo, ghiChu: ghiChuDon })
@@ -616,6 +621,8 @@ function PosCreateOrder({ resumeOrderId }) {
   }
 
   // ── Computed ─────────────────────────────────────────────────────────────────
+  // Có bán thẻ liệu trình trong đơn → hiện panel Hoa Hồng NV bán (ẩn với đơn dịch vụ/dùng thẻ)
+  const coBanThe   = lineItems.some(i => i.loai_item === 'the_moi')
   const tongHang   = lineItems.reduce((s, i) => s + (i.thanh_tien || 0), 0)
   const giamDVAmt  = giamMode === 'vnd'
     ? Math.min(tongHang, parseVND(giamDVVnd))
@@ -678,13 +685,21 @@ function PosCreateOrder({ resumeOrderId }) {
     const { ktv, leTan, primary } = getPrimarySaleStaff()
     const currentMeta = item.meta || {}
     const staffId = currentMeta.nhanVienBanId || item.nhan_vien_id || primary?.nv?.id || null
-    const staffPct = Number(item.ti_le_hoa_hong || ktv?.pct || leTan?.pct || primary?.pct || 0)
+    // % hoa hồng bán thẻ = % QUY TẮC KM của NV bán (panel), KHÔNG dùng ti_le_hoa_hong gốc của dịch vụ.
+    // KM ≥ 30% → KTV 5%; KTV+LT → 7%; KTV đơn → 10%; LT → 3% (đã tính sẵn ở calcStaffPct/orderStaff).
+    const sellerPct = Number(ktv?.pct ?? leTan?.pct ?? primary?.pct ?? 0)
+    const hasPanelSeller = !!primary
+    // Có NV bán ở panel → tính lại theo quy tắc. Không có (gán per-line qua KtvPopup) → giữ giá trị đã gán.
+    const staffPct = hasPanelSeller ? sellerPct : Number(item.ti_le_hoa_hong || 0)
+    const tienComm = hasPanelSeller
+      ? Math.round((item.thanh_tien || 0) * sellerPct / 100)
+      : (item.tien_commission || Math.round((item.thanh_tien || 0) * staffPct / 100))
     const nextMeta = {
       ...currentMeta,
       nhanVienBanId: staffId,
       nhanVienTuVanLtId: currentMeta.nhanVienTuVanLtId || leTan?.nv?.id || null,
-      tiLeCommKtv: Number(currentMeta.tiLeCommKtv || ktv?.pct || (primary?.nv?.vi_tri === 'ktv' ? primary.pct : 0) || 0),
-      tiLeCommLt: Number(currentMeta.tiLeCommLt || leTan?.pct || (primary?.nv?.vi_tri === 'le_tan' ? primary.pct : 0) || 0),
+      tiLeCommKtv: Number(ktv?.pct || (primary?.nv?.vi_tri === 'ktv' ? primary.pct : 0) || currentMeta.tiLeCommKtv || 0),
+      tiLeCommLt: Number(leTan?.pct || (primary?.nv?.vi_tri === 'le_tan' ? primary.pct : 0) || currentMeta.tiLeCommLt || 0),
     }
     return {
       ...item,
@@ -692,7 +707,7 @@ function PosCreateOrder({ resumeOrderId }) {
       nhan_vien: item.nhan_vien || primary?.nv || null,
       ti_le_hoa_hong: staffPct || null,
       tien_tour: 0,
-      tien_commission: item.tien_commission || Math.round((item.thanh_tien || 0) * staffPct / 100),
+      tien_commission: tienComm,
       meta: nextMeta,
     }
   }
@@ -1091,16 +1106,19 @@ function PosCreateOrder({ resumeOrderId }) {
                 />
               </div>
 
-              <StaffCommissionPanel
-                ktvList={ktvList}
-                orderStaff={orderStaff}
-                setOrderStaff={setOrderStaff}
-                calcStaffPct={calcStaffPct}
-                getRulesPct={getRulesPct}
-                orderKmRefPct={orderKmRefPct}
-                totalPaid={tongNhan}
-                orderTotal={tongCuoi}
-              />
+              {/* Hoa Hồng NV bán thẻ — CHỈ hiện khi đơn có bán thẻ liệu trình. Đơn dịch vụ/dùng thẻ → ẩn (chỉ Tour). */}
+              {coBanThe && (
+                <StaffCommissionPanel
+                  ktvList={ktvList}
+                  orderStaff={orderStaff}
+                  setOrderStaff={setOrderStaff}
+                  calcStaffPct={calcStaffPct}
+                  getRulesPct={getRulesPct}
+                  orderKmRefPct={orderKmRefPct}
+                  totalPaid={tongNhan}
+                  orderTotal={tongCuoi}
+                />
+              )}
 
             </div>
             )}
