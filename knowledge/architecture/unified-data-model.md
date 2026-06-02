@@ -6,7 +6,7 @@
 
 ---
 
-## I. 5 PHƯƠNG THỨC THANH TOÁN — ĐỊNH NGHĨA DUY NHẤT
+## I. 4 PHƯƠNG THỨC THANH TOÁN — ĐỊNH NGHĨA DUY NHẤT
 
 Đây là enum `hinh_thuc_thanh_toan` dùng CHO TOÀN BỘ HỆ THỐNG:
 
@@ -16,12 +16,11 @@
 | 2 | `chuyen_khoan` | Chuyển Khoản | Chuyển khoản ngân hàng | ✅ Có | Không phụ thuộc ngân hàng cụ thể |
 | 3 | `quet_the` | Quẹt Thẻ | Thanh toán qua máy POS/cà thẻ | ✅ Có (về sau 3-7 ngày) | Không phụ thuộc ngân hàng cụ thể |
 | 4 | `the_tra_truoc` | Thẻ Trả Trước | KH nạp tiền trước vào tài khoản spa | ❌ Không | Đã thu tiền từ trước, chỉ đang dùng số dư |
-| 5 | `the_lieu_trinh` | Thẻ Liệu Trình | Gói dịch vụ mua trước (10 buổi, 20 buổi...) | ❌ Không | Đã thu tiền từ lúc bán thẻ, đang dùng buổi |
-
 ### Nguyên tắc:
-- **5 phương thức này là BẤT BIẾN** — mọi bảng dùng chung CHECK constraint
+- **4 phương thức này là BẤT BIẾN** — mọi bảng dùng chung CHECK constraint
 - **Không nhúng tên ngân hàng** vào enum — "MB Bank", "TP Bank" chỉ là tên hiển thị của ví
-- **Thẻ Trả Trước và Thẻ Liệu Trình** không sinh dòng tiền mới (tiền đã thu từ trước)
+- **Thẻ Trả Trước** không sinh dòng tiền mới (tiền đã thu từ trước)
+- **Thẻ Liệu Trình** là dòng dùng/bán gói dịch vụ trong POS, không phải phương thức thanh toán
 
 ---
 
@@ -202,7 +201,7 @@ ORDER BY v.thu_tu;
 │  • nhan_vien_id → KTV nào làm (→ hoa hồng)                       │
 │                                                                   │
 │  thanh_toan                                                       │
-│  • hinh_thuc → 1 trong 5 phương thức                              │
+│  • hinh_thuc → 1 trong 4 phương thức                              │
 │  • so_tien → số tiền                                              │
 └──────────────────────────────────────────────────────────────────┘
           │                       │                       │

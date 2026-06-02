@@ -559,7 +559,7 @@ function PosCreateOrder({ resumeOrderId }) {
       }
 
       // 4. Finalize — RPC xử lý kho, thẻ LT dùng, thẻ mới, công nợ, doanh_thu
-      const result = await posService.finalizeOrder(oid, { giamGia: giamDVAmt, conNo, ghiChu: ghiChuDon })
+      const result = await posService.finalizeOrder(oid, { giamGia: giamDVAmt, vat: vatAmt, conNo, ghiChu: ghiChuDon })
 
       // ── Thẻ chưa đủ buổi được phép → yêu cầu KH thanh toán trước ──────────
       if (result?.error_code === 'CHUA_DU_BUOI') {

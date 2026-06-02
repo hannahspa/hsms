@@ -1,0 +1,251 @@
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { supabase } from '../../../lib/supabase'
+import { posService } from '../../../services/posService'
+import { todayISO } from '../../../lib/utils'
+import DatePicker from '../../../components/shared/DatePicker'
+import { C, fmtDate, dayOfWeek, shortName, GIO_LIST, normalizePhone, dedupeHints } from './lichHenShared'
+
+const safeSearchTerm = (value) => String(value || '')
+  .replace(/[,%()]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+
+// ══════════════════════════════════════════════════════════
+// Modal đặt / sửa lịch hẹn — tách từ LichHenPage.jsx (Phase 2). Không đổi logic.
+// ══════════════════════════════════════════════════════════
+export default function ModalDatHen({ initial, ktvList, onSave, onClose, user }) {
+  const [form, setForm] = useState(initial || {
+    ten_khach: '', sdt_khach: '', ten_dich_vu: '', dich_vu_id: null, nhan_vien_id: null,
+    thoi_luong_phut: 60, ngay_hen: todayISO(), gio_hen: '10:00', ghi_chu: '',
+  })
+  const [dichVuList, setDichVuList] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [showNgay, setShowNgay] = useState(false)
+  const [customerHints, setCustomerHints] = useState([])
+  const [hintLoading, setHintLoading] = useState(false)
+  const [creatingOrder, setCreatingOrder] = useState(false)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  useEffect(() => {
+    supabase.from('dich_vu').select('id, ten, thoi_luong_phut').eq('is_active', true).order('ten').then(({ data }) => setDichVuList(data || []))
+  }, [])
+
+  useEffect(() => {
+    const phone = normalizePhone(form.sdt_khach)
+    const name = String(form.ten_khach || '').trim()
+    const term = safeSearchTerm(phone.length >= 3 ? phone : name)
+    if (term.length < 3) {
+      setCustomerHints([])
+      setHintLoading(false)
+      return undefined
+    }
+
+    let alive = true
+    const timer = setTimeout(async () => {
+      setHintLoading(true)
+      try {
+        const [khRes, henRes] = await Promise.all([
+          supabase
+            .from('khach_hang')
+            .select('id, ho_ten, so_dien_thoai, lan_cuoi_den')
+            .or(`ho_ten.ilike.%${term}%,so_dien_thoai.ilike.%${term}%`)
+            .order('lan_cuoi_den', { ascending: false, nullsFirst: false })
+            .limit(12),
+          supabase
+            .from('lich_hen')
+            .select('id, khach_hang_id, ten_khach, sdt_khach, ten_dich_vu, ngay_hen, gio_hen, trang_thai')
+            .or(`ten_khach.ilike.%${term}%,sdt_khach.ilike.%${term}%`)
+            .order('ngay_hen', { ascending: false })
+            .limit(12),
+        ])
+        if (!alive) return
+
+        const hints = [
+          ...(khRes.data || []).map(kh => ({
+            source: 'crm',
+            khach_hang_id: kh.id,
+            ten_khach: kh.ho_ten || '',
+            sdt_khach: kh.so_dien_thoai || '',
+            note: kh.lan_cuoi_den ? `CRM · lần cuối ${fmtDate(kh.lan_cuoi_den)}` : 'CRM khách hàng',
+          })),
+          ...(henRes.data || []).map(h => ({
+            source: 'appointment',
+            khach_hang_id: h.khach_hang_id || null,
+            ten_khach: h.ten_khach || '',
+            sdt_khach: h.sdt_khach || '',
+            ten_dich_vu: h.ten_dich_vu || '',
+            note: `Lịch hẹn ${fmtDate(h.ngay_hen)} ${String(h.gio_hen || '').slice(0, 5)}${h.ten_dich_vu ? ` · ${h.ten_dich_vu}` : ''}`,
+          })),
+        ].filter(h => h.ten_khach || h.sdt_khach)
+
+        setCustomerHints(dedupeHints(hints).slice(0, 10))
+      } catch {
+        if (alive) setCustomerHints([])
+      } finally {
+        if (alive) setHintLoading(false)
+      }
+    }, 220)
+
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+  }, [form.sdt_khach, form.ten_khach])
+
+  const handleSelectDV = e => {
+    const dv = dichVuList.find(d => d.id === e.target.value)
+    if (dv) { set('dich_vu_id', dv.id); set('ten_dich_vu', dv.ten); set('thoi_luong_phut', dv.thoi_luong_phut || 60) }
+    else set('dich_vu_id', null)
+  }
+
+  const handleSelectHint = hint => {
+    setForm(f => ({
+      ...f,
+      khach_hang_id: hint.khach_hang_id || f.khach_hang_id || null,
+      ten_khach: hint.ten_khach || f.ten_khach,
+      sdt_khach: hint.sdt_khach || f.sdt_khach,
+      ten_dich_vu: f.ten_dich_vu || hint.ten_dich_vu || '',
+    }))
+    setCustomerHints([])
+  }
+
+  const handleSave = async () => {
+    if (!form.ten_khach.trim()) return alert('Vui lòng nhập tên khách')
+    setSaving(true)
+    try {
+      const payload = {
+        ten_khach: form.ten_khach.trim(), sdt_khach: form.sdt_khach?.trim() || null,
+        khach_hang_id: form.khach_hang_id || null,
+        dich_vu_id: form.dich_vu_id || null, ten_dich_vu: form.ten_dich_vu?.trim() || null,
+        nhan_vien_id: form.nhan_vien_id || null,
+        thoi_luong_phut: form.thoi_luong_phut || 60, ngay_hen: form.ngay_hen, gio_hen: form.gio_hen,
+        ghi_chu: form.ghi_chu?.trim() || null, nguoi_nhap: user?.email || user?.ho_ten || 'Lễ Tân',
+      }
+      if (initial?.id) await supabase.from('lich_hen').update(payload).eq('id', initial.id)
+      else { payload.trang_thai = 'cho_xac_nhan'; await supabase.from('lich_hen').insert(payload) }
+      onSave()
+    } catch (e) { alert('Lỗi lưu lịch hẹn: ' + e.message) } finally { setSaving(false) }
+  }
+
+  const handleCreatePosOrder = async () => {
+    if (!initial?.id) return
+    if (!form.ten_khach.trim()) return alert('Vui lòng nhập tên khách trước khi tạo đơn POS')
+    setCreatingOrder(true)
+    try {
+      const result = await posService.createDraftOrderFromAppointment(
+        { ...initial, ...form, id: initial.id },
+        { nguoiTao: user?.id }
+      )
+      window.location.href = `/pos?resume=${result.orderId}`
+    } catch (e) {
+      alert('Lỗi tạo đơn POS từ lịch hẹn: ' + e.message)
+    } finally {
+      setCreatingOrder(false)
+    }
+  }
+
+  const INP = { width: '100%', height: 38, borderRadius: 9, border: `1px solid ${C.line2}`, padding: '0 11px', fontFamily: 'var(--sans)', fontSize: 13.5, outline: 'none', boxSizing: 'border-box', background: '#fdfcfb', color: C.ink }
+  const LBL = { fontFamily: 'var(--sans)', fontSize: 11, fontWeight: 700, color: C.ink3, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }
+
+  return createPortal(
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(42,29,20,0.45)', backdropFilter: 'blur(3px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: C.card, borderRadius: 16, width: 500, maxWidth: '95vw', maxHeight: '92vh', overflowY: 'auto', boxShadow: C.shadowLg }}>
+        <DatePicker open={showNgay} selectedDate={form.ngay_hen} onClose={() => setShowNgay(false)} onConfirm={v => { set('ngay_hen', v); setShowNgay(false) }} />
+        <div style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${C.line}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 700, color: C.espresso }}>
+            {initial?.id ? '✏️ Sửa Lịch Hẹn' : '📅 Đặt Lịch Hẹn Mới'}
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: C.ink3 }}>✕</button>
+        </div>
+
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div><div style={LBL}>Tên Khách *</div><input style={INP} value={form.ten_khach} onChange={e => set('ten_khach', e.target.value)} placeholder="Nguyễn Thị Lan" /></div>
+            <div><div style={LBL}>Số Điện Thoại</div><input style={INP} value={form.sdt_khach || ''} onChange={e => set('sdt_khach', e.target.value)} placeholder="0901234567" /></div>
+          </div>
+
+          {(hintLoading || customerHints.length > 0) && (
+            <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, background: '#fffdf9', overflow: 'hidden', marginTop: -4 }}>
+              <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 800, color: C.ink3, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${C.line}` }}>
+                {hintLoading ? 'Đang tìm khách / lịch hẹn cũ...' : `${customerHints.length} kết quả liên quan`}
+              </div>
+              {!hintLoading && customerHints.map(hint => (
+                <button key={`${hint.source}-${hint.khach_hang_id || hint.sdt_khach}-${hint.ten_khach}-${hint.note}`}
+                  type="button"
+                  onClick={() => handleSelectHint(hint)}
+                  style={{
+                    width: '100%', border: 'none', borderBottom: `1px solid ${C.line}`,
+                    background: '#fff', padding: '9px 11px', textAlign: 'left',
+                    cursor: 'pointer', fontFamily: 'var(--sans)', display: 'grid',
+                    gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center',
+                  }}>
+                  <span>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 800, color: C.ink }}>{hint.ten_khach || 'Khách chưa rõ tên'}</span>
+                    <span style={{ display: 'block', fontSize: 11.5, color: C.ink3, marginTop: 2 }}>{hint.sdt_khach || 'Chưa có SĐT'} · {hint.note}</span>
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 800, borderRadius: 999, padding: '3px 8px',
+                    color: hint.source === 'crm' ? '#2D7A4F' : '#8a6335',
+                    background: hint.source === 'crm' ? 'rgba(45,122,79,.09)' : 'rgba(201,169,110,.16)',
+                  }}>
+                    {hint.source === 'crm' ? 'CRM' : 'Lịch hẹn'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div><div style={LBL}>Dịch Vụ</div>
+            <select onChange={handleSelectDV} value={form.dich_vu_id || ''} style={INP}>
+              <option value="">— Chọn từ danh mục —</option>
+              {dichVuList.map(dv => <option key={dv.id} value={dv.id}>{dv.ten} ({dv.thoi_luong_phut || 60} phút)</option>)}
+            </select>
+            {!form.dich_vu_id && <input style={{ ...INP, marginTop: 7 }} value={form.ten_dich_vu || ''} onChange={e => set('ten_dich_vu', e.target.value)} placeholder="Hoặc nhập tên dịch vụ tự do..." />}
+          </div>
+
+          <div><div style={LBL}>Kỹ Thuật Viên Phụ Trách</div>
+            <select value={form.nhan_vien_id || ''} onChange={e => set('nhan_vien_id', e.target.value || null)} style={INP}>
+              <option value="">— Chưa phân KTV —</option>
+              {ktvList.map(k => <option key={k.id} value={k.id}>{shortName(k.ho_ten)} ({k.vi_tri === 'ktv' ? 'KTV' : 'Lễ Tân'})</option>)}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 14 }}>
+            <div><div style={LBL}>Ngày Hẹn *</div>
+              <button onClick={() => setShowNgay(true)} style={{ ...INP, textAlign: 'left', cursor: 'pointer' }}>
+                {form.ngay_hen ? `${dayOfWeek(form.ngay_hen)}, ${fmtDate(form.ngay_hen)}` : 'Chọn ngày'}
+              </button>
+            </div>
+            <div><div style={LBL}>Giờ Hẹn *</div>
+              <select value={form.gio_hen} onChange={e => set('gio_hen', e.target.value)} style={INP}>{GIO_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select>
+            </div>
+            <div><div style={LBL}>Thời Lượng</div>
+              <select value={form.thoi_luong_phut} onChange={e => set('thoi_luong_phut', +e.target.value)} style={INP}>{[30, 45, 60, 90, 120, 150, 180].map(m => <option key={m} value={m}>{m} phút</option>)}</select>
+            </div>
+          </div>
+
+          <div><div style={LBL}>Ghi Chú</div>
+            <textarea value={form.ghi_chu || ''} onChange={e => set('ghi_chu', e.target.value)} placeholder="Yêu cầu đặc biệt, da liễu cần lưu ý..." style={{ ...INP, height: 60, paddingTop: 8, resize: 'vertical' }} />
+          </div>
+        </div>
+
+        <div style={{ padding: '14px 24px', borderTop: `1px solid ${C.line}`, display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            {initial?.id && initial.trang_thai !== 'huy' && (
+              <button onClick={handleCreatePosOrder} disabled={creatingOrder} style={{ padding: '10px 18px', borderRadius: 9, border: `1px solid ${C.gold}`, background: '#fdf3e0', color: '#8a6a35', fontSize: 13.5, fontWeight: 800, cursor: creatingOrder ? 'not-allowed' : 'pointer', opacity: creatingOrder ? 0.7 : 1, fontFamily: 'var(--sans)' }}>
+                {creatingOrder ? 'Đang tạo đơn...' : 'Tạo đơn POS'}
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 9, border: `1px solid ${C.line2}`, background: '#fff', fontSize: 13.5, cursor: 'pointer', color: C.ink2, fontFamily: 'var(--sans)' }}>Huỷ</button>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '10px 24px', borderRadius: 9, border: 'none', background: C.grad, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'var(--sans)' }}>
+            {saving ? 'Đang lưu...' : (initial?.id ? 'Cập Nhật' : 'Đặt Lịch')}
+          </button>
+          </div>
+        </div>
+      </div>
+    </div>, document.body
+  )
+}

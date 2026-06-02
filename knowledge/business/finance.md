@@ -2,7 +2,7 @@
 
 > Xác minh lần cuối: 08/05/2026 | Kiến trúc thống nhất v1.0
 
-## 5 Phương Thức Thanh Toán (Định Nghĩa Duy Nhất)
+## 4 Phương Thức Thanh Toán (Định Nghĩa Duy Nhất)
 
 Đây là enum dùng CHO TOÀN BỘ HỆ THỐNG:
 
@@ -12,12 +12,11 @@
 | 2 | `chuyen_khoan` | Chuyển Khoản | ✅ Có | Chuyển khoản ngân hàng (không phụ thuộc ngân hàng cụ thể) |
 | 3 | `quet_the` | Quẹt Thẻ | ✅ Có (về sau 3-7 ngày) | Thanh toán qua máy POS (không phụ thuộc ngân hàng cụ thể) |
 | 4 | `the_tra_truoc` | Thẻ Trả Trước | ❌ Không | KH nạp tiền trước, đang dùng số dư |
-| 5 | `the_lieu_trinh` | Thẻ Liệu Trình | ❌ Không | Gói dịch vụ mua trước, đang dùng buổi |
-
 **Nguyên tắc:**
-- 5 phương thức này là BẤT BIẾN — mọi bảng dùng chung CHECK constraint
+- 4 phương thức này là BẤT BIẾN — mọi bảng dùng chung CHECK constraint
 - "MB Bank", "TP Bank" chỉ là tên hiển thị của ví, không nhúng vào enum
-- `the_tra_truoc` và `the_lieu_trinh`: tiền đã thu từ trước → không sinh dòng tiền mới
+- `the_tra_truoc`: tiền đã thu từ trước → không sinh dòng tiền mới
+- `the_lieu_trinh` là dòng dùng/bán gói dịch vụ, không phải phương thức thanh toán
 
 ## Công Thức Dòng Tiền Cốt Lõi
 
@@ -26,7 +25,7 @@ Thực Thu     = SUM doanh_thu WHERE hinh_thuc IN (tien_mat, chuyen_khoan, quet_
 Lợi Nhuận   = Thực Thu - Tổng Chi
 Số dư ví     = so_du_dau + thu vào - chi ra + CK vào - CK ra
 
-the_tra_truoc và the_lieu_trinh bị LOẠI TRỪ khỏi dòng tiền
+the_tra_truoc bị LOẠI TRỪ khỏi dòng tiền
 → Chỉ dùng để báo cáo doanh thu chưa thực hiện (P&L)
 ```
 

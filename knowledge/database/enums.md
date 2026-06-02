@@ -10,10 +10,10 @@
 | 2 | `chuyen_khoan` | Chuyển Khoản | ✅ Có |
 | 3 | `quet_the` | Quẹt Thẻ | ✅ Có (về sau 3-7 ngày) |
 | 4 | `the_tra_truoc` | Thẻ Trả Trước | ❌ Không |
-| 5 | `the_lieu_trinh` | Thẻ Liệu Trình | ❌ Không |
 
-**Domain PostgreSQL:** `hinh_thuc_thanh_toan_t` CHECK IN (5 giá trị trên)
+**Domain PostgreSQL:** `hinh_thuc_thanh_toan_t` CHECK IN (4 giá trị trên)
 **Áp dụng cho:** `doanh_thu.hinh_thuc`, `chi_phi.hinh_thuc_thanh_toan`, `thanh_toan.hinh_thuc`
+**Lưu ý:** `the_lieu_trinh` là `loai_item` của POS, không phải phương thức thanh toán.
 
 ## Vai Trò Người Dùng (vai_tro)
 

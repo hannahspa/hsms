@@ -118,7 +118,7 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
 
   // OV can be offset by holiday credits (1:1)
   const tongOV = soOffPhepVuot + offOVList.length
-  const soOVConLai = Math.max(0, tongOV - soNgayLeDungThangNay)
+  const soNgayLeBuOV = Math.min(soNgayLeDungThangNay, tongOV)
 
   // ═══════════════════════════════════════════
   // PASS 3: Ngày không lương
@@ -136,7 +136,7 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   ngayKhongLuong += offT7XList.length * 2
 
   // Holiday credit applied → reduce OV impact
-  ngayKhongLuong -= soNgayLeDungThangNay
+  ngayKhongLuong -= soNgayLeBuOV
 
   // Partial day deductions (he_so < 1) — only up to todayRef
   chamCongList.filter(r => {
@@ -216,6 +216,7 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
     soNgayLeTichLuy,
     soNgayLeDaDung,
     soNgayLeDungThangNay,
+    soNgayLeBuOV,
 
     // Attendance
     tongTangCa: +tongTangCa.toFixed(2),

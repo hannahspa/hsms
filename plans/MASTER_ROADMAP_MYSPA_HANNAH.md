@@ -100,7 +100,7 @@ Muc tieu: cuoi thang tinh duoc tien tra that.
 - Luong kinh doanh doc tu POS thay vi import thu cong.
 - Luong cung doc tu cham cong, off, tang ca, ky quy.
 - Trang thai chot luong va khoa ky luong.
-- Xuat phieu luong sau khi logic da on dinh.
+- KTV xem luong truc tiep tren app; khong xuat phieu luong PDF.
 
 Uu tien: trung-cao.
 

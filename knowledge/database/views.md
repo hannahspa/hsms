@@ -81,8 +81,7 @@ SELECT
   SUM(CASE WHEN tt.hinh_thuc = 'tien_mat' THEN tt.so_tien ELSE 0 END) AS tm,
   SUM(CASE WHEN tt.hinh_thuc = 'chuyen_khoan' THEN tt.so_tien ELSE 0 END) AS ck,
   SUM(CASE WHEN tt.hinh_thuc = 'quet_the' THEN tt.so_tien ELSE 0 END) AS qt,
-  SUM(CASE WHEN tt.hinh_thuc = 'the_tra_truoc' THEN tt.so_tien ELSE 0 END) AS ttt,
-  SUM(CASE WHEN tt.hinh_thuc = 'the_lieu_trinh' THEN tt.so_tien ELSE 0 END) AS tlt
+  SUM(CASE WHEN tt.hinh_thuc = 'the_tra_truoc' THEN tt.so_tien ELSE 0 END) AS ttt
 FROM don_hang dh
 LEFT JOIN thanh_toan tt ON tt.don_hang_id = dh.id
 WHERE dh.trang_thai != 'huy'

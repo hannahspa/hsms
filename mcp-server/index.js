@@ -100,19 +100,24 @@ const RESOURCE_MAP = {
   "hsms://architecture/data-model": {
     file: "architecture/unified-data-model.md",
     name: "Unified Data Model — Architecture",
-    description: "Complete data flow diagram, 5 payment methods, module links, unified schema design",
+    description: "Complete data flow diagram, 4 payment methods, module links, unified schema design",
   },
   "hsms://domain/data-migration": {
     file: "domain/data-migration.md",
     name: "MySpa → HSMS Data Migration Strategy",
     description: "MySpa export file formats, column mappings, import order, 4-step migration process",
   },
+  "hsms://changelog/2026-06-audit-optimize": {
+    file: "changelog/2026-06-audit-optimize.md",
+    name: "Changelog — Tối ưu 5 module (06/2026, Claude)",
+    description: "Nhật ký Claude tối ưu 5 module: fix bug VAT→thuc_thu, đối soát doc, tách 2 file lớn thành 7 file, DatePicker; 2 điểm lương ghi nhận chưa sửa. Cho Codex kiểm tra chéo.",
+  },
 };
 
 // ── Business Topic Map (for hsms_business_rule) ─────────────────
 const BUSINESS_TOPICS = {
   salary: { file: "business/salary.md", headings: ["Salary Constants", "Two Salary Periods", "Day Count Rules", "todayRef", "Deposit Auto-Increment", "Le Tan Commission"] },
-  finance: { file: "business/finance.md", headings: ["5 Phương Thức Thanh Toán", "Công Thức Dòng Tiền Cốt Lõi", "POS → Doanh Thu", "Chiều Chuyển Khoản Nội Bộ"] },
+  finance: { file: "business/finance.md", headings: ["4 Phương Thức Thanh Toán", "Công Thức Dòng Tiền Cốt Lõi", "POS → Doanh Thu", "Chiều Chuyển Khoản Nội Bộ"] },
   attendance: { file: "business/attendance.md", headings: ["Check-in Flow", "OFF Types", "Monthly OFF Limits", "Overtime"] },
   inventory: { file: "business/inventory.md", headings: ["Product Types", "Transaction Types", "Key Rules"] },
   off_limits: { file: "business/attendance.md", headings: ["Monthly OFF Limits"] },
@@ -355,4 +360,4 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error("[hsms-mcp] HSMS Knowledge Server started — 16 resources, 4 tools");
+console.error("[hsms-mcp] HSMS Knowledge Server started — 19 resources, 4 tools");

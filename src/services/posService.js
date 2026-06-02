@@ -5,6 +5,10 @@ import { calcServiceCommission, getCommissionPercent } from '../lib/serviceCommi
 import { buildTreatmentPolicy, getTreatmentCardDisplayValue } from '../lib/treatmentCardPolicy'
 
 const PAYMENT_METHODS = new Set(['tien_mat', 'chuyen_khoan', 'quet_the', 'the_tra_truoc'])
+const safeSearchTerm = (value) => String(value || '')
+  .replace(/[,%()]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
 const TREATMENT_CARD_SELECT = `
   *,
   combo:combo_id(
@@ -410,9 +414,10 @@ export const posService = {
     return this.enrichOrders(data || [])
   },
 
-  async getOrdersPage({ page = 1, pageSize = 50, fromDate = null, toDate = null } = {}) {
+  async getOrdersPage({ page = 1, pageSize = 50, fromDate = null, toDate = null, search = '' } = {}) {
     const from = Math.max(0, (page - 1) * pageSize)
     const to = from + pageSize - 1
+    const keyword = safeSearchTerm(search)
     let query = supabase
       .from('don_hang')
       .select('*, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)', { count: 'exact' })
@@ -422,6 +427,19 @@ export const posService = {
 
     if (fromDate) query = query.gte('ngay', fromDate)
     if (toDate) query = query.lte('ngay', toDate)
+    if (keyword.length >= 2) {
+      const { data: customerMatches, error: customerError } = await supabase
+        .from('khach_hang')
+        .select('id')
+        .or(`ho_ten.ilike.%${keyword}%,so_dien_thoai.ilike.%${keyword}%`)
+        .limit(200)
+      if (customerError) throw customerError
+
+      const customerIds = (customerMatches || []).map(k => k.id).filter(Boolean)
+      const orderFilters = [`ma_don.ilike.%${keyword}%`, `ghi_chu.ilike.%${keyword}%`]
+      if (customerIds.length > 0) orderFilters.push(`khach_hang_id.in.(${customerIds.join(',')})`)
+      query = query.or(orderFilters.join(','))
+    }
 
     const { data, error, count } = await query
     if (error) throw error
@@ -429,15 +447,8 @@ export const posService = {
   },
 
   async searchOrders(query, limit = 50) {
-    const { data, error } = await supabase
-      .from('don_hang')
-      .select('*, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)')
-      .or(`ma_don.ilike.%${query}%,khach_hang.ho_ten.ilike.%${query}%`)
-      .order('ngay', { ascending: false })
-      .order('ma_don', { ascending: false })
-      .limit(limit)
-    if (error) throw error
-    return this.enrichOrders(data || [])
+    const result = await this.getOrdersPage({ page: 1, pageSize: limit, search: query })
+    return result.orders
   },
 
   // ═══════════════════════════════════════════════════
@@ -631,12 +642,14 @@ export const posService = {
   // CHỐT ĐƠN & HỦY ĐƠN (RPC)
   // ═══════════════════════════════════════════════════
 
-  async finalizeOrder(orderId, { giamGia = 0, conNo = 0, ghiChu = '' } = {}) {
-    // Migration 046: đã bỏ p_vat, thêm p_skip_doanh_thu
+  async finalizeOrder(orderId, { giamGia = 0, vat = 0, conNo = 0, ghiChu = '' } = {}) {
+    // RPC bản 7 tham số (migration 049 + 055): CÓ p_vat.
+    // Phải truyền p_vat để thuc_thu = tong_tien - giam_gia + vat khớp số tiền khách trả.
     const params = {
       p_don_hang_id: orderId,
       p_trang_thai:  'da_thanh_toan',
       p_giam_gia:    giamGia,
+      p_vat:         vat,
       p_con_no:      conNo,
       p_ghi_chu:     ghiChu,
     }

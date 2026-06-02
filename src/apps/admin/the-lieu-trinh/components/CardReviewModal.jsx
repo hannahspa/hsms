@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { todayISO } from '../../../../lib/utils'
+import DatePicker from '../../../../components/shared/DatePicker'
 
 const ACTION_META = {
   close_expired: { title: 'Đóng thẻ hết hạn', hint: 'Thẻ sẽ chuyển sang trạng thái hết hạn và không còn nằm trong danh sách cần rà.' },
@@ -13,6 +14,7 @@ export default function CardReviewModal({ card, action, onClose, onSaved }) {
   const actionMeta = ACTION_META[action] || {}
   const [reason, setReason] = useState('')
   const [newExpiry, setNewExpiry] = useState(card?.ngay_het_han || todayISO())
+  const [showExpiry, setShowExpiry] = useState(false)
   const [totalSessions, setTotalSessions] = useState(card?.so_buoi_tong || 1)
   const [usedSessions, setUsedSessions] = useState(card?.so_buoi_da_dung || 0)
   const [saving, setSaving] = useState(false)
@@ -78,8 +80,13 @@ export default function CardReviewModal({ card, action, onClose, onSaved }) {
           {action === 'extend_expiry' && (
             <label style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
               <span style={{ fontSize: 11, fontWeight: 900, color: 'var(--ink3)', textTransform: 'uppercase' }}>Ngày hết hạn mới</span>
-              <input type="date" value={newExpiry} onChange={e => setNewExpiry(e.target.value)}
-                style={{ height: 38, border: '1px solid var(--bord)', borderRadius: 8, padding: '0 12px', fontFamily: 'var(--sans)' }} />
+              <button type="button" onClick={() => setShowExpiry(true)}
+                style={{ height: 38, border: '1px solid var(--bord)', borderRadius: 8, padding: '0 12px', fontFamily: 'var(--sans)', textAlign: 'left', background: 'var(--surface)', color: 'var(--ink)', cursor: 'pointer', fontSize: 13.5 }}>
+                {newExpiry ? newExpiry.split('-').reverse().join('/') : 'Chọn ngày'}
+              </button>
+              <DatePicker open={showExpiry} selectedDate={newExpiry}
+                onClose={() => setShowExpiry(false)}
+                onConfirm={v => { setNewExpiry(v); setShowExpiry(false) }} />
             </label>
           )}
 

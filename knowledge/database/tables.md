@@ -77,9 +77,9 @@
 | tien_tang_ca | integer | | Tiền tăng ca |
 | tien_phat | integer | | Tiền phạt |
 | ~~hoa_hong~~ | integer | | ⚠️ LEGACY — không dùng |
-| hoa_hong_dv | integer | | Tổng Tiền Tour tháng (từ POS/MySpa import) — naming cũ giữ lại |
+| hoa_hong_dv | integer | | Tổng Tiền Hoa Hồng tháng từ POS (sản phẩm + bán thẻ mới). Tên cột legacy, UI hiển thị là Hoa Hồng |
 | hoa_hong_the | integer | | Thưởng Đạt Doanh Số |
-| tien_tour | integer | | Tổng Tiền Tour tháng (alias của hoa_hong_dv, dùng thay thế) |
+| tien_tour | integer | | Tổng Tiền Tour tháng từ dịch vụ + dùng thẻ liệu trình. Độc lập với hoa_hong_dv |
 | tru_ung_luong | integer | | Trừ ứng lương |
 | tru_ky_quy | integer | | Trừ ký quỹ |
 | tong_linh | integer | | Tổng lĩnh |
@@ -353,9 +353,9 @@ UNIQUE(ngay, nguoi_doi_soat, muc_kiem_tra)
 | don_gia | integer | NOT NULL | |
 | thanh_tien | integer | NOT NULL | |
 | **tien_tour** | integer | DEFAULT 0 | **CHUẨN** — Tiền Tour KTV từ dich_vu / the_lieu_trinh |
-| **tien_commission** | integer | DEFAULT 0 | **CHUẨN** — Tiền Hoa Hồng KTV từ san_pham / the_moi |
-| ~~tien_hoa_hong~~ | integer | | ⚠️ LEGACY — bằng tien_tour HOẶC tien_commission, sẽ xóa |
-| ~~ti_le_hoa_hong~~ | numeric | | ⚠️ LEGACY — không dùng trong POS mới, sẽ xóa |
+| **tien_commission** | integer | DEFAULT 0 | **CHUẨN** — Tiền Hoa Hồng KTV từ san_pham / the_moi (tên cột vật lý giữ nguyên, ý nghĩa = Hoa Hồng) |
+| ~~tien_hoa_hong~~ | integer | | ✅ **ĐÃ DROP** qua migration 049 (28/05/2026) |
+| **ti_le_hoa_hong** | numeric | | **DÙNG** — Tỷ lệ % hoa hồng, dùng cho tính toán + audit (xem knowledge/domain/staff-income.md) |
 | ghi_chu | text | | |
 | created_at | timestamptz | DEFAULT now() | |
 
@@ -369,7 +369,7 @@ UNIQUE(ngay, nguoi_doi_soat, muc_kiem_tra)
 |---|---|---|---|
 | id | uuid | PK | |
 | don_hang_id | uuid | FK→don_hang ON DELETE CASCADE | |
-| hinh_thuc | text | CHECK(tien_mat,chuyen_khoan,quet_the,the_tra_truoc,the_lieu_trinh) | |
+| hinh_thuc | text | CHECK(tien_mat,chuyen_khoan,quet_the,the_tra_truoc) | Thẻ liệu trình không phải phương thức thanh toán |
 | so_tien | integer | NOT NULL, CHECK(>0) | |
 | ghi_chu | text | | |
 | created_at | timestamptz | DEFAULT now() | |
@@ -405,13 +405,14 @@ UNIQUE(ngay, nguoi_doi_soat, muc_kiem_tra)
 |---|---|---|---|
 | id | uuid | PK | |
 | khach_hang_id | uuid | FK→khach_hang ON DELETE SET NULL | |
-| ho_ten_kh | text | | KH vãng lai |
-| so_dien_thoai | text | | |
+| ten_khach | text | | KH vãng lai |
+| sdt_khach | text | | |
 | dich_vu_id | uuid | FK→dich_vu ON DELETE SET NULL | |
+| ten_dich_vu | text | | Tên dịch vụ nhập tay hoặc snapshot |
 | nhan_vien_id | uuid | FK→nhan_vien ON DELETE SET NULL | |
-| thoi_gian_bat_dau | timestamptz | NOT NULL | |
-| thoi_gian_ket_thuc | timestamptz | | |
-| trang_thai | text | CHECK(cho_xac_nhan,da_xac_nhan,da_den,khong_den,da_huy,online) | |
+| ngay_hen | date | NOT NULL | |
+| gio_hen | text | | Định dạng HH:MM |
+| trang_thai | text | | Thực tế đang dùng: cho_xac_nhan / da_xac_nhan / da_xong / huy |
 | ghi_chu | text | | |
 | created_at | timestamptz | DEFAULT now() | |
 | updated_at | timestamptz | DEFAULT now() | |

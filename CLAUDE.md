@@ -148,7 +148,7 @@ Dự án cải tạo giao diện: D:\Hannah Spa\Du An WebApp Hannah Spa\Cai Tao 
 | Tính năng | Mức độ | Ghi chú |
 |---|---|---|
 | Bảng lương tự động cuối tháng | 🔴 Quan trọng | Schema `bang_luong` có sẵn |
-| Phiếu lương PDF từng NV | 🔴 Quan trọng | Cần sau bảng lương |
+| Lương trên app KTV | 🔴 Quan trọng | Xem lương thời gian thực, không làm PDF |
 | Quỹ ngày OFF từ ngày lễ | 🟡 Cần | Table `quy_ngay_off` có, chưa có UI |
 | Seed dich_vu thật (300+ DV) | 🟡 Cần | Bảng có, cần import data từ MySpa |
 | Seed nội dung homepage_config | 🟡 Cần | |
@@ -156,7 +156,7 @@ Dự án cải tạo giao diện: D:\Hannah Spa\Du An WebApp Hannah Spa\Cai Tao 
 | Module Đặt Hẹn / Lịch Hẹn | 🟡 Cần | |
 | Module CRM Khách Hàng | 🟡 Cần | Schema có |
 | Module Thẻ Liệu Trình | 🟡 Cần | Schema có |
-| Báo cáo Commission KTV | 🟡 Cần | |
+| Báo cáo Hoa hồng / Tour KTV | 🟡 Cần | |
 
 ---
 
@@ -292,7 +292,7 @@ bang_luong (
   luong_co_ban    integer,
   tien_tang_ca    integer,
   tien_phat       integer,
-  hoa_hong_dv     integer,        -- hoa hồng dịch vụ từ POS
+  hoa_hong_dv     integer,        -- hoa hồng bán SP + thẻ mới từ POS
   hoa_hong_the    integer,        -- thưởng đạt doanh số
   tien_tour       integer,        -- tiền tour
   tru_ung_luong   integer,
@@ -676,7 +676,7 @@ Lưu trong: .env.import (gitignored)
 | 1.4 | Test Lễ Tân (Khánh Duy/Ngọc Phương) nhập liệu thực tế tại spa | User acceptance test |
 | 1.5 | Verify Resend.com gửi email domain `hannahspa.vn` | Hiện tạm dùng `onboarding@resend.dev` |
 | 1.6 | **Bảng lương tự động cuối tháng** | Tính lương ngày 05 |
-| 1.7 | **Phiếu lương PDF từng nhân viên** | Sau khi có bảng lương |
+| 1.7 | **Lương trên app KTV** | Xem lương thời gian thực, không làm PDF |
 
 ### 🟡 Cấp 2 — Tính năng cần thiết (1-2 tháng)
 
@@ -688,7 +688,7 @@ Lưu trong: .env.import (gitignored)
 | 2.4 | Module CRM Khách hàng: danh sách + đăng ký + phân hạng | Schema đã có |
 | 2.5 | Module Thẻ liệu trình: UI danh sách + báo cáo | Schema đã có |
 | 2.6 | Admin tạo OFF trực tiếp cho NV | `nguon='admin'` trong `dang_ky_off` |
-| 2.7 | Báo cáo Commission KTV | Cần sau khi có POS |
+| 2.7 | Báo cáo Hoa hồng / Tour KTV | Cần sau khi có POS |
 | 2.8 | **Giao diện Mobile** — responsive sidebar + cards | Admin hiện chỉ tối ưu desktop |
 | 2.9 | **In hoá đơn nhiệt** — khổ 80mm, thermal printer | Chờ anh Nam gửi mẫu hoá đơn |
 
@@ -715,10 +715,10 @@ Dữ liệu đang bị split thành 2 nguồn rời rạc:
 ```
 MySpa:                    HSMS:
 ✅ Doanh thu POS          ✅ Chi phí 37 mục
-✅ Commission KTV         ✅ Nhân sự + ký quỹ
+✅ Hoa hồng / Tour KTV    ✅ Nhân sự + ký quỹ
 ✅ Thẻ liệu trình         ✅ Email báo cáo 21:00
 ✅ Lịch hẹn               ❌ Không có doanh thu POS
-✅ 4,944 thẻ KH           ❌ Không có commission
+✅ 4,944 thẻ KH           ❌ Không có hoa hồng
 
 → Lợi nhuận thực tế KHÔNG AI TÍNH ĐƯỢC TỰ ĐỘNG
 ```
@@ -746,7 +746,7 @@ MySpa:                    HSMS:
 |---|---|---|---|
 | M1 · Thu chi | ✅ Cơ bản | ✅ Vượt trội | Done |
 | M2 · Nhân sự | Cơ bản | ✅ Vượt trội | Done |
-| M3 · Commission KTV | ✅ Đầy đủ | ❌ Chưa có UI | Cần sau POS |
+| M3 · Hoa hồng / Tour KTV | ✅ Đầy đủ | ❌ Chưa có UI | Cần sau POS |
 | M4 · Bán hàng POS | ✅ Core feature | ❌ Chưa có | 🔴 Cao |
 | M5 · Đặt hẹn | ✅ Calendar đầy đủ | ❌ Chưa có | 🟡 Trung bình |
 | M6 · Thẻ liệu trình | ✅ 4,944 thẻ | ⚠️ DB có, chưa UI | 🟡 Trung bình |
@@ -760,7 +760,7 @@ MySpa:                    HSMS:
 
 #### Giai đoạn A — Ngay bây giờ (2 tuần)
 - [ ] Bảng lương tự động (Module Nhân Sự hoàn chỉnh)
-- [ ] Phiếu lương PDF
+- [ ] Lương trên app KTV thời gian thực
 - [ ] Script đồng bộ dữ liệu doanh thu MySpa → HSMS hàng tối 20:30
   - Đọc export MySpa qua Google Sheets hoặc API
   - Insert vào `doanh_thu` tự động
@@ -771,18 +771,18 @@ MySpa:                    HSMS:
 - [ ] Seed 300+ dịch vụ từ MySpa vào bảng `dich_vu`
 - [ ] Module Thẻ liệu trình: UI danh sách, checkout buổi, báo cáo
 - [ ] Import data KH từ MySpa vào `khach_hang`
-- [ ] Báo cáo commission KTV
+- [ ] Báo cáo hoa hồng / tour KTV
 
 #### Giai đoạn C — 3-6 tháng (HSMS độc lập hoàn toàn)
 - [ ] **Module POS Bán Hàng** — tính năng cốt lõi:
   - Tạo đơn hàng, chọn DV theo danh mục
-  - Chọn KTV thực hiện + ghi commission tự động
+  - Chọn KTV thực hiện + ghi tour / hoa hồng tự động
   - Checkout thẻ liệu trình (trừ buổi tự động)
   - Thanh toán đa PTTT (TM + CK + Quẹt thẻ trong 1 đơn)
   - Ghi nợ / công nợ KH
   - In hóa đơn / gửi ZNS cảm ơn
 - [ ] Module Đặt Hẹn: calendar, trạng thái lịch hẹn, đặt online
-- [ ] Báo cáo tổng hợp đầy đủ: DV, SP, commission, công nợ
+- [ ] Báo cáo tổng hợp đầy đủ: DV, SP, tour, hoa hồng, công nợ
 - [ ] **Deploy production** `hannahspa.vn` — ngưng dùng MySpa hoặc chạy song song
 - [ ] Auth thật Supabase cho toàn bộ hệ thống
 
@@ -812,14 +812,14 @@ don_hang_chi_tiet (
   so_luong        integer DEFAULT 1,
   don_gia         integer,
   thanh_tien      integer,
-  commission_pct  numeric,
-  commission_tien integer
+  ti_le_hoa_hong  numeric,
+  tien_hoa_hong   integer
 )
 
 thanh_toan (
   id              uuid PK,
   don_hang_id     uuid FK,
-  hinh_thuc       text,         -- tien_mat | chuyen_khoan | quet_the
+  hinh_thuc       text,         -- tien_mat | chuyen_khoan | quet_the | the_tra_truoc
   so_tien         integer,
   created_at      timestamptz
 )

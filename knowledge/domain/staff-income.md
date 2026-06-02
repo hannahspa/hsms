@@ -21,8 +21,8 @@
 |---|---|---|---|
 | `dich_vu` | **Tiền Tour** | `tien_tour` | `'tour'` |
 | `the_lieu_trinh` | **Tiền Tour** | `tien_tour` | `'tour'` |
-| `san_pham` | **Tiền Hoa Hồng** | `tien_commission` | `'commission'` |
-| `the_moi` | **Tiền Hoa Hồng** | `tien_commission` | `'commission'` |
+| `san_pham` | **Tiền Hoa Hồng** | `tien_commission` | `'hoa_hong'` |
+| `the_moi` | **Tiền Hoa Hồng** | `tien_commission` | `'hoa_hong'` |
 
 ---
 
@@ -30,7 +30,7 @@
 
 ### don_hang_chi_tiet
 - ✅ `tien_tour` — **DÙNG** — Tiền Tour KTV (dịch vụ + thẻ liệu trình)
-- ✅ `tien_commission` — **DÙNG** — Tiền Hoa Hồng KTV (sản phẩm + thẻ mới)
+- ✅ `tien_commission` — **DÙNG** — tên cột vật lý còn giữ để tương thích schema, ý nghĩa nghiệp vụ là **Tiền Hoa Hồng** (sản phẩm + thẻ mới)
 - ✅ `ti_le_hoa_hong` — **DÙNG** — Tỷ lệ % hoa hồng (dùng cho tính toán + audit)
 - ~~`tien_hoa_hong`~~ — **ĐÃ DROP** qua migration 049 (28/05/2026)
 
@@ -40,9 +40,11 @@
 - ~~`loai = 'commission'`~~ — **ĐÃ XÓA** qua migration 049 (28/05/2026)
 
 ### bang_luong
-- `hoa_hong_dv` — Tổng Tiền Tour tháng (tên legacy, ý nghĩa = tiền tour)
-- `tien_tour` — Tiền Tour (cột mới, dùng thay thế)
-- `hoa_hong_the` — Thưởng Đạt Doanh Số
+> ⚠️ Mapping THỰC TẾ trong code (TabBangLuong.jsx + luong.js) — KHÔNG cộng đôi:
+- `hoa_hong_dv` — **Tiền Hoa Hồng** tháng (SP + thẻ mới) = `pos.hoaHong`. Tên cột legacy, ý nghĩa nghiệp vụ = Hoa Hồng. UI hiển thị: "Hoa Hồng (SP + Thẻ Mới)"
+- `tien_tour` — **Tiền Tour** tháng (dịch vụ + thẻ liệu trình) = `pos.tour`. UI hiển thị: "Tiền Tour"
+- `hoa_hong_the` — **Thưởng Đạt Doanh Số**
+- Công thức: `tongKinhDoanh = hoa_hong_dv + tien_tour + hoa_hong_the` (3 nguồn độc lập, không trùng)
 
 ---
 
