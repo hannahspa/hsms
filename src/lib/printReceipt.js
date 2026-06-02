@@ -53,26 +53,18 @@ export function printReceipt({ order, items = [], payments = [], customer = null
   const payRows = payments.map(p => `
       <tr><td class="l">${esc(PTTT_LABEL[p.hinh_thuc] || p.hinh_thuc)}</td><td class="r">${fmt(p.so_tien)}</td></tr>`).join('')
 
-  const histRows = payments.map((p, i) => `
-      <tr>
-        <td class="l">#${String(p.id || '').slice(0, 8) || (i + 1)}<br>${dt(p.created_at)}</td>
-        <td class="l">${esc(PTTT_LABEL[p.hinh_thuc] || p.hinh_thuc)}</td>
-        <td class="r">${fmt(p.so_tien)}</td>
-        <td class="r">0</td>
-      </tr>`).join('')
-
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Hóa đơn ${esc(order?.ma_don || '')}</title>
   <style>
     @page { size: 80mm auto; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body { width: 100%; padding: 3mm 3mm; font-family: Arial, 'Segoe UI', Roboto, sans-serif; color: #000; font-size: 12.5px; line-height: 1.45; font-weight: 600; }
+    body { width: 100%; padding: 2.5mm 2.5mm; font-family: Arial, 'Segoe UI', Roboto, sans-serif; color: #000; font-size: 12px; line-height: 1.32; font-weight: 600; }
     .center { text-align: center; }
     .b { font-weight: 800; }
-    .logo { width: 44px; height: 44px; object-fit: contain; margin: 0 auto 4px; display: block; filter: grayscale(1) contrast(1.5); }
+    .logo { width: auto; max-width: 58%; height: auto; max-height: 58px; margin: 0 auto 4px; display: block; filter: brightness(0); }
     .spa-name { font-size: 15px; font-weight: 800; }
     .small { font-size: 11.5px; }
-    .title { font-size: 16px; font-weight: 800; margin: 7px 0 3px; }
-    .hr { border-top: 1px dashed #000; margin: 6px 0; }
+    .title { font-size: 16px; font-weight: 800; margin: 5px 0 2px; }
+    .hr { border-top: 1px dashed #000; margin: 4px 0; }
     table { width: 100%; border-collapse: collapse; }
     td { vertical-align: top; padding: 1px 0; }
     .l { text-align: left; } .c { text-align: center; } .r { text-align: right; }
@@ -84,11 +76,11 @@ export function printReceipt({ order, items = [], payments = [], customer = null
     /* Bảng 2 cột (tổng tiền, thanh toán) — nhãn trái, số phải */
     table.kv td.l { width: 64%; }
     table.kv td.r { width: 36%; white-space: nowrap; }
-    tr.item td { padding-top: 4px; }
-    tr.sub td { font-size: 11px; color: #000; font-weight: 500; padding-bottom: 3px; }
+    tr.item td { padding-top: 3px; }
+    tr.sub td { font-size: 11px; color: #000; font-weight: 500; padding-bottom: 2px; }
     .tot td { font-weight: 800; font-size: 13.5px; }
     .info td { padding: 1px 0; }
-    .sign { display: flex; justify-content: space-between; margin-top: 18px; font-size: 11px; }
+    .sign { display: flex; justify-content: space-between; margin-top: 14px; font-size: 11px; }
     .sign div { text-align: center; width: 48%; }
   </style></head>
   <body>
@@ -133,14 +125,6 @@ export function printReceipt({ order, items = [], payments = [], customer = null
     </table>
 
     ${order?.ghi_chu ? `<div class="hr"></div><div class="small"><b>Ghi chú:</b> ${esc(order.ghi_chu)}</div>` : ''}
-
-    ${payments.length ? `<div class="hr"></div>
-    <div class="small b">Lịch sử thanh toán</div>
-    <table class="items small">
-      <colgroup><col style="width:38%"><col style="width:30%"><col style="width:18%"><col style="width:14%"></colgroup>
-      <thead><tr><td class="l">Mã / Thời gian</td><td class="l">PTTT</td><td class="r">Thanh toán</td><td class="r">Còn</td></tr></thead>
-      <tbody>${histRows}</tbody>
-    </table>` : ''}
 
     <div class="hr"></div>
     <div class="sign">
