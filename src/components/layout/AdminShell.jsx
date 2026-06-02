@@ -122,7 +122,7 @@ export default function AdminShell({ children }) {
     if (path.startsWith('/admin/the-lieu-trinh')) return 'Thẻ Liệu Trình'
     if (path.startsWith('/admin/dich-vu')) return 'Dịch Vụ'
     if (path.startsWith('/admin/crm')) return 'CRM Khách Hàng'
-    if (path.startsWith('/admin/commission')) return 'Hoa Hồng Kinh Doanh'
+    if (path.startsWith('/admin/commission')) return 'Lương Kinh Doanh'
     if (path.startsWith('/SoThuChi')) return 'Sổ Thu Chi'
     if (path.startsWith('/pos')) return 'Bán Hàng'
     return 'Hannah Spa'

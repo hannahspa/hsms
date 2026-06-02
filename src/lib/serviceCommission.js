@@ -1,4 +1,4 @@
-// ─── Commission Rules (bảng cứng, Admin có thể override) ──────────────────────
+// ─── Quy tắc hoa hồng bán thẻ/sản phẩm (Admin có thể override) ───────────────
 // KM_ref% = số buổi tặng / số buổi mua × 100 + % giảm giá trực tiếp
 // Chỉ để cảnh báo, không phải giá trị KM cho khách hàng
 //
@@ -30,7 +30,7 @@ export function calcKmRefPct({ soBuoiMua = 0, soBuoiTang = 0, phanTramGiam = 0 }
 }
 
 /**
- * Tính tỷ lệ commission cho KTV và LT dựa trên rule cứng.
+ * Tính tỷ lệ hoa hồng cho KTV và LT dựa trên rule cứng.
  * @param {number}  kmRefPct   - KM_ref% đã tính
  * @param {boolean} coKtv      - có KTV tư vấn
  * @param {boolean} coLeTan    - có Lễ Tân tư vấn
@@ -67,8 +67,8 @@ export function calcCommissionRates(kmRefPct = 0, coKtv = false, coLeTan = false
  */
 export function kmRefAlert(kmRefPct = 0) {
   if (kmRefPct >= 50) return { color: '#C0392B', bg: '#fdecea', level: 'danger',  text: 'KM rất cao ≥ 50%' }
-  if (kmRefPct >= 30) return { color: '#E67E22', bg: '#fef3e2', level: 'warning', text: `KM ${kmRefPct.toFixed(0)}% ≥ 30% — commission giảm` }
-  return             { color: '#27AE60', bg: '#eafaf1', level: 'ok',      text: `KM ${kmRefPct.toFixed(0)}% < 30% — commission tiêu chuẩn` }
+  if (kmRefPct >= 30) return { color: '#E67E22', bg: '#fef3e2', level: 'warning', text: `KM ${kmRefPct.toFixed(0)}% ≥ 30% — hoa hồng giảm` }
+  return             { color: '#27AE60', bg: '#eafaf1', level: 'ok',      text: `KM ${kmRefPct.toFixed(0)}% < 30% — hoa hồng tiêu chuẩn` }
 }
 
 // ─── Legacy helpers (giữ nguyên để không break code cũ) ──────────────────────

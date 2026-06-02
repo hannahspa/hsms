@@ -4,10 +4,10 @@ import { COLORS } from '../../constants/colors'
 import { todayISO , getNowVN} from '../../lib/utils'
 
 export default function DatePicker({ open, selectedDate, onClose, onConfirm }) {
-  if (!open) return null;
-
   const[viewDate, setViewDate] = useState(new Date(selectedDate || getNowVN()));
   const[tempDate, setTempDate] = useState(selectedDate || todayISO());
+
+  if (!open) return null;
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();

@@ -22,6 +22,45 @@ const PAGE_SIZE = 60
 const parseVND = s => parseInt(String(s).replace(/\D/g, ''), 10) || 0
 const fmtInput = n => n ? new Intl.NumberFormat('vi-VN').format(n) : ''
 
+function daysInMonth(year, month) {
+  if (month === 2) {
+    return ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 29 : 28
+  }
+  return [4, 6, 9, 11].includes(month) ? 30 : 31
+}
+
+function addDaysISO(iso, delta) {
+  let [year, month, day] = String(iso).split('-').map(Number)
+  day += delta
+  while (day < 1) {
+    month -= 1
+    if (month < 1) {
+      year -= 1
+      month = 12
+    }
+    day += daysInMonth(year, month)
+  }
+  while (day > daysInMonth(year, month)) {
+    day -= daysInMonth(year, month)
+    month += 1
+    if (month > 12) {
+      year += 1
+      month = 1
+    }
+  }
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+function previousMonthFirstISO(now) {
+  let year = now.getFullYear()
+  let month = now.getMonth()
+  if (month < 1) {
+    year -= 1
+    month = 12
+  }
+  return `${year}-${String(month).padStart(2, '0')}-01`
+}
+
 function formatTime(value) {
   return value ? new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'
 }
@@ -30,14 +69,13 @@ export default function DanhSachThuChi({ user }) {
   const isAdmin = user?.vai_tro === 'admin'
   const now = getNowVN()
   // Mặc định: Admin xem từ đầu tháng trước; Lễ Tân chỉ 7 ngày gần nhất (gọn + bảo mật)
-  const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const firstPrevMonth = `${prevStart.getFullYear()}-${String(prevStart.getMonth() + 1).padStart(2, '0')}-01`
-  const d7 = new Date(now); d7.setDate(d7.getDate() - 6)
-  const last7 = d7.toISOString().slice(0, 10)
+  const today = todayISO()
+  const firstPrevMonth = previousMonthFirstISO(now)
+  const last7 = addDaysISO(today, -6)
   const defaultTuNgay = isAdmin ? firstPrevMonth : last7
 
   const [tuNgay, setTuNgay] = useState(defaultTuNgay)
-  const [denNgay, setDenNgay] = useState(todayISO())
+  const [denNgay, setDenNgay] = useState(today)
   const [loaiFilter, setLoaiFilter] = useState('all') // all | thu | chi | ck
   const [search, setSearch] = useState('')
   const [rows, setRows] = useState([])

@@ -1,26 +1,25 @@
+import { lazy, Suspense } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppProvider }  from './context/AppContext'
 import ErrorBoundary from './components/shared/ErrorBoundary'
-import InternalApp from './apps/internal/InternalApp'
-import CheckinApp from './apps/checkin/CheckinApp'
-import AdminApp from './apps/admin/AdminApp'
-import LandingPage from './apps/website/LandingPage'
-import HomePage from './apps/website/HomePage'
 import LoginPage from './apps/auth/LoginPage'
-import CustomerMenuApp from './apps/customer/CustomerMenuApp'
-import PosApp from './apps/pos/PosApp'
 import AdminShell from './components/layout/AdminShell'
+
+const InternalApp = lazy(() => import('./apps/internal/InternalApp'))
+const CheckinApp = lazy(() => import('./apps/checkin/CheckinApp'))
+const AdminApp = lazy(() => import('./apps/admin/AdminApp'))
+const LandingPage = lazy(() => import('./apps/website/LandingPage'))
+const HomePage = lazy(() => import('./apps/website/HomePage'))
+const CustomerMenuApp = lazy(() => import('./apps/customer/CustomerMenuApp'))
+const PosApp = lazy(() => import('./apps/pos/PosApp'))
 
 // Các /admin/* paths mà Lễ Tân được phép truy cập (không yêu cầu admin)
 // LƯU Ý: /admin/the-lieu-trinh/bao-cao chỉ Admin — phải exclude trước khi check
 const LETAN_ALLOWED_ADMIN = ['/admin/crm', '/admin/the-lieu-trinh']
 const LETAN_BLOCKED_ADMIN = ['/admin/the-lieu-trinh/bao-cao'] // báo cáo chỉ Admin
 
-function RequireAuth({ children, requireAdmin }) {
-  const { user, loading, logout } = useAuth()
-  const path = window.location.pathname
-
-  if (loading) return (
+function LoadingScreen() {
+  return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F4', fontFamily: 'sans-serif' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '28px', marginBottom: '12px' }}>🌸</div>
@@ -29,6 +28,17 @@ function RequireAuth({ children, requireAdmin }) {
       </div>
     </div>
   )
+}
+
+function LazyRoute({ children }) {
+  return <Suspense fallback={<LoadingScreen />}>{children}</Suspense>
+}
+
+function RequireAuth({ children, requireAdmin }) {
+  const { user, loading, logout } = useAuth()
+  const path = window.location.pathname
+
+  if (loading) return <LoadingScreen />
 
   if (!user) return <LoginPage />
 
@@ -71,20 +81,20 @@ export default function App() {
   const path = window.location.pathname
 
   if (path.startsWith('/checkin')) {
-    return <ErrorBoundary><CheckinApp /></ErrorBoundary>
+    return <ErrorBoundary><LazyRoute><CheckinApp /></LazyRoute></ErrorBoundary>
   }
 
   // Landing page công khai — hannahspa.vn
-  if (path === '/' || path === '') return <ErrorBoundary><LandingPage /></ErrorBoundary>
+  if (path === '/' || path === '') return <ErrorBoundary><LazyRoute><LandingPage /></LazyRoute></ErrorBoundary>
 
   // Portal nội bộ nhân viên
-  if (path.startsWith('/portal')) return <ErrorBoundary><HomePage /></ErrorBoundary>
+  if (path.startsWith('/portal')) return <ErrorBoundary><LazyRoute><HomePage /></LazyRoute></ErrorBoundary>
 
   // Menu dịch vụ cho khách (iPad tại quầy)
-  if (path.startsWith('/menu')) return <ErrorBoundary><CustomerMenuApp /></ErrorBoundary>
+  if (path.startsWith('/menu')) return <ErrorBoundary><LazyRoute><CustomerMenuApp /></LazyRoute></ErrorBoundary>
 
   // Shop (sắp ra mắt)
-  if (path.startsWith('/shop')) return <ErrorBoundary><LandingPage /></ErrorBoundary>
+  if (path.startsWith('/shop')) return <ErrorBoundary><LazyRoute><LandingPage /></LazyRoute></ErrorBoundary>
 
   // POS, Admin, SoThuChi — dùng chung AdminShell
   return (
@@ -94,19 +104,19 @@ export default function App() {
           {path.startsWith('/admin') ? (
             <RequireAuth requireAdmin={true}>
               <AdminShell>
-                <AdminApp />
+                <LazyRoute><AdminApp /></LazyRoute>
               </AdminShell>
             </RequireAuth>
           ) : path.startsWith('/pos') ? (
             <RequireAuth requireAdmin={false}>
               <AdminShell>
-                <PosApp />
+                <LazyRoute><PosApp /></LazyRoute>
               </AdminShell>
             </RequireAuth>
           ) : (
             <RequireAuth requireAdmin={false}>
               <AdminShell>
-                <InternalApp />
+                <LazyRoute><InternalApp /></LazyRoute>
               </AdminShell>
             </RequireAuth>
           )}

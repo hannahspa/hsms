@@ -4,10 +4,18 @@ import { formatCurrency, getNowVN } from '../../../lib/utils'
 import I from '../../../components/shared/Icons'
 
 const COLORS = ['#c9a96e', '#a87366', '#6e8a5e', '#8a6a6e', '#5a8db8', '#b85a4a', '#7a6a8a', '#3e5a32', '#8a5a2a', '#5a6a8a']
+
+const daysInMonth = (year, month) => {
+  if (month === 2) {
+    return ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 29 : 28
+  }
+  return [4, 6, 9, 11].includes(month) ? 30 : 31
+}
+
 const monthRange = (nam, thang) => {
   const start = `${nam}-${String(thang).padStart(2, '0')}-01`
-  const end = new Date(nam, thang, 0)
-  return { start, end: `${nam}-${String(thang).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}` }
+  const end = `${nam}-${String(thang).padStart(2, '0')}-${String(daysInMonth(nam, thang)).padStart(2, '0')}`
+  return { start, end }
 }
 const pct = (cur, prev) => prev > 0 ? Math.round((cur - prev) / prev * 100) : (cur > 0 ? 100 : 0)
 

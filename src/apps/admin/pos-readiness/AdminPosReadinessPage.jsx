@@ -59,7 +59,7 @@ const TEST_SCENARIOS = [
   {
     id: 'sell_combo',
     title: 'Bán combo liệu trình',
-    note: 'Tạo combo đúng số lần/thời hạn, ghi commission, CRM thấy thẻ mới.',
+    note: 'Tạo combo đúng số lần/thời hạn, ghi hoa hồng, CRM thấy thẻ mới.',
   },
   {
     id: 'split_payment',
@@ -84,7 +84,7 @@ const TEST_SCENARIOS = [
   {
     id: 'staff_income',
     title: 'Báo cáo nhân sự khớp tour/hoa hồng',
-    note: 'Nhân viên xem được đúng tiền tour và commission theo ngày.',
+    note: 'Nhân viên xem được đúng tiền tour và hoa hồng theo ngày.',
   },
 ]
 

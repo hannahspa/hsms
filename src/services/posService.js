@@ -1,5 +1,48 @@
 import { supabase } from '../lib/supabase'
-import { todayISO, getNowVN } from '../lib/utils'
+import { todayISO } from '../lib/utils'
+import { addDurationISO } from '../lib/dateMath'
+import { calcServiceCommission, getCommissionPercent } from '../lib/serviceCommission'
+import { buildTreatmentPolicy, getTreatmentCardDisplayValue } from '../lib/treatmentCardPolicy'
+
+const PAYMENT_METHODS = new Set(['tien_mat', 'chuyen_khoan', 'quet_the', 'the_tra_truoc'])
+const TREATMENT_CARD_SELECT = `
+  *,
+  combo:combo_id(
+    id,
+    ma_combo,
+    ten_combo,
+    nhom_dich_vu,
+    menh_gia,
+    gia_ban,
+    thoi_han_so,
+    thoi_han_don_vi,
+    dich_vu:combo_lieu_trinh_dich_vu(*)
+  )
+`
+const LINE_TREATMENT_SELECT = `
+  ten_dich_vu,
+  so_buoi_con_lai,
+  so_buoi_tong,
+  so_buoi_da_dung,
+  gia_tri_the,
+  ngay_het_han,
+  combo_id,
+  loai_the,
+  is_khong_gioi_han,
+  meta,
+  combo:combo_id(
+    id,
+    ma_combo,
+    ten_combo,
+    nhom_dich_vu,
+    menh_gia,
+    gia_ban,
+    thoi_han_so,
+    thoi_han_don_vi,
+    dich_vu:combo_lieu_trinh_dich_vu(*)
+  ),
+  khach_hang:khach_hang_id(ho_ten)
+`
 
 function shortStaffName(name = '') {
   const isRetired = /\(\s*Nghỉ Việc\s*\)/i.test(String(name))
@@ -8,6 +51,91 @@ function shortStaffName(name = '') {
   if (parts.length <= 2) return parts.join(' ')
   const displayName = parts.slice(-2).join(' ')
   return isRetired ? `${displayName} (Nghỉ Việc)` : displayName
+}
+
+function normalizePhone(value = '') {
+  const digits = String(value || '').replace(/\D/g, '')
+  if (digits.startsWith('84') && digits.length === 11) return `0${digits.slice(2)}`
+  return digits
+}
+
+function hasMissingColumnError(error) {
+  const message = String(error?.message || '')
+  return error?.code === '42703' || /column .* does not exist/i.test(message)
+}
+
+async function findCustomerByPhone(phone) {
+  if (!phone) return null
+  const { data, error } = await supabase
+    .from('khach_hang')
+    .select('*')
+    .eq('so_dien_thoai', phone)
+    .maybeSingle()
+  if (error) throw error
+  return data || null
+}
+
+async function ensureCustomerForAppointment(appointment = {}) {
+  if (appointment.khach_hang_id) return appointment.khach_hang_id
+
+  const phone = normalizePhone(appointment.sdt_khach || appointment.so_dien_thoai)
+  const name = String(appointment.ten_khach || appointment.ho_ten_kh || '').trim()
+  const existing = await findCustomerByPhone(phone)
+  if (existing?.id) return existing.id
+
+  const payload = {
+    ho_ten: name || 'Khach dat hen',
+    so_dien_thoai: phone || null,
+    nguon: 'lich_hen',
+  }
+
+  const { data, error } = await supabase
+    .from('khach_hang')
+    .insert(payload)
+    .select('*')
+    .single()
+
+  if (error) {
+    const retry = await findCustomerByPhone(phone)
+    if (retry?.id) return retry.id
+    throw error
+  }
+
+  return data.id
+}
+
+async function findAppointmentService(appointment = {}) {
+  if (appointment.dich_vu_id) {
+    const { data, error } = await supabase
+      .from('dich_vu')
+      .select('id, ten, gia_co_ban, ti_le_hoa_hong, promotion_config')
+      .eq('id', appointment.dich_vu_id)
+      .maybeSingle()
+    if (error) throw error
+    if (data) return data
+  }
+
+  const serviceName = String(appointment.ten_dich_vu || '').trim()
+  if (!serviceName) return null
+
+  const { data, error } = await supabase
+    .from('dich_vu')
+    .select('id, ten, gia_co_ban, ti_le_hoa_hong, promotion_config')
+    .ilike('ten', `%${serviceName}%`)
+    .eq('is_active', true)
+    .limit(1)
+  if (error) throw error
+  return data?.[0] || null
+}
+
+function withTreatmentDisplayValue(card = {}) {
+  const displayValue = getTreatmentCardDisplayValue(card)
+  return {
+    ...card,
+    gia_tri_the_goc: card.gia_tri_the,
+    gia_tri_hien_thi: displayValue,
+    gia_tri_the: displayValue,
+  }
 }
 
 export const posService = {
@@ -28,6 +156,103 @@ export const posService = {
       .single()
     if (error) throw error
     return data
+  },
+
+  async createDraftOrderFromAppointment(appointment = {}, { nguoiTao } = {}) {
+    if (!appointment?.id) {
+      throw new Error('Can lich hen da luu truoc khi tao don POS.')
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from('don_hang')
+      .select('id')
+      .eq('lich_hen_id', appointment.id)
+      .eq('trang_thai', 'draft')
+      .maybeSingle()
+    if (existingError && !hasMissingColumnError(existingError)) throw existingError
+    if (existing?.id) return { orderId: existing.id, reused: true }
+
+    const khachHangId = await ensureCustomerForAppointment(appointment)
+    const noteParts = [
+      'Tao tu lich hen',
+      appointment.ngay_hen ? `ngay ${appointment.ngay_hen}` : null,
+      appointment.gio_hen ? `luc ${String(appointment.gio_hen).slice(0, 5)}` : null,
+      appointment.ten_dich_vu ? `dich vu: ${appointment.ten_dich_vu}` : null,
+    ].filter(Boolean)
+
+    const insertData = {
+      khach_hang_id: khachHangId || null,
+      nguoi_tao: nguoiTao || null,
+      ngay: appointment.ngay_hen || todayISO(),
+      ghi_chu: noteParts.join(' - '),
+      lich_hen_id: appointment.id,
+    }
+
+    let order = null
+    const inserted = await supabase
+      .from('don_hang')
+      .insert(insertData)
+      .select('*')
+      .single()
+
+    if (inserted.error) {
+      if (inserted.error.code === '23505') {
+        const { data: duplicate, error: duplicateError } = await supabase
+          .from('don_hang')
+          .select('id')
+          .eq('lich_hen_id', appointment.id)
+          .eq('trang_thai', 'draft')
+          .maybeSingle()
+        if (!duplicateError && duplicate?.id) return { orderId: duplicate.id, reused: true }
+      }
+      if (!hasMissingColumnError(inserted.error)) throw inserted.error
+      const { lich_hen_id, ...fallbackData } = insertData
+      const fallback = await supabase
+        .from('don_hang')
+        .insert(fallbackData)
+        .select('*')
+        .single()
+      if (fallback.error) throw fallback.error
+      order = fallback.data
+    } else {
+      order = inserted.data
+    }
+
+    const service = await findAppointmentService(appointment)
+    const serviceName = service?.ten || appointment.ten_dich_vu || 'Dich vu tu lich hen'
+    const donGia = Number(service?.gia_co_ban || 0)
+    const tiLe = service ? getCommissionPercent(service, 'ktv') : Number(service?.ti_le_hoa_hong || 0)
+    const tienTour = service ? calcServiceCommission(service, donGia, 'ktv') : Math.round(donGia * tiLe / 100)
+
+    await this.addLineItem(order.id, {
+      loai_item: 'dich_vu',
+      dich_vu_id: service?.id || appointment.dich_vu_id || null,
+      nhan_vien_id: appointment.nhan_vien_id || null,
+      so_luong: 1,
+      don_gia: donGia,
+      thanh_tien: donGia,
+      ti_le_hoa_hong: tiLe || null,
+      tien_tour: tienTour,
+      tien_commission: 0,
+      ghi_chu: `Tu lich hen: ${serviceName}`,
+      meta: {
+        source: 'lich_hen',
+        lichHenId: appointment.id,
+        tenDichVu: serviceName,
+        ngayHen: appointment.ngay_hen || null,
+        gioHen: appointment.gio_hen || null,
+      },
+    })
+
+    const appointmentUpdate = { khach_hang_id: khachHangId || null }
+    if (appointment.trang_thai === 'cho_xac_nhan') appointmentUpdate.trang_thai = 'da_xac_nhan'
+    const { error: appointmentError } = await supabase
+      .from('lich_hen')
+      .update(appointmentUpdate)
+      .eq('id', appointment.id)
+    if (appointmentError) throw appointmentError
+
+    return { orderId: order.id, customerId: khachHangId, reused: false }
   },
 
   async getOrder(id) {
@@ -107,17 +332,55 @@ export const posService = {
   },
 
   async enrichOrders(orders) {
-    return Promise.all((orders || []).map(async order => {
-      try {
-        const [items, payments] = await Promise.all([
-          this.getLineItems(order.id),
-          this.getPayments(order.id),
-        ])
-        return this.summarizeOrder({ ...order, items, payments })
-      } catch (_) {
-        return this.summarizeOrder(order)
-      }
-    }))
+    const list = orders || []
+    if (list.length === 0) return []
+
+    const orderIds = list.map(o => o.id).filter(Boolean)
+    if (orderIds.length === 0) return list.map(order => this.summarizeOrder(order))
+
+    try {
+      const [itemsRes, paymentsRes] = await Promise.all([
+        supabase
+          .from('don_hang_chi_tiet')
+          .select(`
+            *,
+            dich_vu:dich_vu_id(ten, danh_muc),
+            san_pham:san_pham_id(ten, don_vi),
+            the_lieu_trinh:the_lieu_trinh_id(${LINE_TREATMENT_SELECT}),
+            nhan_vien:nhan_vien_id(ho_ten, avatar_url)
+          `)
+          .in('don_hang_id', orderIds)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('thanh_toan')
+          .select('*')
+          .in('don_hang_id', orderIds)
+          .order('created_at', { ascending: true }),
+      ])
+      if (itemsRes.error) throw itemsRes.error
+      if (paymentsRes.error) throw paymentsRes.error
+
+      const itemsByOrder = {}
+      const paymentsByOrder = {}
+      ;(itemsRes.data || []).forEach(item => {
+        const key = item.don_hang_id
+        if (!itemsByOrder[key]) itemsByOrder[key] = []
+        itemsByOrder[key].push(item)
+      })
+      ;(paymentsRes.data || []).forEach(payment => {
+        const key = payment.don_hang_id
+        if (!paymentsByOrder[key]) paymentsByOrder[key] = []
+        paymentsByOrder[key].push(payment)
+      })
+
+      return list.map(order => this.summarizeOrder({
+        ...order,
+        items: itemsByOrder[order.id] || [],
+        payments: paymentsByOrder[order.id] || [],
+      }))
+    } catch {
+      return list.map(order => this.summarizeOrder(order))
+    }
   },
 
   async getOrdersByDate(date) {
@@ -217,7 +480,7 @@ export const posService = {
         *,
         dich_vu:dich_vu_id(ten, danh_muc),
         san_pham:san_pham_id(ten, don_vi),
-        the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu, so_buoi_con_lai, so_buoi_tong, so_buoi_da_dung, gia_tri_the, khach_hang:khach_hang_id(ho_ten)),
+        the_lieu_trinh:the_lieu_trinh_id(${LINE_TREATMENT_SELECT}),
         nhan_vien:nhan_vien_id(ho_ten, avatar_url)
       `)
       .eq('don_hang_id', orderId)
@@ -259,6 +522,9 @@ export const posService = {
   // ═══════════════════════════════════════════════════
 
   async addPayment(orderId, { hinhThuc, soTien, ghiChu = '' }) {
+    if (!PAYMENT_METHODS.has(hinhThuc)) {
+      throw new Error('Phuong thuc thanh toan khong hop le.')
+    }
     const { data, error } = await supabase
       .from('thanh_toan')
       .insert({
@@ -308,7 +574,7 @@ export const posService = {
         .maybeSingle(),
       supabase
         .from('the_lieu_trinh')
-        .select('id, ma_the, ten_dich_vu, so_buoi_tong, so_buoi_da_dung, so_buoi_con_lai, gia_tri_the, ngay_mua, ngay_het_han, trang_thai, ghi_chu')
+        .select(TREATMENT_CARD_SELECT)
         .eq('khach_hang_id', khachHangId)
         .order('created_at', { ascending: false })
         .limit(cardLimit),
@@ -327,14 +593,14 @@ export const posService = {
     ])
 
     const debts = debtRes.data || []
-    const debtBalance = debts.length > 0
-      ? debts[0].so_du_con_lai || 0
+    const debtBalance = debts[0]?.so_du_con_lai != null
+      ? debts[0].so_du_con_lai
       : debts.reduce((sum, row) => {
           if (row.loai === 'phat_sinh') return sum + (row.so_tien || 0)
           return sum - (row.so_tien || 0)
         }, 0)
 
-    const cards = cardsRes.data || []
+    const cards = (cardsRes.data || []).map(withTreatmentDisplayValue)
     const activeCards = cards.filter(c => c.trang_thai === 'active' && (c.so_buoi_con_lai || 0) > 0)
 
     return {
@@ -394,6 +660,17 @@ export const posService = {
   // ═══════════════════════════════════════════════════
   // CATALOG — DỊCH VỤ & SẢN PHẨM
   // ═══════════════════════════════════════════════════
+
+  async getService(id) {
+    if (!id) return null
+    const { data, error } = await supabase
+      .from('dich_vu')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (error) throw error
+    return data || null
+  },
 
   async getServices(search = '', category = '') {
     let q = supabase
@@ -477,19 +754,19 @@ export const posService = {
   async getCustomerCardsHistory(khachHangId) {
     const { data, error } = await supabase
       .from('the_lieu_trinh')
-      .select('id,ten_dich_vu,so_buoi_tong,so_buoi_da_dung,so_buoi_con_lai,gia_tri_the,trang_thai,ngay_mua,ngay_het_han,ma_the')
+      .select(TREATMENT_CARD_SELECT)
       .eq('khach_hang_id', khachHangId)
       .neq('trang_thai', 'active')
       .order('ngay_mua', { ascending: false })
       .limit(20)
     if (error) throw error
-    return data || []
+    return (data || []).map(withTreatmentDisplayValue)
   },
 
   async getCustomerCards(khachHangId) {
     const { data, error } = await supabase
       .from('the_lieu_trinh')
-      .select('*')
+      .select(TREATMENT_CARD_SELECT)
       .eq('khach_hang_id', khachHangId)
       .eq('trang_thai', 'active')
       .order('ngay_het_han', { ascending: true })
@@ -603,7 +880,52 @@ export const posService = {
       .eq('trang_thai', 'active')
       .order('ten_combo', { ascending: true })
     if (error) throw error
-    return data || []
+    return (data || []).map(withTreatmentDisplayValue)
+  },
+
+  async getTreatmentCardTourPolicy(card) {
+    if (!card?.id) return buildTreatmentPolicy(card)
+
+    const { data: rows, error } = await supabase
+      .from('don_hang_chi_tiet')
+      .select(`
+        id,
+        nhan_vien_id,
+        so_luong,
+        tien_tour,
+        created_at,
+        nhan_vien:nhan_vien_id(ho_ten),
+        don_hang:don_hang_id(ngay, trang_thai)
+      `)
+      .eq('the_lieu_trinh_id', card.id)
+      .eq('loai_item', 'the_lieu_trinh')
+      .order('created_at', { ascending: true })
+    if (error) throw error
+
+    const finalRows = (rows || []).filter(row => {
+      const status = row.don_hang?.trang_thai
+      return status && status !== 'draft' && status !== 'huy'
+    })
+    const paidRows = finalRows.filter(row => Number(row.tien_tour || 0) > 0)
+    const allowedById = new Map()
+    paidRows.forEach(row => {
+      if (!row.nhan_vien_id) return
+      allowedById.set(row.nhan_vien_id, row.nhan_vien?.ho_ten || 'Nhân viên')
+    })
+    const latestPaid = [...paidRows].reverse().find(row => Number(row.tien_tour || 0) > 0)
+    const latestUse = [...finalRows]
+      .map(row => row.don_hang?.ngay)
+      .filter(Boolean)
+      .sort()
+      .pop()
+
+    return buildTreatmentPolicy(card, {
+      paidTourSessions: paidRows.reduce((sum, row) => sum + Number(row.so_luong || 1), 0) || paidRows.length,
+      allowedStaffIds: [...allowedById.keys()],
+      allowedStaffNames: [...allowedById.values()],
+      suggestedTour: Number(latestPaid?.tien_tour || 0),
+      lastUseDate: latestUse || null,
+    })
   },
 
   async useTreatmentCard(theLieuTrinhId, soLuong = 1) {
@@ -653,10 +975,7 @@ export const posService = {
   async createComboTreatmentCard({ khachHangId, donHangId, combo, nhanVienBanId }) {
     const primary = combo?.dich_vu?.[0] || null
     const today = todayISO()
-    const end = new Date(`${today}T00:00:00`)
-    if (combo?.thoi_han_don_vi === 'month') end.setMonth(end.getMonth() + (combo.thoi_han_so || 1))
-    else if (combo?.thoi_han_don_vi === 'day') end.setDate(end.getDate() + (combo.thoi_han_so || 1))
-    else end.setFullYear(end.getFullYear() + (combo?.thoi_han_so || 1))
+    const ngayHetHan = addDurationISO(today, combo?.thoi_han_so || 1, combo?.thoi_han_don_vi || 'year')
 
     const soBuoiTong = primary?.khong_gioi_han ? 9999 : (primary?.so_lan || 1)
     const insertData = {
@@ -670,7 +989,7 @@ export const posService = {
       so_buoi_da_dung: 0,
       gia_tri_the: combo.gia_ban || 0,
       ngay_mua: today,
-      ngay_het_han: end.toISOString().slice(0, 10),
+      ngay_het_han: ngayHetHan,
       trang_thai: 'active',
       loai_the: 'combo_lieu_trinh',
       is_khong_gioi_han: !!primary?.khong_gioi_han,

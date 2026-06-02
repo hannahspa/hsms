@@ -2,749 +2,22 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { posService } from '../../services/posService'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, getNowVN, todayISO } from '../../lib/utils'
-import { calcServiceCommission, getCommissionPercent, serviceSalePrice, calcKmRefPct, calcCommissionRates, kmRefAlert } from '../../lib/serviceCommission'
+import { calcCommissionRates } from '../../lib/serviceCommission'
+import { getCardComboService, getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
 import { useAuth } from '../../context/AuthContext'
 import I from '../../components/shared/Icons'
-import DatePicker from '../../components/shared/DatePicker'
 import PosOrderHistory from './PosOrderHistory'
 import PosProductCatalog from './PosProductCatalog'
+import KtvPopupComponent from './components/KtvPopup'
+import CartLine from './components/CartLine'
+import DebtPaymentModal from './components/DebtPaymentModal'
+import PaymentLines from './components/PaymentLines'
+import StaffCommissionPanel from './components/StaffCommissionPanel'
+import { parseVND, fmtDate, getInitials, LieuTrinhCard } from './posShared'
 import { HINH_THUC_THU } from '../../constants/enums'
 import { C, FONT } from '../../constants/colors'
 
 const PTTT_OPTS = HINH_THUC_THU
-
-function parseVND(s) { return parseInt(String(s).replace(/\D/g, ''), 10) || 0 }
-function fmtInput(n) { return n > 0 ? new Intl.NumberFormat('vi-VN').format(n) : '' }
-function fmtDate(s) {
-  if (!s) return ''
-  const [y, m, d] = String(s).split('-')
-  return d && m && y ? `${d}/${m}/${y}` : s
-}
-function getInitials(name) {
-  if (!name) return '?'
-  const p = name.trim().split(' ')
-  return (p[p.length - 1][0] || '').toUpperCase()
-}
-// Tên ngắn: 2 chữ cuối — "Lê Hoàng Phương Linh" → "Phương Linh"
-function shortName(name) {
-  if (!name) return ''
-  const p = name.trim().split(/\s+/)
-  return p.slice(-2).join(' ')
-}
-// Avatar nhân viên: ảnh nếu có, fallback initials
-function NvAvatar({ nv, size = 36 }) {
-  if (nv?.avatar_url) {
-    return <img src={nv.avatar_url} alt={nv.ho_ten || ''} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(160,113,79,.25)' }} />
-  }
-  return (
-    <div style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#2a1d14', fontSize: Math.round(size * 0.36), fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {getInitials(nv?.ho_ten)}
-    </div>
-  )
-}
-function paymentDisplayLabel(method) {
-  if (method.id === 'chuyen_khoan') return 'Chuyển Khoản - MB Bank'
-  if (method.id === 'quet_the') return 'Quẹt Thẻ - TP Bank'
-  return method.label
-}
-
-// ── Toggle switch ──────────────────────────────────────────────────────────────
-function Toggle({ on, onChange, label }) {
-  return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
-      <div onClick={() => onChange(!on)} style={{
-        width: 38, height: 21, borderRadius: 11, position: 'relative',
-        background: on ? 'var(--champagne)' : 'rgba(0,0,0,.18)', transition: 'background .2s', flexShrink: 0,
-      }}>
-        <div style={{
-          position: 'absolute', top: 2.5, left: on ? 19 : 2.5,
-          width: 16, height: 16, borderRadius: '50%', background: '#fff',
-          transition: 'left .18s', boxShadow: '0 1px 4px rgba(0,0,0,.25)',
-        }} />
-      </div>
-      {label && <span style={{ fontSize: 12.5, color: 'var(--ink2)' }}>{label}</span>}
-    </label>
-  )
-}
-
-// ── Thẻ liệu trình card (horizontal) ─────────────────────────────────────────
-function LieuTrinhCard({ card, onUse }) {
-  const pct      = card.so_buoi_tong > 0 ? (card.so_buoi_da_dung / card.so_buoi_tong) * 100 : 0
-  const conNo    = Math.max(0, (card.gia_tri_the || 0) - (card.da_thanh_toan ?? card.gia_tri_the ?? 0))
-  const du30pct  = (card.da_thanh_toan ?? card.gia_tri_the ?? 0) >= Math.round((card.gia_tri_the || 0) * 0.30)
-  const coNo     = conNo > 0
-  return (
-    <div style={{
-      minWidth: 160, maxWidth: 175, flexShrink: 0, borderRadius: 8, padding: '7px 10px',
-      background: coNo
-        ? 'linear-gradient(135deg,#8e2218 0%,#C0392B 55%,#922b21 100%)'
-        : 'linear-gradient(135deg,#C9A96E 0%,#A0714F 55%,#7D5A3C 100%)',
-      color: '#fff', boxShadow: coNo
-        ? '0 2px 8px rgba(192,57,43,.35)'
-        : '0 2px 8px rgba(160,113,79,.25)',
-    }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1.3, marginBottom: 1 }}>
-        {card.ten_dich_vu}
-      </div>
-      <div style={{ fontSize: 9, opacity: .8, marginBottom: coNo ? 3 : 5 }}>
-        {card.so_buoi_da_dung}/{card.so_buoi_tong} buổi · {formatCurrency(card.gia_tri_the || 0)}
-      </div>
-      {/* Badge nợ */}
-      {coNo && (
-        <div style={{
-          fontSize: 9, fontWeight: 700, marginBottom: 4,
-          background: du30pct ? 'rgba(255,255,255,.18)' : 'rgba(255,50,50,.35)',
-          border: '1px solid rgba(255,255,255,.3)',
-          borderRadius: 4, padding: '2px 6px', lineHeight: 1.4,
-        }}>
-          {`💸 Nợ ${formatCurrency(conNo)}`}
-        </div>
-      )}
-      <div style={{ height: 2, background: 'rgba(255,255,255,.25)', borderRadius: 2, marginBottom: 5 }}>
-        <div style={{ height: '100%', borderRadius: 2, background: '#fff', width: `${pct}%` }} />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 8.5, opacity: .7 }}>{card.ma_the || '—'}</span>
-        <button onClick={() => onUse(card)} style={{
-          background: 'rgba(255,255,255,.25)', border: '1px solid rgba(255,255,255,.4)',
-          borderRadius: 5, padding: '2px 8px', color: '#fff', cursor: 'pointer',
-          fontSize: 10, fontWeight: 700, fontFamily: 'var(--sans)',
-        }}>→ Dùng</button>
-      </div>
-    </div>
-  )
-}
-
-// ── KTV Popup ────────────────────────────────────────────────────────────────
-function KtvPopup({ item, ktvList, onAssign, onClose }) {
-  const isTheLT  = item.loai_item === 'the_lieu_trinh'
-  const isSaleCommission = item.loai_item === 'the_moi' || item.loai_item === 'san_pham'
-  const name     = item.dich_vu?.ten || item.san_pham?.ten || item.the_lieu_trinh?.ten_dich_vu || '—'
-  const initTiLe = item.ti_le_hoa_hong || item.dich_vu?.ti_le_hoa_hong || 0
-  const fixedKtvRule = item.meta?.myspaCommission?.ktv?.type === 'absolute' ? item.meta.myspaCommission.ktv : null
-
-  const [selectedKtv, setSelectedKtv] = useState(item.nhan_vien || null)
-  const [tiLe, setTiLe]               = useState(initTiLe)
-  const [baseGiaBuoi, setBaseGiaBuoi] = useState(
-    isTheLT && item.the_lieu_trinh?.gia_tri_the && item.the_lieu_trinh?.so_buoi_tong
-      ? Math.round(item.the_lieu_trinh.gia_tri_the / Math.max(1, item.the_lieu_trinh.so_buoi_tong))
-      : 0
-  )
-  const [ktvSearch, setKtvSearch]     = useState('')
-  const [saving, setSaving]           = useState(false)
-  const [loadingRate, setLoadingRate] = useState(isTheLT && !item.ti_le_hoa_hong)
-
-  useEffect(() => {
-    if (!isTheLT) return
-    const tenDV = item.the_lieu_trinh?.ten_dich_vu
-    if (!tenDV) { setLoadingRate(false); return }
-    setLoadingRate(true)
-    posService.getServices(tenDV).then(svcs => {
-      const match = svcs.find(dv => dv.ten === tenDV) || svcs[0]
-      if (!match) return
-      if (tiLe === 0 && match.ti_le_hoa_hong > 0) setTiLe(match.ti_le_hoa_hong)
-      if (baseGiaBuoi === 0 && match.gia_co_ban > 0) setBaseGiaBuoi(match.gia_co_ban)
-    }).catch(() => {}).finally(() => setLoadingRate(false))
-  }, [])
-
-  const baseTienTour = isTheLT
-    ? baseGiaBuoi * (item.so_luong || 1)
-    : (item.thanh_tien || 0)
-  const tienTour = fixedKtvRule && !isSaleCommission
-    ? Math.round(Number(fixedKtvRule.amount || 0) * Math.max(1, Number(item.so_luong || 1)))
-    : Math.round(baseTienTour * tiLe / 100)
-  const incomeLabel = isSaleCommission ? 'Hoa hồng bán' : 'Tiền Tour'
-  const filtered = ktvList.filter(k => !ktvSearch || k.ho_ten.toLowerCase().includes(ktvSearch.toLowerCase()))
-
-  const handleSave = async () => {
-    setSaving(true)
-    await onAssign(item, selectedKtv, tiLe, tienTour)
-    setSaving(false)
-  }
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 999,
-      background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }} onClick={onClose}>
-      <div style={{
-        background: C.surface2, borderRadius: 16, width: 460, maxHeight: '80vh',
-        display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,.25)',
-      }} onClick={e => e.stopPropagation()}>
-        <div style={{
-          padding: '16px 20px 12px', borderBottom: '1px solid var(--line)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
-        }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--ink)' }}>Chọn Kỹ Thuật Viên</div>
-            <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 2 }}>{name}</div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--ink3)', lineHeight: 1 }}>✕</button>
-        </div>
-
-        <div style={{ padding: '12px 20px 0', flexShrink: 0 }}>
-          <input placeholder="Tìm nhân viên…" value={ktvSearch} onChange={e => setKtvSearch(e.target.value)}
-            style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--bord)', borderRadius: 8, padding: '8px 12px', fontSize: 13, outline: 'none', fontFamily: 'var(--sans)' }}
-          />
-        </div>
-
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 20px' }}>
-          {filtered.map(k => {
-            const isSelected = selectedKtv?.id === k.id
-            return (
-              <div key={k.id} onClick={() => setSelectedKtv(k)} style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
-                borderRadius: 10, cursor: 'pointer', marginBottom: 4,
-                background: isSelected ? 'rgba(201,169,110,.1)' : 'transparent',
-                border: `1.5px solid ${isSelected ? 'var(--champagne)' : 'transparent'}`,
-                transition: 'all .15s',
-              }}>
-                <NvAvatar nv={k} size={36} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{shortName(k.ho_ten)}</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{k.vi_tri === 'ktv' ? 'KTV' : 'Lễ Tân'}</div>
-                </div>
-                {isSelected && (
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--champagne)', color: '#2a1d14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>✓</div>
-                )}
-              </div>
-            )
-          })}
-          {filtered.length === 0 && <div style={{ textAlign: 'center', padding: '20px', color: 'var(--ink3)', fontSize: 13 }}>Không tìm thấy</div>}
-        </div>
-
-        {selectedKtv && (
-          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', background: 'rgba(201,169,110,.05)', flexShrink: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink2)', marginBottom: 8 }}>
-              {shortName(selectedKtv.ho_ten)} — {incomeLabel}
-              {loadingRate && <span style={{ fontWeight: 400, color: 'var(--ink3)', marginLeft: 6 }}>(đang tải tỷ lệ…)</span>}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                <span style={{ fontSize: 12, color: 'var(--ink3)' }}>Tỷ lệ</span>
-                <input value={tiLe} onChange={e => setTiLe(parseFloat(e.target.value) || 0)}
-                  style={{ width: 50, border: '1px solid var(--bord)', borderRadius: 6, padding: '4px 6px', fontSize: 13, fontWeight: 700, textAlign: 'center', outline: 'none' }} />
-                <span style={{ fontSize: 12, color: 'var(--ink3)' }}>%</span>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 10, color: 'var(--ink3)' }}>{incomeLabel}</div>
-                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--champagne)' }}>{formatCurrency(tienTour)}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', display: 'flex', gap: 8, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ flex: 1, height: 40, border: '1px solid var(--bord)', borderRadius: 8, background: '#fff', color: 'var(--ink2)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--sans)' }}>Đóng</button>
-          {selectedKtv && (
-            <button onClick={handleSave} disabled={saving || loadingRate} style={{
-              flex: 2, height: 40, border: 'none', borderRadius: 8,
-              background: loadingRate ? C.line2 : 'var(--champagne)',
-              color: loadingRate ? C.ink3 : '#2a1d14',
-              cursor: (saving || loadingRate) ? 'not-allowed' : 'pointer',
-              fontSize: 13, fontWeight: 700, fontFamily: 'var(--sans)',
-            }}>
-              {saving ? 'Đang lưu…' : loadingRate ? 'Đang tải…' : 'Lưu'}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── BuyCard Popup — (đã tích hợp inline vào CartLine, giữ lại phòng trường hợp tái dùng) ──
-function BuyCardPopup({ dichVu, ktvList, onConfirm, onClose }) {
-  const donGia = serviceSalePrice(dichVu)
-
-  const [soBuoiMua,    setSoBuoiMua]    = useState(10)
-  const [soBuoiTang,   setSoBuoiTang]   = useState(0)
-  const [phanTramGiam, setPhanTramGiam] = useState(0)   // % giảm giá trực tiếp
-  const [thanhTien,    setThanhTien]    = useState(10 * donGia)
-  const [ttManual,     setTtManual]     = useState(false)
-  const [selectedKtvId, setKtvId]       = useState('')
-  const [selectedLtId,  setLtId]        = useState('')  // LT tư vấn (optional)
-  const [ngayHetHan,   setNgayHetHan]   = useState('')
-
-  const soBuoiTong  = soBuoiMua + soBuoiTang
-  const giaGoc      = soBuoiMua * donGia
-  const chiKhauPct  = giaGoc > 0 ? Math.round((1 - thanhTien / giaGoc) * 100) : 0
-  const selectedKtv = ktvList.find(k => k.id === selectedKtvId) || null
-  const selectedLt  = ktvList.find(k => k.id === selectedLtId)  || null
-  const ltList      = ktvList.filter(k => k.vi_tri === 'le_tan')
-  const canConfirm  = soBuoiMua >= 1 && thanhTien > 0
-
-  // ── Commission theo rules mới ────────────────────────
-  const kmRefPct   = calcKmRefPct({ soBuoiMua, soBuoiTang, phanTramGiam: Number(phanTramGiam) })
-  const rates      = calcCommissionRates(kmRefPct, !!selectedKtvId, !!selectedLtId)
-  const kmAl       = (soBuoiTang > 0 || Number(phanTramGiam) > 0) ? kmRefAlert(kmRefPct) : null
-  const commKtvTien = selectedKtv ? Math.round(thanhTien * rates.tiLeKtv / 100) : 0
-  const commLtTien  = selectedLt  ? Math.round(thanhTien * rates.tiLeLt  / 100) : 0
-
-  const handleMuaChange = (n) => {
-    const val = Math.max(1, n)
-    setSoBuoiMua(val)
-    if (!ttManual) setThanhTien(val * donGia)
-  }
-
-  const handleThanhTienChange = (raw) => {
-    setThanhTien(parseVND(raw))
-    setTtManual(true)
-  }
-
-  const handleResetTT = () => {
-    setThanhTien(soBuoiMua * donGia)
-    setTtManual(false)
-  }
-
-  const lbl11 = { fontSize: 11, fontWeight: 700, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-      <div style={{ background: C.surface2, borderRadius: 16, width: 'min(500px, 95vw)', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,.28)', maxHeight: '92vh' }} onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
-        <div style={{ padding: '14px 18px 12px', background: 'linear-gradient(135deg,#3d2c20 0%,#2a1d14 100%)', borderRadius: '16px 16px 0 0', flexShrink: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontSize: 11, color: 'rgba(243,230,210,.55)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Mua Thẻ Liệu Trình</div>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--serif)', color: '#f3e6d2', marginTop: 2 }}>{dichVu.ten}</div>
-              <div style={{ fontSize: 12, color: 'rgba(243,230,210,.6)', marginTop: 1 }}>{formatCurrency(donGia)} / buổi</div>
-            </div>
-            <button onClick={onClose} style={{ background: 'rgba(255,255,255,.12)', border: 'none', width: 28, height: 28, borderRadius: 8, cursor: 'pointer', color: '#f3e6d2', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-          </div>
-        </div>
-
-        <div style={{ padding: '16px 18px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
-
-          {/* ① Số buổi mua + tặng */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-            <div>
-              <div style={lbl11}>Số buổi mua</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button onClick={() => handleMuaChange(soBuoiMua - 1)} style={{ width: 30, height: 36, border: '1px solid var(--bord)', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>−</button>
-                <input type="number" min={1} value={soBuoiMua} onChange={e => handleMuaChange(parseInt(e.target.value) || 1)} style={{ flex: 1, border: '1.5px solid var(--champagne)', borderRadius: 8, padding: '7px 6px', fontSize: 16, fontWeight: 700, textAlign: 'center', outline: 'none', fontFamily: 'var(--sans)' }} />
-                <button onClick={() => handleMuaChange(soBuoiMua + 1)} style={{ width: 30, height: 36, border: '1px solid var(--bord)', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
-              </div>
-            </div>
-            <div>
-              <div style={lbl11}>Số buổi tặng</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button onClick={() => setSoBuoiTang(Math.max(0, soBuoiTang - 1))} style={{ width: 30, height: 36, border: '1px solid var(--bord)', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>−</button>
-                <input type="number" min={0} value={soBuoiTang} onChange={e => setSoBuoiTang(Math.max(0, parseInt(e.target.value) || 0))} style={{ flex: 1, border: '1.5px solid var(--bord)', borderRadius: 8, padding: '7px 6px', fontSize: 16, fontWeight: 700, textAlign: 'center', outline: 'none', fontFamily: 'var(--sans)' }} />
-                <button onClick={() => setSoBuoiTang(soBuoiTang + 1)} style={{ width: 30, height: 36, border: '1px solid var(--bord)', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
-              </div>
-            </div>
-          </div>
-
-          {/* ② % Giảm giá trực tiếp (KM dạng giảm tiền, không phải tặng buổi) */}
-          <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <div style={lbl11}>% Giảm giá trực tiếp (nếu có)</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input
-                  type="number" min={0} max={100} step={0.5}
-                  value={phanTramGiam}
-                  onChange={e => setPhanTramGiam(Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
-                  style={{ width: 72, border: '1.5px solid var(--bord)', borderRadius: 8, padding: '7px 8px', fontSize: 15, fontWeight: 700, textAlign: 'center', outline: 'none', fontFamily: 'var(--sans)' }}
-                />
-                <span style={{ fontSize: 14, color: 'var(--ink2)' }}>%</span>
-                {Number(phanTramGiam) > 0 && (
-                  <span style={{ fontSize: 12, color: C.chi, fontWeight: 600 }}>
-                    = giảm {formatCurrency(Math.round(giaGoc * Number(phanTramGiam) / 100))}
-                  </span>
-                )}
-              </div>
-            </div>
-            {/* KM_ref% badge — chỉ hiện khi có tặng buổi hoặc giảm giá */}
-            {kmAl && kmRefPct > 0 && (
-              <div style={{ flexShrink: 0, alignSelf: 'flex-end', marginBottom: 2, padding: '5px 10px', borderRadius: 8, background: kmAl.bg, border: `1px solid ${kmAl.color}55` }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: kmAl.color }}>KM {kmRefPct.toFixed(0)}%</div>
-                <div style={{ fontSize: 10, color: kmAl.color, opacity: 0.85, marginTop: 1 }}>
-                  {kmAl.level === 'ok' ? 'Commission tiêu chuẩn' : kmAl.level === 'warning' ? 'Commission giảm' : 'KM rất cao!'}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ③ Tổng buổi summary */}
-          <div style={{ marginBottom: 14, padding: '8px 12px', borderRadius: 8, background: '#f5f0ea', border: '1px solid rgba(201,169,110,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', fontFamily: 'var(--serif)' }}>
-              Tổng {soBuoiMua}{soBuoiTang > 0 ? ` + ${soBuoiTang} tặng = ${soBuoiTong}` : ''} buổi
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--ink3)' }}>Niêm yết: {formatCurrency(giaGoc)}</span>
-          </div>
-
-          {/* ④ Thành tiền */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={lbl11}>Thành tiền (lễ tân nhập)</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                value={fmtInput(thanhTien)}
-                onChange={e => handleThanhTienChange(e.target.value)}
-                placeholder="0đ"
-                style={{ flex: 1, border: '1.5px solid var(--champagne)', borderRadius: 8, padding: '9px 12px', fontSize: 18, fontWeight: 800, outline: 'none', background: '#fff', fontFamily: 'var(--serif)', color: 'var(--champagne)', textAlign: 'right' }}
-              />
-              {ttManual && (
-                <button onClick={handleResetTT} title="Đặt lại theo giá niêm yết" style={{ width: 34, height: 42, border: '1px solid var(--bord)', borderRadius: 8, background: '#fff', cursor: 'pointer', color: 'var(--ink3)', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>↺</button>
-              )}
-            </div>
-            {chiKhauPct > 0 && (
-              <div style={{ marginTop: 5, fontSize: 12, color: C.chi, fontWeight: 700 }}>
-                Chiết khấu {chiKhauPct}% — giảm {formatCurrency(giaGoc - thanhTien)}
-              </div>
-            )}
-            {chiKhauPct < 0 && (
-              <div style={{ marginTop: 5, fontSize: 12, color: C.thu, fontWeight: 700 }}>
-                Phụ thu {Math.abs(chiKhauPct)}%
-              </div>
-            )}
-          </div>
-
-          {/* ⑤ Người bán (KTV) + Lễ Tân tư vấn */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-            <div>
-              <div style={lbl11}>KTV bán thẻ</div>
-              <select value={selectedKtvId} onChange={e => setKtvId(e.target.value)} style={{ width: '100%', border: '1.5px solid var(--bord)', borderRadius: 8, padding: '8px 10px', fontSize: 13, outline: 'none', background: '#fff', color: selectedKtvId ? 'var(--ink)' : 'var(--ink3)', fontFamily: 'var(--sans)', cursor: 'pointer' }}>
-                <option value="">-- Không ghi --</option>
-                {ktvList.map(k => <option key={k.id} value={k.id}>{k.ho_ten}</option>)}
-              </select>
-            </div>
-            <div>
-              <div style={lbl11}>Lễ tân tư vấn</div>
-              <select value={selectedLtId} onChange={e => setLtId(e.target.value)} style={{ width: '100%', border: '1.5px solid var(--bord)', borderRadius: 8, padding: '8px 10px', fontSize: 13, outline: 'none', background: '#fff', color: selectedLtId ? 'var(--ink)' : 'var(--ink3)', fontFamily: 'var(--sans)', cursor: 'pointer' }}>
-                <option value="">-- Không có --</option>
-                {(ltList.length > 0 ? ltList : ktvList).map(k => <option key={k.id} value={k.id}>{k.ho_ten}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* ⑥ Bảng commission đề xuất — chỉ hiện khi có ít nhất 1 NV */}
-          {(selectedKtv || selectedLt) && (
-            <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8, background: '#f0faf5', border: '1px solid #b7e4cc' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.thu, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 8 }}>
-                Commission đề xuất
-              </div>
-              {selectedKtv && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, color: 'var(--ink)' }}>KTV — {selectedKtv.ho_ten}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: rates.tiLeKtv > 0 ? C.thu : 'var(--ink3)' }}>
-                    {rates.tiLeKtv > 0 ? `${rates.tiLeKtv}% = ${formatCurrency(commKtvTien)}` : '0%'}
-                  </span>
-                </div>
-              )}
-              {selectedLt && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, color: 'var(--ink)' }}>LT — {selectedLt.ho_ten}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: rates.tiLeLt > 0 ? C.thu : 'var(--ink3)' }}>
-                    {rates.tiLeLt > 0 ? `${rates.tiLeLt}% = ${formatCurrency(commLtTien)}` : '0%'}
-                  </span>
-                </div>
-              )}
-              {rates.label && (
-                <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 6, paddingTop: 6, borderTop: '1px dashed #b7e4cc' }}>
-                  {rates.label}
-                </div>
-              )}
-              {!rates.label && !selectedKtv && !selectedLt && (
-                <div style={{ fontSize: 12, color: 'var(--ink3)' }}>Chọn KTV hoặc LT để tính commission</div>
-              )}
-            </div>
-          )}
-
-          {/* ⑦ Ngày hết hạn */}
-          <div>
-            <div style={lbl11}>Ngày hết hạn (để trống = không hạn)</div>
-            <input
-              type="date" value={ngayHetHan} onChange={e => setNgayHetHan(e.target.value)}
-              style={{ width: '100%', boxSizing: 'border-box', border: '1.5px solid var(--bord)', borderRadius: 8, padding: '7px 10px', fontSize: 13, outline: 'none', background: '#fff', fontFamily: 'var(--sans)', color: ngayHetHan ? 'var(--ink)' : 'var(--ink3)' }}
-            />
-          </div>
-        </div>
-
-        <div style={{ padding: '12px 18px', borderTop: '1px solid var(--line)', display: 'flex', gap: 8, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ flex: 1, height: 44, border: '1.5px solid var(--bord)', borderRadius: 10, background: '#fff', color: 'var(--ink2)', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'var(--sans)' }}>Huỷ</button>
-          <button
-            onClick={() => onConfirm({
-              soBuoiMua, soBuoiTang, soBuoiTong,
-              giaTri: thanhTien,
-              nhanVienBan: selectedKtv,
-              nhanVienTuVanLt: selectedLt,
-              ngayHetHan: ngayHetHan || null,
-              tiLeCommKtv: rates.tiLeKtv,
-              tiLeCommLt: rates.tiLeLt,
-              kmRefPct,
-            })}
-            disabled={!canConfirm}
-            style={{ flex: 2, height: 44, border: 'none', borderRadius: 10, background: canConfirm ? 'linear-gradient(135deg,#C9A96E 0%,#A0714F 45%,#7D5A3C 100%)' : 'var(--line)', color: canConfirm ? '#fff' : 'var(--ink3)', cursor: canConfirm ? 'pointer' : 'not-allowed', fontSize: 14, fontWeight: 700, fontFamily: 'var(--sans)' }}
-          >
-            Thêm vào đơn — {formatCurrency(thanhTien)}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Cart line (right panel) — layout MySpa ───────────────────────────────────
-function CartLine({ item, onRemove, onQtyChange, onDiscountChange, onSelectKTV, onToggleCard, ktvList }) {
-  const name      = item.dich_vu?.ten || item.san_pham?.ten || item.the_lieu_trinh?.ten_dich_vu || item.meta?.tenDichVu || '—'
-  const donGia    = item.don_gia || 0
-  const isDichVu  = item.loai_item === 'dich_vu'
-  const isSanPham = item.loai_item === 'san_pham'
-  const isCard    = item.loai_item === 'the_moi'
-  const isTheLT   = item.loai_item === 'the_lieu_trinh'
-  const nv        = item.nhan_vien
-
-  // QTY + giảm giá (dịch vụ / sản phẩm thường)
-  const [qty,     setQty]     = useState(item.so_luong || 1)
-  const [discAmt, setDiscAmt] = useState(Math.max(0, donGia * (item.so_luong||1) - (item.thanh_tien||0)))
-
-  // Inline card state — đầy đủ thông tin thẻ + commission
-  const [cardBuoiMua,      setCardBuoiMua]      = useState(item.meta?.soBuoiMua    || 10)
-  const [cardBuoiTang,     setCardBuoiTang]     = useState(item.meta?.soBuoiTang   || 0)
-  const [cardPhanTramGiam, setCardPhanTramGiam] = useState(item.meta?.phanTramGiam  || 0)
-  const [cardNgayHH,       setCardNgayHH]       = useState(item.meta?.ngayHetHan   || '')
-  const [cardKhongGH,      setCardKhongGH]      = useState(!item.meta?.ngayHetHan)
-  const [ngayHHOpen,       setNgayHHOpen]       = useState(false)
-
-  // KM badge
-  const cardKmRefPct  = calcKmRefPct({ soBuoiMua: cardBuoiMua, soBuoiTang: cardBuoiTang, phanTramGiam: Number(cardPhanTramGiam) })
-  const cardKmAl      = (cardBuoiTang > 0 || Number(cardPhanTramGiam) > 0) && cardKmRefPct > 0 ? kmRefAlert(cardKmRefPct) : null
-  // Thành tiền = buổi mua × đơn giá × (1 − giảm%)
-  const cardThanhTien = Math.round(cardBuoiMua * donGia * (1 - Number(cardPhanTramGiam) / 100))
-
-  const handleQty = (n) => {
-    if (n < 1) return
-    setQty(n)
-    onQtyChange(item._lid, n, donGia)
-  }
-  const handleDiscBlur = () => {
-    const newTT = Math.max(0, donGia * qty - discAmt)
-    if (newTT !== item.thanh_tien && onDiscountChange) onDiscountChange(item._lid, newTT)
-  }
-
-  // commitCard — truyền đầy đủ params vào handleToggleCard
-  const commitCard = (buoiMua, buoiTang, ngayHH, khongGH, pctGiam) => {
-    const km = calcKmRefPct({ soBuoiMua: buoiMua, soBuoiTang: buoiTang, phanTramGiam: Number(pctGiam || 0) })
-    onToggleCard(item._lid, true, {
-      soBuoiMua:    buoiMua,
-      soBuoiTang:   buoiTang,
-      ngayHetHan:   khongGH ? null : (ngayHH || null),
-      donGia,
-      phanTramGiam: Number(pctGiam || 0),
-      kmRefPct:     km,
-    })
-  }
-
-  const smBtn = {
-    width: 22, height: 22, border: `1px solid ${C.line2}`, borderRadius: 3,
-    background: C.surface2, cursor: 'pointer', fontSize: 14, lineHeight: 1,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: C.ink2,
-  }
-
-  // Thẻ liệu trình dùng buổi (cũ)
-  const theLTConLai = item.the_lieu_trinh?.so_buoi_con_lai ?? null
-  const theLTTong   = item.the_lieu_trinh?.so_buoi_tong ?? null
-  const theLTHH     = item.the_lieu_trinh?.ngay_het_han
-
-  return (
-    <div style={{ padding: '8px 0', borderBottom: `1px solid ${C.line}` }}>
-
-      {/* ── ROW CHÍNH: ✕ | Tên + giá/buổi | SL | Giảm+đ | Thành tiền | CB Thẻ ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <button onClick={() => onRemove(item._lid)} style={{ background: 'none', border: 'none', color: C.chi, cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1, flexShrink: 0 }}>✕</button>
-
-        {/* Tên + đơn giá */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.3 }}>
-            {isTheLT && <span style={{ fontSize: 9, fontWeight: 800, color: C.thu, background: 'rgba(45,122,79,.12)', borderRadius: 3, padding: '1px 4px', marginRight: 4 }}>DÙNG THẺ</span>}
-            {isCard && <span style={{ fontSize: 9, fontWeight: 800, color: '#A0714F', background: 'rgba(160,113,79,.1)', borderRadius: 3, padding: '1px 4px', marginRight: 4 }}>THẺ MỚI</span>}
-            {name}
-          </div>
-          {isTheLT && theLTConLai !== null && (
-            <div style={{ fontSize: 10, color: C.thu }}>Còn {theLTConLai}/{theLTTong} buổi{theLTHH ? ` · HH: ${theLTHH}` : ''}</div>
-          )}
-          {!isTheLT && !isCard && <div style={{ fontSize: 10.5, color: 'var(--ink3)' }}>{formatCurrency(donGia)}</div>}
-          {isCard && <div style={{ fontSize: 10.5, color: 'var(--champagne)', fontWeight: 600 }}>
-            {cardBuoiMua}+{cardBuoiTang} buổi
-            {Number(cardPhanTramGiam) > 0 && <span style={{ color: C.chi }}> −{cardPhanTramGiam}%</span>}
-            {' · '}{formatCurrency(cardThanhTien)}
-          </div>}
-        </div>
-
-        {/* SL (chỉ dịch vụ/SP thường, không phải thẻ) */}
-        {(isDichVu || isSanPham) && !isCard ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-            <button onClick={() => handleQty(qty - 1)} style={smBtn}>−</button>
-            <span style={{ fontSize: 12, fontWeight: 700, minWidth: 18, textAlign: 'center' }}>{qty}</span>
-            <button onClick={() => handleQty(qty + 1)} style={smBtn}>+</button>
-          </div>
-        ) : isTheLT ? <div style={{ width: 54, flexShrink: 0 }} /> : null}
-
-        {/* Giảm giá + đ (chỉ DV/SP thường) */}
-        {(isDichVu || isSanPham) && !isCard ? (
-          <div style={{ display: 'flex', alignItems: 'stretch', flexShrink: 0 }}>
-            <input
-              value={discAmt > 0 ? fmtInput(discAmt) : ''}
-              onChange={e => setDiscAmt(parseVND(e.target.value))}
-              onBlur={handleDiscBlur}
-              placeholder="0"
-              style={{ width: 50, border: `1px solid ${C.line2}`, borderRadius: '4px 0 0 4px', padding: '3px 4px', fontSize: 11, textAlign: 'right', outline: 'none', color: C.chi, background: C.surface2 }}
-            />
-            <span style={{ background: C.bg, border: `1px solid ${C.line2}`, borderLeft: 'none', borderRadius: '0 4px 4px 0', padding: '3px 4px', fontSize: 10, color: C.ink3, display: 'flex', alignItems: 'center' }}>đ</span>
-          </div>
-        ) : isTheLT ? <div style={{ width: 62, flexShrink: 0 }} /> : null}
-
-        {/* Thành tiền */}
-        <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--serif)', minWidth: 76, textAlign: 'right', flexShrink: 0, color: isTheLT ? 'var(--ink3)' : (isCard ? 'var(--champagne)' : 'var(--ink)') }}>
-          {isTheLT ? '0đ ✓' : formatCurrency(item.thanh_tien || 0)}
-        </div>
-
-        {/* Checkbox Thẻ liệu trình */}
-        {(isDichVu || isCard) && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
-            <input
-              type="checkbox" checked={isCard}
-              onChange={e => {
-                if (e.target.checked) {
-                  commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam)
-                } else {
-                  onToggleCard(item._lid, false, { donGia })
-                }
-              }}
-              style={{ cursor: 'pointer', width: 13, height: 13, accentColor: '#C9A96E' }}
-            />
-            <span style={{ fontSize: 10.5, color: isCard ? 'var(--champagne)' : 'var(--ink3)', fontWeight: isCard ? 700 : 400, whiteSpace: 'nowrap' }}>Thẻ LT</span>
-          </label>
-        )}
-      </div>
-
-      {/* ── CARD SECTION — hiện khi tick Thẻ liệu trình ── */}
-      {isCard && (
-        <div style={{ marginTop: 6, paddingLeft: 16, paddingRight: 4 }}>
-
-          {/* Row 1: Số buổi + KM tặng + % giảm giá */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
-
-            {/* Số buổi mua */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <span style={{ fontSize: 10, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>Buổi mua</span>
-              <button onClick={() => { const v = Math.max(1, cardBuoiMua-1); setCardBuoiMua(v); commitCard(v, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam) }} style={smBtn}>−</button>
-              <input
-                type="number" min={1} value={cardBuoiMua}
-                onChange={e => { const v = Math.max(1, parseInt(e.target.value)||1); setCardBuoiMua(v) }}
-                onBlur={() => commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam)}
-                style={{ width: 38, border: '1px solid var(--bord)', borderRadius: 4, padding: '2px 3px', fontSize: 12, fontWeight: 700, textAlign: 'center', outline: 'none' }}
-              />
-              <button onClick={() => { const v = cardBuoiMua+1; setCardBuoiMua(v); commitCard(v, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam) }} style={smBtn}>+</button>
-            </div>
-
-            {/* Tặng buổi */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <span style={{ fontSize: 10, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>Tặng</span>
-              <button onClick={() => { const v = Math.max(0, cardBuoiTang-1); setCardBuoiTang(v); commitCard(cardBuoiMua, v, cardNgayHH, cardKhongGH, cardPhanTramGiam) }} style={smBtn}>−</button>
-              <input
-                type="number" min={0} value={cardBuoiTang}
-                onChange={e => { const v = Math.max(0, parseInt(e.target.value)||0); setCardBuoiTang(v) }}
-                onBlur={() => commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam)}
-                style={{ width: 38, border: '1px solid var(--bord)', borderRadius: 4, padding: '2px 3px', fontSize: 12, fontWeight: 700, textAlign: 'center', outline: 'none' }}
-              />
-              <button onClick={() => { const v = cardBuoiTang+1; setCardBuoiTang(v); commitCard(cardBuoiMua, v, cardNgayHH, cardKhongGH, cardPhanTramGiam) }} style={smBtn}>+</button>
-            </div>
-
-            {/* % Giảm giá trực tiếp */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <span style={{ fontSize: 10, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>Giảm</span>
-              <input
-                type="number" min={0} max={100} step={0.5}
-                value={cardPhanTramGiam}
-                onChange={e => { const v = Math.min(100, Math.max(0, parseFloat(e.target.value)||0)); setCardPhanTramGiam(v) }}
-                onBlur={() => commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, cardKhongGH, cardPhanTramGiam)}
-                style={{ width: 38, border: '1px solid var(--bord)', borderRadius: 4, padding: '2px 3px', fontSize: 12, fontWeight: 700, textAlign: 'center', outline: 'none' }}
-              />
-              <span style={{ fontSize: 10, color: 'var(--ink3)' }}>%</span>
-            </div>
-
-            {/* Badge KM_ref% */}
-            {cardKmAl && (
-              <span style={{
-                fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
-                background: cardKmAl.bg, color: cardKmAl.color,
-                border: `1px solid ${cardKmAl.color}44`, whiteSpace: 'nowrap',
-              }}>
-                KM {cardKmRefPct.toFixed(0)}%
-                {cardKmAl.level === 'ok' ? ' ✓' : cardKmAl.level === 'warning' ? ' ⚠' : ' ⛔'}
-              </span>
-            )}
-          </div>
-
-          {/* Row 2: Ngày Hết Hạn (đã bỏ LT tư vấn) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 10, color: 'var(--ink3)', whiteSpace: 'nowrap' }}>Ngày Hết Hạn</span>
-            {!cardKhongGH ? (
-              <button onClick={() => setNgayHHOpen(true)} style={{
-                flex: 1, minWidth: 120, border: '1px solid var(--bord)', borderRadius: 4, padding: '4px 8px',
-                fontSize: 11.5, background: '#fff', color: cardNgayHH ? 'var(--ink)' : 'var(--ink3)',
-                cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--sans)',
-              }}>
-                {cardNgayHH ? cardNgayHH.split('-').reverse().join('/') : 'Chọn ngày…'}
-              </button>
-            ) : (
-              <span style={{ flex: 1, fontSize: 11, color: 'var(--ink3)', fontStyle: 'italic' }}>Không giới hạn</span>
-            )}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              <input
-                type="checkbox" checked={cardKhongGH}
-                onChange={e => { setCardKhongGH(e.target.checked); commitCard(cardBuoiMua, cardBuoiTang, cardNgayHH, e.target.checked, cardPhanTramGiam) }}
-                style={{ cursor: 'pointer', width: 12, height: 12, accentColor: C.champagne }}
-              />
-              <span style={{ fontSize: 10, color: 'var(--ink3)' }}>Không giới hạn ∞</span>
-            </label>
-          </div>
-
-          <DatePicker
-            open={ngayHHOpen}
-            selectedDate={cardNgayHH || null}
-            onClose={() => setNgayHHOpen(false)}
-            onConfirm={d => { setCardNgayHH(d); setNgayHHOpen(false); commitCard(cardBuoiMua, cardBuoiTang, d, false, cardLtId, cardPhanTramGiam) }}
-          />
-        </div>
-      )}
-
-      {/* ── Chọn KTV làm dịch vụ → tiền tour / hoa hồng theo từng dòng (kiểu MySpa) ── */}
-      {(isDichVu || isTheLT || isSanPham) && (
-        <div style={{ marginTop: 5, paddingLeft: 16 }}>
-          {nv ? (
-            <button onClick={() => onSelectKTV(item)} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              border: `1px solid ${C.champagne}`, background: 'rgba(201,169,110,.1)',
-              borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontFamily: 'var(--sans)',
-            }}>
-              <NvAvatar nv={nv} size={24} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{shortName(nv.ho_ten)}</span>
-              {(item.tien_tour > 0 || item.tien_commission > 0) && (
-                <span style={{ fontSize: 11, fontWeight: 700, color: C.champagne }}>
-                  · {isSanPham ? 'HH' : 'Tour'} {formatCurrency(item.tien_tour || item.tien_commission || 0)}
-                </span>
-              )}
-              <span style={{ fontSize: 10, color: C.ink3 }}>✎</span>
-            </button>
-          ) : (
-            <button onClick={() => onSelectKTV(item)} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              border: `1px dashed ${C.line2}`, background: 'transparent',
-              borderRadius: 6, padding: '3px 9px', cursor: 'pointer', fontFamily: 'var(--sans)',
-              fontSize: 11, fontWeight: 600, color: C.ink3,
-            }}>
-              + Chọn KTV {isSanPham ? 'bán SP' : 'làm dịch vụ'}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ── PosCreateOrder ────────────────────────────────────────────────────────────
 function PosCreateOrder({ resumeOrderId }) {
@@ -787,10 +60,6 @@ function PosCreateOrder({ resumeOrderId }) {
 
   // Nhân viên per-order
   const [orderStaff, setOrderStaff]   = useState([])
-  const [staffSearch, setStaffSearch] = useState('')
-  const [staffOpen, setStaffOpen]     = useState(false)
-  const staffInputRef = useRef(null)
-  const [staffDropPos, setStaffDropPos] = useState({ top: 0, left: 0, width: 0 })
 
   // Payment inline
   const [payLines, setPayLines]     = useState([{ _id: 1, soTien: 0, hinhThuc: 'tien_mat' }])
@@ -898,22 +167,46 @@ function PosCreateOrder({ resumeOrderId }) {
   }
 
   // ── Item handlers — local hoặc DB nếu đã lưu ────────────────────────────────
-  const handleAddCard = (card) => handleAddItem({
-    loai_item:         'the_lieu_trinh',
-    the_lieu_trinh_id: card.id,
-    the_lieu_trinh:    {
-      ten_dich_vu:     card.ten_dich_vu,
-      so_buoi_con_lai: card.so_buoi_con_lai,
-      so_buoi_tong:    card.so_buoi_tong,
-      so_buoi_da_dung: card.so_buoi_da_dung,
-      gia_tri_the:     card.gia_tri_the,
-      ngay_het_han:    card.ngay_het_han,
-    },
-    don_gia:    0,
-    thanh_tien: 0,
-    tien_tour:  0,
-    tien_commission: 0,
-  })
+  const handleAddCard = async (card) => {
+    const comboService = getCardComboService(card)
+    const displayValue = getTreatmentCardDisplayValue(card)
+    let policy = null
+    try {
+      policy = await posService.getTreatmentCardTourPolicy(card)
+    } catch (_) {}
+
+    handleAddItem({
+      loai_item:         'the_lieu_trinh',
+      the_lieu_trinh_id: card.id,
+      dich_vu_id:        card.dich_vu_id || comboService?.dich_vu_id || null,
+      the_lieu_trinh:    {
+        ten_dich_vu:        card.ten_dich_vu,
+        so_buoi_con_lai:    card.so_buoi_con_lai,
+        so_buoi_tong:       card.so_buoi_tong,
+        so_buoi_da_dung:    card.so_buoi_da_dung,
+        gia_tri_the:        displayValue,
+        gia_tri_the_goc:    card.gia_tri_the_goc ?? card.gia_tri_the,
+        gia_tri_hien_thi:   displayValue,
+        ngay_het_han:       card.ngay_het_han,
+        is_khong_gioi_han:  card.is_khong_gioi_han,
+        combo_id:           card.combo_id,
+        loai_the:           card.loai_the,
+        meta:               card.meta || {},
+        combo:              card.combo || null,
+      },
+      don_gia:    0,
+      thanh_tien: 0,
+      ti_le_hoa_hong: null,
+      tien_tour:  policy?.suggestedTour || 0,
+      tien_commission: 0,
+      meta: {
+        treatmentPolicy: policy,
+        displayValue,
+        originalCardValue: card.gia_tri_the_goc ?? card.gia_tri_the,
+        comboService: comboService || null,
+      },
+    })
+  }
 
   const handleAddItem = async (itemData) => {
     if (savedOrderId) {
@@ -927,6 +220,16 @@ function PosCreateOrder({ resumeOrderId }) {
     }
   }
 
+  const calcNextTour = (item, nextThanhTien, qty) => {
+    if (item?.meta?.tourMode === 'free_warranty') return 0
+    if (item?.meta?.tourMode === 'amount' && item?.meta?.manualTourAmount != null) {
+      return Math.round(Number(item.meta.manualTourAmount || 0))
+    }
+    const ktvRule = item?.meta?.myspaCommission?.ktv || null
+    if (ktvRule?.type === 'absolute') return Math.round(Number(ktvRule.amount || 0) * qty)
+    return Math.round(nextThanhTien * Number(item?.ti_le_hoa_hong || 0) / 100)
+  }
+
   const handleRemoveItem = async (_lid) => {
     const item = lineItems.find(i => i._lid === _lid)
     if (savedOrderId && item?.id) {
@@ -938,11 +241,8 @@ function PosCreateOrder({ resumeOrderId }) {
   const handleQtyChange = async (_lid, qty, donGia) => {
     const item = lineItems.find(i => i._lid === _lid)
     const nextThanhTien = qty * donGia
-    const ktvRule = item?.meta?.myspaCommission?.ktv || null
     const nextTour = item?.loai_item === 'dich_vu'
-      ? (ktvRule?.type === 'absolute'
-          ? Math.round(Number(ktvRule.amount || 0) * qty)
-          : Math.round(nextThanhTien * Number(item.ti_le_hoa_hong || 0) / 100))
+      ? calcNextTour(item, nextThanhTien, qty)
       : (item?.tien_tour || 0)
     const updatePayload = item?.loai_item === 'dich_vu'
       ? { so_luong: qty, thanh_tien: nextThanhTien, tien_tour: nextTour, tien_commission: 0 }
@@ -959,12 +259,9 @@ function PosCreateOrder({ resumeOrderId }) {
 
   const handleItemDiscount = async (_lid, newThanhTien) => {
     const item = lineItems.find(i => i._lid === _lid)
-    const ktvRule = item?.meta?.myspaCommission?.ktv || null
     const qty = Number(item?.so_luong || 1)
     const nextTour = item?.loai_item === 'dich_vu'
-      ? (ktvRule?.type === 'absolute'
-          ? Math.round(Number(ktvRule.amount || 0) * qty)
-          : Math.round(newThanhTien * Number(item.ti_le_hoa_hong || 0) / 100))
+      ? calcNextTour(item, newThanhTien, qty)
       : (item?.tien_tour || 0)
     const updatePayload = item?.loai_item === 'dich_vu'
       ? { thanh_tien: newThanhTien, tien_tour: nextTour, tien_commission: 0 }
@@ -979,19 +276,30 @@ function PosCreateOrder({ resumeOrderId }) {
       : i))
   }
 
-  const handleAssignKTV = async (item, ktv, tiLe, tienTourFromPopup) => {
+  const handleAssignKTV = async (item, ktv, tiLe, tienTourFromPopup, tourMeta = null) => {
     const isSaleCommission = item.loai_item === 'the_moi' || item.loai_item === 'san_pham'
     const baseTT = item.loai_item === 'the_lieu_trinh' && item.the_lieu_trinh
       ? Math.round((item.the_lieu_trinh.gia_tri_the || 0) / Math.max(1, item.the_lieu_trinh.so_buoi_tong || 1)) * (item.so_luong || 1)
       : (item.thanh_tien || 0)
-    const incomeAmount = tienTourFromPopup !== undefined ? tienTourFromPopup : Math.round(baseTT * tiLe / 100)
+    const finalTiLe = tourMeta?.tourMode === 'free_warranty' ? 0 : tiLe
+    const incomeAmount = tienTourFromPopup !== undefined ? Math.round(Number(tienTourFromPopup || 0)) : Math.round(baseTT * finalTiLe / 100)
     const tienTour       = isSaleCommission ? 0 : incomeAmount
     const tienCommission = isSaleCommission ? incomeAmount : 0
 
-    // ── Với thẻ mới: tính lại commission rates theo rules và update meta ──
+    // ── Với thẻ mới: tính lại hoa hồng theo rules và update meta ──
     // Cần thiết vì lễ tân có thể tick thẻ TRƯỚC khi chọn NV
     // → meta.tiLeCommKtv = 0 → migration 046 không ghi the_lieu_trinh_tu_van
     let updatedMeta = item.meta || null
+    if (tourMeta) {
+      updatedMeta = {
+        ...(updatedMeta || {}),
+        tourMode: tourMeta.tourMode || 'pct',
+        manualTourAmount: tourMeta.manualTourAmount ?? null,
+        pctTour: tourMeta.pctTour ?? null,
+        baseTienTour: tourMeta.baseTienTour ?? null,
+        treatmentPolicy: tourMeta.treatmentPolicy || updatedMeta?.treatmentPolicy || null,
+      }
+    }
     if (item.loai_item === 'the_moi' && item.meta) {
       const kmRef    = Number(item.meta.kmRefPct || 0)
       const coLt     = !!(item.meta.nhanVienTuVanLtId)
@@ -1009,7 +317,7 @@ function PosCreateOrder({ resumeOrderId }) {
         await supabase.from('don_hang_chi_tiet')
           .update({
             nhan_vien_id:    ktv?.id || null,
-            ti_le_hoa_hong:  tiLe,
+            ti_le_hoa_hong:  finalTiLe,
             tien_tour:       tienTour,
             tien_commission: tienCommission,
             ...(updatedMeta !== item.meta ? { meta: updatedMeta } : {}),
@@ -1021,7 +329,7 @@ function PosCreateOrder({ resumeOrderId }) {
       ...i,
       nhan_vien_id:    ktv?.id || null,
       nhan_vien:       ktv || null,
-      ti_le_hoa_hong:  tiLe,
+      ti_le_hoa_hong:  finalTiLe,
       tien_tour:       tienTour,
       tien_commission: tienCommission,
       ...(updatedMeta !== item.meta ? { meta: updatedMeta } : {}),
@@ -1199,6 +507,10 @@ function PosCreateOrder({ resumeOrderId }) {
       return
     }
     const validPayments = payLines.filter(l => l.soTien > 0 && l.hinhThuc)
+    if (isOverPaid) {
+      alert('Số tiền nhận đang lớn hơn tổng đơn. Vui lòng chỉnh lại số tiền thanh toán trước khi chốt.')
+      return
+    }
     if (tongCuoi > 0 && validPayments.length === 0) {
       alert('Vui lòng nhập số tiền và chọn hình thức thanh toán')
       return
@@ -1305,6 +617,7 @@ function PosCreateOrder({ resumeOrderId }) {
   const tongNhan   = payLines.reduce((s, l) => s + (l.hinhThuc ? (l.soTien || 0) : 0), 0)
   const tienThua   = Math.max(0, tongNhan - tongCuoi)
   const conNo      = Math.max(0, tongCuoi - tongNhan)
+  const isOverPaid = tongNhan > tongCuoi
 
   // KM_ref% của toàn đơn: lấy từ thẻ mới (meta.kmRefPct) hoặc giảm giá DV tổng
   const orderKmRefPct = (() => {
@@ -1315,7 +628,7 @@ function PosCreateOrder({ resumeOrderId }) {
     return Math.max(theKm, giamKm)
   })()
 
-  // Tính % commission đúng rules theo vi_tri và KM của đơn
+  // Tính % hoa hồng đúng rules theo vi_tri và KM của đơn
   // Khi add NV mới, truyền danh sách staff sẽ có để tính coLt
   const calcStaffPct = (viTri, staffList) => {
     if (viTri === 'le_tan') return 3
@@ -1331,7 +644,7 @@ function PosCreateOrder({ resumeOrderId }) {
     return coLtInStaff ? 7 : 10
   }
 
-  const canConfirm = lineItems.length > 0 && !!selectedCustomer?.id && (
+  const canConfirm = lineItems.length > 0 && !!selectedCustomer?.id && !isOverPaid && (
     tongCuoi === 0
     || (payLines.some(l => l.soTien > 0 && l.hinhThuc) &&
         (tongNhan >= tongCuoi || (conNo > 0 && !!selectedCustomer)))
@@ -1341,7 +654,9 @@ function PosCreateOrder({ resumeOrderId }) {
     ? 'Thêm dịch vụ để bắt đầu'
     : !selectedCustomer?.id
       ? 'Vui lòng chọn khách hàng trước khi chốt đơn'
-      : 'Chưa đủ thanh toán'
+      : isOverPaid
+        ? 'Số tiền nhận đang lớn hơn tổng đơn'
+        : 'Chưa đủ thanh toán'
 
   const nowVN  = getNowVN()
   const dateStr = nowVN.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -1617,7 +932,6 @@ function PosCreateOrder({ resumeOrderId }) {
                   onDiscountChange={handleItemDiscount}
                   onSelectKTV={setKtvPopup}
                   onToggleCard={handleToggleCard}
-                  ktvList={ktvList}
                 />
               ))}
             </div>
@@ -1675,72 +989,16 @@ function PosCreateOrder({ resumeOrderId }) {
                 <span style={{ fontSize: 20, fontWeight: 800, color: C.thu, fontFamily: FONT.serif }}>{formatCurrency(tongCuoi)}</span>
               </div>
 
-              {/* ══ Thanh toán ══ */}
-              <div style={{ marginBottom: 10 }}>
-                {/* Header */}
-                <div style={{ display: 'flex', gap: 6, marginBottom: 5, paddingLeft: 26 }}>
-                  <div style={{ flex: 5, fontSize: 9, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Thanh toán</div>
-                  <div style={{ flex: 4, fontSize: 9, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Còn</div>
-                  <div style={{ flex: 7, fontSize: 9, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>PTTT</div>
-                </div>
-
-                {payLines.map((line, idx) => {
-                  const prevPaid = payLines.slice(0, idx).reduce((s, l) => s + l.soTien, 0)
-                  const conLai   = Math.max(0, tongCuoi - prevPaid - line.soTien)
-                  return (
-                    <div key={line._id} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
-                      {/* + hoặc ✕ */}
-                      {idx === 0 ? (
-                        <button onClick={addPayLine} style={{ width: 22, height: 32, border: 'none', borderRadius: 4, background: C.thu, color: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, lineHeight: 1 }}>+</button>
-                      ) : (
-                        <button onClick={() => removePayLine(line._id)} style={{ width: 22, height: 32, border: 'none', background: 'none', color: C.chi, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>✕</button>
-                      )}
-                      {/* Số tiền */}
-                      <input
-                        value={fmtInput(line.soTien)}
-                        onChange={e => updatePayLine(line._id, 'soTien', parseVND(e.target.value))}
-                        placeholder="0"
-                        style={{ flex: 5, border: '1.5px solid var(--bord)', borderRadius: 6, padding: '5px 6px', fontSize: 12, fontWeight: 700, textAlign: 'right', outline: 'none', background: '#fff', minWidth: 0 }}
-                      />
-                      {/* Còn */}
-                      <input readOnly value={conLai > 0 ? fmtInput(conLai) : '0'}
-                        style={{ flex: 4, border: `1px solid ${C.line}`, borderRadius: 6, padding: '5px 5px', fontSize: 11, textAlign: 'right', background: C.bg, color: conLai > 0 ? C.chi : C.thu, cursor: 'default', minWidth: 0 }}
-                      />
-                      {/* PTTT */}
-                      <select
-                        value={line.hinhThuc}
-                        onChange={e => updatePayLine(line._id, 'hinhThuc', e.target.value)}
-                        style={{
-                          flex: 7,
-                          border: `1.5px solid ${!line.hinhThuc ? '#C0392B' : 'var(--bord)'}`,
-                          borderRadius: 6,
-                          padding: '5px 8px',
-                          fontSize: 11.5,
-                          outline: 'none',
-                          background: '#fff',
-                          color: line.hinhThuc ? 'var(--ink)' : 'var(--ink3)',
-                          cursor: 'pointer',
-                          minWidth: 0,
-                          height: 32,
-                          fontFamily: 'var(--sans)',
-                          appearance: 'auto',
-                        }}
-                      >
-                        <option value="">-- Chọn PTTT --</option>
-                        {PTTT_OPTS.map(p => <option key={p.id} value={p.id}>{paymentDisplayLabel(p)}</option>)}
-                      </select>
-                    </div>
-                  )
-                })}
-
-                {/* Còn nợ (nếu có) */}
-                {conNo > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 6, background: 'rgba(192,57,43,.06)', border: `1px solid rgba(192,57,43,.2)`, fontSize: 12 }}>
-                    <span style={{ color: C.ink3 }}>{selectedCustomer ? 'Ghi nợ KH' : 'Còn thiếu ⚠'}</span>
-                    <span style={{ fontWeight: 700, color: C.chi, fontFamily: FONT.serif }}>{formatCurrency(conNo)}</span>
-                  </div>
-                )}
-              </div>
+              <PaymentLines
+                payLines={payLines}
+                paymentOptions={PTTT_OPTS}
+                total={tongCuoi}
+                debt={conNo}
+                hasCustomer={!!selectedCustomer}
+                onAddLine={addPayLine}
+                onRemoveLine={removePayLine}
+                onUpdateLine={updatePayLine}
+              />
 
               {/* Ghi chú */}
               <div style={{ marginBottom: 10 }}>
@@ -1751,123 +1009,16 @@ function PosCreateOrder({ resumeOrderId }) {
                 />
               </div>
 
-              {/* ══ Hoa Hồng Nhân Viên Bán Hàng ══ */}
-              <div style={{ paddingTop: 10, borderTop: '1px solid var(--line)' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Hoa Hồng Nhân Viên Bán Hàng</div>
-
-                {/* Search */}
-                <div style={{ position: 'relative', marginBottom: 8 }}>
-                  <input
-                    ref={staffInputRef}
-                    value={staffSearch}
-                    onChange={e => {
-                      setStaffSearch(e.target.value)
-                      if (staffInputRef.current) {
-                        const r = staffInputRef.current.getBoundingClientRect()
-                        const dropH = Math.min(ktvList.length, 6) * 44
-                        const goUp = r.bottom + dropH + 8 > window.innerHeight
-                        setStaffDropPos({ bottom: goUp ? window.innerHeight - r.top + 2 : undefined, top: goUp ? undefined : r.bottom + 2, left: r.left, width: r.width })
-                      }
-                      setStaffOpen(true)
-                    }}
-                    onFocus={() => {
-                      if (staffInputRef.current) {
-                        const r = staffInputRef.current.getBoundingClientRect()
-                        const dropH = Math.min(ktvList.length, 6) * 44
-                        const goUp = r.bottom + dropH + 8 > window.innerHeight
-                        setStaffDropPos({ bottom: goUp ? window.innerHeight - r.top + 2 : undefined, top: goUp ? undefined : r.bottom + 2, left: r.left, width: r.width })
-                      }
-                      setStaffOpen(true)
-                    }}
-                    placeholder="Chọn nhân viên bán hàng…"
-                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--bord)', borderRadius: 7, padding: '6px 10px', fontSize: 12, outline: 'none', background: '#fff', fontFamily: 'var(--sans)' }}
-                  />
-                  {staffOpen && ktvList.filter(k => !staffSearch || k.ho_ten.toLowerCase().includes(staffSearch.toLowerCase())).length > 0 && (
-                    <>
-                      <div style={{ position: 'fixed', top: staffDropPos.top, bottom: staffDropPos.bottom, left: staffDropPos.left, width: staffDropPos.width, zIndex: 9000, background: C.surface2, border: `1px solid ${C.line}`, borderRadius: 8, boxShadow: C.shadow, overflow: 'hidden' }}>
-                        {ktvList.filter(k => !staffSearch || k.ho_ten.toLowerCase().includes(staffSearch.toLowerCase())).slice(0, 6).map(k => {
-                          const alreadyIn    = !!orderStaff.find(s => s.nv.id === k.id)
-                          const slotsBlocked = orderStaff.some(s => s.nv.vi_tri === k.vi_tri)  // đã có người cùng vị trí
-                          const blocked      = alreadyIn || slotsBlocked
-                          const blockLabel   = alreadyIn
-                            ? 'Đã thêm'
-                            : k.vi_tri === 'ktv' ? 'Đã có KTV' : 'Đã có Lễ Tân'
-                          return (
-                          <button key={k.id}
-                            disabled={blocked}
-                            onClick={() => {
-                              if (!blocked) {
-                                const newList = [...orderStaff, { nv: k, role: 'tu_van', pct: 0 }]
-                                setOrderStaff(newList.map(s => ({ ...s, pct: calcStaffPct(s.nv.vi_tri, newList) })))
-                              }
-                              setStaffSearch(''); setStaffOpen(false)
-                            }}
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px', border: 'none', background: blocked ? '#f8f6f3' : 'none', cursor: blocked ? 'not-allowed' : 'pointer', borderBottom: `1px solid ${C.line}`, fontFamily: FONT.sans, opacity: blocked ? 0.55 : 1 }}>
-                            <NvAvatar nv={k} size={26} />
-                            <span style={{ fontSize: 12.5, color: blocked ? C.ink3 : C.ink }}>{shortName(k.ho_ten)}</span>
-                            <span style={{ fontSize: 10, color: C.ink3, marginLeft: 'auto' }}>
-                              {blocked ? blockLabel : (k.vi_tri === 'ktv' ? 'KTV' : 'Lễ Tân')}
-                            </span>
-                          </button>
-                        )})}
-
-                      </div>
-                      <div style={{ position: 'fixed', inset: 0, zIndex: 8999 }} onClick={() => setStaffOpen(false)} />
-                    </>
-                  )}
-                </div>
-
-                {/* Rows nhân viên đã chọn */}
-                {orderStaff.map(s => {
-                  const commAmt  = Math.round(tongNhan * s.pct / 100)
-                  const rulesPct = getRulesPct(s.nv.vi_tri)
-                  const overRule = s.pct > rulesPct   // vượt ngưỡng rules
-                  return (
-                  <div key={s.nv.id} style={{ padding: '7px 0', borderBottom: `1px solid ${C.line}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <NvAvatar nv={s.nv} size={28} />
-                      <span style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, flex: 1 }}>{shortName(s.nv.ho_ten)}</span>
-                      {/* % chỉnh được — màu theo rules */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <input
-                          type="number" min={0} max={10} step={0.5}
-                          value={s.pct}
-                          onChange={e => {
-                            const v = Math.min(10, Math.max(0, parseFloat(e.target.value) || 0))
-                            setOrderStaff(p => p.map(x => x.nv.id === s.nv.id ? { ...x, pct: v } : x))
-                          }}
-                          style={{
-                            width: 54, borderRadius: 5, padding: '3px 6px', fontSize: 12, fontWeight: 800,
-                            textAlign: 'center', outline: 'none',
-                            border:      `1.5px solid ${overRule ? '#E67E22' : 'rgba(201,169,110,.5)'}`,
-                            background:  overRule ? '#fef3e2' : 'rgba(201,169,110,.08)',
-                            color:       overRule ? '#E67E22' : C.champagne,
-                          }}
-                        />
-                        <span style={{ fontSize: 10, color: C.ink3 }}>%</span>
-                      </div>
-                      <div style={{ textAlign: 'right', minWidth: 78 }}>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: C.champagne, fontFamily: FONT.serif }}>{formatCurrency(commAmt)}</div>
-                        <div style={{ fontSize: 9, color: C.ink3 }}>
-                          {tongNhan < tongCuoi ? `${formatCurrency(tongNhan)} × ${s.pct}%` : `${s.pct}% commission`}
-                        </div>
-                      </div>
-                      <button onClick={() => {
-                        const remaining = orderStaff.filter(x => x.nv.id !== s.nv.id)
-                        // Recalculate pct sau khi xóa
-                        setOrderStaff(remaining.map(x => ({ ...x, pct: calcStaffPct(x.nv.vi_tri, remaining) })))
-                      }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.ink3, fontSize: 15, padding: 0, lineHeight: 1 }}>×</button>
-                    </div>
-                    {/* Cảnh báo khi % vượt rules */}
-                    {overRule && (
-                      <div style={{ marginTop: 4, fontSize: 10, color: '#E67E22', background: '#fef3e2', border: '1px solid #E67E2244', borderRadius: 5, padding: '3px 8px' }}>
-                        ⚠ KM {orderKmRefPct.toFixed(0)}% ≥ 30% — tối đa {rulesPct}% (đang tính {s.pct}%)
-                      </div>
-                    )}
-                  </div>
-                  )
-                })}
-              </div>
+              <StaffCommissionPanel
+                ktvList={ktvList}
+                orderStaff={orderStaff}
+                setOrderStaff={setOrderStaff}
+                calcStaffPct={calcStaffPct}
+                getRulesPct={getRulesPct}
+                orderKmRefPct={orderKmRefPct}
+                totalPaid={tongNhan}
+                orderTotal={tongCuoi}
+              />
 
             </div>
             )}
@@ -1981,131 +1132,19 @@ function PosCreateOrder({ resumeOrderId }) {
 
     {/* KTV Popup */}
     {ktvPopup && (
-      <KtvPopup item={ktvPopup} ktvList={ktvList} onAssign={handleAssignKTV} onClose={() => setKtvPopup(null)} />
+      <KtvPopupComponent item={ktvPopup} ktvList={ktvList} onAssign={handleAssignKTV} onClose={() => setKtvPopup(null)} />
     )}
 
-    {/* ── Modal Thu Nợ ── */}
-    {debtModal && (
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,0,0,.5)',
-      }} onClick={e => e.target === e.currentTarget && !debtLoading && setDebtModal(null)}>
-        <div style={{
-          background: '#fff', borderRadius: 14, padding: '22px 24px',
-          width: 360, boxShadow: '0 12px 48px rgba(0,0,0,.28)',
-        }}>
-          {/* Header — khác nhau giữa thu nợ thường và từ checkout */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-              background: debtModal.fromCheckout ? 'rgba(230,126,34,.1)' : 'rgba(192,57,43,.1)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-            }}>
-              {debtModal.fromCheckout ? '⚠️' : '💸'}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 800, fontSize: 15, color: C.ink, lineHeight: 1.2 }}>
-                {debtModal.fromCheckout ? 'Yêu Cầu Thanh Toán Để Tiếp Tục' : 'Thu Nợ Thẻ Liệu Trình'}
-              </div>
-              <div style={{ fontSize: 12, color: C.ink2, marginTop: 2 }}>
-                {debtModal.fromCheckout
-                  ? `Thẻ "${debtModal.the.ten_dich_vu}" cần thanh toán thêm trước khi dùng buổi tiếp theo`
-                  : debtModal.the.ten_dich_vu
-                }
-              </div>
-            </div>
-          </div>
-
-          {/* Tóm tắt — màu cam nếu từ checkout, đỏ nếu thu nợ thường */}
-          <div style={{
-            background: debtModal.fromCheckout ? 'rgba(230,126,34,.06)' : 'rgba(192,57,43,.06)',
-            border: `1px solid ${debtModal.fromCheckout ? 'rgba(230,126,34,.25)' : 'rgba(192,57,43,.2)'}`,
-            borderRadius: 8, padding: '8px 12px', marginBottom: 14,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          }}>
-            <span style={{ fontSize: 12, color: C.ink2 }}>
-              {debtModal.fromCheckout ? 'Cần thanh toán tối thiểu' : 'Còn nợ'}
-            </span>
-            <span style={{
-              fontSize: 16, fontWeight: 800, fontFamily: FONT.serif,
-              color: debtModal.fromCheckout ? '#E67E22' : '#C0392B',
-            }}>
-              {formatCurrency(debtModal.the.con_no)}
-            </span>
-          </div>
-
-          {/* Số tiền thu */}
-          <label style={{ fontSize: 12, fontWeight: 700, color: C.ink2, display: 'block', marginBottom: 5 }}>
-            Số tiền thu
-          </label>
-          <input
-            value={debtSoTien ? fmtInput(parseVND(debtSoTien)) : ''}
-            onChange={e => setDebtSoTien(String(parseVND(e.target.value)))}
-            placeholder="Nhập số tiền…"
-            disabled={debtLoading}
-            style={{
-              width: '100%', boxSizing: 'border-box', marginBottom: 12,
-              border: '1.5px solid var(--bord)', borderRadius: 8, padding: '9px 12px',
-              fontSize: 16, fontFamily: FONT.sans, outline: 'none',
-            }}
-          />
-
-          {/* Hình thức thanh toán */}
-          <label style={{ fontSize: 12, fontWeight: 700, color: C.ink2, display: 'block', marginBottom: 6 }}>
-            Hình thức thanh toán
-          </label>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-            {[
-              { id: 'tien_mat',      label: '💵 Tiền Mặt' },
-              { id: 'chuyen_khoan', label: '🏦 Chuyển Khoản' },
-              { id: 'quet_the',     label: '💳 Quẹt Thẻ' },
-            ].map(p => (
-              <button key={p.id} onClick={() => setDebtHinhThuc(p.id)} disabled={debtLoading}
-                style={{
-                  flex: 1, padding: '7px 4px', cursor: 'pointer', fontFamily: FONT.sans,
-                  border: `1.5px solid ${debtHinhThuc === p.id ? C.champagne : C.line}`,
-                  borderRadius: 8, fontSize: 11, fontWeight: debtHinhThuc === p.id ? 700 : 400,
-                  background: debtHinhThuc === p.id ? 'rgba(201,169,110,.12)' : 'none',
-                  color: debtHinhThuc === p.id ? C.champagne : C.ink2,
-                  transition: 'all .15s',
-                }}>
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Buttons */}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              onClick={() => { setDebtModal(null); setDebtSoTien(''); setDebtHinhThuc('tien_mat') }}
-              disabled={debtLoading}
-              style={{
-                flex: 1, padding: '10px 0', border: `1px solid ${C.line}`, borderRadius: 8,
-                background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                fontFamily: FONT.sans, color: C.ink2,
-              }}>
-              Huỷ
-            </button>
-            <button
-              onClick={handleThuNo}
-              disabled={!parseVND(debtSoTien) || debtLoading}
-              style={{
-                flex: 2, padding: '10px 0', border: 'none', borderRadius: 8,
-                background: !parseVND(debtSoTien) || debtLoading
-                  ? 'rgba(0,0,0,.1)'
-                  : 'linear-gradient(135deg,#C0392B 0%,#8e2218 100%)',
-                color: !parseVND(debtSoTien) || debtLoading ? C.ink3 : '#fff',
-                cursor: !parseVND(debtSoTien) || debtLoading ? 'not-allowed' : 'pointer',
-                fontSize: 14, fontWeight: 800, fontFamily: FONT.sans,
-                transition: 'all .15s',
-              }}>
-              {debtLoading ? 'Đang xử lý…' : `Thu ${parseVND(debtSoTien) ? formatCurrency(parseVND(debtSoTien)) : '…'}`}
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
+    <DebtPaymentModal
+      modal={debtModal}
+      amount={debtSoTien}
+      method={debtHinhThuc}
+      loading={debtLoading}
+      onAmountChange={setDebtSoTien}
+      onMethodChange={setDebtHinhThuc}
+      onPay={handleThuNo}
+      onClose={() => { setDebtModal(null); setDebtSoTien(''); setDebtHinhThuc('tien_mat') }}
+    />
 
     </>
   )

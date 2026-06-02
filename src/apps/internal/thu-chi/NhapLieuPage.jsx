@@ -3,6 +3,12 @@ import { supabase } from '../../../lib/supabase'
 import { formatCurrency, todayISO, formatDateInput } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
 import I from '../../../components/shared/Icons'
+import LedgerTable from './components/LedgerTable'
+import EditTransactionModal from './components/EditTransactionModal'
+import CashDepositPanel from './components/CashDepositPanel'
+import InternalTransferForm from './components/InternalTransferForm'
+import ExpenseEntryForm from './components/ExpenseEntryForm'
+import { thuChiService } from '../../../services/thuChiService'
 
 const HINH_THUC = [
   { id: 'tien_mat', label: 'Tiền Mặt', icon: '💵', color: '#3e5a32', bg: '#e8f1de' },
@@ -17,30 +23,6 @@ const TABS = [
   { id: 'ck', label: 'Chuyển Khoản', desc: 'Chuyển nội bộ giữa các ví', icon: I.Bank, color: '#6C3483', grad: 'linear-gradient(180deg,#d8d0f0,#b8a8e0)' },
   { id: 'noptm', label: 'Nộp Tiền Mặt', desc: 'Tính toán & nộp vào MB Bank', icon: I.Wallet, color: '#1a4f70', grad: 'linear-gradient(180deg,#dde9f3,#a8c5dc)' },
 ]
-
-function LedgerTable({ data, onEdit, onDelete }) {
-  return <table className="ledger">
-    <thead><tr><th>Giờ</th><th>Loại</th><th>Diễn Giải</th><th>Nguồn</th><th className="r">Số Tiền</th><th className="r" style={{ width: 60 }}></th></tr></thead>
-    <tbody>{data.map((tx, i) => {
-      const isThu = tx._t === 'thu', isChi = tx._t === 'chi'
-      const tagClass = isThu ? 'sv' : 'ut'
-      const tagLabel = isThu ? 'Doanh Thu' : 'Chi Phí'
-      const pk = tx.hinh_thuc || tx.hinh_thuc_thanh_toan
-      const ml = pk === 'tien_mat' ? 'Tiền Mặt' : pk === 'chuyen_khoan' ? 'Chuyển Khoản' : pk === 'quet_the' ? 'Quẹt Thẻ' : '—'
-      const mk = pk === 'tien_mat' ? 'cash' : pk === 'chuyen_khoan' ? 'transfer' : 'card'
-      const amtClass = isChi ? 'amt out' : 'amt in'
-      const amtPrefix = isChi ? '−' : '+'
-      return <tr key={i}>
-        <td style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: 'var(--ink3)', fontSize: 12 }}>{tx.created_at ? new Date(tx.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</td>
-        <td><span className={`tag ${tagClass}`}>{tagLabel}</span></td>
-        <td className="nm">{tx.dien_giai || 'Giao dịch'}</td>
-        <td style={{ whiteSpace: 'nowrap' }}><span className={`method ${mk}`}>{ml}</span></td>
-        <td className={amtClass}>{amtPrefix}{formatCurrency(tx.so_tien)}</td>
-        <td className="r"><div style={{ display: 'flex', gap: 3 }}><button onClick={() => onEdit(tx)} className="icon-btn" style={{ width: 24, height: 24 }} title="Sửa"><I.Edit style={{ width: 11, height: 11 }} /></button><button onClick={() => onDelete(tx)} className="icon-btn" style={{ width: 24, height: 24 }} title="Xóa"><I.Trash style={{ width: 11, height: 11, color: 'var(--danger)' }} /></button></div></td>
-      </tr>
-    })}</tbody>
-  </table>
-}
 
 export default function NhapLieuPage({ user }) {
   const today = todayISO()
@@ -107,17 +89,15 @@ export default function NhapLieuPage({ user }) {
   const showMsg = (text, type = 'success') => { setMsg({ text, type }); setTimeout(() => setMsg(null), 3000) }
   const resetForm = () => { setSoTien(''); setDienGiai(''); setNhomId(null); setHangMucId(null) }
 
-  const loadTodayTx = () => {
+  const loadTodayTx = async () => {
     setLoadingTx(true)
-    supabase.from('doanh_thu').select('*').eq('ngay', ngay).order('created_at', { ascending: false }).then(rDT => {
-      supabase.from('chi_phi').select('*').eq('ngay', ngay).order('created_at', { ascending: false }).then(rCP => {
-        const all = [
-          ...(rDT.data || []).map(r => ({ ...r, _t: 'thu' })),
-          ...(rCP.data || []).map(r => ({ ...r, _t: 'chi' })),
-        ].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
-        setTodayTx(all); setLoadingTx(false)
-      })
-    }).catch(() => setLoadingTx(false))
+    try {
+      setTodayTx(await thuChiService.getDailyTransactions(ngay))
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoadingTx(false)
+    }
   }
 
   // ── SAVE HANDLERS ──
@@ -161,24 +141,7 @@ export default function NhapLieuPage({ user }) {
   const loadNopTm = async () => {
     setLoadingNop(true)
     try {
-      const [{ data: dtTm }, { data: cpTm }, { data: viList }] = await Promise.all([
-        supabase.from('doanh_thu').select('so_tien').eq('ngay', ngay).eq('hinh_thuc', 'tien_mat'),
-        supabase.from('chi_phi').select('so_tien').eq('ngay', ngay).eq('hinh_thuc_thanh_toan', 'tien_mat'),
-        supabase.from('so_du_vi_thuc_te').select('*'),
-      ])
-      const thuTm = (dtTm || []).reduce((s, r) => s + (r.so_tien || 0), 0)
-      const chiTm = (cpTm || []).reduce((s, r) => s + (r.so_tien || 0), 0)
-      const d = new Date(ngay + 'T00:00:00'); d.setDate(d.getDate() - 1); const prev = d.toISOString().slice(0, 10)
-      const [{ data: pDT }, { data: pCP }] = await Promise.all([
-        supabase.from('doanh_thu').select('so_tien').eq('ngay', prev).eq('hinh_thuc', 'tien_mat'),
-        supabase.from('chi_phi').select('so_tien').eq('ngay', prev).eq('hinh_thuc_thanh_toan', 'tien_mat'),
-      ])
-      const prevThu = (pDT || []).reduce((s, r) => s + (r.so_tien || 0), 0); const prevChi = (pCP || []).reduce((s, r) => s + (r.so_tien || 0), 0)
-      const amHomTrc = prevThu - prevChi < 0 ? Math.abs(prevThu - prevChi) : 0
-      const tmVi = viList?.find(v => v.loai === 'tien_mat'); const mbVi = viList?.find(v => v.loai === 'chuyen_khoan')
-      let daNop = 0
-      if (tmVi && mbVi) { const { data: ck } = await supabase.from('chuyen_khoan_noi_bo').select('so_tien').eq('ngay', ngay).eq('tu_vi_id', tmVi.id).eq('den_vi_id', mbVi.id); daNop = (ck || []).reduce((s, r) => s + (r.so_tien || 0), 0) }
-      setNopTmData({ thuTm, chiTm, amHomTrc, phaiNop: Math.max(0, thuTm - chiTm - amHomTrc), daNop, prev, tmVi, mbVi })
+      setNopTmData(await thuChiService.getCashDepositData(ngay))
     } catch (e) { console.error(e) } finally { setLoadingNop(false) }
   }
 
@@ -198,12 +161,7 @@ export default function NhapLieuPage({ user }) {
   const loadHistory = async () => {
     setHsLoading(true)
     try {
-      const [rDT, rCP, rCK] = await Promise.all([
-        supabase.from('doanh_thu').select('*').gte('ngay', hsFrom).lte('ngay', hsTo).order('created_at', { ascending: false }),
-        supabase.from('chi_phi').select('*').gte('ngay', hsFrom).lte('ngay', hsTo).order('created_at', { ascending: false }),
-        supabase.from('chuyen_khoan_noi_bo').select('*').gte('ngay', hsFrom).lte('ngay', hsTo).order('created_at', { ascending: false }),
-      ])
-      setHsData([...(rDT.data || []).map(r => ({ ...r, _t: 'thu' })), ...(rCP.data || []).map(r => ({ ...r, _t: 'chi' })), ...(rCK.data || []).map(r => ({ ...r, _t: 'ck' }))].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')))
+      setHsData(await thuChiService.getHistory(hsFrom, hsTo))
     } catch (e) { console.error(e) } finally { setHsLoading(false) }
   }
 
@@ -240,22 +198,6 @@ export default function NhapLieuPage({ user }) {
   const hangMucChon = hangMucList.find(h => h.id === hangMucId)
   const hmCuaNhom = hangMucList.filter(h => h.parent_id === nhomId)
 
-  // Tổng hợp nhanh từ danh sách giao dịch hôm nay
-  const summary = (() => {
-    const thuItems = todayTx.filter(t => t._t === 'thu')
-    const chiItems = todayTx.filter(t => t._t === 'chi')
-    const thu = thuItems.reduce((s, r) => s + (r.so_tien || 0), 0)
-    const chi = chiItems.reduce((s, r) => s + (r.so_tien || 0), 0)
-    const pos = thuItems.filter(r => r.nguon === 'pos').reduce((s, r) => s + (r.so_tien || 0), 0)
-    const byMethod = {
-      tien_mat: thuItems.filter(r => r.hinh_thuc === 'tien_mat').reduce((s, r) => s + (r.so_tien || 0), 0)
-               - chiItems.filter(r => r.hinh_thuc_thanh_toan === 'tien_mat').reduce((s, r) => s + (r.so_tien || 0), 0),
-      chuyen_khoan: thuItems.filter(r => r.hinh_thuc === 'chuyen_khoan').reduce((s, r) => s + (r.so_tien || 0), 0),
-      quet_the: thuItems.filter(r => r.hinh_thuc === 'quet_the').reduce((s, r) => s + (r.so_tien || 0), 0),
-    }
-    return { thu, chi, pos, net: thu - chi, byMethod }
-  })()
-
   return (
     <div style={{ padding: '22px 24px' }}>
       {/* Toast */}
@@ -275,42 +217,6 @@ export default function NhapLieuPage({ user }) {
           </button>
         </div>
       </div>
-
-      {/* Tab cards — sang trọng */}
-      {false && <>
-      <div className="strip" style={{ gridTemplateColumns: 'repeat(5, minmax(0,1fr))', marginBottom: 16 }}>
-        <div className="it"><div className="l">Tổng Thu</div><div className="v" style={{ color: '#2D7A4F' }}>{formatCurrency(summary.thu)}</div><div className="d">Bán hàng tự ghi nhận {formatCurrency(summary.pos)}</div></div>
-        <div className="it"><div className="l">Tổng Chi</div><div className="v" style={{ color: '#C0392B' }}>{formatCurrency(summary.chi)}</div><div className="d">chi phí trong ngày</div></div>
-        <div className="it"><div className="l">Chênh Ngày</div><div className="v" style={{ color: summary.net >= 0 ? '#2D7A4F' : '#C0392B' }}>{formatCurrency(summary.net)}</div><div className="d">{todayTx.length} giao dịch</div></div>
-        <div className="it"><div className="l">Tiền Mặt</div><div className="v">{formatCurrency(summary.byMethod.tien_mat || 0)}</div><div className="d">thu - chi tiền mặt</div></div>
-        <div className="it"><div className="l">MB / TP Bank</div><div className="v">{formatCurrency((summary.byMethod.chuyen_khoan || 0) + (summary.byMethod.quet_the || 0))}</div><div className="d">MB {formatCurrency(summary.byMethod.chuyen_khoan || 0)} · TP {formatCurrency(summary.byMethod.quet_the || 0)}</div></div>
-      </div>
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-h">
-          <div className="card-t">
-            <div className="arch-i"><I.Spark style={{ width: 13, height: 13, color: '#8a6a52' }} /></div>
-            <h3>Kiểm Soát Lệch Số</h3>
-            <span className="sub">Soi nhanh doanh thu bán hàng tự động, nhập tay, chi phí và chuyển khoản nội bộ</span>
-          </div>
-        </div>
-        <div className="card-b" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 10 }}>
-          {[
-            ['Doanh thu bán hàng', summary.pos, 'Tự sinh từ đơn bán hàng đã chốt'],
-            ['Doanh thu nhập tay', Math.max(0, summary.thu - summary.pos), 'Cần đối chiếu với MySpa/phiếu thu'],
-            ['Chi phí', summary.chi, 'Theo danh mục chi phí'],
-            ['Dòng tiền ròng', summary.net, 'Thu trừ chi trong ngày'],
-          ].map(([label, value, note]) => (
-            <div key={label} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 12, background: 'var(--surface)' }}>
-              <div style={{ fontSize: 10.5, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 700 }}>{label}</div>
-              <div style={{ marginTop: 5, fontSize: 18, fontWeight: 800, color: value < 0 ? '#C0392B' : 'var(--ink)' }}>{formatCurrency(value)}</div>
-              <div style={{ marginTop: 3, fontSize: 11, color: 'var(--ink3)' }}>{note}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      </>}
 
       <div>
         {dailyClose && ['submitted', 'approved'].includes(dailyClose.trang_thai) && (
@@ -385,80 +291,55 @@ export default function NhapLieuPage({ user }) {
             </div>
           </div>}
 
-          {/* === TAB: CHI PHÍ === */}
-          {tab === 'chi' && <div className="card">
-            <div className="card-h"><div className="card-t"><div className="arch-i"><I.Receipt style={{ width: 13, height: 13, color: '#8a6a52' }} /></div><h3>Nhập Chi Phí</h3></div></div>
-            <div className="card-b">
-              <div style={{ background: 'var(--bg2)', borderRadius: 14, padding: 20, textAlign: 'center', marginBottom: 16 }}>
-                <div style={{ fontSize: 10.5, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.14em', fontWeight: 600, marginBottom: 10 }}>Số Tiền Chi</div>
-                <input type="text" inputMode="numeric" placeholder="0" value={soTien ? parseInt(soTien.replace(/\D/g, '')).toLocaleString('vi-VN') : ''} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 34, fontWeight: 700, textAlign: 'center', background: 'transparent', color: soTien ? '#C0392B' : 'var(--line2)', fontFamily: 'var(--serif)' }} autoFocus />
-                {soTien && <div style={{ fontSize: 14, color: '#C0392B', fontWeight: 600, marginTop: 4 }}>{formatCurrency(parseInt(soTien.replace(/\D/g, '')))}</div>}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-                <button onClick={() => setShowLich(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface2)', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--ink)', fontFamily: 'var(--sans)' }}>
-                  <I.Calendar style={{ width: 13, height: 13, color: 'var(--espresso)' }} />
-                  {ngay === today ? 'Hôm nay' : formatDateInput(ngay)}
-                  <span style={{ fontSize: 10, color: 'var(--ink3)' }}>— đổi ngày</span>
-                </button>
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16, justifyContent: 'center' }}>{QUICK.map(a => <button key={a} onClick={() => setSoTien(String(a))} style={{ padding: '6px 14px', borderRadius: 8, border: soTien === String(a) ? `2px solid #C0392B` : '1px solid var(--line)', background: soTien === String(a) ? '#FEF2F2' : 'var(--surface2)', color: soTien === String(a) ? '#C0392B' : 'var(--ink2)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--sans)' }}>{a >= 1000000 ? (a / 1000000).toFixed(1) + 'M' : a >= 1000 ? (a / 1000).toFixed(0) + 'K' : a}</button>)}</div>
-              <div style={{ marginBottom: 12 }}><div style={{ fontSize: 10.5, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 600, marginBottom: 8 }}>Nhóm Chi</div><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{nhomList.map(n => <button key={n.id} onClick={() => { setNhomId(n.id); setHangMucId(null) }} style={{ padding: '8px 14px', borderRadius: 8, border: nhomId === n.id ? `2px solid #C0392B` : '1px solid var(--line)', background: nhomId === n.id ? '#FEF2F2' : 'var(--surface2)', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: nhomId === n.id ? '#C0392B' : 'var(--ink2)' }}>{n.icon} {n.ten}</button>)}</div></div>
-              {nhomId && <div style={{ marginBottom: 12 }}><div style={{ fontSize: 10.5, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 600, marginBottom: 8 }}>Hạng Mục</div><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{hmCuaNhom.map(hm => <button key={hm.id} onClick={() => setHangMucId(hm.id)} style={{ padding: '8px 14px', borderRadius: 8, border: hangMucId === hm.id ? `2px solid #C0392B` : '1px solid var(--line)', background: hangMucId === hm.id ? '#FEF2F2' : 'var(--surface2)', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: hangMucId === hm.id ? '#C0392B' : 'var(--ink2)' }}>{hm.icon} {hm.ten}</button>)}</div></div>}
-              <div style={{ marginBottom: 16 }}><div style={{ fontSize: 10.5, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 600, marginBottom: 8 }}>Nguồn Tiền Chi</div><div style={{ display: 'flex', gap: 8 }}>{[{ id: 'tien_mat', l: '💵 Tiền Mặt' }, { id: 'chuyen_khoan', l: '🏦 CK' }, { id: 'quet_the', l: '💳 Quẹt Thẻ' }].map(pt => <button key={pt.id} onClick={() => setNguonChi(pt.id)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: nguonChi === pt.id ? `2px solid #C0392B` : '1px solid var(--line)', background: nguonChi === pt.id ? '#FEF2F2' : 'var(--surface2)', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: nguonChi === pt.id ? '#C0392B' : 'var(--ink2)' }}>{pt.l}</button>)}</div></div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FDF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><I.Edit style={{ width: 16, height: 16, color: '#C0392B' }} /></div>
-                <input placeholder="Diễn giải (bắt buộc) *" value={dienGiai} onChange={e => setDienGiai(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13.5, color: 'var(--ink)', background: 'transparent', fontFamily: 'var(--sans)' }} />
-              </div>
-              <button onClick={handleSaveChi} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#f8efe1', fontSize: 15, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#d4a574,#8a6a52)', boxShadow: saving ? 'none' : '0 10px 22px rgba(138,106,82,.22)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : '💾 Lưu Chi Phí'}</button>
-            </div>
-          </div>}
+          {tab === 'chi' && (
+            <ExpenseEntryForm
+              ngay={ngay}
+              today={today}
+              soTien={soTien}
+              setSoTien={setSoTien}
+              nhomList={nhomList}
+              nhomId={nhomId}
+              setNhomId={setNhomId}
+              hangMucId={hangMucId}
+              setHangMucId={setHangMucId}
+              hmCuaNhom={hmCuaNhom}
+              nguonChi={nguonChi}
+              setNguonChi={setNguonChi}
+              dienGiai={dienGiai}
+              setDienGiai={setDienGiai}
+              saving={saving}
+              onOpenDate={() => setShowLich(true)}
+              onSave={handleSaveChi}
+            />
+          )}
 
-          {/* === TAB: CHUYỂN KHOẢN === */}
-          {tab === 'ck' && <div className="card">
-            <div className="card-h"><div className="card-t"><div className="arch-i"><I.Bank style={{ width: 13, height: 13, color: '#8a6a52' }} /></div><h3>Chuyển Khoản Nội Bộ</h3></div></div>
-            <div className="card-b">
-              <div style={{ background: 'var(--bg2)', borderRadius: 14, padding: 20, textAlign: 'center', marginBottom: 16 }}>
-                <div style={{ fontSize: 10.5, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.14em', fontWeight: 600, marginBottom: 10 }}>Số Tiền Chuyển</div>
-                <input type="text" inputMode="numeric" placeholder="0" value={soTien ? parseInt(soTien.replace(/\D/g, '')).toLocaleString('vi-VN') : ''} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={{ width: '100%', border: 'none', outline: 'none', fontSize: 34, fontWeight: 700, textAlign: 'center', background: 'transparent', color: soTien ? '#6C3483' : 'var(--line2)', fontFamily: 'var(--serif)' }} autoFocus />
-                {soTien && <div style={{ fontSize: 14, color: '#6C3483', fontWeight: 600, marginTop: 4 }}>{formatCurrency(parseInt(soTien.replace(/\D/g, '')))}</div>}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-                <button onClick={() => setShowLich(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface2)', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--ink)', fontFamily: 'var(--sans)' }}>
-                  <I.Calendar style={{ width: 13, height: 13, color: 'var(--espresso)' }} />
-                  {ngay === today ? 'Hôm nay' : formatDateInput(ngay)}
-                  <span style={{ fontSize: 10, color: 'var(--ink3)' }}>— đổi ngày</span>
-                </button>
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16, justifyContent: 'center' }}>{QUICK.map(a => <button key={a} onClick={() => setSoTien(String(a))} style={{ padding: '6px 14px', borderRadius: 8, border: soTien === String(a) ? `2px solid #6C3483` : '1px solid var(--line)', background: soTien === String(a) ? '#F5F3FF' : 'var(--surface2)', color: soTien === String(a) ? '#6C3483' : 'var(--ink2)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--sans)' }}>{a >= 1000000 ? (a / 1000000).toFixed(1) + 'M' : a >= 1000 ? (a / 1000).toFixed(0) + 'K' : a}</button>)}</div>
-              <div style={{ background: 'var(--bg2)', borderRadius: 14, padding: 16, marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}><span style={{ fontWeight: 600, fontSize: 13, minWidth: 50 }}>Từ:</span>{[{ id: 'tien_mat', l: '💵 Tiền Mặt' }, { id: 'quet_the', l: '💳 TP Bank' }, { id: 'chuyen_khoan', l: '🏦 MB Bank' }].map(v => <button key={v.id} onClick={() => { setCkTu(v.id); setCkDen(v.id === 'chuyen_khoan' ? 'tien_mat' : 'chuyen_khoan') }} style={{ flex: 1, padding: '10px', borderRadius: 8, border: ckTu === v.id ? '2px solid #6C3483' : '1px solid var(--line)', background: ckTu === v.id ? '#F5F3FF' : 'var(--surface2)', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: ckTu === v.id ? '#6C3483' : 'var(--ink2)' }}>{v.l}</button>)}</div>
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}><span style={{ fontSize: 20 }}>⬇</span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><span style={{ fontWeight: 600, fontSize: 13, minWidth: 50 }}>Đến:</span>{[{ id: 'tien_mat', l: '💵 Tiền Mặt' }, { id: 'chuyen_khoan', l: '🏦 MB Bank' }].filter(v => v.id !== ckTu).map(v => <button key={v.id} onClick={() => setCkDen(v.id)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: ckDen === v.id ? '2px solid #6C3483' : '1px solid var(--line)', background: ckDen === v.id ? '#F5F3FF' : 'var(--surface2)', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: ckDen === v.id ? '#6C3483' : 'var(--ink2)' }}>{v.l}</button>)}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg2)', borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}><div style={{ width: 36, height: 36, borderRadius: 10, background: '#FDF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><I.Edit style={{ width: 16, height: 16, color: '#6C3483' }} /></div><input placeholder="Ghi chú (không bắt buộc)..." value={dienGiai} onChange={e => setDienGiai(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13.5, color: 'var(--ink)', background: 'transparent', fontFamily: 'var(--sans)' }} /></div>
-              <button onClick={handleSaveCk} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#f8efe1', fontSize: 15, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#d4a574,#8a6a52)', boxShadow: saving ? 'none' : '0 10px 22px rgba(138,106,82,.22)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : '💾 Lưu Chuyển Khoản'}</button>
-            </div>
-          </div>}
+          {tab === 'ck' && (
+            <InternalTransferForm
+              ngay={ngay}
+              today={today}
+              soTien={soTien}
+              setSoTien={setSoTien}
+              ckTu={ckTu}
+              setCkTu={setCkTu}
+              ckDen={ckDen}
+              setCkDen={setCkDen}
+              dienGiai={dienGiai}
+              setDienGiai={setDienGiai}
+              saving={saving}
+              onOpenDate={() => setShowLich(true)}
+              onSave={handleSaveCk}
+            />
+          )}
 
-          {/* === TAB: NỘP TM === */}
-          {tab === 'noptm' && <div className="card">
-            <div className="card-h"><div className="card-t"><div className="arch-i"><I.Wallet style={{ width: 13, height: 13, color: '#8a6a52' }} /></div><h3>Nộp Tiền Mặt → MB Bank</h3><span className="sub">{formatDateInput(ngay)}</span></div></div>
-            <div className="card-b">
-              {loadingNop ? <div style={{ textAlign: 'center', padding: 30, color: 'var(--ink3)' }}>Đang tính toán...</div> : nopTmData ? <div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                  <div style={{ background: '#e8f1de', borderRadius: 12, padding: 14, textAlign: 'center', border: '1px solid #6e8a5e20' }}><div style={{ fontSize: 10, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 600 }}>Thu Tiền Mặt</div><div style={{ fontFamily: 'var(--serif)', fontSize: 24, fontWeight: 700, color: '#426a2c', marginTop: 4 }}>{formatCurrency(nopTmData.thuTm)}</div></div>
-                  <div style={{ background: '#fae0d8', borderRadius: 12, padding: 14, textAlign: 'center', border: '1px solid #b85a4a20' }}><div style={{ fontSize: 10, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 600 }}>Chi Tiền Mặt</div><div style={{ fontFamily: 'var(--serif)', fontSize: 24, fontWeight: 700, color: '#843a23', marginTop: 4 }}>{formatCurrency(nopTmData.chiTm)}</div></div>
-                </div>
-                {nopTmData.amHomTrc > 0 && <div style={{ background: '#FFF9F0', borderRadius: 10, padding: '10px 14px', marginBottom: 14, border: '1px solid #F0C080', fontSize: 12, color: '#8B6914', textAlign: 'center' }}>🔻 Bù âm ngày {formatDateInput(nopTmData.prev)}: <b>{formatCurrency(nopTmData.amHomTrc)}</b></div>}
-                <div style={{ background: nopTmData.phaiNop > 0 ? 'linear-gradient(135deg,#1a4f70,#0d3b5a)' : 'var(--bg2)', borderRadius: 14, padding: 20, textAlign: 'center', marginBottom: 16, color: nopTmData.phaiNop > 0 ? '#fff' : 'var(--ink3)' }}>
-                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.14em', fontWeight: 600, opacity: .7 }}>Cần Nộp Hôm Nay</div>
-                  <div style={{ fontFamily: 'var(--serif)', fontSize: 32, fontWeight: 700, marginTop: 4 }}>{nopTmData.phaiNop > 0 ? formatCurrency(nopTmData.phaiNop) : '0đ — Không cần nộp'}</div>
-                </div>
-                {nopTmData.daNop > 0 && <div style={{ background: '#e8f1de', borderRadius: 10, padding: '10px 14px', marginBottom: 14, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#426a2c' }}>✓ Đã nộp {formatCurrency(nopTmData.daNop)} — {nopTmData.daNop < nopTmData.phaiNop ? <>Còn thiếu <b>{formatCurrency(nopTmData.phaiNop - nopTmData.daNop)}</b></> : 'Đã nộp đủ'}</div>}
-                {nopTmData.phaiNop > 0 && nopTmData.daNop < nopTmData.phaiNop && <button onClick={handleNopTm} disabled={saving} style={{ width: '100%', padding: 15, borderRadius: 'var(--r)', border: 'none', color: '#f8efe1', fontSize: 15, fontWeight: 700, cursor: 'pointer', background: 'linear-gradient(135deg,#d4a574,#8a6a52)', boxShadow: '0 10px 22px rgba(138,106,82,.22)', fontFamily: 'var(--sans)' }}>{saving ? '⏳ Đang lưu...' : `🏦 Xác Nhận Đã Nộp ${formatCurrency(nopTmData.phaiNop - nopTmData.daNop)}`}</button>}
-              </div> : <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink3)' }}>Không có dữ liệu</div>}
-            </div>
-          </div>}
+          {tab === 'noptm' && (
+            <CashDepositPanel
+              ngay={ngay}
+              loading={loadingNop}
+              data={nopTmData}
+              saving={saving}
+              onDeposit={handleNopTm}
+            />
+          )}
 
         </div>
 
@@ -486,26 +367,17 @@ export default function NhapLieuPage({ user }) {
       </div>
       </div>
 
-      {/* Modal Sửa */}
-      {editItem && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={e => { if (e.target === e.currentTarget) setEditItem(null) }}>
-        <div style={{ background: 'var(--surface2)', borderRadius: 'var(--r-lg)', padding: 24, maxWidth: 440, width: '100%', boxShadow: 'var(--sh-3)' }} onClick={e => e.stopPropagation()}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}>
-            <h3 style={{ fontFamily: 'var(--serif)', fontSize: 18, fontWeight: 700 }}>{isAdmin ? 'Sửa Giao Dịch' : 'Yêu Cầu Sửa'}</h3>
-            <button onClick={() => setEditItem(null)} className="icon-btn" style={{ width: 32, height: 32 }}>✕</button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div><label style={{ fontSize: 10.5, color: 'var(--ink3)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Ngày</label><input value={editItem.ngay ? formatDateInput(editItem.ngay) : ''} onChange={e => { const v = e.target.value; if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v)) { const [dd, mm, yyyy] = v.split('/'); setEditItem({ ...editItem, ngay: `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}` }) } else setEditItem({ ...editItem, ngay: v }) }} placeholder="DD/MM/YYYY" style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--line)', fontSize: 13, outline: 'none', fontFamily: 'var(--sans)' }} /></div>
-            <div><label style={{ fontSize: 10.5, color: 'var(--ink3)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Nguồn Tiền</label><select value={(editItem.hinh_thuc || editItem.hinh_thuc_thanh_toan || 'tien_mat')} onChange={e => { const key = editItem._t === 'thu' ? 'hinh_thuc' : 'hinh_thuc_thanh_toan'; setEditItem({ ...editItem, [key]: e.target.value }) }} style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--line)', fontSize: 13, outline: 'none', fontFamily: 'var(--sans)', background: 'var(--surface2)' }}>{editItem._t === 'thu' ? <><option value="tien_mat">💵 Tiền Mặt</option><option value="chuyen_khoan">🏦 Chuyển Khoản</option><option value="quet_the">💳 Quẹt Thẻ</option><option value="the_tra_truoc">🎫 Thẻ Trả Trước</option></> : <><option value="tien_mat">💵 Tiền Mặt</option><option value="chuyen_khoan">🏦 Chuyển Khoản</option><option value="quet_the">💳 Quẹt Thẻ</option></>}</select></div>
-            {editItem._t === 'chi' && <><div><label style={{ fontSize: 10.5, color: 'var(--ink3)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Nhóm Chi</label><select value={hangMucList.find(h => h.id === editItem.danh_muc_id)?.parent_id || ''} onChange={e => setEditItem({ ...editItem, danh_muc_id: '', _nhomId: e.target.value })} style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--line)', fontSize: 13, outline: 'none', fontFamily: 'var(--sans)', background: 'var(--surface2)' }}><option value="">-- Chọn nhóm --</option>{nhomList.map(n => <option key={n.id} value={n.id}>{n.icon} {n.ten}</option>)}</select></div>
-            <div><label style={{ fontSize: 10.5, color: 'var(--ink3)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Hạng Mục Chi</label><select value={editItem.danh_muc_id || ''} onChange={e => setEditItem({ ...editItem, danh_muc_id: e.target.value })} style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--line)', fontSize: 13, outline: 'none', fontFamily: 'var(--sans)', background: 'var(--surface2)' }}><option value="">-- Chọn hạng mục --</option>{hangMucList.filter(h => h.parent_id === (editItem._nhomId || hangMucList.find(h => h.id === editItem.danh_muc_id)?.parent_id)).map(hm => <option key={hm.id} value={hm.id}>{hm.icon} {hm.ten}</option>)}</select></div></>}
-            <div><label style={{ fontSize: 10.5, color: 'var(--ink3)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Số Tiền</label><input type="number" value={editItem.so_tien || ''} onChange={e => setEditItem({ ...editItem, so_tien: e.target.value })} style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--line)', fontSize: 20, fontWeight: 700, outline: 'none', fontFamily: 'var(--serif)' }} /></div>
-            <div><label style={{ fontSize: 10.5, color: 'var(--ink3)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Diễn Giải</label><input value={editItem.dien_giai || ''} onChange={e => setEditItem({ ...editItem, dien_giai: e.target.value })} style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--line)', fontSize: 13, outline: 'none', fontFamily: 'var(--sans)' }} /></div>
-            <div><label style={{ fontSize: 10.5, color: 'var(--ink3)', fontWeight: 600, display: 'block', marginBottom: 4 }}>Lý do {!isAdmin && '(bắt buộc)'}</label><textarea value={lyDo} onChange={e => setLyDo(e.target.value)} placeholder="Nhập lý do..." rows={2} style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--line)', fontSize: 13, outline: 'none', resize: 'none', fontFamily: 'var(--sans)' }} /></div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><button onClick={() => setEditItem(null)} className="btn" style={{ flex: 1, justifyContent: 'center' }}>Hủy</button><button onClick={handleSaveEdit} className="btn gold" style={{ flex: 1, justifyContent: 'center' }}>{isAdmin ? 'Lưu Ngay' : 'Gửi Yêu Cầu'}</button></div>
-            {!isAdmin && <div style={{ fontSize: 10, color: 'var(--ink3)', textAlign: 'center' }}>Admin sẽ duyệt trước khi có hiệu lực</div>}
-          </div>
-        </div>
-      </div>}
+      <EditTransactionModal
+        item={editItem}
+        isAdmin={isAdmin}
+        lyDo={lyDo}
+        nhomList={nhomList}
+        hangMucList={hangMucList}
+        onChangeItem={setEditItem}
+        onChangeLyDo={setLyDo}
+        onClose={() => setEditItem(null)}
+        onSave={handleSaveEdit}
+      />
     </div>
   )
 }

@@ -18,7 +18,7 @@ const PAGE_TITLES = {
   '/admin/nhan-su/lich-ca':          'Lịch Ca',
   '/admin/nhan-su/xet-duyet':        'Xét Duyệt OFF',
   '/admin/nhan-su/bang-luong':       'Bảng Lương',
-  '/admin/commission':               'Hoa Hồng KTV',
+  '/admin/commission':               'Lương Kinh Doanh',
   '/admin/doi-soat-data':            'Đối Soát Data Cũ',
   '/admin/crm':                      'CRM Khách Hàng',
   '/admin/the-lieu-trinh':           'Thẻ Liệu Trình',
@@ -49,7 +49,7 @@ const NHANSU_ITEMS = [
   { label: 'Lịch Ca',      path: '/admin/nhan-su/lich-ca' },
   { label: 'Xét Duyệt',   path: '/admin/nhan-su/xet-duyet' },
   { label: 'Bảng Lương',  path: '/admin/nhan-su/bang-luong' },
-  { label: 'Hoa Hồng KTV', path: '/admin/commission' },
+  { label: 'Lương Kinh Doanh', path: '/admin/commission' },
 ]
 
 const MORE_ADMIN = [

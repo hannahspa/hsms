@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, Fragment } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../../lib/supabase'
-import { todayISO, getNowVN } from '../../../lib/utils'
+import { posService } from '../../../services/posService'
+import { todayISO } from '../../../lib/utils'
+import { addDaysISO, addMonthsISO, daysInMonth, getWeekdayISO } from '../../../lib/dateMath'
 import DatePicker from '../../../components/shared/DatePicker'
 
 // ── Hannah Luxury Palette ──
@@ -37,10 +39,21 @@ const GIO_LIST = (() => {
 
 const DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 const fmtDate = iso => { if (!iso) return '—'; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}` }
-const dayOfWeek = iso => { if (!iso) return ''; const [y, m, d] = iso.split('-').map(Number); return DOW[new Date(y, m - 1, d).getDay()] }
+const dayOfWeek = iso => iso ? DOW[getWeekdayISO(iso)] : ''
 const gioToMin = g => { const [h, m] = String(g || '00:00').split(':').map(Number); return h * 60 + m }
 const shortName = n => { if (!n) return ''; const p = String(n).trim().split(/\s+/); return p.slice(-2).join(' ') }
 const getInitials = n => { if (!n) return '?'; const p = String(n).trim().split(' '); return (p[p.length - 1][0] || '').toUpperCase() }
+const normalizePhone = s => String(s || '').replace(/\D/g, '')
+
+function dedupeHints(rows) {
+  const seen = new Set()
+  return rows.filter(row => {
+    const key = `${normalizePhone(row.sdt_khach)}:${String(row.ten_khach || '').trim().toLowerCase()}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
 
 function Avatar({ nv, size = 30 }) {
   if (nv?.avatar_url) return <img src={nv.avatar_url} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `1px solid ${C.line2}` }} />
@@ -49,19 +62,17 @@ function Avatar({ nv, size = 30 }) {
 
 // 7 ngày (T2→CN) của tuần chứa iso
 function weekDaysOf(iso) {
-  const [y, m, d] = iso.split('-').map(Number)
-  const base = new Date(y, m - 1, d), dow = base.getDay()
-  const mon = new Date(base); mon.setDate(base.getDate() - (dow === 0 ? 6 : dow - 1))
-  return Array.from({ length: 7 }, (_, i) => { const x = new Date(mon); x.setDate(mon.getDate() + i); return x.toISOString().slice(0, 10) })
+  const dow = getWeekdayISO(iso)
+  const monday = addDaysISO(iso, -(dow === 0 ? 6 : dow - 1))
+  return Array.from({ length: 7 }, (_, i) => addDaysISO(monday, i))
 }
 // Ma trận tháng (6 tuần × 7 ngày) chứa iso
 function monthMatrixOf(iso) {
   const [y, m] = iso.split('-').map(Number)
-  const first = new Date(y, m - 1, 1), lead = first.getDay() === 0 ? 6 : first.getDay() - 1
-  const start = new Date(first); start.setDate(1 - lead)
-  return Array.from({ length: 6 }, (_, w) => Array.from({ length: 7 }, (_, i) => {
-    const x = new Date(start); x.setDate(start.getDate() + w * 7 + i); return x.toISOString().slice(0, 10)
-  }))
+  const first = `${y}-${String(m).padStart(2, '0')}-01`
+  const firstDow = getWeekdayISO(first)
+  const start = addDaysISO(first, -(firstDow === 0 ? 6 : firstDow - 1))
+  return Array.from({ length: 6 }, (_, w) => Array.from({ length: 7 }, (_, i) => addDaysISO(start, w * 7 + i)))
 }
 const monthOf = iso => Number(iso.split('-')[1])
 const VIEW_TABS = [{ k: 'day', l: 'Ngày' }, { k: 'week', l: 'Tuần' }, { k: 'month', l: 'Tháng' }]
@@ -77,16 +88,92 @@ function ModalDatHen({ initial, ktvList, onSave, onClose, user }) {
   const [dichVuList, setDichVuList] = useState([])
   const [saving, setSaving] = useState(false)
   const [showNgay, setShowNgay] = useState(false)
+  const [customerHints, setCustomerHints] = useState([])
+  const [hintLoading, setHintLoading] = useState(false)
+  const [creatingOrder, setCreatingOrder] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   useEffect(() => {
     supabase.from('dich_vu').select('id, ten, thoi_luong_phut').eq('is_active', true).order('ten').then(({ data }) => setDichVuList(data || []))
   }, [])
 
+  useEffect(() => {
+    const phone = normalizePhone(form.sdt_khach)
+    const name = String(form.ten_khach || '').trim()
+    const term = phone.length >= 3 ? phone : name
+    if (term.length < 3) {
+      setCustomerHints([])
+      setHintLoading(false)
+      return undefined
+    }
+
+    let alive = true
+    const timer = setTimeout(async () => {
+      setHintLoading(true)
+      try {
+        const [khRes, henRes] = await Promise.all([
+          supabase
+            .from('khach_hang')
+            .select('id, ho_ten, so_dien_thoai, lan_cuoi_den')
+            .or(`ho_ten.ilike.%${term}%,so_dien_thoai.ilike.%${term}%`)
+            .order('lan_cuoi_den', { ascending: false, nullsFirst: false })
+            .limit(12),
+          supabase
+            .from('lich_hen')
+            .select('id, khach_hang_id, ten_khach, sdt_khach, ten_dich_vu, ngay_hen, gio_hen, trang_thai')
+            .or(`ten_khach.ilike.%${term}%,sdt_khach.ilike.%${term}%`)
+            .order('ngay_hen', { ascending: false })
+            .limit(12),
+        ])
+        if (!alive) return
+
+        const hints = [
+          ...(khRes.data || []).map(kh => ({
+            source: 'crm',
+            khach_hang_id: kh.id,
+            ten_khach: kh.ho_ten || '',
+            sdt_khach: kh.so_dien_thoai || '',
+            note: kh.lan_cuoi_den ? `CRM · lần cuối ${fmtDate(kh.lan_cuoi_den)}` : 'CRM khách hàng',
+          })),
+          ...(henRes.data || []).map(h => ({
+            source: 'appointment',
+            khach_hang_id: h.khach_hang_id || null,
+            ten_khach: h.ten_khach || '',
+            sdt_khach: h.sdt_khach || '',
+            ten_dich_vu: h.ten_dich_vu || '',
+            note: `Lịch hẹn ${fmtDate(h.ngay_hen)} ${String(h.gio_hen || '').slice(0, 5)}${h.ten_dich_vu ? ` · ${h.ten_dich_vu}` : ''}`,
+          })),
+        ].filter(h => h.ten_khach || h.sdt_khach)
+
+        setCustomerHints(dedupeHints(hints).slice(0, 10))
+      } catch {
+        if (alive) setCustomerHints([])
+      } finally {
+        if (alive) setHintLoading(false)
+      }
+    }, 220)
+
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+  }, [form.sdt_khach, form.ten_khach])
+
   const handleSelectDV = e => {
     const dv = dichVuList.find(d => d.id === e.target.value)
     if (dv) { set('dich_vu_id', dv.id); set('ten_dich_vu', dv.ten); set('thoi_luong_phut', dv.thoi_luong_phut || 60) }
     else set('dich_vu_id', null)
+  }
+
+  const handleSelectHint = hint => {
+    setForm(f => ({
+      ...f,
+      khach_hang_id: hint.khach_hang_id || f.khach_hang_id || null,
+      ten_khach: hint.ten_khach || f.ten_khach,
+      sdt_khach: hint.sdt_khach || f.sdt_khach,
+      ten_dich_vu: f.ten_dich_vu || hint.ten_dich_vu || '',
+    }))
+    setCustomerHints([])
   }
 
   const handleSave = async () => {
@@ -95,6 +182,7 @@ function ModalDatHen({ initial, ktvList, onSave, onClose, user }) {
     try {
       const payload = {
         ten_khach: form.ten_khach.trim(), sdt_khach: form.sdt_khach?.trim() || null,
+        khach_hang_id: form.khach_hang_id || null,
         dich_vu_id: form.dich_vu_id || null, ten_dich_vu: form.ten_dich_vu?.trim() || null,
         nhan_vien_id: form.nhan_vien_id || null,
         thoi_luong_phut: form.thoi_luong_phut || 60, ngay_hen: form.ngay_hen, gio_hen: form.gio_hen,
@@ -104,6 +192,23 @@ function ModalDatHen({ initial, ktvList, onSave, onClose, user }) {
       else { payload.trang_thai = 'cho_xac_nhan'; await supabase.from('lich_hen').insert(payload) }
       onSave()
     } catch (e) { alert('Lỗi lưu lịch hẹn: ' + e.message) } finally { setSaving(false) }
+  }
+
+  const handleCreatePosOrder = async () => {
+    if (!initial?.id) return
+    if (!form.ten_khach.trim()) return alert('Vui lòng nhập tên khách trước khi tạo đơn POS')
+    setCreatingOrder(true)
+    try {
+      const result = await posService.createDraftOrderFromAppointment(
+        { ...initial, ...form, id: initial.id },
+        { nguoiTao: user?.id }
+      )
+      window.location.href = `/pos?resume=${result.orderId}`
+    } catch (e) {
+      alert('Lỗi tạo đơn POS từ lịch hẹn: ' + e.message)
+    } finally {
+      setCreatingOrder(false)
+    }
   }
 
   const INP = { width: '100%', height: 38, borderRadius: 9, border: `1px solid ${C.line2}`, padding: '0 11px', fontFamily: 'var(--sans)', fontSize: 13.5, outline: 'none', boxSizing: 'border-box', background: '#fdfcfb', color: C.ink }
@@ -125,6 +230,37 @@ function ModalDatHen({ initial, ktvList, onSave, onClose, user }) {
             <div><div style={LBL}>Tên Khách *</div><input style={INP} value={form.ten_khach} onChange={e => set('ten_khach', e.target.value)} placeholder="Nguyễn Thị Lan" /></div>
             <div><div style={LBL}>Số Điện Thoại</div><input style={INP} value={form.sdt_khach || ''} onChange={e => set('sdt_khach', e.target.value)} placeholder="0901234567" /></div>
           </div>
+
+          {(hintLoading || customerHints.length > 0) && (
+            <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, background: '#fffdf9', overflow: 'hidden', marginTop: -4 }}>
+              <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 800, color: C.ink3, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${C.line}` }}>
+                {hintLoading ? 'Đang tìm khách / lịch hẹn cũ...' : `${customerHints.length} kết quả liên quan`}
+              </div>
+              {!hintLoading && customerHints.map(hint => (
+                <button key={`${hint.source}-${hint.khach_hang_id || hint.sdt_khach}-${hint.ten_khach}-${hint.note}`}
+                  type="button"
+                  onClick={() => handleSelectHint(hint)}
+                  style={{
+                    width: '100%', border: 'none', borderBottom: `1px solid ${C.line}`,
+                    background: '#fff', padding: '9px 11px', textAlign: 'left',
+                    cursor: 'pointer', fontFamily: 'var(--sans)', display: 'grid',
+                    gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center',
+                  }}>
+                  <span>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 800, color: C.ink }}>{hint.ten_khach || 'Khách chưa rõ tên'}</span>
+                    <span style={{ display: 'block', fontSize: 11.5, color: C.ink3, marginTop: 2 }}>{hint.sdt_khach || 'Chưa có SĐT'} · {hint.note}</span>
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 800, borderRadius: 999, padding: '3px 8px',
+                    color: hint.source === 'crm' ? '#2D7A4F' : '#8a6335',
+                    background: hint.source === 'crm' ? 'rgba(45,122,79,.09)' : 'rgba(201,169,110,.16)',
+                  }}>
+                    {hint.source === 'crm' ? 'CRM' : 'Lịch hẹn'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
           <div><div style={LBL}>Dịch Vụ</div>
             <select onChange={handleSelectDV} value={form.dich_vu_id || ''} style={INP}>
@@ -160,11 +296,20 @@ function ModalDatHen({ initial, ktvList, onSave, onClose, user }) {
           </div>
         </div>
 
-        <div style={{ padding: '14px 24px', borderTop: `1px solid ${C.line}`, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <div style={{ padding: '14px 24px', borderTop: `1px solid ${C.line}`, display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            {initial?.id && initial.trang_thai !== 'huy' && (
+              <button onClick={handleCreatePosOrder} disabled={creatingOrder} style={{ padding: '10px 18px', borderRadius: 9, border: `1px solid ${C.gold}`, background: '#fdf3e0', color: '#8a6a35', fontSize: 13.5, fontWeight: 800, cursor: creatingOrder ? 'not-allowed' : 'pointer', opacity: creatingOrder ? 0.7 : 1, fontFamily: 'var(--sans)' }}>
+                {creatingOrder ? 'Đang tạo đơn...' : 'Tạo đơn POS'}
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 9, border: `1px solid ${C.line2}`, background: '#fff', fontSize: 13.5, cursor: 'pointer', color: C.ink2, fontFamily: 'var(--sans)' }}>Huỷ</button>
           <button onClick={handleSave} disabled={saving} style={{ padding: '10px 24px', borderRadius: 9, border: 'none', background: C.grad, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'var(--sans)' }}>
             {saving ? 'Đang lưu...' : (initial?.id ? 'Cập Nhật' : 'Đặt Lịch')}
           </button>
+          </div>
         </div>
       </div>
     </div>, document.body
@@ -196,7 +341,7 @@ export default function LichHenPage({ user }) {
     let q = supabase.from('lich_hen').select('*')
     if (viewMode === 'day') q = q.eq('ngay_hen', ngayXem)
     else if (viewMode === 'week') { const w = weekDaysOf(ngayXem); q = q.gte('ngay_hen', w[0]).lte('ngay_hen', w[6]) }
-    else { const [y, m] = ngayXem.split('-'); const last = new Date(+y, +m, 0).getDate(); q = q.gte('ngay_hen', `${y}-${m}-01`).lte('ngay_hen', `${y}-${m}-${String(last).padStart(2, '0')}`) }
+    else { const [y, m] = ngayXem.split('-').map(Number); const last = daysInMonth(y, m); q = q.gte('ngay_hen', `${y}-${String(m).padStart(2, '0')}-01`).lte('ngay_hen', `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`) }
     const { data, error } = await q.order('gio_hen')
     if (error) showToast('Lỗi tải dữ liệu', 'error')
     setHenList(data || [])
@@ -211,11 +356,9 @@ export default function LichHenPage({ user }) {
     showToast(tt === 'da_xac_nhan' ? 'Đã xác nhận' : tt === 'da_xong' ? 'Đã hoàn thành' : 'Đã hủy hẹn')
   }
   const changePeriod = delta => {
-    const d = new Date(ngayXem)
-    if (viewMode === 'week') d.setDate(d.getDate() + delta * 7)
-    else if (viewMode === 'month') d.setMonth(d.getMonth() + delta)
-    else d.setDate(d.getDate() + delta)
-    setNgayXem(d.toISOString().slice(0, 10))
+    if (viewMode === 'week') setNgayXem(addDaysISO(ngayXem, delta * 7))
+    else if (viewMode === 'month') setNgayXem(addMonthsISO(ngayXem, delta))
+    else setNgayXem(addDaysISO(ngayXem, delta))
   }
   const openPrefill = (gio, nvId, ngay) => setModal({ prefill: true, gio_hen: gio, nhan_vien_id: nvId, ngay_hen: ngay })
 

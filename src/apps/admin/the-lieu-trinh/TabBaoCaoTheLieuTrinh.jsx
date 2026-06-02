@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { formatCurrency, getNowVN } from '../../../lib/utils'
+import ModalCheckoutBuoi from './components/ModalCheckoutBuoi'
 
 const LUX = {
   bg: '#FAF7F4', card: '#FFFFFF', border: 'rgba(160,113,79,0.12)',
@@ -23,6 +24,13 @@ function fmtCompact(n) {
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)} tỷ`
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)} tr`
   return `${Math.round(n / 1e3)}k`
+}
+
+function getDaysInMonth(year, month) {
+  if (month === 2) {
+    return ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 29 : 28
+  }
+  return [4, 6, 9, 11].includes(month) ? 30 : 31
 }
 
 // ── Biểu đồ Bar ngang (CSS thuần) ───────────────────────────────────────────
@@ -53,7 +61,6 @@ function HBarChart({ data, colorFn, labelKey = 'label', valueKey = 'count', subK
     </div>
   )
 }
-
 // Palette màu đẹp
 const PALETTE = ['#C9A96E','#A0714F','#2D7A4F','#1A5276','#6C3483','#C0392B','#E67E22','#16A085']
 const getColor = (i) => PALETTE[i % PALETTE.length]
@@ -84,85 +91,6 @@ function SecHeader({ icon, title, sub, action }) {
 }
 
 // ── Modal Checkout Buổi ──────────────────────────────────────────────────────
-export function ModalCheckoutBuoi({ card, onClose, onDone }) {
-  const [ngay, setNgay]     = useState(getNowVN().toISOString().slice(0, 10))
-  const [ghiChu, setGhiChu] = useState('')
-  const [saving, setSaving]  = useState(false)
-  const [err, setErr]        = useState('')
-
-  const remain = (card.so_buoi_tong || 0) - (card.so_buoi_da_dung || 0)
-
-  const handleSave = async () => {
-    if (remain <= 0) { setErr('Thẻ đã hết buổi!'); return }
-    setSaving(true); setErr('')
-    try {
-      const { error: e1 } = await supabase.from('the_lieu_trinh_su_dung').insert({
-        the_lieu_trinh_id: card.id,
-        ngay_su_dung: ngay,
-        ghi_chu: ghiChu || null,
-        nguoi_ghi: 'admin',
-      })
-      if (e1) throw e1
-
-      const newDung   = (card.so_buoi_da_dung || 0) + 1
-      const newConLai = (card.so_buoi_tong || 0) - newDung
-      const newTT     = newConLai <= 0 ? 'het_buoi' : card.trang_thai
-
-      const { error: e2 } = await supabase.from('the_lieu_trinh')
-        .update({ so_buoi_da_dung: newDung, so_buoi_con_lai: newConLai, trang_thai: newTT })
-        .eq('id', card.id)
-      if (e2) throw e2
-
-      onDone()
-    } catch (e) { setErr(e.message) }
-    finally { setSaving(false) }
-  }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(26,22,18,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={onClose}>
-      <div style={{ background: LUX.card, borderRadius: 14, width: 400, maxWidth: '92vw', boxShadow: LUX.shadow }}
-        onClick={e => e.stopPropagation()}>
-        <div style={{ padding: '18px 22px', borderBottom: `1px solid ${LUX.border}` }}>
-          <div style={{ fontSize: 17, fontWeight: 900, fontFamily: 'var(--serif, serif)', color: LUX.text }}>Ghi nhận sử dụng 1 buổi</div>
-          <div style={{ fontSize: 12, color: LUX.sub, marginTop: 3 }}>{card.ten_dich_vu} · {card.khach_hang?.ho_ten || '—'}</div>
-        </div>
-        <div style={{ padding: '18px 22px' }}>
-          <div style={{ background: remain <= 1 ? '#fdf3e0' : LUX.green, border: `1px solid ${remain <= 1 ? '#e8c96a' : LUX.greenBorder}`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, fontWeight: 700, color: remain <= 1 ? '#a07030' : LUX.greenText }}>
-            {remain <= 0 ? '⛔ Thẻ đã hết buổi' : remain === 1 ? `⚠️ Buổi cuối cùng (còn ${remain} buổi)` : `✅ Còn lại: ${remain} buổi → sau khi dùng còn ${remain - 1}`}
-          </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: LUX.sub, textTransform: 'uppercase', marginBottom: 6 }}>Ngày sử dụng</div>
-            <input type="date" value={ngay} onChange={e => setNgay(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${LUX.border}`, fontFamily: 'var(--sans)', fontSize: 14, boxSizing: 'border-box' }} />
-          </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: LUX.sub, textTransform: 'uppercase', marginBottom: 6 }}>Ghi chú (tuỳ chọn)</div>
-            <input type="text" value={ghiChu} onChange={e => setGhiChu(e.target.value)}
-              placeholder="VD: Tái khám, dịch vụ kết hợp..."
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${LUX.border}`, fontFamily: 'var(--sans)', fontSize: 14, boxSizing: 'border-box' }} />
-          </div>
-
-          {err && <div style={{ color: LUX.chi, fontSize: 12, marginBottom: 10 }}>⚠ {err}</div>}
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 10, border: `1px solid ${LUX.border}`, background: LUX.bg, fontFamily: 'var(--sans)', fontWeight: 700, fontSize: 14, cursor: 'pointer', color: LUX.sub }}>
-              Huỷ
-            </button>
-            <button onClick={handleSave} disabled={saving || remain <= 0}
-              style={{ flex: 2, padding: 12, borderRadius: 10, border: 'none', background: remain <= 0 ? '#ccc' : LUX.grad, color: '#fff', fontFamily: 'var(--sans)', fontWeight: 700, fontSize: 14, cursor: remain <= 0 ? 'not-allowed' : 'pointer' }}>
-              {saving ? 'Đang lưu...' : '✓ Xác nhận sử dụng 1 buổi'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Main Component ───────────────────────────────────────────────────────────
 export default function TabBaoCaoTheLieuTrinh({ onCheckout }) {
   const now = getNowVN()
   const [thang, setThang] = useState(now.getMonth() + 1)
@@ -177,7 +105,7 @@ export default function TabBaoCaoTheLieuTrinh({ onCheckout }) {
 
   const startDate = `${nam}-${String(thang).padStart(2,'0')}-01`
   const endDate   = (() => {
-    const lastDay = new Date(nam, thang, 0).getDate()
+    const lastDay = getDaysInMonth(nam, thang)
     return `${nam}-${String(thang).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`
   })()
 

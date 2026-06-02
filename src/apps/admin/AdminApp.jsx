@@ -1,21 +1,30 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import AdminNhanSuPage from './nhan-su/AdminNhanSuPage'
-import AdminKhuyenMaiPage from './khuyen-mai/AdminKhuyenMaiPage'
-import AdminHomepagePage from './trang-chu/AdminHomepagePage'
-import AdminKhoHangPage from './kho-hang/AdminKhoHangPage'
-import AdminCRMPage from './crm/AdminCRMPage'
-import AdminMarketingPage from './marketing/AdminMarketingPage'
-import AdminDashboardPage from './dashboard/AdminDashboardPage'
-import AdminLichSuNopTienMat from './bao-cao/AdminLichSuNopTienMat'
-import AdminTheLieuTrinhPage from './the-lieu-trinh/AdminTheLieuTrinhPage'
-import AdminBaoCaoTheLieuTrinh from './the-lieu-trinh/AdminBaoCaoTheLieuTrinh'
-import AdminDichVuPage from './dich-vu/AdminDichVuPage'
-import AdminCommissionPage from './commission/AdminCommissionPage'
-import AdminDoiSoatDataPage from './doi-soat-data/AdminDoiSoatDataPage'
-import AdminPosReadinessPage from './pos-readiness/AdminPosReadinessPage'
 import { supabase } from '../../lib/supabase'
 import { todayISO, getNowVN, fmtCompact } from '../../lib/utils'
+
+const AdminNhanSuPage = lazy(() => import('./nhan-su/AdminNhanSuPage'))
+const AdminKhuyenMaiPage = lazy(() => import('./khuyen-mai/AdminKhuyenMaiPage'))
+const AdminHomepagePage = lazy(() => import('./trang-chu/AdminHomepagePage'))
+const AdminKhoHangPage = lazy(() => import('./kho-hang/AdminKhoHangPage'))
+const AdminCRMPage = lazy(() => import('./crm/AdminCRMPage'))
+const AdminMarketingPage = lazy(() => import('./marketing/AdminMarketingPage'))
+const AdminDashboardPage = lazy(() => import('./dashboard/AdminDashboardPage'))
+const AdminLichSuNopTienMat = lazy(() => import('./bao-cao/AdminLichSuNopTienMat'))
+const AdminTheLieuTrinhPage = lazy(() => import('./the-lieu-trinh/AdminTheLieuTrinhPage'))
+const AdminBaoCaoTheLieuTrinh = lazy(() => import('./the-lieu-trinh/AdminBaoCaoTheLieuTrinh'))
+const AdminDichVuPage = lazy(() => import('./dich-vu/AdminDichVuPage'))
+const AdminCommissionPage = lazy(() => import('./commission/AdminCommissionPage'))
+const AdminDoiSoatDataPage = lazy(() => import('./doi-soat-data/AdminDoiSoatDataPage'))
+const AdminPosReadinessPage = lazy(() => import('./pos-readiness/AdminPosReadinessPage'))
+
+function AdminRoute({ children }) {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--ink3)', fontSize: 13 }}>Đang tải module...</div>}>
+      {children}
+    </Suspense>
+  )
+}
 
 // ── Live Stats ─────────────────────────────────────────────────────────────────
 function useStats() {
@@ -59,7 +68,7 @@ const MODULES = [
   { icon: '👤', label: 'CRM Khách Hàng', href: '/admin/crm',             badge: null,    group: 'nb',  color: '#8e44ad', desc: 'Hồ sơ · Thẻ liệu trình · Công nợ' },
   { icon: '🎫', label: 'Thẻ Liệu Trình', href: '/admin/the-lieu-trinh', badge: null,    group: 'nb',  color: '#6c3483', desc: 'Danh sách thẻ · Tiến độ · Hết hạn' },
   { icon: '💎', label: 'Dịch Vụ',         href: '/admin/dich-vu',       badge: null,    group: 'nb',  color: '#a0714f', desc: 'Mã DV · Danh mục · Giá bán' },
-  { icon: '💹', label: 'Hoa Hồng KTV',   href: '/admin/commission',     badge: null,    group: 'nb',  color: '#426a2c', desc: 'Commission · Doanh thu · Tỉ lệ' },
+  { icon: '💹', label: 'Hoa Hồng KTV',   href: '/admin/commission',     badge: null,    group: 'nb',  color: '#426a2c', desc: 'Tour · Hoa hồng · Tỉ lệ' },
   { icon: '📦', label: 'Kho Hàng',        href: '/admin/kho-hang',        badge: null,    group: 'nb',  color: '#16a085', desc: 'Nhập xuất · Tồn kho · Cảnh báo' },
   { icon: '🏷️', label: 'Khuyến Mãi',     href: '/admin/khuyen-mai',      badge: null,    group: 'nb',  color: '#c0392b', desc: 'CRUD KM · Badge giảm giá · ROI' },
   { icon: '📣', label: 'Marketing',       href: '/admin/marketing',       badge: null,    group: 'nb',  color: '#e67e22', desc: 'Chiến dịch · Phân tích kênh' },
@@ -80,20 +89,20 @@ export default function AdminApp() {
   }
 
   // Sub-page routing
-  if (path.startsWith('/admin/nhan-su'))    return <AdminNhanSuPage />
-  if (path.startsWith('/admin/khuyen-mai')) return <AdminKhuyenMaiPage />
-  if (path.startsWith('/admin/trang-chu'))  return <AdminHomepagePage />
-  if (path.startsWith('/admin/kho-hang'))   return <AdminKhoHangPage />
-  if (path.startsWith('/admin/crm'))        return <AdminCRMPage />
-  if (path.startsWith('/admin/marketing'))  return <AdminMarketingPage />
-  if (path.startsWith('/admin/dashboard'))  return <AdminDashboardPage />
-  if (path.startsWith('/admin/pos-doi-soat')) return <AdminPosReadinessPage />
-  if (path.startsWith('/admin/doi-soat-data')) return <AdminDoiSoatDataPage />
-  if (path.startsWith('/admin/lich-su-nop-tien-mat')) return <AdminLichSuNopTienMat />
-  if (path.startsWith('/admin/the-lieu-trinh/bao-cao')) return <AdminBaoCaoTheLieuTrinh />
-  if (path.startsWith('/admin/the-lieu-trinh'))         return <AdminTheLieuTrinhPage />
-  if (path.startsWith('/admin/dich-vu'))             return <AdminDichVuPage />
-  if (path.startsWith('/admin/commission'))          return <AdminCommissionPage />
+  if (path.startsWith('/admin/nhan-su'))    return <AdminRoute><AdminNhanSuPage /></AdminRoute>
+  if (path.startsWith('/admin/khuyen-mai')) return <AdminRoute><AdminKhuyenMaiPage /></AdminRoute>
+  if (path.startsWith('/admin/trang-chu'))  return <AdminRoute><AdminHomepagePage /></AdminRoute>
+  if (path.startsWith('/admin/kho-hang'))   return <AdminRoute><AdminKhoHangPage /></AdminRoute>
+  if (path.startsWith('/admin/crm'))        return <AdminRoute><AdminCRMPage /></AdminRoute>
+  if (path.startsWith('/admin/marketing'))  return <AdminRoute><AdminMarketingPage /></AdminRoute>
+  if (path.startsWith('/admin/dashboard'))  return <AdminRoute><AdminDashboardPage /></AdminRoute>
+  if (path.startsWith('/admin/pos-doi-soat')) return <AdminRoute><AdminPosReadinessPage /></AdminRoute>
+  if (path.startsWith('/admin/doi-soat-data')) return <AdminRoute><AdminDoiSoatDataPage /></AdminRoute>
+  if (path.startsWith('/admin/lich-su-nop-tien-mat')) return <AdminRoute><AdminLichSuNopTienMat /></AdminRoute>
+  if (path.startsWith('/admin/the-lieu-trinh/bao-cao')) return <AdminRoute><AdminBaoCaoTheLieuTrinh /></AdminRoute>
+  if (path.startsWith('/admin/the-lieu-trinh'))         return <AdminRoute><AdminTheLieuTrinhPage /></AdminRoute>
+  if (path.startsWith('/admin/dich-vu'))             return <AdminRoute><AdminDichVuPage /></AdminRoute>
+  if (path.startsWith('/admin/commission'))          return <AdminRoute><AdminCommissionPage /></AdminRoute>
 
   const now = getNowVN()
   const DAYS = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy']

@@ -26,6 +26,52 @@ const methodMeta = {
   the_tra_truoc: { label: 'Thẻ Trả Trước', short: 'TTT', icon: '🎫', color: '#8a6a52', bg: '#f6efe4' },
 }
 
+function daysInMonth(year, month) {
+  if (month === 2) {
+    return ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 29 : 28
+  }
+  return [4, 6, 9, 11].includes(month) ? 30 : 31
+}
+
+function addDaysISO(iso, delta) {
+  let [year, month, day] = String(iso).split('-').map(Number)
+  day += delta
+  while (day < 1) {
+    month -= 1
+    if (month < 1) {
+      year -= 1
+      month = 12
+    }
+    day += daysInMonth(year, month)
+  }
+  while (day > daysInMonth(year, month)) {
+    day -= daysInMonth(year, month)
+    month += 1
+    if (month > 12) {
+      year += 1
+      month = 1
+    }
+  }
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+function getWeekday(iso) {
+  let [year, month, day] = String(iso).split('-').map(Number)
+  if (month < 3) {
+    month += 12
+    year -= 1
+  }
+  const k = year % 100
+  const j = Math.floor(year / 100)
+  const h = (day + Math.floor((13 * (month + 1)) / 5) + k + Math.floor(k / 4) + Math.floor(j / 4) + 5 * j) % 7
+  return (h + 6) % 7
+}
+
+function formatDateFull(iso) {
+  const [year, month, day] = String(iso).split('-').map(Number)
+  return `${DAYS[getWeekday(iso)]}, ${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`
+}
+
 function formatTime(value) {
   return value ? new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '--:--'
 }
@@ -108,14 +154,11 @@ export default function DoiSoatPage({ user, refreshKey }) {
     return () => { alive = false }
   }, [ngay, refreshKey])
 
-  const currentDate = new Date(ngay + 'T00:00:00')
-  const ngayFormatted = `${DAYS[currentDate.getDay()]}, ${String(currentDate.getDate()).padStart(2, '0')}/${String(currentDate.getMonth() + 1).padStart(2, '0')}/${currentDate.getFullYear()}`
+  const ngayFormatted = formatDateFull(ngay)
   const isToday = ngay === todayISO()
 
   const changeDay = delta => {
-    const nextDate = new Date(currentDate)
-    nextDate.setDate(nextDate.getDate() + delta)
-    setNgay(nextDate.toISOString().slice(0, 10))
+    setNgay(addDaysISO(ngay, delta))
   }
 
   if (loading) {

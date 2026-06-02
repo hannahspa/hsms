@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { posService } from '../../services/posService'
-import { formatCurrency } from '../../lib/utils'
+import { formatCurrency, todayISO } from '../../lib/utils'
+import { addDurationISO } from '../../lib/dateMath'
 import { calcServiceCommission, getCommissionPercent, getMyspaCommissionRule, serviceSalePrice } from '../../lib/serviceCommission'
+import { getCardComboService, getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
 import { C, FONT } from '../../constants/colors'
 
 const PRIORITY_CATS = [
@@ -116,23 +118,44 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
     })
   }
 
-  const handleAddCard = (the) => {
+  const handleAddCard = async (the) => {
+    const comboService = getCardComboService(the)
+    const displayValue = getTreatmentCardDisplayValue(the)
+    let policy = null
+    try {
+      policy = await posService.getTreatmentCardTourPolicy(the)
+    } catch (_) {}
+
     onAddItem({
       loai_item: 'the_lieu_trinh',
       the_lieu_trinh_id: the.id,
+      dich_vu_id: the.dich_vu_id || comboService?.dich_vu_id || null,
       the_lieu_trinh: {
         ten_dich_vu: the.ten_dich_vu,
         so_buoi_con_lai: the.so_buoi_con_lai,
         so_buoi_tong: the.so_buoi_tong,
         so_buoi_da_dung: the.so_buoi_da_dung,
-        gia_tri_the: the.gia_tri_the,
+        gia_tri_the: displayValue,
+        gia_tri_the_goc: the.gia_tri_the_goc ?? the.gia_tri_the,
+        gia_tri_hien_thi: displayValue,
         ngay_het_han: the.ngay_het_han,
         is_khong_gioi_han: the.is_khong_gioi_han,
+        combo_id: the.combo_id,
+        loai_the: the.loai_the,
+        meta: the.meta || {},
+        combo: the.combo || null,
       },
       don_gia: 0,
       thanh_tien: 0,
-      tien_tour: 0,
+      ti_le_hoa_hong: null,
+      tien_tour: policy?.suggestedTour || 0,
       tien_commission: 0,
+      meta: {
+        treatmentPolicy: policy,
+        displayValue,
+        originalCardValue: the.gia_tri_the_goc ?? the.gia_tri_the,
+        comboService: comboService || null,
+      },
     })
   }
 
@@ -145,11 +168,7 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
     const soLan = primary.khong_gioi_han ? 9999 : (primary.so_lan || 1)
     const gia = combo.gia_ban || 0
     const commission = combo.tien_commission || Math.round(gia * (combo.ti_le_commission || 0) / 100)
-    const end = new Date()
-    if (combo.thoi_han_don_vi === 'month') end.setMonth(end.getMonth() + (combo.thoi_han_so || 1))
-    else if (combo.thoi_han_don_vi === 'day') end.setDate(end.getDate() + (combo.thoi_han_so || 1))
-    else end.setFullYear(end.getFullYear() + (combo.thoi_han_so || 1))
-    const ngayHetHan = end.toISOString().slice(0, 10)
+    const ngayHetHan = addDurationISO(todayISO(), combo.thoi_han_so || 1, combo.thoi_han_don_vi || 'year')
     onAddItem({
       loai_item: 'the_moi',
       dich_vu_id: primary.dich_vu_id || null,

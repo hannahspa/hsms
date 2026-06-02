@@ -149,7 +149,7 @@ function SubLaiLo({ data, loading }) {
     ['Chi phí vận hành', -data.tongChi, 'Chi phí đã nhập vào Sổ Thu Chi', 'bad'],
     ['Lợi nhuận trước nhân sự', data.loiNhuanTamTinh, `Biên tạm tính ${marginBefore}%`, data.loiNhuanTamTinh >= 0 ? 'good' : 'bad'],
     ['Tiền tour nhân viên', -data.tour, 'Tour phát sinh từ dịch vụ đã thực hiện', 'bad'],
-    ['Hoa hồng bán hàng', -data.commission, 'Commission bán thẻ/combo/sản phẩm', 'bad'],
+    ['Hoa hồng bán hàng', -data.commission, 'Hoa hồng bán thẻ/combo/sản phẩm', 'bad'],
     ['Lợi nhuận sau tour/hoa hồng', loiNhuanSauNhanSu, `Biên sau nhân sự ${marginAfter}%`, loiNhuanSauNhanSu >= 0 ? 'good' : 'bad'],
   ]
   return (

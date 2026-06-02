@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { posService } from '../../services/posService'
-import { formatCurrency, todayISO, getNowVN } from '../../lib/utils'
+import { formatCurrency, todayISO } from '../../lib/utils'
+import { addDaysISO, getWeekdayISO } from '../../lib/dateMath'
 import DatePicker from '../../components/shared/DatePicker'
 import I from '../../components/shared/Icons'
 import { HINH_THUC_THU_LABEL } from '../../constants/enums'
@@ -22,10 +23,7 @@ const STATUS_TABS = [
   { key: 'huy',           label: 'Đã bị xóa' },
 ]
 
-const PTTT_LABEL = {
-  ...HINH_THUC_THU_LABEL,
-  the_lieu_trinh: 'Thẻ liệu trình (cũ)',
-}
+const PTTT_LABEL = HINH_THUC_THU_LABEL
 
 const PAGE_SIZE = 50
 
@@ -54,20 +52,28 @@ function fmtDateTime(isoStr, businessDate) {
   } catch { return { date: '', time: '' } }
 }
 
+function displayDate(iso) {
+  return iso ? String(iso).split('-').reverse().join('/') : 'Chọn ngày'
+}
+
 function getYesterdayISO() {
-  const d = getNowVN(); d.setDate(d.getDate() - 1)
-  return d.toISOString().slice(0, 10)
+  return addDaysISO(todayISO(), -1)
 }
+
 function getWeekStartISO() {
-  const d = getNowVN()
-  const day = d.getDay()            // 0=CN, 1=T2...
-  const diff = day === 0 ? 6 : day - 1   // lùi về Thứ Hai
-  d.setDate(d.getDate() - diff)
-  return d.toISOString().slice(0, 10)
+  const today = todayISO()
+  const day = getWeekdayISO(today)            // 0=CN, 1=T2...
+  const diff = day === 0 ? 6 : day - 1        // lùi về Thứ Hai
+  return addDaysISO(today, -diff)
 }
+
 function getMonthStartISO() {
-  const d = getNowVN()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+  const [year, month] = todayISO().split('-')
+  return `${year}-${month}-01`
+}
+
+function paymentMethodLabel(method) {
+  return PTTT_LABEL[method] || 'Dữ liệu cũ cần rà soát'
 }
 
 const DATE_TABS = [
@@ -453,7 +459,7 @@ function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVoid = true }) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {detail.payments.map(p => (
                     <div key={p.id} style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'var(--bg)', border: '1px solid var(--line)', color: 'var(--ink2)', display: 'flex', gap: 6 }}>
-                      <span>{PTTT_LABEL[p.hinh_thuc] || p.hinh_thuc}</span>
+                      <span>{paymentMethodLabel(p.hinh_thuc)}</span>
                       <span style={{ fontWeight: 700, color: 'var(--ink)' }}>{formatCurrency(p.so_tien)}</span>
                     </div>
                   ))}
@@ -497,6 +503,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
   const [dateTab, setDateTab]       = useState('today')  // mặc định Hôm nay → tối ưu load
   const [date, setDate]             = useState(todayISO())
   const [showPicker, setShowPicker] = useState(false)
+  const [rangePicker, setRangePicker] = useState(null)
   const [search, setSearch]         = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [fromDate, setFromDate]     = useState(todayISO())
@@ -694,11 +701,15 @@ export default function PosOrderHistory({ onResumeOrder }) {
           })}
           {dateTab === 'range' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
-              <input type="date" value={fromDate} max={toDate} onChange={e => setFromDate(e.target.value)}
-                style={{ height: 32, border: '1px solid var(--line)', borderRadius: 8, padding: '0 8px', background: '#fff', color: 'var(--ink2)', fontSize: 12.5 }} />
+              <button type="button" onClick={() => setRangePicker('from')}
+                style={{ height: 32, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', background: '#fff', color: 'var(--ink2)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                {displayDate(fromDate)}
+              </button>
               <span style={{ color: 'var(--ink3)' }}>→</span>
-              <input type="date" value={toDate} min={fromDate} onChange={e => setToDate(e.target.value)}
-                style={{ height: 32, border: '1px solid var(--line)', borderRadius: 8, padding: '0 8px', background: '#fff', color: 'var(--ink2)', fontSize: 12.5 }} />
+              <button type="button" onClick={() => setRangePicker('to')}
+                style={{ height: 32, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', background: '#fff', color: 'var(--ink2)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                {displayDate(toDate)}
+              </button>
             </div>
           )}
         </div>
@@ -719,8 +730,12 @@ export default function PosOrderHistory({ onResumeOrder }) {
               <option value="product">Có sản phẩm</option>
               <option value="debt">Có công nợ</option>
             </select>
-            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={{ height: 36, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', background: '#fff', color: 'var(--ink2)' }} />
-            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={{ height: 36, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', background: '#fff', color: 'var(--ink2)' }} />
+            <button type="button" onClick={() => setRangePicker('from')} style={{ height: 36, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', background: '#fff', color: 'var(--ink2)', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+              Từ {displayDate(fromDate)}
+            </button>
+            <button type="button" onClick={() => setRangePicker('to')} style={{ height: 36, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', background: '#fff', color: 'var(--ink2)', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+              Đến {displayDate(toDate)}
+            </button>
             <button className="btn gold" onClick={handleAdvancedSearch} style={{ height: 36, justifyContent: 'center' }}>Lọc</button>
             <button className="btn" onClick={resetAdvancedSearch} style={{ height: 36, justifyContent: 'center' }}>Khôi phục</button>
           </div>
@@ -803,7 +818,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
                 const paidTotal = o.da_thu_tong ?? o.thuc_thu ?? 0
                 const creatorName = o.nguoi_tao_ten || 'HSMS'
                 const paymentText = (o.payments || []).length > 0
-                  ? (o.payments || []).map(p => `${PTTT_LABEL[p.hinh_thuc] || p.hinh_thuc}: ${formatCurrency(p.so_tien)}`).join(' · ')
+                  ? (o.payments || []).map(p => `${paymentMethodLabel(p.hinh_thuc)}: ${formatCurrency(p.so_tien)}`).join(' · ')
                   : 'Không thu tiền'
 
                 return (
@@ -1035,6 +1050,22 @@ export default function PosOrderHistory({ onResumeOrder }) {
         selectedDate={date}
         onClose={() => setShowPicker(false)}
         onConfirm={(iso) => { setDate(iso); setFromDate(iso); setToDate(iso); setDateTab('pick'); setShowPicker(false) }}
+      />
+
+      <DatePicker
+        open={!!rangePicker}
+        selectedDate={rangePicker === 'to' ? toDate : fromDate}
+        onClose={() => setRangePicker(null)}
+        onConfirm={(iso) => {
+          if (rangePicker === 'from') {
+            setFromDate(iso)
+            if (iso > toDate) setToDate(iso)
+          } else {
+            setToDate(iso)
+            if (iso < fromDate) setFromDate(iso)
+          }
+          setRangePicker(null)
+        }}
       />
 
       {}

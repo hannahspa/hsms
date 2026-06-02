@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { formatCurrency, todayISO, formatDateInput } from '../../../lib/utils'
+import { formatCurrency, todayISO, formatDateInput, getNowVN } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
 import I from '../../../components/shared/Icons'
 
@@ -171,6 +171,7 @@ export default function ChotNgayPage({ user, refreshKey }) {
         })
         if (ckError) throw ckError
       }
+      const nowISO = getNowVN().toISOString()
       const payload = {
         ngay,
         trang_thai: 'submitted',
@@ -203,8 +204,8 @@ export default function ChotNgayPage({ user, refreshKey }) {
         so_lenh_tp: data.soLenhTp,
         giai_trinh: giaiTrinh.trim() || null,
         nguoi_chot: user?.ho_ten || user?.email || null,
-        chot_luc: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        chot_luc: nowISO,
+        updated_at: nowISO,
       }
       const { data: saved, error } = await supabase.from('so_thu_chi_chot_ngay').upsert(payload, { onConflict: 'ngay' }).select().single()
       if (error) throw error
@@ -221,9 +222,10 @@ export default function ChotNgayPage({ user, refreshKey }) {
     if (!closeRow || !isAdmin) return
     setSaving(true)
     try {
+      const nowISO = getNowVN().toISOString()
       const { data: saved, error } = await supabase
         .from('so_thu_chi_chot_ngay')
-        .update({ trang_thai: status, approved_by: user?.ho_ten || user?.email || null, approved_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .update({ trang_thai: status, approved_by: user?.ho_ten || user?.email || null, approved_at: nowISO, updated_at: nowISO })
         .eq('id', closeRow.id)
         .select()
         .single()

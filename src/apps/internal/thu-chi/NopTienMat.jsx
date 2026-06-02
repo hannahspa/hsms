@@ -21,10 +21,6 @@ export default function NopTienMat({ ngay, user, onDone }) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const yesterday = new Date(ngay)
-      yesterday.setDate(yesterday.getDate() - 1)
-      const yesterdayISO = yesterday.toISOString().slice(0, 10)
-
       const [rVi, rDTAll, rCPAll, rCPNullAll, rCKAll, rDTToday, rCPToday, rCPNullToday, rCKToday] = await Promise.all([
         supabase.from('so_du_vi_thuc_te').select('id,ten,loai').order('thu_tu'),
         // Luỹ kế DT tiền mặt đến hôm nay

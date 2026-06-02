@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
@@ -6,6 +7,22 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  const fetchProfile = useCallback(async (authUser) => {
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).single()
+      if (error || !data) {
+        setUser(null)
+      } else {
+        setUser(data)
+      }
+    } catch (e) {
+      console.error('Error fetching profile:', e.message)
+      setUser(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -26,23 +43,7 @@ export function AuthProvider({ children }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
-
-  const fetchProfile = async (authUser) => {
-    try {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).single()
-      if (error || !data) {
-        setUser(null)
-      } else {
-        setUser(data)
-      }
-    } catch (e) {
-      console.error('Error fetching profile:', e.message)
-      setUser(null)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [fetchProfile])
 
   const login = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
