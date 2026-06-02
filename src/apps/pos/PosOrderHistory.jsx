@@ -535,6 +535,37 @@ export default function PosOrderHistory({ onResumeOrder }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading]       = useState(false)
   const [detailOrder, setDetailOrder] = useState(null)
+  const [printingId, setPrintingId] = useState(null)
+
+  // In nhanh từ bảng — load chi tiết đơn rồi in ngay, không cần mở panel
+  const handleQuickPrint = async (o) => {
+    if (printingId) return
+    setPrintingId(o.id)
+    try {
+      const [items, payments, snap] = await Promise.all([
+        posService.getLineItems(o.id),
+        posService.getPayments(o.id),
+        posService.getCustomerSnapshot(o.khach_hang_id),
+      ])
+      printReceipt({
+        order: o,
+        items: items.map(it => ({
+          ten: orderItemName(it),
+          so_luong: it.so_luong,
+          don_gia: it.don_gia,
+          thanh_tien: it.thanh_tien,
+          staffName: itemStaffName(it),
+        })),
+        payments,
+        customer: snap?.customer || o.khach_hang,
+        thuNgan: o.nguoi_tao_ten || '',
+      })
+    } catch (err) {
+      alert('Lỗi khi in hóa đơn: ' + (err?.message || err))
+    } finally {
+      setPrintingId(null)
+    }
+  }
 
   // Tính khoảng ngày theo tab — mặc định Hôm nay để không load toàn bộ
   const computeRange = useCallback(() => {
@@ -1003,13 +1034,14 @@ export default function PosOrderHistory({ onResumeOrder }) {
 
                         {}
                         <button
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); handleQuickPrint(o) }}
+                          disabled={printingId === o.id}
                           title="In hoá đơn"
                           style={{
                             width: 28, height: 28, borderRadius: 6, border: 'none',
                             background: 'rgba(52,131,208,.12)', color: '#1a5276',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            opacity: 0.55,
+                            cursor: printingId === o.id ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            opacity: printingId === o.id ? 0.5 : 1,
                           }}>
                           <I.FileText style={{ width: 13, height: 13 }} />
                         </button>
