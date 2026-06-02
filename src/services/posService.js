@@ -550,6 +550,16 @@ export const posService = {
     return data
   },
 
+  async removePayments(paymentIds = []) {
+    const ids = paymentIds.filter(Boolean)
+    if (ids.length === 0) return
+    const { error } = await supabase
+      .from('thanh_toan')
+      .delete()
+      .in('id', ids)
+    if (error) throw error
+  },
+
   async getPayments(orderId) {
     const { data, error } = await supabase
       .from('thanh_toan')

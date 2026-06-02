@@ -424,7 +424,8 @@ function PosCreateOrder({ resumeOrderId }) {
     try {
       const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: selectedCustomer?.id || null })
       const oid = order.id
-      const inserted = await Promise.all(lineItems.map(item => posService.addLineItem(oid, {
+      const preparedItems = await prepareLineItemsForCheckout(null, lineItems)
+      const inserted = await Promise.all(preparedItems.map(item => posService.addLineItem(oid, {
         loai_item:         item.loai_item,
         dich_vu_id:        item.dich_vu_id        || null,
         san_pham_id:       item.san_pham_id        || null,
@@ -441,7 +442,7 @@ function PosCreateOrder({ resumeOrderId }) {
       })))
       setSavedOrderId(oid)
       // Gán DB id cho mỗi item (dùng làm _lid từ đây trở đi)
-      setLineItems(lineItems.map((item, i) => ({ ...item, ...inserted[i], _lid: inserted[i].id })))
+      setLineItems(preparedItems.map((item, i) => ({ ...item, ...inserted[i], _lid: inserted[i].id })))
       window.location.href = '/pos/danh-sach'
     } catch (err) { alert('Lỗi lưu đơn: ' + err.message) }
     finally { setLoading(false) }
@@ -524,15 +525,17 @@ function PosCreateOrder({ resumeOrderId }) {
       alert('Đơn có mua thẻ liệu trình — vui lòng chọn khách hàng để lưu thẻ.')
       return
     }
+    let insertedPaymentIds = []
     setLoading(true)
     try {
       let oid = savedOrderId
+      let preparedItems = await prepareLineItemsForCheckout(oid, lineItems)
 
       if (!oid) {
         // Chưa lưu nháp → tạo order + items ngay
         const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: selectedCustomer?.id || null })
         oid = order.id
-        await Promise.all(lineItems.map(item => posService.addLineItem(oid, {
+        const insertedItems = await Promise.all(preparedItems.map(item => posService.addLineItem(oid, {
           loai_item:         item.loai_item,
           dich_vu_id:        item.dich_vu_id        || null,
           san_pham_id:       item.san_pham_id        || null,
@@ -547,13 +550,21 @@ function PosCreateOrder({ resumeOrderId }) {
           ghi_chu:           item.ghi_chu || '',
           meta:              item.meta || undefined,
         })))
+        preparedItems = preparedItems.map((item, index) => ({ ...item, ...insertedItems[index], _lid: insertedItems[index].id }))
+        setSavedOrderId(oid)
+        setLineItems(preparedItems)
         paymentsInserted.current = false  // order mới → chưa có payments
       }
 
       // Insert payments — chỉ khi chưa insert (tránh duplicate khi retry sau CHUA_DU_BUOI)
+      if (!paymentsInserted.current) {
+        const oldPayments = await posService.getPayments(oid)
+        await posService.removePayments(oldPayments.map(payment => payment.id))
+      }
       if (tongCuoi > 0 && !paymentsInserted.current) {
         for (const p of validPayments) {
-          await posService.addPayment(oid, { hinhThuc: p.hinhThuc, soTien: p.soTien, ghiChu: ghiChuDon })
+          const payment = await posService.addPayment(oid, { hinhThuc: p.hinhThuc, soTien: p.soTien, ghiChu: ghiChuDon })
+          insertedPaymentIds.push(payment.id)
         }
         paymentsInserted.current = true
       }
@@ -581,7 +592,7 @@ function PosCreateOrder({ resumeOrderId }) {
         return  // dừng, chờ KH thanh toán
       }
 
-      const comboItems = lineItems.filter(i => i.loai_item === 'the_moi' && i.meta?.loai === 'combo_lieu_trinh')
+      const comboItems = preparedItems.filter(i => i.loai_item === 'the_moi' && i.meta?.loai === 'combo_lieu_trinh')
       if (comboItems.length > 0) {
         await posService.markCreatedComboCards(oid, comboItems)
       }
@@ -592,7 +603,15 @@ function PosCreateOrder({ resumeOrderId }) {
       resetCreateForm()
       const stats = await posService.getTodayStats()
       setTodayStats(stats)
-    } catch (err) { alert('Lỗi thanh toán: ' + err.message) }
+    } catch (err) {
+      if (insertedPaymentIds.length > 0) {
+        try {
+          await posService.removePayments(insertedPaymentIds)
+          paymentsInserted.current = false
+        } catch (_) {}
+      }
+      alert('Lỗi thanh toán: ' + err.message)
+    }
     finally { setLoading(false) }
   }
 
@@ -642,6 +661,69 @@ function PosCreateOrder({ resumeOrderId }) {
     if (viTri === 'le_tan') return 3
     if (orderKmRefPct >= 30) return 5
     return coLtInStaff ? 7 : 10
+  }
+
+  const getPrimarySaleStaff = () => {
+    const ktv = orderStaff.find(row => row.nv?.vi_tri === 'ktv')
+    const leTan = orderStaff.find(row => row.nv?.vi_tri === 'le_tan')
+    return {
+      ktv: ktv || null,
+      leTan: leTan || null,
+      primary: ktv || leTan || null,
+    }
+  }
+
+  const buildSaleStaffMeta = (item) => {
+    if (item.loai_item !== 'the_moi') return item
+    const { ktv, leTan, primary } = getPrimarySaleStaff()
+    const currentMeta = item.meta || {}
+    const staffId = currentMeta.nhanVienBanId || item.nhan_vien_id || primary?.nv?.id || null
+    const staffPct = Number(item.ti_le_hoa_hong || ktv?.pct || leTan?.pct || primary?.pct || 0)
+    const nextMeta = {
+      ...currentMeta,
+      nhanVienBanId: staffId,
+      nhanVienTuVanLtId: currentMeta.nhanVienTuVanLtId || leTan?.nv?.id || null,
+      tiLeCommKtv: Number(currentMeta.tiLeCommKtv || ktv?.pct || (primary?.nv?.vi_tri === 'ktv' ? primary.pct : 0) || 0),
+      tiLeCommLt: Number(currentMeta.tiLeCommLt || leTan?.pct || (primary?.nv?.vi_tri === 'le_tan' ? primary.pct : 0) || 0),
+    }
+    return {
+      ...item,
+      nhan_vien_id: staffId,
+      nhan_vien: item.nhan_vien || primary?.nv || null,
+      ti_le_hoa_hong: staffPct || null,
+      tien_tour: 0,
+      tien_commission: item.tien_commission || Math.round((item.thanh_tien || 0) * staffPct / 100),
+      meta: nextMeta,
+    }
+  }
+
+  const prepareLineItemsForCheckout = async (oid, items) => {
+    const prepared = items.map(buildSaleStaffMeta)
+    const missingSaleStaff = prepared.find(item => item.loai_item === 'the_moi' && !item.meta?.nhanVienBanId && !item.nhan_vien_id)
+    if (missingSaleStaff) {
+      throw new Error('Vui lòng chọn nhân viên bán thẻ liệu trình trước khi thanh toán.')
+    }
+
+    if (oid) {
+      await Promise.all(prepared
+        .filter(item => item.id && item.loai_item === 'the_moi')
+        .map(async item => {
+          const { error } = await supabase
+            .from('don_hang_chi_tiet')
+            .update({
+              nhan_vien_id: item.nhan_vien_id || null,
+              ti_le_hoa_hong: item.ti_le_hoa_hong || null,
+              tien_tour: 0,
+              tien_commission: item.tien_commission || 0,
+              meta: item.meta || {},
+            })
+            .eq('id', item.id)
+          if (error) throw error
+        }))
+    }
+
+    setLineItems(prepared)
+    return prepared
   }
 
   const canConfirm = lineItems.length > 0 && !!selectedCustomer?.id && !isOverPaid && (
