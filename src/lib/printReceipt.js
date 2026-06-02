@@ -76,6 +76,8 @@ export function printReceipt({ order, items = [], payments = [], customer = null
     table { width: 100%; border-collapse: collapse; }
     td { vertical-align: top; padding: 1px 0; }
     .l { text-align: left; } .c { text-align: center; } .r { text-align: right; }
+    .c, .r { padding-left: 6px; white-space: nowrap; }
+    thead td.l { width: 50%; }
     thead td { font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 3px; }
     tr.item td { padding-top: 4px; }
     tr.sub td { font-size: 10.5px; color: #222; padding-bottom: 3px; }

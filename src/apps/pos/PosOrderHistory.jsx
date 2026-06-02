@@ -6,6 +6,7 @@ import DatePicker from '../../components/shared/DatePicker'
 import I from '../../components/shared/Icons'
 import { HINH_THUC_THU_LABEL } from '../../constants/enums'
 import { useAuth } from '../../context/AuthContext'
+import { printReceipt } from '../../lib/printReceipt'
 
 // Constants
 const STATUS_MAP = {
@@ -185,6 +186,22 @@ function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVoid = true }) {
   const usedCards = detail.items.filter(i => i.loai_item === 'the_lieu_trinh')
   const productItems = detail.items.filter(i => i.loai_item === 'san_pham')
   const serviceItems = detail.items.filter(i => i.loai_item === 'dich_vu')
+
+  const handlePrint = () => {
+    printReceipt({
+      order,
+      items: detail.items.map(it => ({
+        ten: orderItemName(it),
+        so_luong: it.so_luong,
+        don_gia: it.don_gia,
+        thanh_tien: it.thanh_tien,
+        staffName: itemStaffName(it),
+      })),
+      payments: detail.payments,
+      customer,
+      thuNgan: order.nguoi_tao_ten || '',
+    })
+  }
 
   return (
     <>
@@ -482,6 +499,9 @@ function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVoid = true }) {
             </span>
           )}
           <div style={{ flex: 1 }} />
+          <button onClick={handlePrint} disabled={loading} style={{ padding: '0 16px', height: 40, border: '1px solid rgba(201,169,110,.5)', borderRadius: 8, background: 'rgba(201,169,110,.18)', color: '#f3d9a8', fontSize: 12.5, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--sans)', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: loading ? 0.6 : 1 }}>
+            🖨 In hóa đơn
+          </button>
           <button onClick={onClose} style={{ padding: '0 16px', height: 40, border: '1px solid rgba(243,230,210,.2)', borderRadius: 8, background: 'rgba(255,255,255,.08)', color: 'rgba(243,230,210,.7)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
             Đóng
           </button>
