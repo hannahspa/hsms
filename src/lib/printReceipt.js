@@ -82,8 +82,9 @@ export function printReceipt({ order, items = [], payments = [], customer = null
     tr.sub td { font-size: 11px; color: #000; font-weight: 500; padding-bottom: 2px; }
     .tot td { font-weight: 800; font-size: 13.5px; }
     .info td { padding: 1px 0; }
-    .sign { display: flex; justify-content: space-between; margin-top: 14px; font-size: 11px; }
-    .sign div { text-align: center; width: 48%; }
+    .sign { display: flex; justify-content: space-between; margin-top: 10px; font-size: 11px; }
+    .sign div { text-align: center; width: 48%; padding-top: 36px; }
+    .note { font-size: 10.5px; color: #222; margin-top: 4px; line-height: 1.32; }
   </style></head>
   <body>
     <div class="center">
@@ -130,10 +131,11 @@ export function printReceipt({ order, items = [], payments = [], customer = null
 
     <div class="hr"></div>
     <div class="sign">
-      <div>Chữ ký KH</div>
+      <div>Chữ ký khách hàng</div>
       <div>Thu ngân<br>${esc(thuNgan || '')}</div>
     </div>
-    <div class="center small" style="margin-top:10px">Cảm ơn quý khách & hẹn gặp lại!</div>
+    <div class="center small b" style="margin-top:12px">Cảm ơn quý khách & hẹn gặp lại!</div>
+    <div class="center note">Quý khách chưa hài lòng về dịch vụ, vui lòng liên hệ hotline ${esc(spa.dienThoai)} để Hannah phục vụ tốt hơn.</div>
   </body></html>`
 
   // In qua iframe ẩn (không bị popup blocker)
