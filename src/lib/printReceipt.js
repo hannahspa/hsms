@@ -63,9 +63,9 @@ export function printReceipt({ order, items = [], payments = [], customer = null
 
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Hóa đơn ${esc(order?.ma_don || '')}</title>
   <style>
-    @page { size: 80mm auto; margin: 0; }
+    @page { size: 76mm auto; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { width: 80mm; padding: 4mm 3mm; font-family: 'Courier New', monospace; color: #000; font-size: 12px; line-height: 1.4; }
+    body { width: 72mm; margin: 0 auto; padding: 3mm 2mm; font-family: 'Courier New', monospace; color: #000; font-size: 12px; line-height: 1.4; }
     .center { text-align: center; }
     .b { font-weight: 700; }
     .logo { width: 42px; height: 42px; object-fit: contain; margin: 0 auto 4px; display: block; filter: grayscale(1) contrast(1.2); }
@@ -76,9 +76,14 @@ export function printReceipt({ order, items = [], payments = [], customer = null
     table { width: 100%; border-collapse: collapse; }
     td { vertical-align: top; padding: 1px 0; }
     .l { text-align: left; } .c { text-align: center; } .r { text-align: right; }
-    .c, .r { padding-left: 6px; white-space: nowrap; }
-    thead td.l { width: 50%; }
-    thead td { font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 3px; }
+    /* Bảng dịch vụ — cố định độ rộng cột để phân bố đều */
+    table.items { table-layout: fixed; }
+    table.items .l { word-break: break-word; padding-right: 4px; }
+    table.items td.c, table.items td.r { padding-left: 5px; }
+    table.items thead td { font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 3px; }
+    /* Bảng 2 cột (tổng tiền, thanh toán) — nhãn trái, số phải */
+    table.kv td.l { width: 64%; }
+    table.kv td.r { width: 36%; white-space: nowrap; }
     tr.item td { padding-top: 4px; }
     tr.sub td { font-size: 10.5px; color: #222; padding-bottom: 3px; }
     .tot td { font-weight: 700; font-size: 13px; }
@@ -106,13 +111,14 @@ export function printReceipt({ order, items = [], payments = [], customer = null
     </table>
 
     <div class="hr"></div>
-    <table>
+    <table class="items">
+      <colgroup><col style="width:44%"><col style="width:10%"><col style="width:22%"><col style="width:24%"></colgroup>
       <thead><tr><td class="l">DV/SP</td><td class="c">SL</td><td class="r">Giảm</td><td class="r">Thành tiền</td></tr></thead>
       <tbody>${itemsRows}</tbody>
     </table>
 
     <div class="hr"></div>
-    <table>
+    <table class="kv">
       <tr><td class="l">Tạm tính</td><td class="r">${fmt(tamTinh)}</td></tr>
       <tr><td class="l">Giảm giá dịch vụ (-${giamPct}%)</td><td class="r">${giamGia > 0 ? '-' + fmt(giamGia) : '0'}</td></tr>
       <tr><td class="l">VAT</td><td class="r">${vat > 0 ? fmt(vat) : '0'}</td></tr>
@@ -120,7 +126,7 @@ export function printReceipt({ order, items = [], payments = [], customer = null
     </table>
 
     <div class="hr"></div>
-    <table>
+    <table class="kv">
       <tr><td class="l b">Phương thức thanh toán</td><td></td></tr>
       ${payRows || '<tr><td class="l">Chưa thanh toán</td><td class="r">0</td></tr>'}
       <tr class="tot"><td class="l">Còn lại</td><td class="r">${fmt(conLai)}</td></tr>
@@ -130,7 +136,8 @@ export function printReceipt({ order, items = [], payments = [], customer = null
 
     ${payments.length ? `<div class="hr"></div>
     <div class="small b">Lịch sử thanh toán</div>
-    <table class="small">
+    <table class="items small">
+      <colgroup><col style="width:38%"><col style="width:30%"><col style="width:18%"><col style="width:14%"></colgroup>
       <thead><tr><td class="l">Mã / Thời gian</td><td class="l">PTTT</td><td class="r">Thanh toán</td><td class="r">Còn</td></tr></thead>
       <tbody>${histRows}</tbody>
     </table>` : ''}
