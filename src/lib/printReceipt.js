@@ -63,15 +63,15 @@ export function printReceipt({ order, items = [], payments = [], customer = null
 
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Hóa đơn ${esc(order?.ma_don || '')}</title>
   <style>
-    @page { size: 76mm auto; margin: 0; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { width: 72mm; margin: 0 auto; padding: 3mm 2mm; font-family: 'Courier New', monospace; color: #000; font-size: 12px; line-height: 1.4; }
+    @page { size: 80mm auto; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { width: 100%; padding: 3mm 3mm; font-family: Arial, 'Segoe UI', Roboto, sans-serif; color: #000; font-size: 12.5px; line-height: 1.45; font-weight: 600; }
     .center { text-align: center; }
-    .b { font-weight: 700; }
-    .logo { width: 42px; height: 42px; object-fit: contain; margin: 0 auto 4px; display: block; filter: grayscale(1) contrast(1.2); }
-    .spa-name { font-size: 14px; font-weight: 700; }
-    .small { font-size: 11px; }
-    .title { font-size: 15px; font-weight: 700; margin: 7px 0 3px; }
+    .b { font-weight: 800; }
+    .logo { width: 44px; height: 44px; object-fit: contain; margin: 0 auto 4px; display: block; filter: grayscale(1) contrast(1.5); }
+    .spa-name { font-size: 15px; font-weight: 800; }
+    .small { font-size: 11.5px; }
+    .title { font-size: 16px; font-weight: 800; margin: 7px 0 3px; }
     .hr { border-top: 1px dashed #000; margin: 6px 0; }
     table { width: 100%; border-collapse: collapse; }
     td { vertical-align: top; padding: 1px 0; }
@@ -80,13 +80,13 @@ export function printReceipt({ order, items = [], payments = [], customer = null
     table.items { table-layout: fixed; }
     table.items .l { word-break: break-word; padding-right: 4px; }
     table.items td.c, table.items td.r { padding-left: 5px; }
-    table.items thead td { font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 3px; }
+    table.items thead td { font-weight: 800; border-bottom: 1px solid #000; padding-bottom: 3px; }
     /* Bảng 2 cột (tổng tiền, thanh toán) — nhãn trái, số phải */
     table.kv td.l { width: 64%; }
     table.kv td.r { width: 36%; white-space: nowrap; }
     tr.item td { padding-top: 4px; }
-    tr.sub td { font-size: 10.5px; color: #222; padding-bottom: 3px; }
-    .tot td { font-weight: 700; font-size: 13px; }
+    tr.sub td { font-size: 11px; color: #000; font-weight: 500; padding-bottom: 3px; }
+    .tot td { font-weight: 800; font-size: 13.5px; }
     .info td { padding: 1px 0; }
     .sign { display: flex; justify-content: space-between; margin-top: 18px; font-size: 11px; }
     .sign div { text-align: center; width: 48%; }
