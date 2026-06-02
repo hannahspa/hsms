@@ -36,6 +36,19 @@ dist-ssr
 # Supabase temp
 supabase/.temp/
 
+# Local audit/test artifacts
+reports/
+lech_TLT_chi_tiet.txt
+verify_TLT_report.txt
+scripts/*.png
+scripts/*.txt
+scripts/*.csv
+scripts/backup_*.json
+scripts/ks*.*
+scripts/pos*.*
+scripts/ui_*.*
+scripts/myspa_*.*
+
 # Ảnh gốc chưa tối ưu (dùng gallery-opt thay thế)
 public/images/gallery/
 
