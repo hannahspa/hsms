@@ -4,7 +4,7 @@
 
 const SPA = {
   ten: 'Hannah Beauty & Spa',
-  diaChi: '39 Nam Kỳ Khởi Nghĩa, Ninh Kiều, TP. Cần Thơ',
+  diaChi: '39 Nam Kỳ Khởi Nghĩa, Ninh Kiều, Cần Thơ',
   dienThoai: '0379080909',
   website: 'hannahspa.vn',
   logo: '/logo.png',
