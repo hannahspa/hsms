@@ -20,6 +20,8 @@ const PTTT_LABEL = {
 
 const fmt = n => new Intl.NumberFormat('vi-VN').format(Math.round(n || 0))
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+// Rút gọn tên còn 2 chữ cuối: "Trương Thị Bé Thôn" → "Bé Thôn"
+const shortName = s => String(s || '').trim().split(/\s+/).slice(-2).join(' ')
 function dt(iso) {
   if (!iso) return ''
   try { return new Date(iso).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }) } catch { return '' }
@@ -39,7 +41,7 @@ export function printReceipt({ order, items = [], payments = [], customer = null
     const ten = it.ten || it.dich_vu?.ten || it.san_pham?.ten || it.the_lieu_trinh?.ten_dich_vu || it.meta?.tenDichVu || 'Dịch vụ'
     const sl = it.so_luong || 1
     const disc = Math.max(0, (it.don_gia || 0) * sl - (it.thanh_tien || 0))
-    const nvth = it.staffName || it.nhan_vien?.ho_ten || ''
+    const nvth = shortName(it.staffName || it.nhan_vien?.ho_ten || '')
     return `
       <tr class="item">
         <td class="l">${esc(ten)}</td>
@@ -72,7 +74,7 @@ export function printReceipt({ order, items = [], payments = [], customer = null
     table.items { table-layout: fixed; }
     table.items .l { word-break: break-word; padding-right: 4px; }
     table.items td.c, table.items td.r { padding-left: 5px; }
-    table.items thead td { font-weight: 800; border-bottom: 1px solid #000; padding-bottom: 3px; }
+    table.items thead td { font-weight: 800; border-bottom: 1px solid #000; padding-bottom: 3px; font-size: 11px; white-space: nowrap; }
     /* Bảng 2 cột (tổng tiền, thanh toán) — nhãn trái, số phải */
     table.kv td.l { width: 64%; }
     table.kv td.r { width: 36%; white-space: nowrap; }
@@ -91,7 +93,8 @@ export function printReceipt({ order, items = [], payments = [], customer = null
       <div class="small">Website: ${esc(spa.website)}</div>
       <div class="title">HÓA ĐƠN BÁN HÀNG</div>
       <div class="small">Ngày in: ${dt(new Date().toISOString())}</div>
-      <div class="small">Mã ĐH: ${esc(order?.ma_don || '')} — Ngày: ${dt(order?.created_at)}</div>
+      <div class="small">Ngày Làm Dịch Vụ: ${dt(order?.created_at)}</div>
+      <div class="small">Mã ĐH: ${esc(order?.ma_don || '')}</div>
     </div>
 
     <div class="hr"></div>
@@ -103,7 +106,7 @@ export function printReceipt({ order, items = [], payments = [], customer = null
 
     <div class="hr"></div>
     <table class="items">
-      <colgroup><col style="width:44%"><col style="width:10%"><col style="width:22%"><col style="width:24%"></colgroup>
+      <colgroup><col style="width:41%"><col style="width:9%"><col style="width:20%"><col style="width:30%"></colgroup>
       <thead><tr><td class="l">DV/SP</td><td class="c">SL</td><td class="r">Giảm</td><td class="r">Thành tiền</td></tr></thead>
       <tbody>${itemsRows}</tbody>
     </table>
