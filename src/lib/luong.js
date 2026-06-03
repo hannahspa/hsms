@@ -125,17 +125,15 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   const offT7List   = allOff.filter(o => o.loai === 'off_t7')
   const offT7XList  = allOff.filter(o => o.loai === 'off_t7x')
 
-  // Gộp OFF phép (đã ghi) + ngày không check-in → sắp theo ngày.
-  // gioiHanOff ngày ĐẦU = phép CÓ LƯƠNG; ngày VƯỢT: rơi T7/CN trừ ×2, ngày thường ×1.
+  // Gộp OFF phép (đã ghi) + ngày không check-in.
+  // QUY TẮC: mỗi ngày OFF tính theo TRỌNG SỐ — T7/CN ×2, ngày thường ×1 (kể cả
+  // trong hạn). Hạn = gioiHanOff ĐƠN VỊ. Đơn vị trong hạn = có lương; vượt = trừ.
   const phepPoolDates = [...offPhepList.map(o => o.ngay), ...noShowDates].sort()
-  const soOffCoLuong   = Math.min(gioiHanOff, phepPoolDates.length)
-  const excessPhepDates = phepPoolDates.slice(gioiHanOff)
-  let truVuotPhep = 0, soVuotCuoiTuan = 0
-  excessPhepDates.forEach(ds => {
-    const dow = getDayOfWeek(ds)  // 0=CN, 6=T7
-    if (dow === 0 || dow === 6) { truVuotPhep += 2; soVuotCuoiTuan++ } else truVuotPhep += 1
-  })
-  const soOffPhepVuot = excessPhepDates.length  // số NGÀY vượt (hiển thị)
+  const wOf = (ds) => { const dow = getDayOfWeek(ds); return (dow === 0 || dow === 6) ? 2 : 1 }
+  const phepWeight   = phepPoolDates.reduce((s, ds) => s + wOf(ds), 0)
+  const soOffCoLuong = Math.min(gioiHanOff, phepWeight)        // đơn vị off có lương
+  const truVuotPhep  = Math.max(0, phepWeight - gioiHanOff)    // đơn vị off bị trừ lương
+  const soOffPhepVuot = truVuotPhep                            // hiển thị
 
   const soNgayLeDungThangNay = quyNgayOff?.so_dung_thang_nay || 0
 
