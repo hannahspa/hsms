@@ -13,6 +13,7 @@ import CartLine from './components/CartLine'
 import DebtPaymentModal from './components/DebtPaymentModal'
 import PaymentLines from './components/PaymentLines'
 import StaffCommissionPanel from './components/StaffCommissionPanel'
+import DatePicker from '../../components/shared/DatePicker'
 import { parseVND, fmtDate, getInitials, LieuTrinhCard } from './posShared'
 import { HINH_THUC_THU } from '../../constants/enums'
 import { C, FONT } from '../../constants/colors'
@@ -26,6 +27,14 @@ function PosCreateOrder({ resumeOrderId }) {
   // Order — local khi chưa lưu, DB mode khi đã lưu/resume
   const [lineItems, setLineItems]       = useState([])
   const [savedOrderId, setSavedOrderId] = useState(null)  // null = local, uuid = đã lưu DB
+
+  // Ngày + giờ tạo đơn (sửa được) — mặc định hiện tại, load từ đơn khi resume
+  const [orderNgay, setOrderNgay] = useState(() => todayISO())
+  const [orderGio, setOrderGio]   = useState(() => {
+    const n = getNowVN()
+    return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`
+  })
+  const [showOrderDate, setShowOrderDate] = useState(false)
 
   // Customer
   const [isGuest, setIsGuest]           = useState(true)
@@ -91,6 +100,12 @@ function PosCreateOrder({ resumeOrderId }) {
         setSelectedCustomer({ id: order.khach_hang_id, ho_ten: order.khach_hang.ho_ten, so_dien_thoai: order.khach_hang.so_dien_thoai })
         setCustSearch(order.khach_hang.ho_ten)
         setIsGuest(false)
+      }
+      // Ngày + giờ của đơn (cho sửa)
+      if (order.ngay) setOrderNgay(order.ngay)
+      if (order.created_at) {
+        const vn = new Date(new Date(order.created_at).toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+        setOrderGio(`${String(vn.getHours()).padStart(2, '0')}:${String(vn.getMinutes()).padStart(2, '0')}`)
       }
       // items từ DB dùng id làm _lid để handlers nhất quán
       setLineItems((items || []).map(i => ({ ...i, _lid: i.id })))
@@ -360,6 +375,10 @@ function PosCreateOrder({ resumeOrderId }) {
     setGhiChuDon('')
     setOrderStaff([])
     paymentsInserted.current = false
+    // reset ngày/giờ về hiện tại cho đơn mới
+    const n = getNowVN()
+    setOrderNgay(todayISO())
+    setOrderGio(`${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`)
     clearCustomer()
   }
 
@@ -573,6 +592,13 @@ function PosCreateOrder({ resumeOrderId }) {
         }
       }
       paymentsInserted.current = true
+
+      // Cập nhật ngày + giờ tạo đơn (admin/lễ tân sửa được) — TRƯỚC finalize để doanh_thu dùng đúng ngày
+      try {
+        await supabase.from('don_hang')
+          .update({ ngay: orderNgay, created_at: `${orderNgay}T${(orderGio || '00:00')}:00+07:00` })
+          .eq('id', oid)
+      } catch (_) {}
 
       // 4. Finalize — RPC xử lý kho, thẻ LT dùng, thẻ mới, công nợ, doanh_thu
       const result = await posService.finalizeOrder(oid, { giamGia: giamDVAmt, vat: vatAmt, conNo, ghiChu: ghiChuDon })
@@ -1000,7 +1026,15 @@ function PosCreateOrder({ resumeOrderId }) {
                 <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 650 }}>Khách lẻ</div>
               )}
             </div>
-            <div style={{ fontSize: 11.5, color: 'var(--ink3)', whiteSpace: 'nowrap', flexShrink: 0 }}>{dateStr}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              <button onClick={() => setShowOrderDate(true)} title="Sửa ngày tạo đơn"
+                style={{ fontSize: 11.5, color: 'var(--ink2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'var(--sans)', fontWeight: 600 }}>
+                📅 {orderNgay.split('-').reverse().join('/')}
+              </button>
+              <input type="time" value={orderGio} onChange={e => setOrderGio(e.target.value)} title="Sửa giờ tạo đơn"
+                style={{ fontSize: 11.5, color: 'var(--ink2)', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, padding: '2px 6px', outline: 'none', fontFamily: 'var(--sans)', fontWeight: 600 }} />
+              <DatePicker open={showOrderDate} selectedDate={orderNgay} onClose={() => setShowOrderDate(false)} onConfirm={v => { setOrderNgay(v); setShowOrderDate(false) }} />
+            </div>
           </div>
 
           {/* Cart header */}
