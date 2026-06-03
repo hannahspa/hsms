@@ -689,6 +689,24 @@ export const posService = {
     return data
   },
 
+  // Admin: mở lại đơn để sửa (đảo ngược tác động → draft, giữ dòng hàng). Migration 071.
+  async reopenOrder(orderId) {
+    const { data, error } = await supabase
+      .rpc('pos_reopen_order', { p_don_hang_id: orderId })
+    if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Không thể mở lại đơn')
+    return data
+  },
+
+  // Admin: xóa vĩnh viễn đơn đã hủy. Migration 071.
+  async hardDeleteOrder(orderId) {
+    const { data, error } = await supabase
+      .rpc('pos_hard_delete_order', { p_don_hang_id: orderId })
+    if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Không thể xóa đơn')
+    return data
+  },
+
   // ═══════════════════════════════════════════════════
   // CATALOG — DỊCH VỤ & SẢN PHẨM
   // ═══════════════════════════════════════════════════

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { posService } from '../../services/posService'
 import { formatCurrency } from '../../lib/utils'
 import { printReceipt } from '../../lib/printReceipt'
@@ -15,10 +16,33 @@ const PTTT_OPTIONS = [
   { value: 'the_tra_truoc', label: 'Thẻ Trả Trước' },
 ]
 
-export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVoid = true, isAdmin = false }) {
+export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDeleted, canVoid = true, isAdmin = false }) {
   const [detail, setDetail] = useState({ items: [], payments: [], ledger: [], customerSnapshot: null })
   const [loading, setLoading] = useState(true)
   const [savingPttt, setSavingPttt] = useState(null)   // id payment đang đổi PTTT
+  const [busy, setBusy] = useState(false)
+
+  // Admin: mở lại đơn đã chốt để sửa (đảo ngược tác động → draft → resume)
+  const handleReopen = async () => {
+    if (!window.confirm('Mở lại đơn này để sửa?\nDoanh thu, thẻ, hoa hồng, kho của đơn sẽ được hoàn lại; đơn về trạng thái nháp để chỉnh rồi chốt lại.')) return
+    setBusy(true)
+    try {
+      await posService.reopenOrder(order.id)
+      onClose()
+      onEdit?.(order)   // → /pos?resume=order.id
+    } catch (e) { alert('Lỗi mở lại đơn: ' + e.message); setBusy(false) }
+  }
+
+  // Admin: xóa vĩnh viễn đơn đã hủy
+  const handleHardDelete = async () => {
+    if (!window.confirm('Xóa VĨNH VIỄN đơn đã hủy này?\nThao tác KHÔNG thể hoàn tác.')) return
+    setBusy(true)
+    try {
+      await posService.hardDeleteOrder(order.id)
+      onClose()
+      onDeleted?.()
+    } catch (e) { alert('Lỗi xóa đơn: ' + e.message); setBusy(false) }
+  }
 
   const reloadDetail = () => {
     setLoading(true)
@@ -73,7 +97,7 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVo
     })
   }
 
-  return (
+  return createPortal(
     <>
       <style>{`@keyframes slideInRight { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.32)', zIndex: 490 }} />
@@ -347,11 +371,23 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVo
         {}
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', flexShrink: 0, display: 'flex', gap: 8, background: '#fafaf9' }}>
           {order.trang_thai !== 'huy' && canVoid && (
-            <button onClick={onVoid} style={{ padding: '0 14px', height: 40, border: '1px solid rgba(192,57,43,.35)', borderRadius: 8, background: 'rgba(192,57,43,.06)', color: '#C0392B', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+            <button onClick={onVoid} disabled={busy} style={{ padding: '0 14px', height: 40, border: '1px solid rgba(192,57,43,.35)', borderRadius: 8, background: 'rgba(192,57,43,.06)', color: '#C0392B', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
               Hủy đơn
             </button>
           )}
-          {order.trang_thai !== 'huy' && !canVoid && (
+          {/* Admin: mở lại đơn đã chốt để sửa */}
+          {isAdmin && order.trang_thai !== 'huy' && order.trang_thai !== 'draft' && (
+            <button onClick={handleReopen} disabled={busy} style={{ padding: '0 14px', height: 40, border: '1px solid var(--bord)', borderRadius: 8, background: 'rgba(160,113,79,.08)', color: '#8a6335', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--sans)' }}>
+              ✎ Sửa đơn
+            </button>
+          )}
+          {/* Admin: xóa vĩnh viễn đơn đã hủy */}
+          {isAdmin && order.trang_thai === 'huy' && (
+            <button onClick={handleHardDelete} disabled={busy} style={{ padding: '0 14px', height: 40, border: '1px solid rgba(192,57,43,.35)', borderRadius: 8, background: 'rgba(192,57,43,.06)', color: '#C0392B', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--sans)' }}>
+              🗑 Xóa vĩnh viễn
+            </button>
+          )}
+          {order.trang_thai !== 'huy' && !canVoid && !isAdmin && (
             <span style={{ padding: '0 12px', height: 40, display: 'inline-flex', alignItems: 'center', fontSize: 11, color: 'var(--ink3)', fontStyle: 'italic' }}>
               Đơn cũ · liên hệ Admin hủy
             </span>
@@ -370,6 +406,7 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVo
           )}
         </div>
       </div>
-    </>
+    </>,
+    document.body
   )
 }

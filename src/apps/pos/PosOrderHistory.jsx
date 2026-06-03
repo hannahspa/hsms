@@ -640,6 +640,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
           isAdmin={isAdmin}
           canVoid={isAdmin || detailOrder.ngay === todayISO()}
           onEdit={(o) => { setDetailOrder(null); onResumeOrder?.(o); window.location.href = '/pos?resume=' + o.id }}
+          onDeleted={() => load(currentPage)}
         />
       )}
     </div>
