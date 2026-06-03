@@ -362,9 +362,9 @@ export default function PosOrderHistory({ onResumeOrder }) {
                 <th>Khách Hàng</th>
                 <th>Trạng Thái</th>
                 <th>NV / Tour / Hoa Hồng</th>
-                <th className="amount">Đơn giá</th>
+                <th className="amount">Giá net</th>
                 <th className="amount">Giảm giá</th>
-                <th className="amount">Tổng / Thu / Nợ</th>
+                <th className="amount">Thực thu / Nợ</th>
                 <th>Ghi chú</th>
                 <th style={{ paddingRight: 16, textAlign: 'center' }}>Thao Tác</th>
               </tr>
@@ -378,6 +378,13 @@ export default function PosOrderHistory({ onResumeOrder }) {
                 const hasLieuTrinh = treatmentNote || o.trang_thai_note?.includes('lieu_trinh')
                 const orderTotal = o.tong_tien_hang || o.thanh_tien || 0
                 const paidTotal = o.da_thu_tong ?? o.thuc_thu ?? 0
+                // Giảm giá THẬT của cả đơn (cột giam_gia), không phải tổng giảm theo dòng (=0)
+                const realDiscount = o.giam_gia ?? o.giam_gia_tong ?? 0
+                const isDraft = o.trang_thai === 'draft'
+                // Giá trị NET của đơn (đã trừ giảm) — KHÔNG dùng giá gốc tránh loạn số liệu.
+                // Đơn nháp chưa finalize (thuc_thu=0) → lấy giá trị giỏ hàng net.
+                const cartNet = Math.max(0, (o.don_gia_tong ?? orderTotal) - realDiscount)
+                const netValue = isDraft ? cartNet : (o.thuc_thu ?? cartNet)
                 const creatorName = o.nguoi_tao_ten || 'HSMS'
                 const paymentText = (o.payments || []).length > 0
                   ? (o.payments || []).map(p => `${paymentMethodLabel(p.hinh_thuc)}: ${formatCurrency(p.so_tien)}`).join(' · ')
@@ -472,28 +479,32 @@ export default function PosOrderHistory({ onResumeOrder }) {
                       )}
                     </td>
 
-                    {}
+                    {/* Giá net = giá trị thực của đơn (đã trừ giảm), KHÔNG hiện giá gốc */}
                     <td className="amount">
-                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>{formatCurrency(o.don_gia_tong || orderTotal)}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>{formatCurrency(netValue)}</div>
                     </td>
 
+                    {/* Giảm giá thật của cả đơn (giam_gia), không phải mức theo dòng */}
                     <td className="amount">
-                      <div style={{ fontSize: 12, color: (o.giam_gia_tong || 0) > 0 ? '#C0392B' : 'var(--ink3)', fontWeight: (o.giam_gia_tong || 0) > 0 ? 700 : 500 }}>
-                        {formatCurrency(o.giam_gia_tong || 0)}
+                      <div style={{ fontSize: 12, color: realDiscount > 0 ? '#C0392B' : 'var(--ink3)', fontWeight: realDiscount > 0 ? 700 : 500 }}>
+                        {realDiscount > 0 ? `−${formatCurrency(realDiscount)}` : '0đ'}
                       </div>
                     </td>
 
+                    {/* Thực thu (doanh thu thật) làm số chính — bỏ giá gốc gây loạn số liệu */}
                     <td className="amount">
-                      <div style={{ fontSize: 10.5, color: 'var(--ink3)', marginBottom: 1 }}>
-                        Tổng: {formatCurrency(orderTotal)}
-                      </div>
-                      <div style={{ fontFamily: 'var(--serif)', fontSize: 15, fontWeight: 700, color: '#426a2c' }}>
-                        Thu: {formatCurrency(paidTotal || orderTotal)}
+                      <div style={{ fontFamily: 'var(--serif)', fontSize: 15, fontWeight: 700, color: isDraft ? 'var(--ink3)' : '#426a2c' }}>
+                        {formatCurrency(netValue)}
                       </div>
                       {(o.con_no || 0) > 0 && (
-                        <div style={{ fontSize: 11, color: 'var(--chi)', fontWeight: 700, marginTop: 1 }}>
-                          Công nợ: {formatCurrency(o.con_no)}
-                        </div>
+                        <>
+                          <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 1 }}>
+                            Đã thu: {formatCurrency(paidTotal)}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--chi)', fontWeight: 700 }}>
+                            Còn nợ: {formatCurrency(o.con_no)}
+                          </div>
+                        </>
                       )}
                       <div style={{ fontSize: 10.5, color: 'var(--ink3)', marginTop: 2, lineHeight: 1.25 }}>{paymentText}</div>
                     </td>
