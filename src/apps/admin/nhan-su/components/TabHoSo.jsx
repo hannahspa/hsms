@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, getNowVN, hashPin } from '../../../../lib/utils'
+import { formatCurrency, getNowVN, hashPin, todayISO } from '../../../../lib/utils'
 import AdminSuaChamCong from './AdminSuaChamCong'
 import AvatarUpload from '../../../../components/shared/AvatarUpload'
 import { KY_QUY_TONG, KY_QUY_MOIS, KY_QUY_THUONG } from '../../../../lib/luong'
@@ -167,6 +167,20 @@ export default function TabHoSo() {
   const [chamCongSheet, setChamCongSheet] = useState(null)
   const [saving,    setSaving]    = useState(false)
   const [toast,     setToast]     = useState(null)
+  const [search,    setSearch]    = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [kpi,       setKpi]       = useState({ diLam: 0, choDuyet: 0 })
+
+  // KPI tổng quan (gộp từ trang Danh Sách cũ): đang trực hôm nay + chờ duyệt
+  useEffect(() => {
+    const today = todayISO()
+    Promise.all([
+      supabase.from('cham_cong').select('nhan_vien_id').eq('ngay', today).not('gio_vao', 'is', null),
+      supabase.from('dang_ky_off').select('id', { count: 'exact', head: true }).eq('trang_thai', 'cho_duyet'),
+      supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact', head: true }).eq('trang_thai', 'cho_duyet'),
+    ]).then(([cc, od, yc]) => setKpi({ diLam: (cc.data || []).length, choDuyet: (od.count || 0) + (yc.count || 0) }))
+      .catch(() => {})
+  }, [])
 
   const now   = getNowVN()
   const thang = now.getMonth() + 1
@@ -293,8 +307,13 @@ export default function TabHoSo() {
     finally { setSaving(false) }
   }
 
-  const activeList  = nvList.filter(nv => nv.trang_thai === 'dang_lam')
-  const specialList = nvList.filter(nv => nv.trang_thai === 'dac_biet')
+  const q = search.trim().toLowerCase()
+  const matchFilter = (nv) =>
+    (roleFilter === 'all' || nv.vi_tri === roleFilter) &&
+    (!q || [nv.ho_ten, nv.so_dien_thoai, nv.vi_tri].filter(Boolean).join(' ').toLowerCase().includes(q))
+  const activeList  = nvList.filter(nv => nv.trang_thai === 'dang_lam' && matchFilter(nv))
+  const specialList = nvList.filter(nv => nv.trang_thai === 'dac_biet' && matchFilter(nv))
+  const tongNV = nvList.filter(nv => nv.trang_thai === 'dang_lam' || nv.trang_thai === 'dac_biet').length
 
   return (
     <div>
@@ -305,10 +324,34 @@ export default function TabHoSo() {
         </div>
       )}
 
-      {/* Header + Thêm NV */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+      {/* KPI tổng quan (gộp từ Danh Sách NV) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
+        {[
+          { l: 'Tổng nhân viên', v: tongNV, sub: 'đang quản lý' },
+          { l: 'Đang trực hôm nay', v: kpi.diLam, sub: 'đã check-in' },
+          { l: 'Chờ duyệt', v: kpi.choDuyet, sub: 'OFF + sửa', danger: kpi.choDuyet > 0 },
+        ].map(k => (
+          <div key={k.l} style={{ background: LUX.surface, border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, padding: '14px 18px', boxShadow: LUX.shadowSm }}>
+            <div style={{ fontFamily: LUX.fontSans, fontSize: '10px', fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{k.l}</div>
+            <div style={{ fontFamily: LUX.fontSerif, fontSize: '26px', fontWeight: 700, color: k.danger ? '#2D7A4F' : LUX.espresso, marginTop: '4px', lineHeight: 1 }}>{k.v}</div>
+            <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: LUX.ink3, marginTop: '3px' }}>{k.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tìm kiếm + lọc vị trí + Thêm NV */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Tìm theo tên / SĐT..."
+          style={{ flex: 1, minWidth: '220px', height: '40px', borderRadius: LUX.radiusSm, border: `1px solid ${LUX.line}`, padding: '0 14px', fontFamily: LUX.fontSans, fontSize: '13px', outline: 'none', background: LUX.surface, color: LUX.ink }} />
+        <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
+          style={{ height: '40px', borderRadius: LUX.radiusSm, border: `1px solid ${LUX.line}`, padding: '0 12px', fontFamily: LUX.fontSans, fontSize: '13px', background: LUX.surface, color: LUX.ink, cursor: 'pointer' }}>
+          <option value="all">Tất cả vị trí</option>
+          <option value="ktv">Kỹ Thuật Viên</option>
+          <option value="le_tan">Lễ Tân</option>
+          <option value="tap_vu">Tạp Vụ</option>
+        </select>
         <button onClick={openAdd}
-          style={{ background: LUX.goldGrad, color: 'white', border: 'none', borderRadius: LUX.radiusSm, padding: '10px 20px', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: `0 4px 14px ${LUX.gold}50` }}>
+          style={{ background: LUX.goldGrad, color: 'white', border: 'none', borderRadius: LUX.radiusSm, padding: '0 20px', height: '40px', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: `0 4px 14px ${LUX.gold}50`, whiteSpace: 'nowrap' }}>
           + Thêm nhân viên
         </button>
       </div>

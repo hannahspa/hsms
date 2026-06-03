@@ -12,7 +12,7 @@ const ROLE_LABEL = {
 const PAGE_TITLES = {
   '/admin':                          'Tổng Quan',
   '/admin/dashboard':                'Dashboard',
-  '/admin/nhan-su':                  'Danh Sách NV',
+  '/admin/nhan-su':                  'Hồ Sơ Nhân Viên',
   '/admin/nhan-su/tong-quan':        'Tổng Quan NS',
   '/admin/nhan-su/ho-so':            'Hồ Sơ NV',
   '/admin/nhan-su/lich-ca':          'Lịch Ca',
@@ -44,8 +44,7 @@ const PAGE_TITLES = {
 
 const NHANSU_ITEMS = [
   { label: 'Tổng Quan',    path: '/admin/nhan-su/tong-quan' },
-  { label: 'Danh Sách NV', path: '/admin/nhan-su' },
-  { label: 'Hồ Sơ NV',    path: '/admin/nhan-su/ho-so' },
+  { label: 'Hồ Sơ Nhân Viên', path: '/admin/nhan-su/ho-so' },
   { label: 'Lịch Ca',      path: '/admin/nhan-su/lich-ca' },
   { label: 'Xét Duyệt',   path: '/admin/nhan-su/xet-duyet' },
   { label: 'Bảng Lương',  path: '/admin/nhan-su/bang-luong' },

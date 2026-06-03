@@ -75,7 +75,7 @@ function LuxSubHeader({ title, crumb, onBack, action, onAction }) {
 
 // ════════════════ PATH → VIEW ════════════════
 const PATH_VIEW = {
-  '/admin/nhan-su':             null,
+  '/admin/nhan-su':             'employees',
   '/admin/nhan-su/tong-quan':   'status',
   '/admin/nhan-su/ho-so':       'employees',
   '/admin/nhan-su/lich-ca':     'schedule',
@@ -140,7 +140,7 @@ export default function AdminNhanSuPage() {
         <LuxSubHeader
           title={cfg?.title || ''}
           crumb={view === 'off' ? `${stats.choduyet} đơn chờ · ${MONTHS[now.getMonth()+1]} ${now.getFullYear()}` : `${MONTHS[now.getMonth()+1]} ${now.getFullYear()}`}
-          onBack={() => navigate(null)}
+          onBack={() => { window.location.href = view === 'employees' ? '/admin' : '/admin/nhan-su' }}
           action={view === 'off' ? '＋ Tạo đơn' : null}
           onAction={() => setShowTaoOff(true)}
         />
