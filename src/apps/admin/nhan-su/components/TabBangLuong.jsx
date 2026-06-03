@@ -67,11 +67,12 @@ function MoneyInput({ label, value, onChange, readOnly, color }) {
   )
 }
 
-export default function TabBangLuong() {
+export default function TabBangLuong({ fixedKy = null }) {
   const now = getNowVN()
   const [thang,     setThang]     = useState(now.getMonth() + 1)
   const [nam,       setNam]       = useState(now.getFullYear())
-  const [ky,        setKy]        = useState(1) // 1 = Lương Cứng, 2 = Lương KD
+  const [kyState,   setKy]        = useState(fixedKy || 1)
+  const ky = fixedKy || kyState  // khoá kỳ khi tách module riêng (ẩn toggle)
   const [nvList,    setNvList]    = useState([])
   const [luongData, setLuongData] = useState({})
   const [ccByNv,    setCcByNv]    = useState({})   // chấm công theo NV (chi tiết ngày công check-in/out)
@@ -529,7 +530,8 @@ export default function TabBangLuong() {
         return null
       })()}
 
-      {/* ── Kỳ tab switch ── */}
+      {/* ── Kỳ tab switch (ẩn khi đã tách thành module riêng) ── */}
+      {!fixedKy && (
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: LUX.surface2, borderRadius: LUX.radius, padding: 4, border: `1px solid ${LUX.line}` }}>
         {[
           { k: 1, title: 'Kỳ 1 · Lương Cứng', sub: 'Chốt mùng 5' },
@@ -549,6 +551,7 @@ export default function TabBangLuong() {
           </button>
         ))}
       </div>
+      )}
 
       {/* Nút Tính Hàng Loạt */}
       {(() => {

@@ -17,8 +17,9 @@ const PAGE_TITLES = {
   '/admin/nhan-su/ho-so':            'Hồ Sơ NV',
   '/admin/nhan-su/lich-ca':          'Lịch Ca',
   '/admin/nhan-su/xet-duyet':        'Xét Duyệt OFF',
-  '/admin/nhan-su/bang-luong':       'Bảng Lương',
-  '/admin/commission':               'Lương Kinh Doanh',
+  '/admin/nhan-su/bang-luong':       'Lương Cứng (Kỳ 1)',
+  '/admin/nhan-su/luong-kinh-doanh': 'Lương Kinh Doanh (Kỳ 2)',
+  '/admin/commission':               'Sổ Hoa Hồng',
   '/admin/doi-soat-data':            'Đối Soát Data Cũ',
   '/admin/crm':                      'CRM Khách Hàng',
   '/admin/the-lieu-trinh':           'Thẻ Liệu Trình',
@@ -47,8 +48,9 @@ const NHANSU_ITEMS = [
   { label: 'Hồ Sơ Nhân Viên', path: '/admin/nhan-su/ho-so' },
   { label: 'Lịch Ca',      path: '/admin/nhan-su/lich-ca' },
   { label: 'Xét Duyệt',   path: '/admin/nhan-su/xet-duyet' },
-  { label: 'Bảng Lương',  path: '/admin/nhan-su/bang-luong' },
-  { label: 'Lương Kinh Doanh', path: '/admin/commission' },
+  { label: 'Lương Cứng (Kỳ 1)',  path: '/admin/nhan-su/bang-luong' },
+  { label: 'Lương Kinh Doanh (Kỳ 2)', path: '/admin/nhan-su/luong-kinh-doanh' },
+  { label: 'Sổ Hoa Hồng', path: '/admin/commission' },
 ]
 
 const MORE_ADMIN = [

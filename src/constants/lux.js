@@ -87,9 +87,16 @@ export const LUX_MENU = [
   },
   {
     key: 'salary',
-    title: 'Bảng Lương',
-    desc: 'Tính lương tự động theo chấm công',
+    title: 'Lương Cứng (Kỳ 1)',
+    desc: 'Tính theo ngày công check-in/out · chốt mùng 5',
     accent: '#c8a675', iconBg: '#ede0c9', iconFg: '#8a6a35',
+    icon: 'wallet',
+  },
+  {
+    key: 'salary-kd',
+    title: 'Lương Kinh Doanh (Kỳ 2)',
+    desc: 'Tour + Hoa Hồng + thưởng · chốt ngày 15',
+    accent: '#1A5276', iconBg: '#e8f0fe', iconFg: '#1A5276',
     icon: 'wallet',
   },
   {

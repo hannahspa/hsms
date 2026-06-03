@@ -28,8 +28,9 @@ export const ADMIN_NAV = [
     { id: 'ns-hosonv', label: 'Hồ Sơ Nhân Viên', path: '/admin/nhan-su/ho-so' },
     { id: 'ns-lichca', label: 'Lịch Ca', path: '/admin/nhan-su/lich-ca' },
     { id: 'ns-xetduyet', label: 'Xét Duyệt', path: '/admin/nhan-su/xet-duyet' },
-    { id: 'ns-bangluong', label: 'Bảng Lương', path: '/admin/nhan-su/bang-luong' },
-    { id: 'commission', label: 'Lương Kinh Doanh', path: '/admin/commission' },
+    { id: 'ns-luongcung', label: 'Lương Cứng (Kỳ 1)', path: '/admin/nhan-su/bang-luong' },
+    { id: 'ns-luongkd', label: 'Lương Kinh Doanh (Kỳ 2)', path: '/admin/nhan-su/luong-kinh-doanh' },
+    { id: 'commission', label: 'Sổ Hoa Hồng (chi tiết)', path: '/admin/commission' },
   ]},
 
   { id: 'crm', icon: '💝', label: 'CRM Khách Hàng', path: '/admin/crm' },

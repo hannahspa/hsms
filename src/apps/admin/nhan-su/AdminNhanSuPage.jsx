@@ -81,6 +81,7 @@ const PATH_VIEW = {
   '/admin/nhan-su/lich-ca':     'schedule',
   '/admin/nhan-su/xet-duyet':   'off',
   '/admin/nhan-su/bang-luong':  'salary',
+  '/admin/nhan-su/luong-kinh-doanh': 'salary-kd',
 }
 const VIEW_PATH = Object.fromEntries(
   Object.entries(PATH_VIEW).map(([p, v]) => [v ?? '__root__', p])
@@ -149,7 +150,8 @@ export default function AdminNhanSuPage() {
           {view === 'off'       && <TabXetDuyet    key={refreshKey} onUpdate={() => setRefreshKey(k=>k+1)} />}
           {view === 'schedule'  && <TabLichDieuDong />}
           {view === 'employees' && <TabHoSo />}
-          {view === 'salary'    && <TabBangLuong />}
+          {view === 'salary'    && <TabBangLuong fixedKy={1} />}
+          {view === 'salary-kd' && <TabBangLuong fixedKy={2} />}
           {view === 'holiday'   && <TabQuyNgayLe />}
         </div>
         <AdminTaoOff open={showTaoOff} onClose={() => setShowTaoOff(false)} onSuccess={() => setRefreshKey(k=>k+1)} />
