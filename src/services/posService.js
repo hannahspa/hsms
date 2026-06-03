@@ -707,6 +707,18 @@ export const posService = {
     return data
   },
 
+  // Admin: sửa ngày + giờ tạo của 1 đơn (đồng bộ doanh_thu theo ngày đơn).
+  async updateOrderDateTime(orderId, ngay, createdAtISO) {
+    const { error } = await supabase
+      .from('don_hang')
+      .update({ ngay, created_at: createdAtISO })
+      .eq('id', orderId)
+    if (error) throw error
+    // Đồng bộ ngày của doanh thu phát sinh từ đơn (nếu đã chốt) để báo cáo khớp.
+    await supabase.from('doanh_thu').update({ ngay }).eq('don_hang_id', orderId)
+    return true
+  },
+
   // ═══════════════════════════════════════════════════
   // CATALOG — DỊCH VỤ & SẢN PHẨM
   // ═══════════════════════════════════════════════════
