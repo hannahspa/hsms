@@ -82,20 +82,11 @@ export default function TabQuyNgayLe() {
   const [ghiChuThem,  setGhiChuThem]  = useState('')
   const [saving,      setSaving]      = useState(false)
 
-  // Modal cộng thủ công cho 1 NV
-  const [modalThuCong, setModalThuCong] = useState(null) // nv object
-  const [tcSoNgay,  setTcSoNgay]  = useState(1)
-  const [tcLyDo,    setTcLyDo]    = useState('')
-
   // Modal SỬ DỤNG quỹ (bù off vượt) cho 1 NV
   const [modalSuDung, setModalSuDung] = useState(null) // nv object
   const [sdSoNgay,  setSdSoNgay]  = useState(1)
   const [sdThang,   setSdThang]   = useState(now.getMonth() + 1)
   const [sdNgayBu,  setSdNgayBu]  = useState('')  // "26/05, 27/05"
-
-  // Modal reset tháng (so_dung_thang_nay → 0)
-  const [showReset,  setShowReset]  = useState(false)
-  const [thangReset, setThangReset] = useState(now.getMonth() + 1)
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -262,29 +253,6 @@ export default function TabQuyNgayLe() {
     }
   }
 
-  // ── Reset so_dung_thang_nay sau khi chốt lương ──
-  const handleResetThang = async () => {
-    setSaving(true)
-    try {
-      // Reset về 0 cho toàn bộ NV năm này
-      const ids = Object.values(quyMap).map(q => q.id).filter(Boolean)
-      if (ids.length > 0) {
-        for (const qid of ids) {
-          await supabase.from('quy_ngay_off').update({ so_dung_thang_nay: 0 }).eq('id', qid)
-        }
-      }
-      showToast(`Đã reset "Dùng Tháng ${thangReset}" về 0 cho tất cả NV ✓`)
-      setShowReset(false)
-      await fetchAll()
-    } catch (e) {
-      console.error(e)
-      showToast('Lỗi reset', 'error')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const MONTHS = ['','Th.1','Th.2','Th.3','Th.4','Th.5','Th.6','Th.7','Th.8','Th.9','Th.10','Th.11','Th.12']
   const nvMap = Object.fromEntries(nvList.map(nv => [nv.id, nv]))
   const viLabel = (v) => v === 'le_tan' ? 'Lễ Tân' : v === 'tap_vu' ? 'Tạp Vụ' : 'KTV'
 
@@ -457,15 +425,10 @@ export default function TabQuyNgayLe() {
                           )}
                         </TD>
                         <TD align="center">
-                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                            <button onClick={() => { setModalThuCong(nv); setTcSoNgay(1); setTcLyDo('') }} style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${LUX.line}`, background: '#fff', color: LUX.espresso, fontFamily: LUX.fontSans, fontSize: 11.5, cursor: 'pointer' }}>
-                              + Cộng
-                            </button>
-                            <button onClick={() => { setModalSuDung(nv); setSdSoNgay(1); setSdThang(now.getMonth() + 1); setSdNgayBu('') }} disabled={conLai <= 0}
-                              style={{ padding: '5px 9px', borderRadius: 7, border: '1px solid #a8c8f0', background: conLai > 0 ? '#eaf2fc' : '#f5f5f5', color: conLai > 0 ? '#1a5276' : LUX.ink4, fontFamily: LUX.fontSans, fontSize: 11.5, fontWeight: 600, cursor: conLai > 0 ? 'pointer' : 'not-allowed' }}>
-                              Sử Dụng
-                            </button>
-                          </div>
+                          <button onClick={() => { setModalSuDung(nv); setSdSoNgay(1); setSdThang(now.getMonth() + 1); setSdNgayBu('') }} disabled={conLai <= 0}
+                            style={{ padding: '5px 14px', borderRadius: 7, border: '1px solid #a8c8f0', background: conLai > 0 ? '#eaf2fc' : '#f5f5f5', color: conLai > 0 ? '#1a5276' : LUX.ink4, fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 600, cursor: conLai > 0 ? 'pointer' : 'not-allowed' }}>
+                            Sử Dụng
+                          </button>
                         </TD>
                       </tr>
                     )
@@ -553,39 +516,6 @@ export default function TabQuyNgayLe() {
       )}
 
       {/* ════════════════════════════════════════════
-          MODAL — Cộng Thủ Công
-      ════════════════════════════════════════════ */}
-      {modalThuCong && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: 380, maxWidth: '95vw', boxShadow: LUX.shadowLg }}>
-            <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, color: LUX.espresso, marginBottom: 4 }}>Cộng Ngày Lễ Thủ Công</div>
-            <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3, marginBottom: 20 }}>{modalThuCong.ho_ten}</div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-              <div>
-                <div style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', marginBottom: 6 }}>Số Ngày Cộng Thêm</div>
-                <input type="number" min={0.5} max={10} step={0.5} value={tcSoNgay} onChange={e => setTcSoNgay(parseFloat(e.target.value) || 1)}
-                  style={{ width: '100%', height: 36, borderRadius: 8, border: `1px solid ${LUX.line}`, padding: '0 10px', fontFamily: LUX.fontSans, fontSize: 14, outline: 'none' }} />
-              </div>
-              <div>
-                <div style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', marginBottom: 6 }}>Lý Do</div>
-                <input value={tcLyDo} onChange={e => setTcLyDo(e.target.value)} placeholder="VD: Đi làm ngày Tết 2026..."
-                  style={{ width: '100%', height: 36, borderRadius: 8, border: `1px solid ${LUX.line}`, padding: '0 10px', fontFamily: LUX.fontSans, fontSize: 13, outline: 'none' }} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setModalThuCong(null)} style={{ padding: '8px 18px', borderRadius: 8, border: `1px solid ${LUX.line}`, background: '#fff', fontFamily: LUX.fontSans, fontSize: 13, cursor: 'pointer', color: LUX.ink2 }}>Huỷ</button>
-              <button onClick={handleSaveThuCong} disabled={saving}
-                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#fff', fontFamily: LUX.fontSans, fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Đang lưu...' : 'Cộng Ngày'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════
           MODAL — Sử Dụng Quỹ (bù off vượt)
       ════════════════════════════════════════════ */}
       {modalSuDung && (() => {
@@ -634,38 +564,6 @@ export default function TabQuyNgayLe() {
         )
       })()}
 
-      {/* ════════════════════════════════════════════
-          MODAL — Reset Tháng
-      ════════════════════════════════════════════ */}
-      {showReset && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: 380, maxWidth: '95vw', boxShadow: LUX.shadowLg }}>
-            <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, color: '#C0392B', marginBottom: 4 }}>Reset "Dùng Tháng Này"</div>
-            <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink2, marginBottom: 20, lineHeight: 1.5 }}>
-              Sau khi chốt bảng lương tháng <strong>{MONTHS[thangReset]}/{nam}</strong>, bấm Reset để cột "Dùng Tháng Này" về 0 cho tất cả nhân viên — chuẩn bị cho tháng tiếp theo.
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', marginBottom: 6 }}>Đây là reset cho tháng</div>
-              <select value={thangReset} onChange={e => setThangReset(+e.target.value)}
-                style={{ height: 36, borderRadius: 8, border: `1px solid ${LUX.line}`, padding: '0 10px', fontFamily: LUX.fontSans, fontSize: 13, outline: 'none', width: '100%' }}>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                  <option key={m} value={m}>Tháng {m} năm {nam}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ background: '#fff5f5', border: '1px solid #f5c6c6', borderRadius: 8, padding: '10px 14px', marginBottom: 20 }}>
-              <span style={{ fontFamily: LUX.fontSans, fontSize: 12, color: '#C0392B' }}>⚠️ Chỉ reset sau khi đã chốt bảng lương và phát lương. Thao tác này không thể hoàn tác.</span>
-            </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowReset(false)} style={{ padding: '8px 18px', borderRadius: 8, border: `1px solid ${LUX.line}`, background: '#fff', fontFamily: LUX.fontSans, fontSize: 13, cursor: 'pointer', color: LUX.ink2 }}>Huỷ</button>
-              <button onClick={handleResetThang} disabled={saving}
-                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#C0392B', color: '#fff', fontFamily: LUX.fontSans, fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Đang reset...' : 'Xác Nhận Reset'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
