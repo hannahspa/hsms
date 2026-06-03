@@ -76,6 +76,7 @@ export default function TabBangLuong({ fixedKy = null }) {
   const [nvList,    setNvList]    = useState([])
   const [luongData, setLuongData] = useState({})
   const [ccByNv,    setCcByNv]    = useState({})   // chấm công theo NV (chi tiết ngày công check-in/out)
+  const [chamCongSheet, setChamCongSheet] = useState(null)  // mở editor sửa chấm công cả tháng
   const [loading,   setLoading]   = useState(false)
   const [selected,  setSelected]  = useState(null)
   const [editState, setEditState] = useState({})
@@ -803,6 +804,7 @@ export default function TabBangLuong({ fixedKy = null }) {
             <thead>
               <tr style={{ background: LUX.bg, color: LUX.ink3, fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 <th style={{ textAlign: 'left', padding: '11px 14px' }}>Nhân viên</th>
+                <th style={{ textAlign: 'right', padding: '11px 10px' }}>Lương cứng</th>
                 <th style={{ textAlign: 'center', padding: '11px 8px' }}>Ngày công</th>
                 <th style={{ textAlign: 'center', padding: '11px 8px' }}>OFF (phép/vượt/T7)</th>
                 <th style={{ textAlign: 'center', padding: '11px 8px' }}>Tăng ca</th>
@@ -834,10 +836,12 @@ export default function TabBangLuong({ fixedKy = null }) {
                         </div>
                         <div>
                           <div style={{ fontFamily: LUX.fontSerif, fontSize: '14px', fontWeight: 600, color: LUX.espresso }}>{nv.ho_ten.trim().split(' ').slice(-2).join(' ')}</div>
-                          <div style={{ fontSize: '10.5px', color: LUX.ink3 }}>{nv.vi_tri === 'ktv' ? 'KTV' : nv.vi_tri === 'le_tan' ? 'Lễ Tân' : 'Tạp Vụ'} · {formatCurrency(nv.luong_cung)}</div>
+                          <div style={{ fontSize: '10.5px', color: LUX.ink3 }}>{nv.vi_tri === 'ktv' ? 'KTV' : nv.vi_tri === 'le_tan' ? 'Lễ Tân' : 'Tạp Vụ'}</div>
                         </div>
                       </div>
                     </td>
+                    {/* Lương cứng (hợp đồng) */}
+                    <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: LUX.taupe, fontWeight: 600 }}>{formatCurrency(nv.luong_cung)}</td>
                     {/* Ngày công */}
                     <td style={{ textAlign: 'center', padding: '10px 8px' }}>
                       <span style={{ fontFamily: LUX.fontSerif, fontSize: '17px', fontWeight: 700, color: LUX.espresso }}>{ld.ngayCong}</span>
@@ -928,9 +932,11 @@ export default function TabBangLuong({ fixedKy = null }) {
         const isLeTan = selected.vi_tri === 'le_tan'
 
         return createPortal(
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          <>
+          <style>{`@keyframes blSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.4)', zIndex: 9999 }}
             onClick={() => setSelected(null)}>
-            <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '560px', maxWidth: '95vw', maxHeight: '88vh', overflowY: 'auto', boxShadow: LUX.shadowLg }}
+            <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: ky === 1 ? 'min(1040px, calc(100vw - 256px))' : '560px', maxWidth: '98vw', background: LUX.bg, overflowY: 'auto', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'blSlideIn .22s ease' }}
               onClick={e => e.stopPropagation()}>
               {/* Header */}
               <div style={{ background: ky === 1 ? LUX.heroGrad : 'linear-gradient(135deg,#1A5276,#154360)', borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -974,50 +980,67 @@ export default function TabBangLuong({ fixedKy = null }) {
                       </div>
                     </BLSection>
 
-                    {/* Chi tiết ngày công từ check-in / check-out */}
-                    <BLSection title="Chi Tiết Ngày Công (Check-in / Check-out)">
+                    {/* Lịch chấm công tháng — tô màu ngày, admin sửa được */}
+                    <BLSection title={`Lịch Chấm Công Tháng ${thang}/${nam}`}>
                       {(() => {
                         const rows = ccByNv[selected.id] || []
-                        if (rows.length === 0) return <div style={{ fontSize: 12, color: LUX.ink3, fontFamily: LUX.fontSans, textAlign: 'center', padding: '10px' }}>Chưa có dữ liệu chấm công tháng này</div>
-                        const DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
-                        const loaiInfo = {
-                          di_lam:   { l: 'Đi làm',         c: LUX.sage },
-                          off_phep: { l: 'OFF phép',       c: LUX.taupe },
-                          off_ov:   { l: 'OFF vượt',       c: LUX.danger },
-                          off_t7:   { l: 'OFF T7/CN',      c: LUX.danger },
-                          off_t7x:  { l: 'T7/CN ko phép',  c: LUX.danger },
+                        const gioiHan = selected.gioi_han_off_thang || 3
+                        const byDay = {}
+                        rows.forEach(r => { byDay[parseInt(String(r.ngay).slice(8, 10), 10)] = r })
+                        const offPhepDays = rows.filter(r => r.loai === 'off_phep').map(r => parseInt(String(r.ngay).slice(8, 10), 10)).sort((a, b) => a - b)
+                        const phepCoLuong = new Set(offPhepDays.slice(0, gioiHan))
+                        const daysInM = new Date(nam, thang, 0).getDate()
+                        const firstDow = new Date(nam, thang - 1, 1).getDay()
+                        const offset = firstDow === 0 ? 6 : firstDow - 1
+                        const DOWH = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+                        const cellOf = (day) => {
+                          const r = byDay[day]
+                          if (!r) return { bg: '#faf7f2', bd: LUX.line, lbl: '', col: LUX.ink4 }
+                          if (r.loai === 'di_lam') { const h = r.he_so ?? 1; return { bg: h < 1 ? '#fff7ed' : '#eef5ee', bd: h < 1 ? '#f0c088' : '#bcdcbc', lbl: 'Đi làm', col: h < 1 ? '#b8860b' : LUX.sage } }
+                          if (r.loai === 'off_phep') return phepCoLuong.has(day) ? { bg: '#f5e8d4', bd: '#e0c98a', lbl: 'OFF phép', col: LUX.taupe } : { bg: '#f7e0da', bd: '#e0a99a', lbl: 'OFF vượt', col: LUX.danger }
+                          if (r.loai === 'off_ov') return { bg: '#f7e0da', bd: '#e0a99a', lbl: 'OFF vượt', col: LUX.danger }
+                          if (r.loai === 'off_t7' || r.loai === 'off_t7x') return { bg: '#f0d0c8', bd: '#d89a86', lbl: 'OFF T7/CN', col: LUX.danger }
+                          return { bg: '#fff', bd: LUX.line, lbl: r.loai, col: LUX.ink3 }
                         }
+                        const LEGEND = [
+                          { c: '#bcdcbc', l: 'Đi làm' }, { c: '#f0c088', l: 'Về sớm (HS<1)' },
+                          { c: '#e0c98a', l: 'OFF phép (có lương)' }, { c: '#e0a99a', l: 'OFF vượt' }, { c: '#d89a86', l: 'OFF T7/CN' },
+                        ]
                         return (
-                          <div style={{ maxHeight: 280, overflowY: 'auto', border: `1px solid ${LUX.line}`, borderRadius: 10 }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: LUX.fontSans, fontSize: 12 }}>
-                              <thead><tr style={{ background: LUX.bg, color: LUX.ink3, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
-                                <th style={{ textAlign: 'left', padding: '6px 10px' }}>Ngày</th>
-                                <th style={{ textAlign: 'center', padding: '6px 6px' }}>Vào</th>
-                                <th style={{ textAlign: 'center', padding: '6px 6px' }}>Ra</th>
-                                <th style={{ textAlign: 'left', padding: '6px 8px' }}>Loại</th>
-                                <th style={{ textAlign: 'center', padding: '6px 8px' }}>Hệ số</th>
-                              </tr></thead>
-                              <tbody>
-                                {rows.map((r, i) => {
-                                  const d = new Date(String(r.ngay).slice(0, 10) + 'T00:00:00')
-                                  const info = loaiInfo[r.loai] || { l: r.loai, c: LUX.ink3 }
-                                  const heSo = r.he_so ?? (r.loai === 'di_lam' ? 1 : 0)
-                                  return (
-                                    <tr key={i} style={{ borderTop: `1px solid ${LUX.line}`, color: LUX.ink2 }}>
-                                      <td style={{ padding: '5px 10px', fontWeight: 600 }}>{DOW[d.getDay()]} {String(d.getDate()).padStart(2, '0')}/{String(d.getMonth() + 1).padStart(2, '0')}</td>
-                                      <td style={{ textAlign: 'center', padding: '5px 6px', fontFamily: LUX.fontMono }}>{r.gio_vao ? String(r.gio_vao).slice(0, 5) : '—'}</td>
-                                      <td style={{ textAlign: 'center', padding: '5px 6px', fontFamily: LUX.fontMono }}>{r.gio_ra ? String(r.gio_ra).slice(0, 5) : '—'}</td>
-                                      <td style={{ padding: '5px 8px' }}>
-                                        <span style={{ color: info.c, fontWeight: 600 }}>{info.l}</span>
-                                        {(r.tang_ca_gio || 0) > 0 && <span style={{ color: '#6a4a8a', fontWeight: 600 }}> · TC {r.tang_ca_gio}h</span>}
-                                      </td>
-                                      <td style={{ textAlign: 'center', padding: '5px 8px', fontWeight: 600, color: heSo < 1 ? LUX.danger : LUX.ink2 }}>{heSo}</td>
-                                    </tr>
-                                  )
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                {LEGEND.map(x => (
+                                  <span key={x.l} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: LUX.ink3, fontFamily: LUX.fontSans }}>
+                                    <span style={{ width: 11, height: 11, borderRadius: 3, background: x.c }} /> {x.l}
+                                  </span>
+                                ))}
+                              </div>
+                              <button onClick={() => setChamCongSheet(selected)}
+                                style={{ padding: '7px 14px', borderRadius: 9, border: `1px solid ${LUX.champagne}`, background: '#fdf3e0', color: '#8a6a35', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+                                ✎ Sửa chấm công
+                              </button>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
+                              {DOWH.map(d => <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: LUX.ink3, fontFamily: LUX.fontSans, padding: '2px 0' }}>{d}</div>)}
+                              {Array.from({ length: offset }).map((_, i) => <div key={'e' + i} />)}
+                              {Array.from({ length: daysInM }).map((_, i) => {
+                                const day = i + 1
+                                const c = cellOf(day)
+                                const r = byDay[day]
+                                return (
+                                  <button key={day} onClick={() => setChamCongSheet(selected)} title="Bấm để sửa chấm công"
+                                    style={{ minHeight: 60, border: `1px solid ${c.bd}`, background: c.bg, borderRadius: 8, padding: '4px 5px', textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 1, fontFamily: LUX.fontSans }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: LUX.ink2 }}>{day}</span>
+                                    {c.lbl && <span style={{ fontSize: 9.5, fontWeight: 700, color: c.col, lineHeight: 1.1 }}>{c.lbl}</span>}
+                                    {r?.loai === 'di_lam' && r.gio_vao && <span style={{ fontSize: 8.5, color: LUX.ink3, fontFamily: LUX.fontMono }}>{String(r.gio_vao).slice(0, 5)}-{r.gio_ra ? String(r.gio_ra).slice(0, 5) : '?'}</span>}
+                                    {r?.loai === 'di_lam' && (r.he_so ?? 1) < 1 && <span style={{ fontSize: 8.5, color: LUX.danger, fontWeight: 700 }}>HS {r.he_so}</span>}
+                                    {(r?.tang_ca_gio || 0) > 0 && <span style={{ fontSize: 8.5, color: '#6a4a8a', fontWeight: 700 }}>TC {r.tang_ca_gio}h</span>}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </>
                         )
                       })()}
                     </BLSection>
@@ -1183,8 +1206,18 @@ export default function TabBangLuong({ fixedKy = null }) {
               </div>
             </div>
           </div>
+          </>
         , document.body)
       })()}
+
+      {/* Editor chấm công cả tháng (admin sửa) */}
+      {chamCongSheet && (
+        <AdminSuaChamCong
+          nhanVien={chamCongSheet}
+          onClose={() => setChamCongSheet(null)}
+          onSaved={() => { setChamCongSheet(null); fetchAll() }}
+        />
+      )}
     </div>
   )
 }
