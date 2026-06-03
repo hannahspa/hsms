@@ -169,6 +169,19 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
       }
       if (initial?.id) await supabase.from('lich_hen').update(payload).eq('id', initial.id)
       else { payload.trang_thai = 'cho_xac_nhan'; await supabase.from('lich_hen').insert(payload) }
+
+      // Thông báo đẩy cho KTV được phân lịch (không chặn lưu nếu lỗi)
+      if (payload.nhan_vien_id) {
+        const dichVuTxt = payload.ten_dich_vu ? ` · ${payload.ten_dich_vu}` : ''
+        supabase.functions.invoke('send-push', {
+          body: {
+            nhan_vien_id: payload.nhan_vien_id,
+            title: '🔔 Bạn có lịch hẹn mới',
+            body: `${payload.ten_khach} · ${dayOfWeek(payload.ngay_hen)} ${fmtDate(payload.ngay_hen)} ${String(payload.gio_hen).slice(0, 5)}${dichVuTxt}`,
+            url: '/checkin',
+          },
+        }).catch(() => {})
+      }
       onSave()
     } catch (e) { alert('Lỗi lưu lịch hẹn: ' + e.message) } finally { setSaving(false) }
   }

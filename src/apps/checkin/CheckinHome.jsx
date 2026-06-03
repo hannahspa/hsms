@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { LUX } from '../../constants/lux'
 import { todayISO, getNowVN } from '../../lib/utils'
+import { getPushState, enablePush } from '../../lib/push'
 import CheckinChamCong from './CheckinChamCong'
 import CheckinDangKyOff from './CheckinDangKyOff'
 import CheckinDoiPin from './CheckinDoiPin'
@@ -58,8 +59,18 @@ export default function CheckinHome({ nhanVien, onLogout }) {
   const [time,      setTime]      = useState(getNowVN())
   const [avatarUrl, setAvatarUrl] = useState(nhanVien.avatar_url || null)
   const [henHomNay, setHenHomNay] = useState([])
+  const [pushState, setPushState] = useState('unsupported')   // unsupported|denied|default|granted-on|granted-off
+  const [pushBusy, setPushBusy] = useState(false)
 
   const today = todayISO()
+
+  useEffect(() => { getPushState().then(setPushState) }, [])
+  const handleEnablePush = async () => {
+    setPushBusy(true)
+    try { await enablePush(nhanVien.id); setPushState('granted-on') }
+    catch (e) { alert(e.message || 'Không bật được thông báo') }
+    finally { setPushBusy(false) }
+  }
 
   useEffect(() => {
     const timer = setInterval(() => setTime(getNowVN()), 1000)
@@ -218,6 +229,20 @@ export default function CheckinHome({ nhanVien, onLogout }) {
             <div style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: LUX.champagne2 }}>{henHomNay.length} lịch sắp tới</div>
           )}
         </div>
+
+        {/* Bật thông báo đẩy — để được "kêu" khi có khách hẹn dù không mở app */}
+        {(pushState === 'default' || pushState === 'granted-off') && (
+          <button onClick={handleEnablePush} disabled={pushBusy}
+            style={{ width: '100%', marginBottom: henHomNay.length ? 12 : 0, marginTop: 4, padding: '10px 12px', borderRadius: 10, border: `1px solid ${LUX.line}`, background: '#fff', color: LUX.primary, fontSize: 12.5, fontWeight: 700, cursor: pushBusy ? 'wait' : 'pointer', fontFamily: LUX.fontSans, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            🔔 {pushBusy ? 'Đang bật...' : 'Bật thông báo lịch hẹn về điện thoại'}
+          </button>
+        )}
+        {pushState === 'granted-on' && (
+          <div style={{ fontSize: 11, color: LUX.sage, fontWeight: 700, marginBottom: henHomNay.length ? 10 : 0, marginTop: 2 }}>✓ Đã bật thông báo — sẽ báo khi có khách hẹn</div>
+        )}
+        {pushState === 'denied' && (
+          <div style={{ fontSize: 11, color: LUX.ink3, marginBottom: henHomNay.length ? 10 : 0, marginTop: 2, fontStyle: 'italic' }}>Thông báo đang bị chặn — vào Cài đặt trình duyệt để bật lại.</div>
+        )}
         {henHomNay.length === 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
             <span style={{ fontSize: 22 }}>🌿</span>
