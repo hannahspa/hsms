@@ -82,6 +82,7 @@ const PATH_VIEW = {
   '/admin/nhan-su/xet-duyet':   'off',
   '/admin/nhan-su/bang-luong':  'salary',
   '/admin/nhan-su/luong-kinh-doanh': 'salary-kd',
+  '/admin/nhan-su/quy-ngay-le': 'holiday',
 }
 const VIEW_PATH = Object.fromEntries(
   Object.entries(PATH_VIEW).map(([p, v]) => [v ?? '__root__', p])

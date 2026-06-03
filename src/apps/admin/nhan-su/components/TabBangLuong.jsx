@@ -800,7 +800,7 @@ export default function TabBangLuong({ fixedKy = null }) {
       ) : ky === 1 ? (
         /* ── KỲ 1 · Lương Cứng — BẢNG DESKTOP ── */
         <div style={{ background: LUX.surface, borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, boxShadow: LUX.shadowSm, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: LUX.fontSans, minWidth: '900px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: LUX.fontSans, minWidth: '720px' }}>
             <thead>
               <tr style={{ background: LUX.bg, color: LUX.ink3, fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 <th style={{ textAlign: 'left', padding: '11px 14px' }}>Nhân viên</th>
@@ -809,9 +809,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                 <th style={{ textAlign: 'center', padding: '11px 8px' }}>OFF (phép/vượt/T7)</th>
                 <th style={{ textAlign: 'center', padding: '11px 8px' }}>Tăng ca</th>
                 <th style={{ textAlign: 'right', padding: '11px 10px' }}>Lương cơ bản</th>
-                <th style={{ textAlign: 'right', padding: '11px 10px' }}>Phạt</th>
-                <th style={{ textAlign: 'right', padding: '11px 10px' }}>Ký quỹ</th>
-                <th style={{ textAlign: 'right', padding: '11px 10px' }}>Ứng</th>
+                <th style={{ textAlign: 'right', padding: '11px 10px' }}>Khấu trừ</th>
                 <th style={{ textAlign: 'right', padding: '11px 14px' }}>Thực lĩnh</th>
                 <th style={{ textAlign: 'center', padding: '11px 10px' }}>Trạng thái</th>
               </tr>
@@ -861,12 +859,11 @@ export default function TabBangLuong({ fixedKy = null }) {
                     </td>
                     {/* Lương cơ bản */}
                     <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono }}>{formatCurrency(ld.luongCoBan)}</td>
-                    {/* Phạt */}
-                    <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: ld.tienPhat > 0 ? LUX.danger : LUX.ink4 }}>{ld.tienPhat > 0 ? '−' + formatCurrency(ld.tienPhat) : '—'}</td>
-                    {/* Ký quỹ */}
-                    <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: ld.truKyQuy > 0 ? LUX.danger : LUX.ink4 }}>{ld.truKyQuy > 0 ? '−' + formatCurrency(ld.truKyQuy) : '—'}</td>
-                    {/* Ứng */}
-                    <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: ld.truUngLuong > 0 ? LUX.danger : LUX.ink4 }}>{ld.truUngLuong > 0 ? '−' + formatCurrency(ld.truUngLuong) : '—'}</td>
+                    {/* Khấu trừ (phạt + ký quỹ + ứng) — chi tiết trong panel */}
+                    {(() => { const khauTru = ld.tienPhat + ld.truKyQuy + ld.truUngLuong; return (
+                      <td title={`Phạt ${formatCurrency(ld.tienPhat)} · Ký quỹ ${formatCurrency(ld.truKyQuy)} · Ứng ${formatCurrency(ld.truUngLuong)}`}
+                        style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: khauTru > 0 ? LUX.danger : LUX.ink4 }}>{khauTru > 0 ? '−' + formatCurrency(khauTru) : '—'}</td>
+                    ) })()}
                     {/* Thực lĩnh */}
                     <td style={{ textAlign: 'right', padding: '10px 14px', fontFamily: LUX.fontMono, fontSize: '14px', fontWeight: 700, color: LUX.espresso }}>{formatCurrency(thucLinh)}</td>
                     {/* Trạng thái */}
@@ -943,7 +940,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                 <div>
                   <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '22px', color: 'white' }}>{selected.ho_ten}</div>
                   <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
-                    {ky === 1 ? `Kỳ 1 · Lương Cứng — Tháng ${thang}/${nam}` : `Kỳ 2 · Lương Kinh Doanh — Tháng ${thang}/${nam}`}
+                    {ky === 1 ? `Lương Cứng — Tháng ${thang}/${nam}` : `Lương Kinh Doanh — Tháng ${thang}/${nam}`}
                   </div>
                 </div>
                 <TrangThaiBadge tt={ky === 1 ? ld.trangThaiLC : ld.trangThaiLKD} />
