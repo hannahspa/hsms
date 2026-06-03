@@ -74,6 +74,7 @@ export default function TabBangLuong() {
   const [ky,        setKy]        = useState(1) // 1 = Lương Cứng, 2 = Lương KD
   const [nvList,    setNvList]    = useState([])
   const [luongData, setLuongData] = useState({})
+  const [ccByNv,    setCcByNv]    = useState({})   // chấm công theo NV (chi tiết ngày công check-in/out)
   const [loading,   setLoading]   = useState(false)
   const [selected,  setSelected]  = useState(null)
   const [editState, setEditState] = useState({})
@@ -172,6 +173,12 @@ export default function TabBangLuong() {
 
       setNvList(nvData)
       setLuongData(result)
+      // Lưu chấm công theo NV (đã sắp xếp ngày) cho phần chi tiết ngày công
+      const ccSorted = {}
+      Object.keys(ccByNv).forEach(id => {
+        ccSorted[id] = [...ccByNv[id]].sort((a, b) => String(a.ngay).localeCompare(String(b.ngay)))
+      })
+      setCcByNv(ccSorted)
     } catch (e) { console.error('TabBangLuong:', e) }
     finally { setLoading(false) }
   }, [thang, nam])
@@ -786,6 +793,83 @@ export default function TabBangLuong() {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '48px', color: LUX.ink3, fontFamily: LUX.fontSans }}>Đang tính lương...</div>
+      ) : ky === 1 ? (
+        /* ── KỲ 1 · Lương Cứng — BẢNG DESKTOP ── */
+        <div style={{ background: LUX.surface, borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, boxShadow: LUX.shadowSm, overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: LUX.fontSans, minWidth: '900px' }}>
+            <thead>
+              <tr style={{ background: LUX.bg, color: LUX.ink3, fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <th style={{ textAlign: 'left', padding: '11px 14px' }}>Nhân viên</th>
+                <th style={{ textAlign: 'center', padding: '11px 8px' }}>Ngày công</th>
+                <th style={{ textAlign: 'center', padding: '11px 8px' }}>OFF (phép/vượt/T7)</th>
+                <th style={{ textAlign: 'center', padding: '11px 8px' }}>Tăng ca</th>
+                <th style={{ textAlign: 'right', padding: '11px 10px' }}>Lương cơ bản</th>
+                <th style={{ textAlign: 'right', padding: '11px 10px' }}>Phạt</th>
+                <th style={{ textAlign: 'right', padding: '11px 10px' }}>Ký quỹ</th>
+                <th style={{ textAlign: 'right', padding: '11px 10px' }}>Ứng</th>
+                <th style={{ textAlign: 'right', padding: '11px 14px' }}>Thực lĩnh</th>
+                <th style={{ textAlign: 'center', padding: '11px 10px' }}>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              {nvList.map(nv => {
+                const ld = luongData[nv.id]
+                if (!ld) return null
+                const thucLinh = ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - ld.truUngLuong
+                const offKhongLuong = ld.soOffPhepVuot + ld.soOffOV
+                return (
+                  <tr key={nv.id} onClick={() => openDetail(nv)}
+                    style={{ borderTop: `1px solid ${LUX.line}`, cursor: 'pointer', fontSize: '13px', color: LUX.ink2 }}
+                    onMouseEnter={e => e.currentTarget.style.background = LUX.bg}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    {/* NV */}
+                    <td style={{ padding: '10px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '34px', height: '34px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
+                          {nv.avatar_url ? <img src={nv.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : <div style={{ width: '100%', height: '100%', background: getAvatarColor(nv.ho_ten), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: 'white' }}>{getInitials(nv.ho_ten)}</div>}
+                        </div>
+                        <div>
+                          <div style={{ fontFamily: LUX.fontSerif, fontSize: '14px', fontWeight: 600, color: LUX.espresso }}>{nv.ho_ten.trim().split(' ').slice(-2).join(' ')}</div>
+                          <div style={{ fontSize: '10.5px', color: LUX.ink3 }}>{nv.vi_tri === 'ktv' ? 'KTV' : nv.vi_tri === 'le_tan' ? 'Lễ Tân' : 'Tạp Vụ'} · {formatCurrency(nv.luong_cung)}</div>
+                        </div>
+                      </div>
+                    </td>
+                    {/* Ngày công */}
+                    <td style={{ textAlign: 'center', padding: '10px 8px' }}>
+                      <span style={{ fontFamily: LUX.fontSerif, fontSize: '17px', fontWeight: 700, color: LUX.espresso }}>{ld.ngayCong}</span>
+                      <span style={{ fontSize: '11px', color: LUX.ink3 }}> /{ld.soNgayThang}</span>
+                    </td>
+                    {/* OFF */}
+                    <td style={{ textAlign: 'center', padding: '10px 8px', fontSize: '12px' }}>
+                      <span style={{ color: LUX.sage, fontWeight: 600 }}>{ld.soOffCoLuong}</span>
+                      <span style={{ color: LUX.ink3 }}> / </span>
+                      <span style={{ color: offKhongLuong > 0 ? LUX.danger : LUX.ink3, fontWeight: offKhongLuong > 0 ? 700 : 400 }}>{offKhongLuong}</span>
+                      <span style={{ color: LUX.ink3 }}> / </span>
+                      <span style={{ color: ld.soOffT7CN > 0 ? LUX.danger : LUX.ink3, fontWeight: ld.soOffT7CN > 0 ? 700 : 400 }}>{ld.soOffT7CN}</span>
+                    </td>
+                    {/* Tăng ca */}
+                    <td style={{ textAlign: 'center', padding: '10px 8px', fontSize: '12px' }}>
+                      {ld.tongTangCa > 0 ? <span style={{ color: '#6a4a8a', fontWeight: 600 }}>{ld.tongTangCa}h</span> : <span style={{ color: LUX.ink4 }}>—</span>}
+                    </td>
+                    {/* Lương cơ bản */}
+                    <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono }}>{formatCurrency(ld.luongCoBan)}</td>
+                    {/* Phạt */}
+                    <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: ld.tienPhat > 0 ? LUX.danger : LUX.ink4 }}>{ld.tienPhat > 0 ? '−' + formatCurrency(ld.tienPhat) : '—'}</td>
+                    {/* Ký quỹ */}
+                    <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: ld.truKyQuy > 0 ? LUX.danger : LUX.ink4 }}>{ld.truKyQuy > 0 ? '−' + formatCurrency(ld.truKyQuy) : '—'}</td>
+                    {/* Ứng */}
+                    <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: ld.truUngLuong > 0 ? LUX.danger : LUX.ink4 }}>{ld.truUngLuong > 0 ? '−' + formatCurrency(ld.truUngLuong) : '—'}</td>
+                    {/* Thực lĩnh */}
+                    <td style={{ textAlign: 'right', padding: '10px 14px', fontFamily: LUX.fontMono, fontSize: '14px', fontWeight: 700, color: LUX.espresso }}>{formatCurrency(thucLinh)}</td>
+                    {/* Trạng thái */}
+                    <td style={{ textAlign: 'center', padding: '10px 10px' }}><TrangThaiBadge tt={ld.trangThaiLC} /></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {nvList.map(nv => {
@@ -885,6 +969,54 @@ export default function TabBangLuong() {
                           </div>
                         ))}
                       </div>
+                    </BLSection>
+
+                    {/* Chi tiết ngày công từ check-in / check-out */}
+                    <BLSection title="Chi Tiết Ngày Công (Check-in / Check-out)">
+                      {(() => {
+                        const rows = ccByNv[selected.id] || []
+                        if (rows.length === 0) return <div style={{ fontSize: 12, color: LUX.ink3, fontFamily: LUX.fontSans, textAlign: 'center', padding: '10px' }}>Chưa có dữ liệu chấm công tháng này</div>
+                        const DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+                        const loaiInfo = {
+                          di_lam:   { l: 'Đi làm',         c: LUX.sage },
+                          off_phep: { l: 'OFF phép',       c: LUX.taupe },
+                          off_ov:   { l: 'OFF vượt',       c: LUX.danger },
+                          off_t7:   { l: 'OFF T7/CN',      c: LUX.danger },
+                          off_t7x:  { l: 'T7/CN ko phép',  c: LUX.danger },
+                        }
+                        return (
+                          <div style={{ maxHeight: 280, overflowY: 'auto', border: `1px solid ${LUX.line}`, borderRadius: 10 }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: LUX.fontSans, fontSize: 12 }}>
+                              <thead><tr style={{ background: LUX.bg, color: LUX.ink3, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
+                                <th style={{ textAlign: 'left', padding: '6px 10px' }}>Ngày</th>
+                                <th style={{ textAlign: 'center', padding: '6px 6px' }}>Vào</th>
+                                <th style={{ textAlign: 'center', padding: '6px 6px' }}>Ra</th>
+                                <th style={{ textAlign: 'left', padding: '6px 8px' }}>Loại</th>
+                                <th style={{ textAlign: 'center', padding: '6px 8px' }}>Hệ số</th>
+                              </tr></thead>
+                              <tbody>
+                                {rows.map((r, i) => {
+                                  const d = new Date(String(r.ngay).slice(0, 10) + 'T00:00:00')
+                                  const info = loaiInfo[r.loai] || { l: r.loai, c: LUX.ink3 }
+                                  const heSo = r.he_so ?? (r.loai === 'di_lam' ? 1 : 0)
+                                  return (
+                                    <tr key={i} style={{ borderTop: `1px solid ${LUX.line}`, color: LUX.ink2 }}>
+                                      <td style={{ padding: '5px 10px', fontWeight: 600 }}>{DOW[d.getDay()]} {String(d.getDate()).padStart(2, '0')}/{String(d.getMonth() + 1).padStart(2, '0')}</td>
+                                      <td style={{ textAlign: 'center', padding: '5px 6px', fontFamily: LUX.fontMono }}>{r.gio_vao ? String(r.gio_vao).slice(0, 5) : '—'}</td>
+                                      <td style={{ textAlign: 'center', padding: '5px 6px', fontFamily: LUX.fontMono }}>{r.gio_ra ? String(r.gio_ra).slice(0, 5) : '—'}</td>
+                                      <td style={{ padding: '5px 8px' }}>
+                                        <span style={{ color: info.c, fontWeight: 600 }}>{info.l}</span>
+                                        {(r.tang_ca_gio || 0) > 0 && <span style={{ color: '#6a4a8a', fontWeight: 600 }}> · TC {r.tang_ca_gio}h</span>}
+                                      </td>
+                                      <td style={{ textAlign: 'center', padding: '5px 8px', fontWeight: 600, color: heSo < 1 ? LUX.danger : LUX.ink2 }}>{heSo}</td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )
+                      })()}
                     </BLSection>
 
                     {/* Chi tiết lương Kỳ 1 */}
