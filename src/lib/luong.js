@@ -100,6 +100,20 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
 
   allOff.sort((a, b) => a.ngay.localeCompare(b.ngay))
 
+  // ─── Ngày KHÔNG check-in (không có bản ghi chấm công) = NGHỈ ───
+  // Quy tắc: ngày ĐÃ QUA mà không check-in → tính như OFF phép (3 ngày đầu/tháng
+  // có lương, vượt → OV). KHÔNG tính ngày hôm nay (đang diễn ra) & ngày tương lai.
+  const recordedDays = new Set()
+  chamCongList.forEach(r => {
+    if (!r.ngay) return
+    const d = parseInt(String(r.ngay).substring(8, 10), 10)
+    if (todayRef && d > todayRef) return
+    recordedDays.add(d)
+  })
+  const lastPastDay = todayRef ? todayRef - 1 : soNgayThangFull
+  let soNgayKhongCheckin = 0
+  for (let d = 1; d <= lastPastDay; d++) { if (!recordedDays.has(d)) soNgayKhongCheckin++ }
+
   // ═══════════════════════════════════════════
   // PASS 2: Categorize OFF
   // ═══════════════════════════════════════════
@@ -108,9 +122,10 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   const offT7List   = allOff.filter(o => o.loai === 'off_t7')
   const offT7XList  = allOff.filter(o => o.loai === 'off_t7x')
 
-  // First gioiHanOff off_phep → có lương, rest → OV
-  const soOffCoLuong   = Math.min(gioiHanOff, offPhepList.length)
-  const soOffPhepVuot  = Math.max(0, offPhepList.length - gioiHanOff)
+  // OFF phép = off_phep đã ghi + ngày không check-in. First gioiHanOff → có lương, rest → OV
+  const soPhepTong     = offPhepList.length + soNgayKhongCheckin
+  const soOffCoLuong   = Math.min(gioiHanOff, soPhepTong)
+  const soOffPhepVuot  = Math.max(0, soPhepTong - gioiHanOff)
 
   // Holiday credit: can offset OV
   // quyNgayOff.so_dung_thang_nay = how many holiday days admin applied this month
@@ -154,6 +169,16 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   // ═══════════════════════════════════════════
   // PASS 4: Tăng ca & Phạt (only up to todayRef)
   // ═══════════════════════════════════════════
+  // Tăng ca TỰ ĐỘNG: giờ ra sau 20:00 → block 15 phút (mỗi block 0.25h × 25k).
+  // < 15 phút không tính. Vd ra 20:50 → 50' → 3 block = 0.75h.
+  const otHoursFromGioRa = (gioRa) => {
+    if (!gioRa) return 0
+    const p = String(gioRa).split(':')
+    const mins = (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0)
+    const past = mins - 20 * 60
+    if (past < 15) return 0
+    return Math.floor(past / 15) * 0.25
+  }
   const tongTangCa = chamCongList
     .filter(r => {
       if (r.loai !== 'di_lam') return false
@@ -163,7 +188,7 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
       }
       return true
     })
-    .reduce((s, r) => s + (r.tang_ca_gio || 0), 0)
+    .reduce((s, r) => s + otHoursFromGioRa(r.gio_ra), 0)
 
   const tienPhat = offT7XList.reduce((sum, o) => {
     const dow = getDayOfWeek(o.ngay)
@@ -206,6 +231,7 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
     ngayCong: +ngayCong.toFixed(2),
 
     // OFF detail
+    soNgayKhongCheckin,                          // ngày đã qua không check-in (= nghỉ)
     soOffCoLuong,                               // OFF trong dinh muc
     soOffPhepVuot,                               // OFF vuot dinh muc (-> OV)
     soOffOV: offOVList.length,                  // OFF khong luong truc tiep

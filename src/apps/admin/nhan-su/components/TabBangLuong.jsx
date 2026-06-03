@@ -987,15 +987,28 @@ export default function TabBangLuong({ fixedKy = null }) {
                         const gioiHan = selected.gioi_han_off_thang || 3
                         const byDay = {}
                         rows.forEach(r => { byDay[parseInt(String(r.ngay).slice(8, 10), 10)] = r })
-                        const offPhepDays = rows.filter(r => r.loai === 'off_phep').map(r => parseInt(String(r.ngay).slice(8, 10), 10)).sort((a, b) => a - b)
-                        const phepCoLuong = new Set(offPhepDays.slice(0, gioiHan))
                         const daysInM = new Date(nam, thang, 0).getDate()
                         const firstDow = new Date(nam, thang - 1, 1).getDay()
                         const offset = firstDow === 0 ? 6 : firstDow - 1
                         const DOWH = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+                        // Ngày đã qua không check-in = nghỉ (như OFF phép)
+                        const nowRef = getNowVN()
+                        const isCurMonth = thang === nowRef.getMonth() + 1 && nam === nowRef.getFullYear()
+                        const lastPast = isCurMonth ? nowRef.getDate() - 1 : daysInM
+                        const noShowDays = []
+                        for (let d = 1; d <= lastPast; d++) { if (!byDay[d]) noShowDays.push(d) }
+                        // Gộp off_phep đã ghi + ngày nghỉ không check-in → 3 ngày đầu có lương, vượt → OV
+                        const offPhepDays = rows.filter(r => r.loai === 'off_phep').map(r => parseInt(String(r.ngay).slice(8, 10), 10))
+                        const phepAll = [...offPhepDays, ...noShowDays].sort((a, b) => a - b)
+                        const phepCoLuong = new Set(phepAll.slice(0, gioiHan))
                         const cellOf = (day) => {
                           const r = byDay[day]
-                          if (!r) return { bg: '#faf7f2', bd: LUX.line, lbl: '', col: LUX.ink4 }
+                          if (!r) {
+                            if (noShowDays.includes(day)) return phepCoLuong.has(day)
+                              ? { bg: '#f5e8d4', bd: '#e0c98a', lbl: 'Nghỉ (phép)', col: LUX.taupe }
+                              : { bg: '#f7e0da', bd: '#e0a99a', lbl: 'Nghỉ (vượt)', col: LUX.danger }
+                            return { bg: '#faf7f2', bd: LUX.line, lbl: '', col: LUX.ink4 }  // hôm nay / tương lai
+                          }
                           if (r.loai === 'di_lam') { const h = r.he_so ?? 1; return { bg: h < 1 ? '#fff7ed' : '#eef5ee', bd: h < 1 ? '#f0c088' : '#bcdcbc', lbl: 'Đi làm', col: h < 1 ? '#b8860b' : LUX.sage } }
                           if (r.loai === 'off_phep') return phepCoLuong.has(day) ? { bg: '#f5e8d4', bd: '#e0c98a', lbl: 'OFF phép', col: LUX.taupe } : { bg: '#f7e0da', bd: '#e0a99a', lbl: 'OFF vượt', col: LUX.danger }
                           if (r.loai === 'off_ov') return { bg: '#f7e0da', bd: '#e0a99a', lbl: 'OFF vượt', col: LUX.danger }
