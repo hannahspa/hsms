@@ -84,9 +84,9 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVo
       }}>
 
         {}
-        <div style={{ background: 'linear-gradient(135deg,#3d2c20 0%,#2a1d14 100%)', flexShrink: 0 }}>
-          <div style={{ padding: '14px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--serif)', color: '#f3e6d2' }}>
+        <div style={{ background: '#fff', flexShrink: 0, borderBottom: '1px solid var(--line)' }}>
+          <div style={{ padding: '14px 20px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--serif)', color: 'var(--ink)' }}>
               Thông tin đơn hàng
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -98,23 +98,8 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVo
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: st.dot, flexShrink: 0 }} />
                 {st.label}
               </span>
-              {order.trang_thai === 'da_thanh_toan' && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center',
-                  padding: '3px 9px', borderRadius: 20, fontSize: 10.5, fontWeight: 800,
-                  background: 'rgba(201,169,110,.16)', color: '#f3e6d2',
-                  border: '1px solid rgba(243,230,210,.18)',
-                }}>
-                  Khóa sửa trực tiếp
-                </span>
-              )}
-              <button onClick={onClose} style={{ background: 'rgba(255,255,255,.12)', border: 'none', width: 28, height: 28, borderRadius: 8, cursor: 'pointer', color: '#f3e6d2', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+              <button onClick={onClose} style={{ background: 'var(--bg)', border: '1px solid var(--line)', width: 28, height: 28, borderRadius: 8, cursor: 'pointer', color: 'var(--ink2)', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
-          </div>
-          <div style={{ display: 'flex', padding: '6px 20px 0', gap: 4 }}>
-            {['Đơn hàng', 'CRM khách', 'Liên kết dữ liệu'].map((lbl, i) => (
-              <div key={lbl} style={{ padding: '7px 14px', fontSize: 12.5, fontWeight: 700, color: i === 0 ? '#C9A96E' : 'rgba(243,230,210,.4)', borderBottom: i === 0 ? '2px solid #C9A96E' : '2px solid transparent', cursor: 'pointer' }}>{lbl}</div>
-            ))}
           </div>
         </div>
 
@@ -134,15 +119,6 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVo
               <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 1 }}>{date} · {time}</div>
             </div>
           </div>
-          {order.trang_thai === 'da_thanh_toan' && (
-            <div style={{
-              marginTop: 10, padding: '8px 10px', borderRadius: 8,
-              background: 'rgba(45,122,79,.08)', border: '1px solid rgba(45,122,79,.18)',
-              color: '#2D7A4F', fontSize: 11.5, fontWeight: 700,
-            }}>
-              Đơn đã thanh toán: dữ liệu doanh thu, thẻ liệu trình, kho và thu nhập nhân viên đã phát sinh. Chỉ Admin nên điều chỉnh bằng phiếu điều chỉnh có lưu vết.
-            </div>
-          )}
         </div>
 
         {}
@@ -369,26 +345,26 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, canVo
         </div>
 
         {}
-        <div style={{ padding: '12px 20px', borderTop: '2px solid var(--line)', flexShrink: 0, display: 'flex', gap: 8, background: 'linear-gradient(135deg,#3d2c20 0%,#2a1d14 100%)' }}>
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', flexShrink: 0, display: 'flex', gap: 8, background: '#fafaf9' }}>
           {order.trang_thai !== 'huy' && canVoid && (
-            <button onClick={onVoid} style={{ padding: '0 14px', height: 40, border: '1px solid rgba(220,53,69,.4)', borderRadius: 8, background: 'rgba(220,53,69,.15)', color: '#ff8a80', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+            <button onClick={onVoid} style={{ padding: '0 14px', height: 40, border: '1px solid rgba(192,57,43,.35)', borderRadius: 8, background: 'rgba(192,57,43,.06)', color: '#C0392B', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
               Hủy đơn
             </button>
           )}
           {order.trang_thai !== 'huy' && !canVoid && (
-            <span style={{ padding: '0 12px', height: 40, display: 'inline-flex', alignItems: 'center', fontSize: 11, color: 'rgba(243,230,210,0.4)', fontStyle: 'italic' }}>
+            <span style={{ padding: '0 12px', height: 40, display: 'inline-flex', alignItems: 'center', fontSize: 11, color: 'var(--ink3)', fontStyle: 'italic' }}>
               Đơn cũ · liên hệ Admin hủy
             </span>
           )}
           <div style={{ flex: 1 }} />
-          <button onClick={handlePrint} disabled={loading} style={{ padding: '0 16px', height: 40, border: '1px solid rgba(201,169,110,.5)', borderRadius: 8, background: 'rgba(201,169,110,.18)', color: '#f3d9a8', fontSize: 12.5, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--sans)', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: loading ? 0.6 : 1 }}>
+          <button onClick={handlePrint} disabled={loading} style={{ padding: '0 16px', height: 40, border: '1px solid var(--bord)', borderRadius: 8, background: '#fff', color: 'var(--ink2)', fontSize: 12.5, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--sans)', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: loading ? 0.6 : 1 }}>
             🖨 In hóa đơn
           </button>
-          <button onClick={onClose} style={{ padding: '0 16px', height: 40, border: '1px solid rgba(243,230,210,.2)', borderRadius: 8, background: 'rgba(255,255,255,.08)', color: 'rgba(243,230,210,.7)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+          <button onClick={onClose} style={{ padding: '0 16px', height: 40, border: '1px solid var(--line)', borderRadius: 8, background: '#fff', color: 'var(--ink2)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
             Đóng
           </button>
           {order.trang_thai === 'draft' && (
-            <button onClick={() => { onClose(); onEdit?.(order) }} style={{ padding: '0 16px', height: 40, border: 'none', borderRadius: 8, background: 'var(--champagne)', color: '#2a1d14', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+            <button onClick={() => { onClose(); onEdit?.(order) }} style={{ padding: '0 16px', height: 40, border: 'none', borderRadius: 8, background: 'var(--grad, var(--champagne))', color: '#2a1d14', fontSize: 12.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
               Mở & Thanh toán
             </button>
           )}
