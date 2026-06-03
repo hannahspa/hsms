@@ -374,7 +374,7 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
       <style>{`@keyframes slideInRight { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.32)', zIndex: 490 }} />
       <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(1080px, 98vw)',
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(1040px, calc(100vw - 256px))',
         background: '#fff', zIndex: 491, display: 'flex', flexDirection: 'column',
         boxShadow: '-6px 0 40px rgba(0,0,0,.22)', animation: 'slideInRight .22s ease',
       }}>
