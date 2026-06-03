@@ -154,7 +154,7 @@ function DonutChart({ segments, total, size = 140, ring = 18 }) {
         return <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={s.c} strokeWidth={ring} strokeDasharray={`${part} ${len - part}`} strokeDashoffset={-off} transform={`rotate(-90 ${cx} ${cy})`} />
       })}
       <text x={cx} y={cy - 2} textAnchor="middle" fontSize="10" fill="#8e7a68" fontFamily="Inter" fontWeight="600">CHI</text>
-      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="16" fill="#2a201a" fontFamily="var(--serif)" fontWeight="700">{Math.round(total / 1000)}M</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="16" fill="#2a201a" fontFamily="var(--serif)" fontWeight="700">{total >= 1000000 ? (total / 1000000).toFixed(1) + 'M' : total >= 1000 ? Math.round(total / 1000) + 'k' : total}</text>
     </svg>
   )
 }

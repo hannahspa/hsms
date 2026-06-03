@@ -36,7 +36,7 @@ function Donut({ segments, size = 140, ring = 18 }) {
         )
       })}
       <text x={cx} y={cy - 4} textAnchor="middle" fontSize="11" fill="#8e7a68" fontFamily="Inter" fontWeight="600" letterSpacing="1.5">TỔNG</text>
-      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="18" fill="#2a201a" fontFamily="var(--serif)" fontWeight="700">{Math.round(total / 1000)}M</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="18" fill="#2a201a" fontFamily="var(--serif)" fontWeight="700">{total >= 1000000 ? (total / 1000000).toFixed(1) + 'M' : total >= 1000 ? Math.round(total / 1000) + 'k' : total}</text>
     </svg>
   )
 }
