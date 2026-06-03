@@ -241,9 +241,9 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
             }}>
               <NvAvatar nv={nv} size={24} />
               <span style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{shortName(nv.ho_ten)}</span>
-              {(item.tien_tour > 0 || item.tien_commission > 0) && (
+              {(item.tien_tour > 0 || item.tien_hoa_hong > 0) && (
                 <span style={{ fontSize: 11, fontWeight: 700, color: C.champagne }}>
-                  · {isSanPham ? 'HH' : 'Tour'} {formatCurrency(item.tien_tour || item.tien_commission || 0)}
+                  · {isSanPham ? 'HH' : 'Tour'} {formatCurrency(item.tien_tour || item.tien_hoa_hong || 0)}
                 </span>
               )}
               <span style={{ fontSize: 10, color: C.ink3 }}>✎</span>

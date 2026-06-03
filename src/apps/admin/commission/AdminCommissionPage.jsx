@@ -52,7 +52,7 @@ function normalizeLedgerRow(r) {
     so_tien_thu_nhap: r.so_tien || 0,
     thanh_tien: r.doanh_so_tinh || line.thanh_tien || 0,
     tien_tour: r.loai === 'tour' ? (r.so_tien || 0) : 0,
-    tien_commission: r.loai === 'hoa_hong' ? (r.so_tien || 0) : 0,
+    tien_hoa_hong: r.loai === 'hoa_hong' ? (r.so_tien || 0) : 0,
     ti_le_hoa_hong: r.ti_le || 0,
     loai_item: line.loai_item || r.loai,
     so_luong: line.so_luong || 1,
@@ -100,7 +100,7 @@ function DetailModal({ nv, thang, nam, startDate, endDate, onClose }) {
     const { data } = await supabase
       .from('don_hang_chi_tiet')
       .select(`
-        id, thanh_tien, tien_tour, tien_commission, ti_le_hoa_hong, loai_item, so_luong,
+        id, thanh_tien, tien_tour, tien_hoa_hong, ti_le_hoa_hong, loai_item, so_luong,
         dich_vu:dich_vu_id(ten),
         san_pham:san_pham_id(ten),
         the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu),
@@ -139,7 +139,7 @@ function DetailModal({ nv, thang, nam, startDate, endDate, onClose }) {
 
   const tongDT = rows.reduce((s, r) => s + (r.thanh_tien || 0), 0)
   const tongTour = rows.reduce((s, r) => s + (r.tien_tour || 0), 0)
-  const tongCommission = rows.reduce((s, r) => s + (r.tien_commission || 0), 0)
+  const tongCommission = rows.reduce((s, r) => s + (r.tien_hoa_hong || 0), 0)
   const tongThuNhap = tongTour + tongCommission
   const nguonMap = rows.reduce((map, row) => {
     const key = row.nguon || 'pos'
@@ -306,7 +306,7 @@ function DetailModal({ nv, thang, nam, startDate, endDate, onClose }) {
                       </td>
                       <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                         <span style={{ fontFamily: 'var(--serif)', fontSize: 14, fontWeight: 700, color: C.thu }}>
-                          {(r.so_tien_thu_nhap || r.tien_tour || r.tien_commission || 0) > 0 ? formatCurrency(r.so_tien_thu_nhap || r.tien_tour || r.tien_commission || 0) : '—'}
+                          {(r.so_tien_thu_nhap || r.tien_tour || r.tien_hoa_hong || 0) > 0 ? formatCurrency(r.so_tien_thu_nhap || r.tien_tour || r.tien_hoa_hong || 0) : '—'}
                         </span>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
@@ -405,7 +405,7 @@ export default function AdminCommissionPage() {
       const { data } = await supabase
         .from('don_hang_chi_tiet')
         .select(`
-          id, nhan_vien_id, tien_tour, tien_commission, thanh_tien, loai_item, so_luong,
+          id, nhan_vien_id, tien_tour, tien_hoa_hong, thanh_tien, loai_item, so_luong,
           nhan_vien:nhan_vien_id(ho_ten, vi_tri),
           don_hang:don_hang_id(ngay, trang_thai, is_test)
         `)
@@ -435,7 +435,7 @@ export default function AdminCommissionPage() {
         map[id].soLuot += (r.so_luong || 1)
         map[id].tongDS += (r.thanh_tien || 0)
         if (r.loai_item === 'the_moi' || r.loai_item === 'san_pham') {
-          map[id].tongHoaHongThe += (r.tien_commission || 0)
+          map[id].tongHoaHongThe += (r.tien_hoa_hong || 0)
         } else {
           map[id].tongTienTour += (r.tien_tour || 0)
         }

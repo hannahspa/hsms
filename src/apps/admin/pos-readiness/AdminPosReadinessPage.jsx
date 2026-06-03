@@ -219,7 +219,7 @@ export default function AdminPosReadinessPage() {
         supabase.from('thanh_toan').select('id,don_hang_id,hinh_thuc,so_tien,created_at').in('don_hang_id', ids),
         supabase
           .from('don_hang_chi_tiet')
-          .select('id,don_hang_id,loai_item,dich_vu_id,san_pham_id,the_lieu_trinh_id,nhan_vien_id,so_luong,don_gia,thanh_tien,tien_tour,tien_commission,meta,nhan_vien:nhan_vien_id(ho_ten),dich_vu:dich_vu_id(ti_le_hoa_hong,promotion_config)')
+          .select('id,don_hang_id,loai_item,dich_vu_id,san_pham_id,the_lieu_trinh_id,nhan_vien_id,so_luong,don_gia,thanh_tien,tien_tour,tien_hoa_hong,meta,nhan_vien:nhan_vien_id(ho_ten),dich_vu:dich_vu_id(ti_le_hoa_hong,promotion_config)')
           .in('don_hang_id', ids),
       ])
 
@@ -255,7 +255,7 @@ export default function AdminPosReadinessPage() {
     validItems.forEach(i => {
       byType[i.loai_item] = num(byType[i.loai_item]) + num(i.thanh_tien)
       const isCommission = i.loai_item === 'the_moi' || i.loai_item === 'san_pham'
-      if (isCommission) commission += num(i.tien_commission || 0)
+      if (isCommission) commission += num(i.tien_hoa_hong || 0)
       else tour += num(i.tien_tour || 0)
     })
 
@@ -292,7 +292,7 @@ export default function AdminPosReadinessPage() {
       if (!orderItems.length) issues.push({ level: 'danger', ma_don: o.ma_don, text: 'Đơn chưa có dòng dịch vụ/sản phẩm' })
       orderItems.forEach(i => {
         const income = i.loai_item === 'the_moi' || i.loai_item === 'san_pham'
-          ? num(i.tien_commission || 0)
+          ? num(i.tien_hoa_hong || 0)
           : num(i.tien_tour || 0)
         if (income > 0 && !i.nhan_vien_id && !i.meta?.myspaStaffDisplay) {
           issues.push({ level: 'danger', ma_don: o.ma_don, text: 'Có tour/hoa hồng nhưng thiếu nhân viên' })
@@ -334,7 +334,7 @@ export default function AdminPosReadinessPage() {
       crm_history: hasOrder((o, its) => !!o.khach_hang_id && its.length > 0 && o.trang_thai !== 'draft'),
       staff_income: hasOrder((o, its) => its.some(i => {
         const income = i.loai_item === 'the_moi' || i.loai_item === 'san_pham'
-          ? num(i.tien_commission || 0)
+          ? num(i.tien_hoa_hong || 0)
           : num(i.tien_tour || 0)
         return income > 0 && (i.nhan_vien_id || i.meta?.myspaStaffDisplay)
       })),

@@ -353,14 +353,14 @@ export default function AdminTheLieuTrinhPage() {
                           <td className="amount">{formatCurrency(combo.menh_gia || 0)}</td>
                           <td className="amount" style={{ fontWeight: 800 }}>{formatCurrency(combo.gia_ban || 0)}</td>
                           <td className="amount">
-                            <div style={{ fontWeight: 800, color: combo.ti_le_commission > 0 || combo.tien_commission > 0 ? '#426a2c' : 'var(--ink3)' }}>
-                              {combo.tien_commission > 0
-                                ? formatCurrency(combo.tien_commission)
+                            <div style={{ fontWeight: 800, color: combo.ti_le_commission > 0 || combo.tien_hoa_hong > 0 ? '#426a2c' : 'var(--ink3)' }}>
+                              {combo.tien_hoa_hong > 0
+                                ? formatCurrency(combo.tien_hoa_hong)
                                 : combo.ti_le_commission > 0
                                   ? `${combo.ti_le_commission}%`
                                   : '—'}
                             </div>
-                            {combo.ti_le_commission > 0 && combo.tien_commission <= 0 && (
+                            {combo.ti_le_commission > 0 && combo.tien_hoa_hong <= 0 && (
                               <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{formatCurrency(Math.round((combo.gia_ban || 0) * combo.ti_le_commission / 100))}</div>
                             )}
                           </td>

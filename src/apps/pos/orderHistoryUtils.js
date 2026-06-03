@@ -129,10 +129,10 @@ export function itemIncomeInfo(item) {
   // san_pham, the_moi → hoa hồng bán hàng
   // dich_vu, the_lieu_trinh → tiền tour KTV thực hiện
   const isCommission = item.loai_item === 'the_moi' || item.loai_item === 'san_pham'
-  // Dùng || thay ?? để fallback đúng khi tien_tour/tien_commission = 0 (integer)
+  // Dùng || thay ?? để fallback đúng khi tien_tour/tien_hoa_hong = 0 (integer)
   const amount = isCommission
-    ? (item.tien_commission || 0)
-    : (item.tien_tour || item.tien_commission || 0)
+    ? (item.tien_hoa_hong || 0)
+    : (item.tien_tour || item.tien_hoa_hong || 0)
   return { label: isCommission ? 'Hoa Hồng' : 'Tour', amount }
 }
 

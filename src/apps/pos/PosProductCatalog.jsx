@@ -78,7 +78,7 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
       thanh_tien: gia,
       ti_le_hoa_hong: pct,
       tien_tour: tour,
-      tien_commission: 0,
+      tien_hoa_hong: 0,
       meta: {
         myspaCommission: {
           ktv: getMyspaCommissionRule(dv, 'ktv'),
@@ -104,7 +104,7 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
       so_luong: 1,
       tien_tour: 0,
       ti_le_hoa_hong: sp.hoa_hong_kieu === 'percent' ? Number(sp.ti_le_hoa_hong || 0) : null,
-      tien_commission: commission,
+      tien_hoa_hong: commission,
       meta: {
         productCode: sp.ma_sp || null,
         sku: sp.sku || null,
@@ -149,7 +149,7 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
       thanh_tien: 0,
       ti_le_hoa_hong: null,
       tien_tour: policy?.suggestedTour || 0,
-      tien_commission: 0,
+      tien_hoa_hong: 0,
       meta: {
         treatmentPolicy: policy,
         displayValue,
@@ -167,7 +167,7 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
     const primary = combo.dich_vu?.[0] || {}
     const soLan = primary.khong_gioi_han ? 9999 : (primary.so_lan || 1)
     const gia = combo.gia_ban || 0
-    const commission = combo.tien_commission || Math.round(gia * (combo.ti_le_commission || 0) / 100)
+    const commission = combo.tien_hoa_hong || Math.round(gia * (combo.ti_le_commission || 0) / 100)
     const ngayHetHan = addDurationISO(todayISO(), combo.thoi_han_so || 1, combo.thoi_han_don_vi || 'year')
     onAddItem({
       loai_item: 'the_moi',
@@ -178,7 +178,7 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
       so_luong: 1,
       ti_le_hoa_hong: combo.ti_le_commission || null,
       tien_tour: 0,
-      tien_commission: commission,
+      tien_hoa_hong: commission,
       meta: {
         loai: 'combo_lieu_trinh',
         comboId: combo.id,

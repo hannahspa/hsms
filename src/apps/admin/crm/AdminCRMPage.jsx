@@ -55,12 +55,12 @@ function historyIncome(row) {
   // san_pham + the_moi → COMMISSION (hoa hồng bán hàng)
   const isService = row.loai_item === 'dich_vu' || row.loai_item === 'the_lieu_trinh'
   if (isService) {
-    // Fallback: tien_tour trước, nếu 0 thì dùng tien_commission (data T5 import ghi nhầm cột)
-    const amount = row.tien_tour || row.tien_commission || 0
+    // Fallback: tien_tour trước, nếu 0 thì dùng tien_hoa_hong (data T5 import ghi nhầm cột)
+    const amount = row.tien_tour || row.tien_hoa_hong || 0
     if (amount <= 0) return null
     return { label: 'Tour', amount, color: 'var(--thu)' }
   } else {
-    const amount = row.tien_commission || 0
+    const amount = row.tien_hoa_hong || 0
     if (amount <= 0) return null
     return { label: 'Hoa Hồng', amount, color: 'var(--champagne)' }
   }
@@ -82,7 +82,7 @@ function staffIncomeRows(rows = []) {
     const key = row.ktv
     if (!map[key]) map[key] = { name: shortStaffName(row.ktv), tour: 0, hoaHong: 0 }
     map[key].tour += row.tien_tour || 0
-    map[key].hoaHong += row.tien_commission || 0
+    map[key].hoaHong += row.tien_hoa_hong || 0
   })
   return Object.values(map)
 }
@@ -298,7 +298,7 @@ function AdminCRMDetailPage({ customerId }) {
     const qty = order.rows.reduce((sum, row) => sum + (row.so_luong || 0), 0)
     const staff = [...new Set(order.rows.map(row => row.ktv).filter(Boolean))]
     const staffIncome = staffIncomeRows(order.rows)
-    const income = order.rows.reduce((sum, row) => sum + (row.tien_tour || 0) + (row.tien_commission || 0), 0)
+    const income = order.rows.reduce((sum, row) => sum + (row.tien_tour || 0) + (row.tien_hoa_hong || 0), 0)
     return { ...order, total, qty, staff, staffIncome, income }
   })
   const treatmentCardGroups = cards.reduce((acc, card) => {

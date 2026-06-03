@@ -12,7 +12,7 @@ export default function ComboEditModal({ combo, onClose, onSaved }) {
     thoi_han_so: combo?.thoi_han_so || 1,
     thoi_han_don_vi: combo?.thoi_han_don_vi || 'year',
     ti_le_commission: combo?.ti_le_commission || 0,
-    tien_commission: combo?.tien_commission || 0,
+    tien_hoa_hong: combo?.tien_hoa_hong || 0,
     trang_thai: combo?.trang_thai || 'active',
     ghi_chu: combo?.ghi_chu || '',
     so_lan: primary?.so_lan || 1,
@@ -22,7 +22,7 @@ export default function ComboEditModal({ combo, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const autoCommission = Math.round((form.gia_ban || 0) * (Number(form.ti_le_commission) || 0) / 100)
-  const commissionValue = form.tien_commission > 0 ? form.tien_commission : autoCommission
+  const commissionValue = form.tien_hoa_hong > 0 ? form.tien_hoa_hong : autoCommission
 
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
 
@@ -44,7 +44,7 @@ export default function ComboEditModal({ combo, onClose, onSaved }) {
           thoi_han_so: form.thoi_han_so || 1,
           thoi_han_don_vi: form.thoi_han_don_vi,
           ti_le_commission: Number(form.ti_le_commission) || 0,
-          tien_commission: form.tien_commission || 0,
+          tien_hoa_hong: form.tien_hoa_hong || 0,
           trang_thai: form.trang_thai,
           ghi_chu: form.ghi_chu || null,
           updated_at: getNowVN().toISOString(),
@@ -171,7 +171,7 @@ export default function ComboEditModal({ combo, onClose, onSaved }) {
             </label>
             <label style={{ display: 'grid', gap: 6 }}>
               <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink3)', textTransform: 'uppercase' }}>HH cố định</span>
-              <input value={moneyInput(form.tien_commission)} onChange={e => set('tien_commission', parseMoney(e.target.value))}
+              <input value={moneyInput(form.tien_hoa_hong)} onChange={e => set('tien_hoa_hong', parseMoney(e.target.value))}
                 style={{ height: 38, border: '1px solid var(--bord)', borderRadius: 8, padding: '0 12px', textAlign: 'right', outline: 'none', fontWeight: 700 }} />
             </label>
           </div>

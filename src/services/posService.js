@@ -237,7 +237,7 @@ export const posService = {
       thanh_tien: donGia,
       ti_le_hoa_hong: tiLe || null,
       tien_tour: tienTour,
-      tien_commission: 0,
+      tien_hoa_hong: 0,
       ghi_chu: `Tu lich hen: ${serviceName}`,
       meta: {
         source: 'lich_hen',
@@ -275,12 +275,12 @@ export const posService = {
     const tour = items.reduce((s, i) => {
       const isService = i.loai_item === 'dich_vu' || i.loai_item === 'the_lieu_trinh'
       if (!isService) return s
-      return s + (i.tien_tour || i.tien_commission || 0)
+      return s + (i.tien_tour || i.tien_hoa_hong || 0)
     }, 0)
     const hoaHong = items.reduce((s, i) => {
       const isSaleItem = i.loai_item === 'san_pham' || i.loai_item === 'the_moi'
       if (!isSaleItem) return s
-      return s + (i.tien_commission || 0)
+      return s + (i.tien_hoa_hong || 0)
     }, 0)
     const itemNames = items.map(i =>
       i.meta?.tenDichVu || i.the_lieu_trinh?.ten_dich_vu || i.dich_vu?.ten || i.san_pham?.ten || i.loai_item
@@ -304,14 +304,14 @@ export const posService = {
         }
       }
       // Dịch vụ + thẻ liệu trình → tiền KTV là TOUR
-      // Sản phẩm + thẻ mới → tiền KTV là HOA HỒNG (tien_commission)
+      // Sản phẩm + thẻ mới → tiền KTV là HOA HỒNG (tien_hoa_hong)
       const isServiceItem = i.loai_item === 'dich_vu' || i.loai_item === 'the_lieu_trinh'
       if (isServiceItem) {
-        // tien_tour là cột chuẩn; fallback tien_commission cho data T5 import cũ ghi nhầm cột
-        staffMap[key].tour += (i.tien_tour || i.tien_commission || 0)
+        // tien_tour là cột chuẩn; fallback tien_hoa_hong cho data T5 import cũ ghi nhầm cột
+        staffMap[key].tour += (i.tien_tour || i.tien_hoa_hong || 0)
       } else {
         // san_pham, the_moi → hoa hồng
-        staffMap[key].hoaHong += (i.tien_commission || 0)
+        staffMap[key].hoaHong += (i.tien_hoa_hong || 0)
       }
     })
     const staffCompensations = Object.values(staffMap)
@@ -468,7 +468,7 @@ export const posService = {
       thanh_tien: item.thanh_tien,
       ti_le_hoa_hong: item.ti_le_hoa_hong || null,
       tien_tour: item.tien_tour || 0,
-      tien_commission: item.tien_commission || 0,
+      tien_hoa_hong: item.tien_hoa_hong || 0,
       ghi_chu: item.ghi_chu || '',
     }
     // Chỉ thêm meta nếu có (dùng cho the_moi — lưu thông tin tạo thẻ)

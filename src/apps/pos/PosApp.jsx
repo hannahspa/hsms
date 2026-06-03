@@ -198,7 +198,7 @@ function PosCreateOrder({ resumeOrderId }) {
       thanh_tien: 0,
       ti_le_hoa_hong: null,
       tien_tour:  policy?.suggestedTour || 0,
-      tien_commission: 0,
+      tien_hoa_hong: 0,
       meta: {
         treatmentPolicy: policy,
         displayValue,
@@ -245,7 +245,7 @@ function PosCreateOrder({ resumeOrderId }) {
       ? calcNextTour(item, nextThanhTien, qty)
       : (item?.tien_tour || 0)
     const updatePayload = item?.loai_item === 'dich_vu'
-      ? { so_luong: qty, thanh_tien: nextThanhTien, tien_tour: nextTour, tien_commission: 0 }
+      ? { so_luong: qty, thanh_tien: nextThanhTien, tien_tour: nextTour, tien_hoa_hong: 0 }
       : { so_luong: qty, thanh_tien: nextThanhTien }
     if (savedOrderId && item?.id) {
       try {
@@ -264,7 +264,7 @@ function PosCreateOrder({ resumeOrderId }) {
       ? calcNextTour(item, newThanhTien, qty)
       : (item?.tien_tour || 0)
     const updatePayload = item?.loai_item === 'dich_vu'
-      ? { thanh_tien: newThanhTien, tien_tour: nextTour, tien_commission: 0 }
+      ? { thanh_tien: newThanhTien, tien_tour: nextTour, tien_hoa_hong: 0 }
       : { thanh_tien: newThanhTien }
     if (savedOrderId && item?.id) {
       try {
@@ -319,7 +319,7 @@ function PosCreateOrder({ resumeOrderId }) {
             nhan_vien_id:    ktv?.id || null,
             ti_le_hoa_hong:  finalTiLe,
             tien_tour:       tienTour,
-            tien_commission: tienCommission,
+            tien_hoa_hong: tienCommission,
             ...(updatedMeta !== item.meta ? { meta: updatedMeta } : {}),
           })
           .eq('id', item.id)
@@ -331,7 +331,7 @@ function PosCreateOrder({ resumeOrderId }) {
       nhan_vien:       ktv || null,
       ti_le_hoa_hong:  finalTiLe,
       tien_tour:       tienTour,
-      tien_commission: tienCommission,
+      tien_hoa_hong: tienCommission,
       ...(updatedMeta !== item.meta ? { meta: updatedMeta } : {}),
     } : i))
     setKtvPopup(null)
@@ -436,7 +436,7 @@ function PosCreateOrder({ resumeOrderId }) {
         thanh_tien:        item.thanh_tien || 0,
         ti_le_hoa_hong:    item.ti_le_hoa_hong || null,
         tien_tour:         item.tien_tour || 0,
-        tien_commission:   item.tien_commission || 0,
+        tien_hoa_hong:   item.tien_hoa_hong || 0,
         ghi_chu:           item.ghi_chu || '',
         meta:              item.meta || undefined,
       })))
@@ -490,16 +490,16 @@ function PosCreateOrder({ resumeOrderId }) {
       try {
         await supabase.from('don_hang_chi_tiet')
           .update(toCard
-            ? { loai_item: 'the_moi', so_luong: soBuoiMua, thanh_tien: thanhTien, tien_tour: 0, tien_commission: 0, meta: metaData }
-            : { loai_item: 'dich_vu', so_luong: 1, thanh_tien: donGia, tien_tour: item?.tien_tour || 0, tien_commission: 0, meta: null })
+            ? { loai_item: 'the_moi', so_luong: soBuoiMua, thanh_tien: thanhTien, tien_tour: 0, tien_hoa_hong: 0, meta: metaData }
+            : { loai_item: 'dich_vu', so_luong: 1, thanh_tien: donGia, tien_tour: item?.tien_tour || 0, tien_hoa_hong: 0, meta: null })
           .eq('id', item.id)
       } catch (_) {}
     }
     setLineItems(prev => prev.map(i => i._lid === _lid ? {
       ...i,
       ...(toCard
-        ? { loai_item: 'the_moi', so_luong: soBuoiMua, thanh_tien: thanhTien, tien_tour: 0, tien_commission: 0, meta: metaData }
-        : { loai_item: 'dich_vu', so_luong: 1, thanh_tien: donGia, tien_tour: i.tien_tour || 0, tien_commission: 0, meta: null }),
+        ? { loai_item: 'the_moi', so_luong: soBuoiMua, thanh_tien: thanhTien, tien_tour: 0, tien_hoa_hong: 0, meta: metaData }
+        : { loai_item: 'dich_vu', so_luong: 1, thanh_tien: donGia, tien_tour: i.tien_tour || 0, tien_hoa_hong: 0, meta: null }),
     } : i))
   }, [selectedCustomer, lineItems, savedOrderId])
 
@@ -549,7 +549,7 @@ function PosCreateOrder({ resumeOrderId }) {
           thanh_tien:        item.thanh_tien || 0,
           ti_le_hoa_hong:    item.ti_le_hoa_hong || null,
           tien_tour:         item.tien_tour || 0,
-          tien_commission:   item.tien_commission || 0,
+          tien_hoa_hong:   item.tien_hoa_hong || 0,
           ghi_chu:           item.ghi_chu || '',
           meta:              item.meta || undefined,
         })))
@@ -693,7 +693,7 @@ function PosCreateOrder({ resumeOrderId }) {
     const staffPct = hasPanelSeller ? sellerPct : Number(item.ti_le_hoa_hong || 0)
     const tienComm = hasPanelSeller
       ? Math.round((item.thanh_tien || 0) * sellerPct / 100)
-      : (item.tien_commission || Math.round((item.thanh_tien || 0) * staffPct / 100))
+      : (item.tien_hoa_hong || Math.round((item.thanh_tien || 0) * staffPct / 100))
     const nextMeta = {
       ...currentMeta,
       nhanVienBanId: staffId,
@@ -707,7 +707,7 @@ function PosCreateOrder({ resumeOrderId }) {
       nhan_vien: item.nhan_vien || primary?.nv || null,
       ti_le_hoa_hong: staffPct || null,
       tien_tour: 0,
-      tien_commission: tienComm,
+      tien_hoa_hong: tienComm,
       meta: nextMeta,
     }
   }
@@ -729,7 +729,7 @@ function PosCreateOrder({ resumeOrderId }) {
               nhan_vien_id: item.nhan_vien_id || null,
               ti_le_hoa_hong: item.ti_le_hoa_hong || null,
               tien_tour: 0,
-              tien_commission: item.tien_commission || 0,
+              tien_hoa_hong: item.tien_hoa_hong || 0,
               meta: item.meta || {},
             })
             .eq('id', item.id)

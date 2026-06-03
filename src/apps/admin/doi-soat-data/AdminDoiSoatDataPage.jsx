@@ -204,7 +204,7 @@ export default function AdminDoiSoatDataPage() {
     for (let from = 0; from < 10000; from += 1000) {
       const res = await supabase
         .from('don_hang_chi_tiet')
-        .select('id,meta,thanh_tien,tien_tour,tien_commission')
+        .select('id,meta,thanh_tien,tien_tour,tien_hoa_hong')
         .eq('loai_item', 'dich_vu')
         .is('dich_vu_id', null)
         .range(from, from + 999)
