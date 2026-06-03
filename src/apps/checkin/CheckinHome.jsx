@@ -77,8 +77,12 @@ export default function CheckinHome({ nhanVien, onLogout }) {
   }
 
   const loadHen = async () => {
+    // Lịch hẹn CỦA CHÍNH KTV này — hôm nay + sắp tới (để chuẩn bị trước)
     const { data } = await supabase.from('lich_hen').select('*')
-      .eq('ngay_hen', today).neq('trang_thai', 'huy').order('gio_hen')
+      .eq('nhan_vien_id', nhanVien.id)
+      .gte('ngay_hen', today)
+      .neq('trang_thai', 'huy')
+      .order('ngay_hen').order('gio_hen')
     setHenHomNay(data || [])
   }
 
@@ -204,33 +208,37 @@ export default function CheckinHome({ nhanVien, onLogout }) {
         )}
       </div>
 
-      {/* ── Lịch Hẹn Hôm Nay ── */}
+      {/* ── Lịch hẹn của bạn (hôm nay + sắp tới) ── */}
       <div style={{ margin: '12px 18px 0', background: LUX.surface2, borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, padding: 18, position: 'relative', overflow: 'hidden' }} className="stagger">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: henHomNay.length ? 12 : 0 }}>
           <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', color: LUX.ink3, fontWeight: 600 }}>
-            Lịch hẹn hôm nay
+            🔔 Lịch hẹn của bạn
           </div>
           {henHomNay.length > 0 && (
-            <div style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: LUX.champagne2 }}>{henHomNay.length} khách</div>
+            <div style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: LUX.champagne2 }}>{henHomNay.length} lịch sắp tới</div>
           )}
         </div>
         {henHomNay.length === 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
             <span style={{ fontSize: 22 }}>🌿</span>
-            <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3 }}>Hôm nay chưa có lịch hẹn nào</div>
+            <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3 }}>Bạn chưa có khách nào đặt hẹn</div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {henHomNay.map(h => {
               const tt = {
-                cho_xac_nhan: { l: 'Chờ', c: '#B8860B', bg: '#FFF9F0' },
+                cho_xac_nhan: { l: 'Chờ xác nhận', c: '#B8860B', bg: '#FFF9F0' },
                 da_xac_nhan:  { l: 'Đã xác nhận', c: '#2D7A4F', bg: '#eef2e7' },
                 da_xong:      { l: 'Xong', c: '#1a4f96', bg: '#e8f0fe' },
               }[h.trang_thai] || { l: '', c: LUX.ink3, bg: LUX.surface }
+              const isToday = h.ngay_hen === today
+              const [yy, moo, dd] = (h.ngay_hen || '').split('-')
+              const dowLabel = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][new Date(`${h.ngay_hen}T00:00:00`).getDay()]
               return (
-                <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: LUX.surface, borderRadius: 12, border: `1px solid ${LUX.line}` }}>
-                  <div style={{ minWidth: 48, textAlign: 'center' }}>
+                <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: isToday ? '#fffaf0' : LUX.surface, borderRadius: 12, border: `1px solid ${isToday ? '#e8c987' : LUX.line}` }}>
+                  <div style={{ minWidth: 54, textAlign: 'center' }}>
                     <div style={{ fontFamily: LUX.fontSans, fontWeight: 800, fontSize: 16, color: LUX.primary, letterSpacing: '-0.5px' }}>{(h.gio_hen || '').slice(0, 5)}</div>
+                    <div style={{ fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 10, color: isToday ? '#b8860b' : LUX.ink3, marginTop: 1 }}>{isToday ? 'HÔM NAY' : `${dowLabel} ${dd}/${moo}`}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, color: LUX.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.ten_khach}</div>
