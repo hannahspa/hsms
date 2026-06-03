@@ -322,7 +322,7 @@ export default function TabHoSo() {
             Nhân Viên — {activeList.length} người
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '12px', marginBottom: '24px' }}>
             {activeList.map(nv => {
               const vc = VI_TRI_COLOR[nv.vi_tri] || VI_TRI_COLOR.tap_vu
               const tm = thangMap[nv.id]
@@ -379,9 +379,10 @@ export default function TabHoSo() {
               <div style={{ fontFamily: LUX.fontSans, fontWeight: 600, fontSize: '10px', color: LUX.ink3, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
                 Nhân Viên Đặc Biệt
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '12px' }}>
               {specialList.map(nv => (
                 <button key={nv.id} onClick={() => setSelected(nv)}
-                  style={{ background: LUX.surface, borderRadius: LUX.radius, padding: '14px 16px', border: `1px solid ${LUX.line}`, display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.8, cursor: 'pointer', textAlign: 'left', width: '100%', marginBottom: '8px' }}>
+                  style={{ background: LUX.surface, borderRadius: LUX.radius, padding: '14px 16px', border: `1px solid ${LUX.line}`, display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.8, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                   <div style={{ width: '48px', height: '48px', borderRadius: '14px', overflow: 'hidden', border: `2px solid ${LUX.line}`, flexShrink: 0 }}>
                     {nv.avatar_url
                       ? <img src={nv.avatar_url} alt={nv.ho_ten} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -396,6 +397,7 @@ export default function TabHoSo() {
                   <div style={{ color: LUX.line2, fontSize: '18px', flexShrink: 0 }}>›</div>
                 </button>
               ))}
+              </div>
             </>
           )}
         </>
@@ -403,9 +405,9 @@ export default function TabHoSo() {
 
       {/* ── Bottom sheet: Chi tiết ── */}
       {selected && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
           onClick={() => setSelected(null)}>
-          <div style={{ background: LUX.bg, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: '88vh', overflowY: 'auto', paddingBottom: '40px' }}
+          <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '100%', maxWidth: '560px', margin: '0 auto', maxHeight: '90vh', overflowY: 'auto', paddingBottom: '24px', boxShadow: '0 24px 70px rgba(42,32,26,0.4)' }}
             onClick={e => e.stopPropagation()}>
             {/* Handle */}
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
@@ -486,9 +488,9 @@ export default function TabHoSo() {
 
       {/* ── Bottom sheet: Form Thêm / Sửa ── */}
       {editSheet && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 1001, display: 'flex', alignItems: 'flex-end' }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
           onClick={() => setEditSheet(null)}>
-          <div style={{ background: LUX.bg, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: '92vh', overflowY: 'auto', paddingBottom: '40px' }}
+          <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '100%', maxWidth: '560px', margin: '0 auto', maxHeight: '92vh', overflowY: 'auto', paddingBottom: '24px', boxShadow: '0 24px 70px rgba(42,32,26,0.4)' }}
             onClick={e => e.stopPropagation()}>
             {/* Handle */}
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
