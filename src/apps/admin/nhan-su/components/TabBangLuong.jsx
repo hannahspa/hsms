@@ -82,6 +82,7 @@ export default function TabBangLuong({ fixedKy = null }) {
   const [loading,   setLoading]   = useState(false)
   const [selected,  setSelected]  = useState(null)
   const [editState, setEditState] = useState({})
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false)  // hỏi lưu trước khi đóng
   const [saving,    setSaving]    = useState(false)
   const [leTanInput,  setLeTanInput]  = useState({ tongDT: 0, dtMyPham: 0, dsKD: 0, dsNP: 0 })
   const [calcLeTan,   setCalcLeTan]   = useState(null) // preview result Lễ Tân
@@ -931,22 +932,35 @@ export default function TabBangLuong({ fixedKy = null }) {
         const isChot = ky === 1 ? ld.trangThaiLC === 'da_chot' : ld.trangThaiLKD === 'da_chot'
         const isLeTan = selected.vi_tri === 'le_tan'
 
+        // Có thay đổi chưa lưu? (so editState với giá trị gốc đã lưu)
+        const dirty = ky === 1
+          ? (editState.truUngLuong ?? 0) !== (ld.truUngLuong ?? 0)
+          : (editState.hoaHongDV ?? 0) !== (ld.hoaHongDV ?? 0)
+            || (editState.tienTour ?? 0) !== (ld.tienTour ?? 0)
+            || (editState.thuongDS ?? 0) !== (ld.thuongDatDoanhSo ?? 0)
+        // Đóng panel — nếu có thay đổi thì hỏi lưu trước
+        const attemptClose = () => { if (dirty) setShowCloseConfirm(true); else setSelected(null) }
+
         return createPortal(
           <>
           <style>{`@keyframes blSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.4)', zIndex: 9999 }}
-            onClick={() => setSelected(null)}>
+            onClick={attemptClose}>
             <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: ky === 1 ? 'min(1040px, calc(100vw - 256px))' : '560px', maxWidth: '98vw', background: LUX.bg, overflowY: 'auto', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'blSlideIn .22s ease' }}
               onClick={e => e.stopPropagation()}>
               {/* Header */}
-              <div style={{ background: ky === 1 ? LUX.heroGrad : 'linear-gradient(135deg,#1A5276,#154360)', borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
+              <div style={{ background: ky === 1 ? LUX.heroGrad : 'linear-gradient(135deg,#1A5276,#154360)', borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <div style={{ minWidth: 0 }}>
                   <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '22px', color: 'white' }}>{selected.ho_ten}</div>
                   <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
                     {ky === 1 ? `Lương Cứng — Tháng ${thang}/${nam}` : `Lương Kinh Doanh — Tháng ${thang}/${nam}`}
                   </div>
                 </div>
-                <TrangThaiBadge tt={ky === 1 ? ld.trangThaiLC : ld.trangThaiLKD} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <TrangThaiBadge tt={ky === 1 ? ld.trangThaiLC : ld.trangThaiLKD} />
+                  <button onClick={attemptClose} title="Đóng"
+                    style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.15)', color: 'white', fontSize: 18, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+                </div>
               </div>
 
               <div style={{ padding: '20px 24px' }}>
@@ -1211,7 +1225,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                       style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.danger}`, background: '#fff5f5', color: LUX.danger, fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
                       {saving ? '...' : '🔓 Mở Chốt'}
                     </button>
-                    <button onClick={() => setSelected(null)}
+                    <button onClick={attemptClose}
                       style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, background: LUX.surface2, fontFamily: LUX.fontSans, color: LUX.ink3, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
                       Đóng
                     </button>
@@ -1228,14 +1242,49 @@ export default function TabBangLuong({ fixedKy = null }) {
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => handleLuu(false)} disabled={saving}
-                    style={{ width: '100%', padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, background: LUX.surface2, fontFamily: LUX.fontSans, color: LUX.ink2, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
-                    {saving ? '...' : 'Lưu'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={attemptClose} disabled={saving}
+                      style={{ flex: 1, padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, background: '#fff', color: LUX.ink3, fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                      Huỷ
+                    </button>
+                    <button onClick={() => handleLuu(false)} disabled={saving}
+                      style={{ flex: 2, padding: '14px', borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, background: LUX.surface2, fontFamily: LUX.fontSans, color: LUX.ink2, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                      {saving ? '...' : 'Lưu'}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
           </div>
+
+          {/* Hỏi lưu trước khi đóng (khi có thay đổi chưa lưu) */}
+          {showCloseConfirm && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+              onClick={() => setShowCloseConfirm(false)}>
+              <div onClick={e => e.stopPropagation()}
+                style={{ background: LUX.surface, borderRadius: LUX.radiusLg, width: '100%', maxWidth: 380, padding: '26px 24px 20px', boxShadow: '0 20px 60px rgba(42,32,26,0.3)', textAlign: 'center' }}>
+                <div style={{ width: 60, height: 60, borderRadius: 18, background: 'linear-gradient(135deg,#fef9e7,#fdf3e0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, margin: '0 auto 14px' }}>💾</div>
+                <div style={{ fontFamily: LUX.fontSerif, fontSize: 19, fontWeight: 700, color: LUX.espresso, marginBottom: 6 }}>Lưu thay đổi?</div>
+                <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink2, lineHeight: 1.5, marginBottom: 20 }}>
+                  Bạn có thay đổi chưa lưu cho <strong>{selected.ho_ten}</strong>. Lưu lại trước khi đóng?
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button onClick={() => { setShowCloseConfirm(false); handleLuu(false) }} disabled={saving}
+                    style={{ width: '100%', padding: '13px', borderRadius: LUX.radius, border: 'none', background: ky === 1 ? LUX.goldGrad : 'linear-gradient(135deg,#1E7E34,#166534)', color: 'white', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                    {saving ? 'Đang lưu...' : '💾 Lưu & Đóng'}
+                  </button>
+                  <button onClick={() => { setShowCloseConfirm(false); setSelected(null) }}
+                    style={{ width: '100%', padding: '13px', borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, background: '#fff', color: LUX.danger, fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                    Không lưu, đóng
+                  </button>
+                  <button onClick={() => setShowCloseConfirm(false)}
+                    style={{ width: '100%', padding: '11px', borderRadius: LUX.radius, border: 'none', background: 'transparent', color: LUX.ink3, fontFamily: LUX.fontSans, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                    Huỷ — tiếp tục chỉnh
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           </>
         , document.body)
       })()}
