@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../../lib/supabase'
 import { posService } from '../../../services/posService'
-import { todayISO } from '../../../lib/utils'
+import { todayISO, getNowVN } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
 import { C, fmtDate, dayOfWeek, shortName, GIO_LIST_15, normalizePhone, dedupeHints, removeAccent } from './lichHenShared'
 
@@ -33,10 +33,17 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
   useEffect(() => {
     if (!form.khach_hang_id) { setCustCards([]); return undefined }
     let alive = true
+    const today = todayISO()
     supabase.from('the_lieu_trinh')
-      .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai')
+      .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai, ngay_het_han')
       .eq('khach_hang_id', form.khach_hang_id).eq('trang_thai', 'active')
-      .then(({ data }) => { if (alive) setCustCards((data || []).filter(c => (c.so_buoi_con_lai || 0) > 0)) })
+      .then(({ data }) => {
+        if (!alive) return
+        // Loại thẻ HẾT BUỔI + HẾT HẠN cho gọn
+        setCustCards((data || []).filter(c =>
+          (c.so_buoi_con_lai || 0) > 0 && (!c.ngay_het_han || c.ngay_het_han >= today)
+        ))
+      })
     return () => { alive = false }
   }, [form.khach_hang_id])
 
@@ -44,6 +51,24 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
   const selectCard = (card) => setForm(f => ({
     ...f, the_lieu_trinh_id: card.id, ten_dich_vu: card.ten_dich_vu, dich_vu_id: null,
   }))
+
+  // Giờ hẹn realtime: nếu đặt cho HÔM NAY thì chỉ hiện các giờ SAU giờ hiện tại
+  const henToday = form.ngay_hen === todayISO()
+  const nowMinNow = (() => { const d = getNowVN(); return d.getHours() * 60 + d.getMinutes() })()
+  const gioOptions = GIO_LIST_15.filter(g => {
+    if (!henToday) return true
+    const [h, m] = g.split(':').map(Number)
+    return h * 60 + m > nowMinNow
+  })
+  // Tự nhảy về giờ hợp lệ đầu tiên khi giờ đang chọn đã qua (chỉ đơn mới, không sửa đơn cũ)
+  useEffect(() => {
+    if (initial?.id) return
+    const isT = form.ngay_hen === todayISO()
+    if (!isT) return
+    const d = getNowVN(); const nm = d.getHours() * 60 + d.getMinutes()
+    const opts = GIO_LIST_15.filter(g => { const [h, mm] = g.split(':').map(Number); return h * 60 + mm > nm })
+    if (opts.length && !opts.includes(form.gio_hen)) setForm(f => ({ ...f, gio_hen: opts[0] }))
+  }, [form.ngay_hen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lọc dịch vụ theo từ khoá (bỏ dấu) — gõ "co vai" ra "Cổ Vai..."
   const dvFiltered = (() => {
@@ -281,7 +306,11 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
               </button>
             </div>
             <div><div style={LBL}>Giờ Hẹn *</div>
-              <select value={form.gio_hen} onChange={e => set('gio_hen', e.target.value)} style={INP}>{GIO_LIST_15.map(g => <option key={g} value={g}>{g}</option>)}</select>
+              <select value={form.gio_hen} onChange={e => set('gio_hen', e.target.value)} style={INP}>
+                {gioOptions.length === 0
+                  ? <option value="">Hết giờ làm hôm nay</option>
+                  : gioOptions.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
             </div>
             <div><div style={LBL}>Thời Lượng</div>
               <select value={form.thoi_luong_phut} onChange={e => set('thoi_luong_phut', +e.target.value)} style={INP}>{[30, 45, 60, 90, 120, 150, 180].map(m => <option key={m} value={m}>{m} phút</option>)}</select>
