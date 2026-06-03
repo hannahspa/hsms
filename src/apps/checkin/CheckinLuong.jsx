@@ -68,6 +68,7 @@ export default function CheckinLuong({ nhanVien, onBack }) {
       so_da_tich_luy: quy?.so_ngay_tich || 0,
       so_da_dung: quy?.so_ngay_da_dung || 0,
       so_dung_thang_nay: quy?.so_dung_thang_nay || 0,
+      lich_su_dung: quy?.lich_su_dung || [],
     }, todayRef)
 
     setData({
@@ -264,34 +265,15 @@ export default function CheckinLuong({ nhanVien, onBack }) {
                   </div>
                 )}
 
-                {/* Nút yêu cầu dùng ngày lễ bù OV */}
+                {/* Muốn dùng quỹ bù OV → nhắn quản lý (admin trừ thủ công, kiểm soát chặt) */}
                 {(() => {
                   const ovCanBu = (c.soOffPhepVuot + c.soOffOV) - c.soNgayLeDungThangNay
                   const conLai = c.soNgayLeTichLuy - c.soNgayLeDaDung
-                  const soNgayMuonDung = Math.min(ovCanBu, conLai)
-                  if (soNgayMuonDung <= 0) return null
+                  if (Math.min(ovCanBu, conLai) <= 0) return null
                   return (
-                    <button onClick={handleRequestDungNgayLe}
-                      disabled={requesting || requestSent}
-                      style={{
-                        marginTop: 10, width: '100%', padding: '12px',
-                        borderRadius: 12, border: '1px solid #C9A96E',
-                        background: requestSent
-                          ? 'linear-gradient(135deg,#eef2e7,#dce8d0)'
-                          : 'linear-gradient(135deg,#C9A96E,#A0714F)',
-                        color: requestSent ? '#5a6a4a' : 'white',
-                        fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 13,
-                        cursor: requestSent ? 'default' : 'pointer',
-                        boxShadow: requestSent ? 'none' : `0 4px 14px ${LUX.gold}50`,
-                        opacity: requesting ? 0.7 : 1,
-                      }}>
-                      {requesting
-                        ? 'Đang gửi yêu cầu...'
-                        : requestSent
-                          ? '✓ Đã gửi yêu cầu — chờ Admin duyệt'
-                          : `🎁 Yêu cầu dùng ${soNgayMuonDung} ngày lễ tích luỹ bù ${ovCanBu} ngày OV`
-                      }
-                    </button>
+                    <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: '#fff', border: '1px dashed #C9A96E', fontFamily: LUX.fontSans, fontSize: 12, color: '#7a5520', lineHeight: 1.45 }}>
+                      💬 Bạn còn <b>{conLai}</b> ngày quỹ lễ & có <b>{ovCanBu}</b> ngày OFF vượt tháng này. Nhắn quản lý nếu muốn dùng quỹ bù — quản lý sẽ trừ giúp bạn.
+                    </div>
                   )
                 })()}
               </div>

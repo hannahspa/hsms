@@ -113,7 +113,7 @@ export default function TabBangLuong({ fixedKy = null }) {
           .gte('ngay_off', startDate).lte('ngay_off', endDate).eq('trang_thai', 'duoc_duyet'),
         supabase.from('bang_luong').select('*').eq('thang', thang).eq('nam', nam),
         supabase.from('quy_ngay_off')
-          .select('nhan_vien_id, nam, so_ngay_tich, so_ngay_da_dung, so_dung_thang_nay').eq('nam', nam),
+          .select('nhan_vien_id, nam, so_ngay_tich, so_ngay_da_dung, so_dung_thang_nay, lich_su_dung').eq('nam', nam),
         // ── Real-time từ don_hang_chi_tiet (VIEW v_nhan_vien_thu_nhap) ──
         supabase.from('v_nhan_vien_thu_nhap')
           .select('nhan_vien_id, loai, so_tien')
@@ -160,6 +160,7 @@ export default function TabBangLuong({ fixedKy = null }) {
           so_da_tich_luy: quy?.so_ngay_tich || 0,
           so_da_dung: quy?.so_ngay_da_dung || 0,
           so_dung_thang_nay: quy?.so_dung_thang_nay || 0,
+          lich_su_dung: quy?.lich_su_dung || [],
         }, todayRef)
 
         result[nv.id].kyQuyTrangThai   = nv.ky_quy_trang_thai || 'hoan_tat'
@@ -975,6 +976,14 @@ export default function TabBangLuong({ fixedKy = null }) {
                           </div>
                         ))}
                       </div>
+                      {ld.soNgayLeBuOV > 0 && (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, background: '#e0f0e8', border: '1px solid #a8d0bc', borderRadius: LUX.radiusSm, padding: '8px 12px' }}>
+                          <span style={{ fontSize: 14 }}>🎌</span>
+                          <span style={{ fontFamily: LUX.fontSans, fontSize: 12, color: '#2a6a4a', fontWeight: 600 }}>
+                            Đã dùng {ld.soNgayLeBuOV} ngày quỹ lễ bù off vượt → cộng lại {ld.soNgayLeBuOV} ngày công
+                          </span>
+                        </div>
+                      )}
                     </BLSection>
 
                     {/* Lịch chấm công tháng — tô màu ngày, admin sửa được */}

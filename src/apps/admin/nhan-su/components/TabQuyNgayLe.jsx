@@ -87,6 +87,12 @@ export default function TabQuyNgayLe() {
   const [tcSoNgay,  setTcSoNgay]  = useState(1)
   const [tcLyDo,    setTcLyDo]    = useState('')
 
+  // Modal SỬ DỤNG quỹ (bù off vượt) cho 1 NV
+  const [modalSuDung, setModalSuDung] = useState(null) // nv object
+  const [sdSoNgay,  setSdSoNgay]  = useState(1)
+  const [sdThang,   setSdThang]   = useState(now.getMonth() + 1)
+  const [sdNgayBu,  setSdNgayBu]  = useState('')  // "26/05, 27/05"
+
   // Modal reset tháng (so_dung_thang_nay → 0)
   const [showReset,  setShowReset]  = useState(false)
   const [thangReset, setThangReset] = useState(now.getMonth() + 1)
@@ -109,7 +115,7 @@ export default function TabQuyNgayLe() {
         supabase.from('nhan_vien').select('id, ho_ten, vi_tri').eq('trang_thai', 'dang_lam').order('vi_tri').order('ho_ten'),
         // Lấy cham_cong ngày lễ, loai='di_lam'
         supabase.from('cham_cong').select('nhan_vien_id, ngay').in('ngay', holidayDates).eq('loai', 'di_lam'),
-        supabase.from('quy_ngay_off').select('id, nhan_vien_id, so_ngay_tich, so_ngay_da_dung, so_dung_thang_nay').eq('nam', nam),
+        supabase.from('quy_ngay_off').select('id, nhan_vien_id, so_ngay_tich, so_ngay_da_dung, so_dung_thang_nay, ngay_le_da_cong, lich_su_dung').eq('nam', nam),
       ])
 
       setNvList(nvRes.data || [])
@@ -154,8 +160,12 @@ export default function TabQuyNgayLe() {
       for (const nvId of selNvIds) {
         const existing = quyMap[nvId]
         if (existing) {
+          // Ghi nhận ngày lễ này đã cộng (dedupe)
+          const daCong = Array.isArray(existing.ngay_le_da_cong) ? existing.ngay_le_da_cong : []
+          const ngayLeMoi = daCong.includes(modalLeNgay.date) ? daCong : [...daCong, modalLeNgay.date]
           await supabase.from('quy_ngay_off').update({
             so_ngay_tich: (existing.so_ngay_tich || 0) + soNgayThem,
+            ngay_le_da_cong: ngayLeMoi,
             ghi_chu: ghiChuThem,
           }).eq('id', existing.id)
         } else {
@@ -166,6 +176,7 @@ export default function TabQuyNgayLe() {
             so_ngay_tich: soNgayThem,
             so_ngay_da_dung: 0,
             so_dung_thang_nay: 0,
+            ngay_le_da_cong: [modalLeNgay.date],
             ghi_chu: ghiChuThem,
           })
         }
@@ -206,6 +217,42 @@ export default function TabQuyNgayLe() {
       }
       showToast(`Đã cộng ${tcSoNgay} ngày cho ${modalThuCong.ho_ten} ✓`)
       setModalThuCong(null)
+      await fetchAll()
+    } catch (e) {
+      console.error(e)
+      showToast('Lỗi lưu', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Lưu SỬ DỤNG quỹ (bù off vượt vào tháng) ──
+  const handleSaveSuDung = async () => {
+    if (!modalSuDung) return
+    const q = quyMap[modalSuDung.id]
+    const conLai = q ? Math.max(0, (q.so_ngay_tich || 0) - (q.so_ngay_da_dung || 0)) : 0
+    if (sdSoNgay <= 0) { showToast('Số ngày phải > 0', 'error'); return }
+    if (!q || conLai <= 0) { showToast('Nhân viên chưa có quỹ để dùng', 'error'); return }
+    if (sdSoNgay > conLai) { showToast(`Chỉ còn ${conLai} ngày quỹ`, 'error'); return }
+    setSaving(true)
+    try {
+      // Chuẩn hoá các ngày bù "26/05" hoặc "26/05/2026" → ISO "2026-05-26"
+      const cacNgayBu = sdNgayBu.split(',').map(s => s.trim()).filter(Boolean).map(s => {
+        const p = s.split('/')
+        if (p.length >= 2) {
+          const dd = p[0].padStart(2, '0'), mm = p[1].padStart(2, '0'), yy = p[2] || String(nam)
+          return `${yy}-${mm}-${dd}`
+        }
+        return s
+      })
+      const entry = { nam, thang: sdThang, so_ngay: sdSoNgay, cac_ngay_bu: cacNgayBu, ghi_chu: `Bù off vượt T${sdThang}/${nam}`, ts: new Date().toISOString() }
+      const ls = Array.isArray(q.lich_su_dung) ? q.lich_su_dung : []
+      await supabase.from('quy_ngay_off').update({
+        lich_su_dung: [...ls, entry],
+        so_ngay_da_dung: (q.so_ngay_da_dung || 0) + sdSoNgay,
+      }).eq('id', q.id)
+      showToast(`Đã dùng ${sdSoNgay} ngày quỹ cho ${modalSuDung.ho_ten} ✓`)
+      setModalSuDung(null)
       await fetchAll()
     } catch (e) {
       console.error(e)
@@ -286,7 +333,7 @@ export default function TabQuyNgayLe() {
                       <TH w={110}>Ngày</TH>
                       <TH>Tên Ngày Lễ</TH>
                       <TH>NV Đi Làm</TH>
-                      <TH w={80} align="center">Đã Ghi</TH>
+                      <TH w={120} align="center">Trạng Thái</TH>
                       <TH w={120} align="center">Thao Tác</TH>
                     </tr>
                   </thead>
@@ -294,7 +341,9 @@ export default function TabQuyNgayLe() {
                     {holidaysOfYear.map((h, idx) => {
                       const diLamIds = [...(ccLeMap[h.date] || new Set())]
                       const diLamNvs = diLamIds.map(id => nvMap[id]).filter(Boolean)
-                      const daTichIds = diLamIds.filter(id => (quyMap[id]?.so_ngay_tich || 0) > 0)
+                      // Ngày lễ này đã cộng quỹ cho ai (theo ngay_le_da_cong)
+                      const daCongIds = diLamIds.filter(id => (quyMap[id]?.ngay_le_da_cong || []).includes(h.date))
+                      const daCongDu = diLamNvs.length > 0 && daCongIds.length >= diLamNvs.length
                       return (
                         <tr key={h.date} style={{ borderTop: idx > 0 ? `1px solid ${LUX.line}` : 'none', background: idx % 2 === 0 ? '#fdfcfb' : '#fff' }}>
                           <TD>
@@ -317,16 +366,20 @@ export default function TabQuyNgayLe() {
                             )}
                           </TD>
                           <TD align="center">
-                            {daTichIds.length > 0 ? (
-                              <Pill n={`${daTichIds.length} NV`} />
-                            ) : (
+                            {diLamNvs.length === 0 ? (
                               <span style={{ color: LUX.ink3, fontSize: 11 }}>—</span>
+                            ) : daCongDu ? (
+                              <span style={{ background: '#eaf5ee', color: '#2a7a4a', padding: '3px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 700, fontFamily: LUX.fontSans }}>✓ Đã cộng</span>
+                            ) : daCongIds.length > 0 ? (
+                              <span style={{ background: '#fef3e0', color: '#a06a20', padding: '3px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 700, fontFamily: LUX.fontSans }}>{daCongIds.length}/{diLamNvs.length} đã cộng</span>
+                            ) : (
+                              <span style={{ background: '#fdecea', color: '#C0392B', padding: '3px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 700, fontFamily: LUX.fontSans }}>Chưa cộng</span>
                             )}
                           </TD>
                           <TD align="center">
                             {diLamNvs.length > 0 && (
-                              <button onClick={() => openModalLe(h)} style={{ padding: '5px 12px', borderRadius: 7, border: `1px solid ${LUX.champagne}`, background: 'linear-gradient(135deg,#fdf3e0,#f9ead0)', color: LUX.espresso, fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                                Tích Lũy
+                              <button onClick={() => openModalLe(h)} style={{ padding: '5px 12px', borderRadius: 7, border: `1px solid ${LUX.champagne}`, background: daCongDu ? '#fff' : 'linear-gradient(135deg,#fdf3e0,#f9ead0)', color: LUX.espresso, fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                                {daCongDu ? 'Cộng lại' : 'Tích Lũy'}
                               </button>
                             )}
                           </TD>
@@ -348,9 +401,6 @@ export default function TabQuyNgayLe() {
                 Quỹ Ngày OFF Từng Nhân Viên
                 <span style={{ fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink3, fontWeight: 400, marginLeft: 8 }}>— Năm {nam}</span>
               </div>
-              <button onClick={() => setShowReset(true)} style={{ padding: '6px 14px', borderRadius: 7, border: `1px solid #e0b0b0`, background: '#fff5f5', color: '#C0392B', fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                🔄 Reset "Dùng Tháng Này"
-              </button>
             </div>
 
             <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${LUX.line}`, overflow: 'hidden', boxShadow: LUX.shadowSm }}>
@@ -358,12 +408,12 @@ export default function TabQuyNgayLe() {
                 <thead>
                   <tr>
                     <TH>Nhân Viên</TH>
-                    <TH w={80}>Vị Trí</TH>
-                    <TH w={110} align="center">Tổng Tích Lũy</TH>
-                    <TH w={110} align="center">Đã Dùng (Năm)</TH>
-                    <TH w={120} align="center">Dùng Tháng Này</TH>
-                    <TH w={90} align="center">Còn Lại</TH>
-                    <TH w={100} align="center">Thao Tác</TH>
+                    <TH w={70}>Vị Trí</TH>
+                    <TH w={85} align="center">Tích Lũy</TH>
+                    <TH w={85} align="center">Đã Dùng</TH>
+                    <TH w={75} align="center">Còn Lại</TH>
+                    <TH>Lịch Sử Dùng (bù off vượt)</TH>
+                    <TH w={170} align="center">Thao Tác</TH>
                   </tr>
                 </thead>
                 <tbody>
@@ -371,8 +421,8 @@ export default function TabQuyNgayLe() {
                     const q = quyMap[nv.id]
                     const tich    = q?.so_ngay_tich        || 0
                     const daDung  = q?.so_ngay_da_dung     || 0
-                    const dungTN  = q?.so_dung_thang_nay   || 0
                     const conLai  = Math.max(0, tich - daDung)
+                    const lichSu  = Array.isArray(q?.lich_su_dung) ? q.lich_su_dung : []
                     return (
                       <tr key={nv.id} style={{ borderTop: idx > 0 ? `1px solid ${LUX.line}` : 'none', background: idx % 2 === 0 ? '#fdfcfb' : '#fff' }}>
                         <TD>
@@ -382,35 +432,40 @@ export default function TabQuyNgayLe() {
                           <span style={{ fontSize: 11 }}>{viLabel(nv.vi_tri)}</span>
                         </TD>
                         <TD align="center">
-                          {tich > 0 ? (
-                            <Pill n={`${tich} ngày`} color="#2D7A4F" bg="#eef2e7" />
+                          {tich > 0 ? <Pill n={`${tich} ngày`} color="#2D7A4F" bg="#eef2e7" /> : <span style={{ color: LUX.ink3, fontSize: 12 }}>0</span>}
+                        </TD>
+                        <TD align="center">
+                          {daDung > 0 ? <Pill n={`${daDung} ngày`} color="#7a5520" bg="#f5e9d4" /> : <span style={{ color: LUX.ink3, fontSize: 12 }}>0</span>}
+                        </TD>
+                        <TD align="center">
+                          <span style={{ fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, color: conLai > 0 ? '#2D7A4F' : LUX.ink3 }}>{conLai}</span>
+                        </TD>
+                        <TD>
+                          {lichSu.length === 0 ? (
+                            <span style={{ color: LUX.ink3, fontSize: 11.5, fontStyle: 'italic' }}>Chưa dùng</span>
                           ) : (
-                            <span style={{ color: LUX.ink3, fontSize: 12 }}>0</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              {lichSu.map((e, i) => (
+                                <span key={i} style={{ fontSize: 11.5, color: LUX.ink2, fontFamily: LUX.fontSans }}>
+                                  <strong style={{ color: '#1a5276' }}>T{e.thang}/{e.nam}:</strong> {e.so_ngay} ngày
+                                  {Array.isArray(e.cac_ngay_bu) && e.cac_ngay_bu.length > 0 && (
+                                    <span style={{ color: LUX.ink3 }}> · bù {e.cac_ngay_bu.map(d => { const p = String(d).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}` : d }).join(', ')}</span>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
                           )}
                         </TD>
                         <TD align="center">
-                          {daDung > 0 ? (
-                            <Pill n={`${daDung} ngày`} color="#7a5520" bg="#f5e9d4" />
-                          ) : (
-                            <span style={{ color: LUX.ink3, fontSize: 12 }}>0</span>
-                          )}
-                        </TD>
-                        <TD align="center">
-                          {dungTN > 0 ? (
-                            <Pill n={`${dungTN} ngày`} color="#1a5276" bg="#d6eaf8" />
-                          ) : (
-                            <span style={{ color: LUX.ink3, fontSize: 12 }}>0</span>
-                          )}
-                        </TD>
-                        <TD align="center">
-                          <span style={{ fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, color: conLai > 0 ? '#2D7A4F' : LUX.ink3 }}>
-                            {conLai} ngày
-                          </span>
-                        </TD>
-                        <TD align="center">
-                          <button onClick={() => { setModalThuCong(nv); setTcSoNgay(1); setTcLyDo('') }} style={{ padding: '5px 10px', borderRadius: 7, border: `1px solid ${LUX.line}`, background: '#fff', color: LUX.espresso, fontFamily: LUX.fontSans, fontSize: 12, cursor: 'pointer' }}>
-                            + Cộng
-                          </button>
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                            <button onClick={() => { setModalThuCong(nv); setTcSoNgay(1); setTcLyDo('') }} style={{ padding: '5px 9px', borderRadius: 7, border: `1px solid ${LUX.line}`, background: '#fff', color: LUX.espresso, fontFamily: LUX.fontSans, fontSize: 11.5, cursor: 'pointer' }}>
+                              + Cộng
+                            </button>
+                            <button onClick={() => { setModalSuDung(nv); setSdSoNgay(1); setSdThang(now.getMonth() + 1); setSdNgayBu('') }} disabled={conLai <= 0}
+                              style={{ padding: '5px 9px', borderRadius: 7, border: '1px solid #a8c8f0', background: conLai > 0 ? '#eaf2fc' : '#f5f5f5', color: conLai > 0 ? '#1a5276' : LUX.ink4, fontFamily: LUX.fontSans, fontSize: 11.5, fontWeight: 600, cursor: conLai > 0 ? 'pointer' : 'not-allowed' }}>
+                              Sử Dụng
+                            </button>
+                          </div>
                         </TD>
                       </tr>
                     )
@@ -422,9 +477,9 @@ export default function TabQuyNgayLe() {
             {/* Chú giải */}
             <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
               {[
-                { color: '#eef2e7', fc: '#2D7A4F', label: 'Tổng Tích Lũy — tổng ngày lễ đã đi làm được ghi nhận' },
-                { color: '#f5e9d4', fc: '#7a5520', label: 'Đã Dùng (Năm) — tổng ngày đã bù OV trong năm' },
-                { color: '#d6eaf8', fc: '#1a5276', label: 'Dùng Tháng Này — đang áp dụng cho bảng lương tháng hiện tại' },
+                { color: '#eef2e7', fc: '#2D7A4F', label: 'Tích Lũy — tổng ngày lễ đã đi làm được ghi nhận' },
+                { color: '#f5e9d4', fc: '#7a5520', label: 'Đã Dùng — tổng ngày đã bù off vượt' },
+                { color: '#eaf2fc', fc: '#1a5276', label: 'Sử Dụng — bù vào ngày off vượt, tự cập nhật bảng lương tháng đó' },
               ].map(item => (
                 <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3 }}>
                   <div style={{ width: 10, height: 10, borderRadius: 2, background: item.color, border: `1px solid ${item.fc}` }} />
@@ -529,6 +584,55 @@ export default function TabQuyNgayLe() {
           </div>
         </div>
       )}
+
+      {/* ════════════════════════════════════════════
+          MODAL — Sử Dụng Quỹ (bù off vượt)
+      ════════════════════════════════════════════ */}
+      {modalSuDung && (() => {
+        const q = quyMap[modalSuDung.id]
+        const conLai = q ? Math.max(0, (q.so_ngay_tich || 0) - (q.so_ngay_da_dung || 0)) : 0
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: 440, maxWidth: '95vw', boxShadow: LUX.shadowLg }}>
+              <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, color: '#1a5276', marginBottom: 4 }}>Sử Dụng Quỹ Ngày Lễ</div>
+              <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3, marginBottom: 6 }}>{modalSuDung.ho_ten}</div>
+              <div style={{ background: '#eaf2fc', borderRadius: 8, padding: '8px 12px', marginBottom: 18, fontFamily: LUX.fontSans, fontSize: 12.5, color: '#1a5276' }}>
+                Quỹ còn lại: <strong>{conLai} ngày</strong> — dùng để bù vào ngày OFF vượt, NV được tính lương ngày đó.
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', marginBottom: 6 }}>Số Ngày Dùng</div>
+                  <input type="number" min={0.5} max={conLai} step={0.5} value={sdSoNgay} onChange={e => setSdSoNgay(parseFloat(e.target.value) || 1)}
+                    style={{ width: '100%', height: 36, borderRadius: 8, border: `1px solid ${LUX.line}`, padding: '0 10px', fontFamily: LUX.fontSans, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <div style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', marginBottom: 6 }}>Bù Vào Tháng</div>
+                  <select value={sdThang} onChange={e => setSdThang(+e.target.value)}
+                    style={{ width: '100%', height: 36, borderRadius: 8, border: `1px solid ${LUX.line}`, padding: '0 10px', fontFamily: LUX.fontSans, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>Tháng {m}/{nam}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', marginBottom: 6 }}>Bù Vào Ngày OFF Vượt Nào</div>
+                <input value={sdNgayBu} onChange={e => setSdNgayBu(e.target.value)} placeholder="VD: 26/05, 27/05"
+                  style={{ width: '100%', height: 36, borderRadius: 8, border: `1px solid ${LUX.line}`, padding: '0 10px', fontFamily: LUX.fontSans, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                <div style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, marginTop: 5 }}>Nhập các ngày cách nhau dấu phẩy (để ghi lịch sử rõ ràng).</div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button onClick={() => setModalSuDung(null)} style={{ padding: '8px 18px', borderRadius: 8, border: `1px solid ${LUX.line}`, background: '#fff', fontFamily: LUX.fontSans, fontSize: 13, cursor: 'pointer', color: LUX.ink2 }}>Huỷ</button>
+                <button onClick={handleSaveSuDung} disabled={saving}
+                  style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#1A5276,#154360)', color: '#fff', fontFamily: LUX.fontSans, fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                  {saving ? 'Đang lưu...' : 'Xác Nhận Sử Dụng'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ════════════════════════════════════════════
           MODAL — Reset Tháng

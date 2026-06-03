@@ -135,7 +135,13 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   const truVuotPhep  = Math.max(0, phepWeight - gioiHanOff)    // đơn vị off bị trừ lương
   const soOffPhepVuot = truVuotPhep                            // hiển thị
 
-  const soNgayLeDungThangNay = quyNgayOff?.so_dung_thang_nay || 0
+  // Quỹ ngày lễ dùng cho ĐÚNG tháng đang tính (đọc từ lịch sử dùng có gắn tháng).
+  // Fallback so_dung_thang_nay (cơ chế cũ) nếu chưa có lịch sử.
+  const lichSuDungQuy = Array.isArray(quyNgayOff?.lich_su_dung) ? quyNgayOff.lich_su_dung : []
+  const soNgayLeDungThangNay = lichSuDungQuy.length > 0
+    ? lichSuDungQuy.filter(x => Number(x.nam) === year && Number(x.thang) === month)
+                   .reduce((s, x) => s + (Number(x.so_ngay) || 0), 0)
+    : (quyNgayOff?.so_dung_thang_nay || 0)
 
   // ═══════════════════════════════════════════
   // PASS 3: Ngày không lương (số ngày bị trừ lương)
