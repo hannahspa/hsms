@@ -101,8 +101,8 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   allOff.sort((a, b) => a.ngay.localeCompare(b.ngay))
 
   // ─── Ngày KHÔNG check-in (không có bản ghi chấm công) = NGHỈ ───
-  // Quy tắc: ngày ĐÃ QUA mà không check-in → tính như OFF phép (3 ngày đầu/tháng
-  // có lương, vượt → OV). KHÔNG tính ngày hôm nay (đang diễn ra) & ngày tương lai.
+  // Quy tắc: ngày ĐÃ QUA mà không check-in → tính như OFF phép. KHÔNG tính ngày
+  // hôm nay (đang diễn ra) & ngày tương lai.
   const recordedDays = new Set()
   chamCongList.forEach(r => {
     if (!r.ngay) return
@@ -111,8 +111,11 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
     recordedDays.add(d)
   })
   const lastPastDay = todayRef ? todayRef - 1 : soNgayThangFull
-  let soNgayKhongCheckin = 0
-  for (let d = 1; d <= lastPastDay; d++) { if (!recordedDays.has(d)) soNgayKhongCheckin++ }
+  const noShowDates = []
+  for (let d = 1; d <= lastPastDay; d++) {
+    if (!recordedDays.has(d)) noShowDates.push(`${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`)
+  }
+  const soNgayKhongCheckin = noShowDates.length
 
   // ═══════════════════════════════════════════
   // PASS 2: Categorize OFF
@@ -122,35 +125,30 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   const offT7List   = allOff.filter(o => o.loai === 'off_t7')
   const offT7XList  = allOff.filter(o => o.loai === 'off_t7x')
 
-  // OFF phép = off_phep đã ghi + ngày không check-in. First gioiHanOff → có lương, rest → OV
-  const soPhepTong     = offPhepList.length + soNgayKhongCheckin
-  const soOffCoLuong   = Math.min(gioiHanOff, soPhepTong)
-  const soOffPhepVuot  = Math.max(0, soPhepTong - gioiHanOff)
+  // Gộp OFF phép (đã ghi) + ngày không check-in → sắp theo ngày.
+  // gioiHanOff ngày ĐẦU = phép CÓ LƯƠNG; ngày VƯỢT: rơi T7/CN trừ ×2, ngày thường ×1.
+  const phepPoolDates = [...offPhepList.map(o => o.ngay), ...noShowDates].sort()
+  const soOffCoLuong   = Math.min(gioiHanOff, phepPoolDates.length)
+  const excessPhepDates = phepPoolDates.slice(gioiHanOff)
+  let truVuotPhep = 0, soVuotCuoiTuan = 0
+  excessPhepDates.forEach(ds => {
+    const dow = getDayOfWeek(ds)  // 0=CN, 6=T7
+    if (dow === 0 || dow === 6) { truVuotPhep += 2; soVuotCuoiTuan++ } else truVuotPhep += 1
+  })
+  const soOffPhepVuot = excessPhepDates.length  // số NGÀY vượt (hiển thị)
 
-  // Holiday credit: can offset OV
-  // quyNgayOff.so_dung_thang_nay = how many holiday days admin applied this month
   const soNgayLeDungThangNay = quyNgayOff?.so_dung_thang_nay || 0
 
-  // OV can be offset by holiday credits (1:1)
-  const tongOV = soOffPhepVuot + offOVList.length
-  const soNgayLeBuOV = Math.min(soNgayLeDungThangNay, tongOV)
-
   // ═══════════════════════════════════════════
-  // PASS 3: Ngày không lương
+  // PASS 3: Ngày không lương (số ngày bị trừ lương)
   // ═══════════════════════════════════════════
   let ngayKhongLuong = 0
+  ngayKhongLuong += truVuotPhep                                 // vượt phép: T7/CN ×2, thường ×1
+  ngayKhongLuong += offOVList.length                            // OV ghi rõ: ×1
+  ngayKhongLuong += (offT7List.length + offT7XList.length) * 2  // T7/CN ghi rõ: ×2
 
-  // Excess OFF phép → OV: 1 day each
-  ngayKhongLuong += soOffPhepVuot
-
-  // Explicit OV: 1 day each
-  ngayKhongLuong += offOVList.length
-
-  // T7/CN: 2 days each
-  ngayKhongLuong += offT7List.length * 2
-  ngayKhongLuong += offT7XList.length * 2
-
-  // Holiday credit applied → reduce OV impact
+  // Quỹ ngày lễ bù 1:1 vào số ngày bị trừ
+  const soNgayLeBuOV = Math.min(soNgayLeDungThangNay, ngayKhongLuong)
   ngayKhongLuong -= soNgayLeBuOV
 
   // Partial day deductions (he_so < 1) — only up to todayRef
