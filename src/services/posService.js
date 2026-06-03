@@ -229,7 +229,18 @@ export const posService = {
     // ── Khách đến DÙNG THẺ đã mua? Tìm thẻ active khớp tên dịch vụ ──
     const norm = (s) => String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/đ/g, 'd').toLowerCase().replace(/\s+/g, ' ').trim()
     let matchedCard = null
-    if (khachHangId && serviceName) {
+    // Ưu tiên thẻ CỤ THỂ Lễ Tân đã gắn khi đặt hẹn (trừ đúng thẻ đó)
+    if (appointment.the_lieu_trinh_id) {
+      try {
+        const { data: exact } = await supabase
+          .from('the_lieu_trinh')
+          .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai')
+          .eq('id', appointment.the_lieu_trinh_id)
+          .maybeSingle()
+        if (exact && exact.trang_thai === 'active' && (exact.so_buoi_con_lai || 0) > 0) matchedCard = exact
+      } catch { matchedCard = null }
+    }
+    if (!matchedCard && khachHangId && serviceName) {
       try {
         const { data: cards } = await supabase
           .from('the_lieu_trinh')

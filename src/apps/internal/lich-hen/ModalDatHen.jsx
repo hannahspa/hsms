@@ -16,10 +16,11 @@ const safeSearchTerm = (value) => String(value || '')
 // ══════════════════════════════════════════════════════════
 export default function ModalDatHen({ initial, ktvList, onSave, onClose, user }) {
   const [form, setForm] = useState(initial || {
-    ten_khach: '', sdt_khach: '', ten_dich_vu: '', dich_vu_id: null, nhan_vien_id: null,
+    ten_khach: '', sdt_khach: '', ten_dich_vu: '', dich_vu_id: null, the_lieu_trinh_id: null, nhan_vien_id: null,
     thoi_luong_phut: 60, ngay_hen: todayISO(), gio_hen: '10:00', ghi_chu: '',
   })
   const [dichVuList, setDichVuList] = useState([])
+  const [custCards, setCustCards] = useState([])   // thẻ liệu trình active của khách đang chọn
   const [saving, setSaving] = useState(false)
   const [showNgay, setShowNgay] = useState(false)
   const [customerHints, setCustomerHints] = useState([])
@@ -27,6 +28,22 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
   const [creatingOrder, setCreatingOrder] = useState(false)
   const [showDvList, setShowDvList] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Tải thẻ liệu trình ACTIVE còn buổi của khách đang chọn → cho bấm chọn nhanh
+  useEffect(() => {
+    if (!form.khach_hang_id) { setCustCards([]); return undefined }
+    let alive = true
+    supabase.from('the_lieu_trinh')
+      .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai')
+      .eq('khach_hang_id', form.khach_hang_id).eq('trang_thai', 'active')
+      .then(({ data }) => { if (alive) setCustCards((data || []).filter(c => (c.so_buoi_con_lai || 0) > 0)) })
+    return () => { alive = false }
+  }, [form.khach_hang_id])
+
+  // Chọn thẻ liệu trình → điền dịch vụ + đánh dấu dùng thẻ
+  const selectCard = (card) => setForm(f => ({
+    ...f, the_lieu_trinh_id: card.id, ten_dich_vu: card.ten_dich_vu, dich_vu_id: null,
+  }))
 
   // Lọc dịch vụ theo từ khoá (bỏ dấu) — gõ "co vai" ra "Cổ Vai..."
   const dvFiltered = (() => {
@@ -120,6 +137,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
         ten_khach: form.ten_khach.trim(), sdt_khach: form.sdt_khach?.trim() || null,
         khach_hang_id: form.khach_hang_id || null,
         dich_vu_id: form.dich_vu_id || null, ten_dich_vu: form.ten_dich_vu?.trim() || null,
+        the_lieu_trinh_id: form.the_lieu_trinh_id || null,
         nhan_vien_id: form.nhan_vien_id || null,
         thoi_luong_phut: form.thoi_luong_phut || 60, ngay_hen: form.ngay_hen, gio_hen: form.gio_hen,
         ghi_chu: form.ghi_chu?.trim() || null, nguoi_nhap: user?.email || user?.ho_ten || 'Lễ Tân',
@@ -152,7 +170,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
 
   return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(42,29,20,0.45)', backdropFilter: 'blur(3px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: C.card, borderRadius: 16, width: 500, maxWidth: '95vw', maxHeight: '92vh', overflowY: 'auto', boxShadow: C.shadowLg }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: C.card, borderRadius: 16, width: 680, maxWidth: '96vw', maxHeight: '92vh', overflowY: 'auto', boxShadow: C.shadowLg }}>
         <DatePicker open={showNgay} selectedDate={form.ngay_hen} onClose={() => setShowNgay(false)} onConfirm={v => { set('ngay_hen', v); setShowNgay(false) }} />
         <div style={{ padding: '18px 24px 14px', borderBottom: `1px solid ${C.line}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 700, color: C.espresso }}>
@@ -196,18 +214,46 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
             </div>
           )}
 
-          <div style={{ position: 'relative' }}><div style={LBL}>Dịch Vụ</div>
-            <input style={INP} value={form.ten_dich_vu || ''}
-              onChange={e => { set('ten_dich_vu', e.target.value); set('dich_vu_id', null); setShowDvList(true) }}
+          {/* Thẻ liệu trình của khách — bấm để dùng (trừ đúng thẻ đó khi tạo đơn) */}
+          {custCards.length > 0 && (
+            <div>
+              <div style={LBL}>Thẻ liệu trình của khách · bấm để dùng</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {custCards.map(card => {
+                  const active = form.the_lieu_trinh_id === card.id
+                  return (
+                    <button key={card.id} type="button" onClick={() => selectCard(card)}
+                      style={{
+                        border: `1.5px solid ${active ? '#2D7A4F' : C.line2}`, borderRadius: 10,
+                        background: active ? '#eef5ee' : '#fffdf9', padding: '8px 12px', cursor: 'pointer',
+                        textAlign: 'left', fontFamily: 'var(--sans)', minWidth: 150,
+                      }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: active ? '#2D7A4F' : C.ink, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {active && '✓'} {card.ten_dich_vu}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.ink3, marginTop: 2 }}>Còn {card.so_buoi_con_lai}/{card.so_buoi_tong} buổi</div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          <div style={{ position: 'relative' }}>
+            <div style={LBL}>{form.the_lieu_trinh_id ? 'Dịch vụ (dùng thẻ)' : 'Dịch Vụ'}</div>
+            <input style={{ ...INP, ...(form.the_lieu_trinh_id ? { borderColor: '#2D7A4F', background: '#f3f8f3' } : {}) }} value={form.ten_dich_vu || ''}
+              onChange={e => { set('ten_dich_vu', e.target.value); set('dich_vu_id', null); set('the_lieu_trinh_id', null); setShowDvList(true) }}
               onFocus={() => setShowDvList(true)}
               onBlur={() => setTimeout(() => setShowDvList(false), 150)}
               placeholder="Gõ tên dịch vụ, vd: cổ vai, gội đầu..." />
-            {form.dich_vu_id && <div style={{ fontSize: 11, color: '#2D7A4F', fontWeight: 700, marginTop: 4 }}>✓ Dịch vụ trong menu · {form.thoi_luong_phut} phút</div>}
-            {showDvList && dvFiltered.length > 0 && (
+            {form.the_lieu_trinh_id
+              ? <div style={{ fontSize: 11, color: '#2D7A4F', fontWeight: 700, marginTop: 4 }}>🟢 Dùng thẻ liệu trình — khi tạo đơn sẽ trừ thẻ này (0đ)</div>
+              : form.dich_vu_id && <div style={{ fontSize: 11, color: '#2D7A4F', fontWeight: 700, marginTop: 4 }}>✓ Dịch vụ trong menu · {form.thoi_luong_phut} phút</div>}
+            {showDvList && !form.the_lieu_trinh_id && dvFiltered.length > 0 && (
               <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, marginTop: 4, border: `1px solid ${C.line2}`, borderRadius: 10, background: '#fff', boxShadow: C.shadowLg, maxHeight: 240, overflowY: 'auto' }}>
                 {dvFiltered.map(dv => (
                   <button type="button" key={dv.id} onMouseDown={e => e.preventDefault()}
-                    onClick={() => { set('dich_vu_id', dv.id); set('ten_dich_vu', dv.ten); set('thoi_luong_phut', dv.thoi_gian_phut || 60); setShowDvList(false) }}
+                    onClick={() => { set('dich_vu_id', dv.id); set('ten_dich_vu', dv.ten); set('the_lieu_trinh_id', null); set('thoi_luong_phut', dv.thoi_gian_phut || 60); setShowDvList(false) }}
                     style={{ width: '100%', border: 'none', borderBottom: `1px solid ${C.line}`, background: '#fff', padding: '9px 12px', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--sans)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                     <span style={{ minWidth: 0 }}>
                       <span style={{ display: 'block', fontSize: 13, color: C.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dv.ten}</span>
