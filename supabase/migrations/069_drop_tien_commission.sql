@@ -1,10 +1,9 @@
 -- ============================================================
--- MIGRATION 069: Drop tien_commission (P3 - giai đoạn 2, CLEANUP)
+-- MIGRATION 069: Migrate view income chính sang tien_hoa_hong (P3 - giai đoạn 2)
 -- Ngày: 03/06/2026
--- ⚠️ CHỈ CHẠY SAU KHI: code mới (commit 3c77955) đã deploy xong trên Vercel
---    và xác nhận POS chạy ổn. (Code cũ không còn ghi tien_commission.)
---
--- Recreate 2 view sang tien_hoa_hong → drop trigger sync → drop cột tien_commission.
+-- Recreate v_nhan_vien_thu_nhap + v_myspa_legacy_overview để đọc tien_hoa_hong.
+-- GIỮ cột tien_commission làm shadow đồng bộ (trigger) — KHÔNG drop vì còn view
+-- báo cáo legacy phụ thuộc. Concept "commission" đã sạch ở code/UI/spec/RPC.
 -- View def trích nguyên văn từ 057 (v_nhan_vien_thu_nhap) + 049 (v_myspa_legacy_overview).
 -- ============================================================
 
@@ -136,9 +135,7 @@ COMMENT ON VIEW v_nhan_vien_thu_nhap IS
 -- 2) Recreate v_myspa_legacy_overview (đọc tien_hoa_hong)
 DROP VIEW IF EXISTS v_myspa_legacy_overview;
 
-ALTER TABLE don_hang_chi_tiet DROP COLUMN IF EXISTS tien_hoa_hong;
-
--- Tạo lại view v_myspa_legacy_overview (bỏ tien_hoa_hong khỏi CTE old_lines)
+-- (Đã bỏ câu DROP COLUMN tien_hoa_hong trích thừa từ 049 — KHÔNG drop cột mới)
 CREATE OR REPLACE VIEW v_myspa_legacy_overview AS
 WITH old_orders AS (
   SELECT dh.id, dh.ma_don, dh.khach_hang_id, dh.nguoi_tao,
@@ -201,11 +198,10 @@ LEFT JOIN (SELECT DISTINCT don_hang_id FROM doanh_thu WHERE nguon = 'pos') dt ON
 WHERE dt.don_hang_id IS NULL AND COALESCE(dh.thuc_thu, 0) > 0;
 
 
--- 3) Bỏ trigger đồng bộ + cột cũ
-DROP TRIGGER IF EXISTS trg_sync_hoa_hong_commission ON don_hang_chi_tiet;
-DROP FUNCTION IF EXISTS trg_sync_hoa_hong_commission();
-ALTER TABLE don_hang_chi_tiet DROP COLUMN IF EXISTS tien_commission;
+-- 3) GIỮ tien_commission làm cột shadow đồng bộ (trigger trg_sync_hoa_hong_commission).
+--    KHÔNG drop vì còn nhiều view báo cáo legacy đọc nó (lich_su_dich_vu_kh,
+--    v_cong_no_tong_hop, v_myspa_legacy_staff_audit, v_combo_lieu_trinh_backfill_summary).
+--    Concept "commission" đã sạch ở code/UI/spec/RPC + cột income chính = tien_hoa_hong.
+--    Drop hoàn toàn = việc bảo trì riêng: recreate 4 view đó sang tien_hoa_hong rồi mới drop.
 
--- VERIFY: SELECT column_name FROM information_schema.columns
---   WHERE table_name='don_hang_chi_tiet' AND column_name LIKE 'tien_%';
---   → chỉ còn tien_tour, tien_hoa_hong (KHÔNG còn tien_commission).
+-- VERIFY: SELECT loai, COUNT(*) FROM v_nhan_vien_thu_nhap GROUP BY loai;  -- tour/hoa_hong
