@@ -106,7 +106,14 @@ export default function LichHenPage({ user }) {
   const nowMin = (() => { const d = getNowVN(); return d.getHours() * 60 + d.getMinutes() })()
   const isPastSlot = (m) => isToday && m < nowMin
 
-  const timelineH = SLOTS.length * ROW_H
+  // Cắt bớt phần giờ ĐÃ QUA khỏi lưới (timeline gọn): hôm nay bắt đầu từ đầu giờ
+  // hiện tại — nhưng không trễ hơn lịch hẹn sớm nhất trong ngày (để không mất lịch cũ).
+  const earliestHenMin = henList.filter(h => h.trang_thai !== 'huy').reduce((min, h) => Math.min(min, gioToMin(h.gio_hen)), Infinity)
+  const visStartMin = isToday
+    ? Math.max(HOUR_START * 60, Math.min(Math.floor(nowMin / 60) * 60, earliestHenMin))
+    : HOUR_START * 60
+  const visSlots = SLOTS.filter(m => m >= visStartMin)
+  const timelineH = visSlots.length * ROW_H
 
   return (
     <div style={{ padding: '20px 24px 40px', fontFamily: 'var(--sans)' }}>
@@ -180,7 +187,7 @@ export default function LichHenPage({ user }) {
 
             {/* Cột giờ */}
             <div style={{ position: 'relative', borderRight: `1px solid ${C.line}`, height: timelineH }}>
-              {SLOTS.map((m, i) => (
+              {visSlots.map((m, i) => (
                 <div key={m} style={{ position: 'absolute', top: i * ROW_H, right: 6, fontSize: 10.5, color: m % 60 === 0 ? C.ink2 : C.ink4, fontWeight: m % 60 === 0 ? 700 : 500, transform: 'translateY(-6px)' }}>
                   {m % 60 === 0 ? `${String(Math.floor(m / 60)).padStart(2, '0')}:00` : ''}
                 </div>
@@ -193,7 +200,7 @@ export default function LichHenPage({ user }) {
               return (
                 <div key={col.id || 'none'} style={{ position: 'relative', borderRight: `1px solid ${C.line}`, height: timelineH }}>
                   {/* Lưới slot + click để đặt lịch (slot quá khứ bị khoá) */}
-                  {SLOTS.map((m, i) => {
+                  {visSlots.map((m, i) => {
                     const past = isPastSlot(m)
                     return (
                       <div key={m}
@@ -204,7 +211,7 @@ export default function LichHenPage({ user }) {
                   })}
                   {/* Block lịch hẹn */}
                   {items.map(h => {
-                    const top = (gioToMin(h.gio_hen) - HOUR_START * 60) / SLOT_MIN * ROW_H
+                    const top = (gioToMin(h.gio_hen) - visStartMin) / SLOT_MIN * ROW_H
                     const height = Math.max(ROW_H - 2, (h.thoi_luong_phut || 60) / SLOT_MIN * ROW_H - 2)
                     const cfg = TRANG_THAI[h.trang_thai] || TRANG_THAI.cho_xac_nhan
                     const done = h.trang_thai === 'da_xong'
