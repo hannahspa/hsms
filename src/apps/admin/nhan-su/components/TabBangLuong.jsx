@@ -5,6 +5,7 @@ import { LUX } from '../../../../constants/lux'
 import { formatCurrency, getNowVN } from '../../../../lib/utils'
 import { tinhLuong as calcLuong } from '../../../../lib/luong'
 import ConfirmDialog from '../../../../components/shared/ConfirmDialog'
+import AdminSuaChamCong from './AdminSuaChamCong'
 
 const DON_GIA_TANG_CA = 25000
 
@@ -77,6 +78,7 @@ export default function TabBangLuong({ fixedKy = null }) {
   const [luongData, setLuongData] = useState({})
   const [ccByNv,    setCcByNv]    = useState({})   // chấm công theo NV (chi tiết ngày công check-in/out)
   const [chamCongSheet, setChamCongSheet] = useState(null)  // mở editor sửa chấm công cả tháng
+  const [chamCongInitDay, setChamCongInitDay] = useState(null)  // ngày click → mở thẳng form sửa ngày đó
   const [loading,   setLoading]   = useState(false)
   const [selected,  setSelected]  = useState(null)
   const [editState, setEditState] = useState({})
@@ -1044,7 +1046,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                                   </span>
                                 ))}
                               </div>
-                              <button onClick={() => setChamCongSheet(selected)}
+                              <button onClick={() => { setChamCongInitDay(null); setChamCongSheet(selected) }}
                                 style={{ padding: '7px 14px', borderRadius: 9, border: `1px solid ${LUX.champagne}`, background: '#fdf3e0', color: '#8a6a35', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
                                 ✎ Sửa chấm công
                               </button>
@@ -1057,7 +1059,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                                 const c = cellOf(day)
                                 const r = byDay[day]
                                 return (
-                                  <button key={day} onClick={() => setChamCongSheet(selected)} title="Bấm để sửa chấm công"
+                                  <button key={day} onClick={() => { setChamCongInitDay(`${nam}-${String(thang).padStart(2, '0')}-${String(day).padStart(2, '0')}`); setChamCongSheet(selected) }} title="Bấm để sửa chấm công ngày này"
                                     style={{ minHeight: 60, border: `1px solid ${c.bd}`, background: c.bg, borderRadius: 8, padding: '4px 5px', textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 1, fontFamily: LUX.fontSans }}>
                                     <span style={{ fontSize: 11, fontWeight: 700, color: LUX.ink2 }}>{day}</span>
                                     {c.lbl && <span style={{ fontSize: 9.5, fontWeight: 700, color: c.col, lineHeight: 1.1 }}>{c.lbl}</span>}
@@ -1242,8 +1244,11 @@ export default function TabBangLuong({ fixedKy = null }) {
       {chamCongSheet && (
         <AdminSuaChamCong
           nhanVien={chamCongSheet}
-          onClose={() => setChamCongSheet(null)}
-          onSaved={() => { setChamCongSheet(null); fetchAll() }}
+          initialDate={chamCongInitDay}
+          initialThang={thang}
+          initialNam={nam}
+          onClose={() => { setChamCongSheet(null); setChamCongInitDay(null) }}
+          onSaved={() => { setChamCongSheet(null); setChamCongInitDay(null); fetchAll() }}
         />
       )}
     </div>

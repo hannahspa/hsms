@@ -49,10 +49,10 @@ const LOAI_OPTS = [
   { value: 'off_t7x', label: 'OFF T7/CN (vi phạm)', icon: '⚠️' },
 ]
 
-export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
+export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDate = null, initialThang, initialNam }) {
   const now = getNowVN()
-  const [thang, setThang] = useState(now.getMonth() + 1)
-  const [nam, setNam] = useState(now.getFullYear())
+  const [thang, setThang] = useState(initialThang || now.getMonth() + 1)
+  const [nam, setNam] = useState(initialNam || now.getFullYear())
   const [ccList, setCcList] = useState([])
   const [offList, setOffList] = useState([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +60,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
   const [editDay, setEditDay] = useState(null)
   const [toast, setToast] = useState(null)
   const [confirm, setConfirm] = useState(null)
+  const [autoDone, setAutoDone] = useState(false)
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -67,6 +68,15 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved }) {
   }
 
   useEffect(() => { fetchData() }, [thang, nam])
+
+  // Click 1 ngày trong lịch lương → mở thẳng form sửa ngày đó (1 lần)
+  useEffect(() => {
+    if (loading || !initialDate || autoDone) return
+    setAutoDone(true)
+    const cc = ccList.find(r => r.ngay === initialDate)
+    if (cc) openEditDay(cc)
+    else openNewDay(initialDate)
+  }, [loading, initialDate, autoDone])
 
   const fetchData = async () => {
     setLoading(true)
