@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { todayISO } from '../../../lib/utils'
+import { posService } from '../../../services/posService'
+import { todayISO, getNowVN } from '../../../lib/utils'
 import { addDaysISO, addMonthsISO, daysInMonth } from '../../../lib/dateMath'
 import DatePicker from '../../../components/shared/DatePicker'
 import {
@@ -23,6 +24,8 @@ export default function LichHenPage({ user }) {
   const [showPicker, setShowPicker] = useState(false)
   const [modal, setModal] = useState(null)   // null | 'new' | {prefill} | {id,...}
   const [toast, setToast] = useState(null)
+  const [offIds, setOffIds] = useState([])   // KTV nghỉ/off trong ngày đang xem
+  const [creatingId, setCreatingId] = useState(null)  // lịch hẹn đang tạo đơn
 
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 2800) }
 
@@ -44,7 +47,37 @@ export default function LichHenPage({ user }) {
   }, [ngayXem, viewMode])
   useEffect(() => { fetchHen() }, [fetchHen])
 
+  // KTV nghỉ trong NGÀY đang xem (đăng ký off đã duyệt + chấm công loại off) → ẩn cột
+  useEffect(() => {
+    if (viewMode !== 'day') { setOffIds([]); return }
+    let alive = true
+    Promise.all([
+      supabase.from('dang_ky_off').select('nhan_vien_id').eq('ngay_off', ngayXem).eq('trang_thai', 'duoc_duyet'),
+      supabase.from('cham_cong').select('nhan_vien_id, loai').eq('ngay', ngayXem).in('loai', ['off_phep', 'off_ov', 'off_t7', 'off_t7x']),
+    ]).then(([offRes, ccRes]) => {
+      if (!alive) return
+      const ids = new Set()
+      ;(offRes.data || []).forEach(r => r.nhan_vien_id && ids.add(r.nhan_vien_id))
+      ;(ccRes.data || []).forEach(r => r.nhan_vien_id && ids.add(r.nhan_vien_id))
+      setOffIds([...ids])
+    }).catch(() => { if (alive) setOffIds([]) })
+    return () => { alive = false }
+  }, [ngayXem, viewMode])
+
   const handleSave = async () => { setModal(null); await fetchHen(); showToast('Đã lưu lịch hẹn ✓') }
+
+  // Khách đến → tạo đơn POS (gán sẵn khách + dịch vụ + KTV/tour) rồi sang POS thanh toán
+  const handleCreateOrder = async (hen) => {
+    setCreatingId(hen.id)
+    try {
+      const result = await posService.createDraftOrderFromAppointment(hen, { nguoiTao: user?.id })
+      await supabase.from('lich_hen').update({ trang_thai: 'da_xong' }).eq('id', hen.id)
+      window.location.href = `/pos?resume=${result.orderId}`
+    } catch (e) {
+      showToast('Lỗi tạo đơn: ' + e.message, 'error')
+      setCreatingId(null)
+    }
+  }
   const handleStatus = async (id, tt) => {
     await supabase.from('lich_hen').update({ trang_thai: tt }).eq('id', id)
     await fetchHen()
@@ -63,11 +96,15 @@ export default function LichHenPage({ user }) {
     : viewMode === 'month' ? `Tháng ${monthOf(ngayXem)}/${ngayXem.split('-')[0]}`
     : `${dayOfWeek(ngayXem)}, ${fmtDate(ngayXem)}`
   const stats = henList.reduce((a, h) => { a[h.trang_thai] = (a[h.trang_thai] || 0) + 1; a.total++; return a }, { total: 0 })
-  // Cột KTV: ưu tiên KTV; cộng thêm cột "Chưa phân" nếu có lịch chưa gán
-  const ktvCols = ktvList.filter(k => k.vi_tri === 'ktv')
+  // Cột KTV: chỉ KTV ĐI LÀM hôm đó (ẩn người nghỉ/off); cộng cột "Nhân viên bất kỳ" nếu có lịch chưa gán
+  const workingKtv = ktvList.filter(k => k.vi_tri === 'ktv' && !offIds.includes(k.id))
   const hasUnassigned = henList.some(h => !h.nhan_vien_id && h.trang_thai !== 'huy')
-  const columns = [...ktvCols, ...(hasUnassigned ? [{ id: null, ho_ten: 'Chưa phân KTV', vi_tri: 'none' }] : [])]
+  const columns = [...workingKtv, ...(hasUnassigned ? [{ id: null, ho_ten: 'Nhân viên bất kỳ', vi_tri: 'none' }] : [])]
   const henByCol = id => henList.filter(h => (h.nhan_vien_id || null) === id && h.trang_thai !== 'huy')
+
+  // Chặn đặt lịch quá khứ: nếu xem hôm nay, các slot trước giờ hiện tại bị khoá
+  const nowMin = (() => { const d = getNowVN(); return d.getHours() * 60 + d.getMinutes() })()
+  const isPastSlot = (m) => isToday && m < nowMin
 
   const timelineH = SLOTS.length * ROW_H
 
@@ -155,29 +192,38 @@ export default function LichHenPage({ user }) {
               const items = henByCol(col.id)
               return (
                 <div key={col.id || 'none'} style={{ position: 'relative', borderRight: `1px solid ${C.line}`, height: timelineH }}>
-                  {/* Lưới slot + click để đặt lịch */}
-                  {SLOTS.map((m, i) => (
-                    <div key={m}
-                      onClick={() => setModal({ prefill: true, gio_hen: `${String(Math.floor(m / 60)).padStart(2, '0')}:${m % 60 === 0 ? '00' : '30'}`, nhan_vien_id: col.id, ngay_hen: ngayXem })}
-                      style={{ position: 'absolute', top: i * ROW_H, left: 0, right: 0, height: ROW_H, borderBottom: `1px solid ${m % 60 === 0 ? C.line : 'rgba(160,113,79,0.06)'}`, cursor: 'pointer' }}
-                      title="Bấm để đặt lịch" />
-                  ))}
+                  {/* Lưới slot + click để đặt lịch (slot quá khứ bị khoá) */}
+                  {SLOTS.map((m, i) => {
+                    const past = isPastSlot(m)
+                    return (
+                      <div key={m}
+                        onClick={past ? undefined : () => setModal({ prefill: true, gio_hen: `${String(Math.floor(m / 60)).padStart(2, '0')}:${m % 60 === 0 ? '00' : '30'}`, nhan_vien_id: col.id, ngay_hen: ngayXem })}
+                        style={{ position: 'absolute', top: i * ROW_H, left: 0, right: 0, height: ROW_H, borderBottom: `1px solid ${m % 60 === 0 ? C.line : 'rgba(160,113,79,0.06)'}`, cursor: past ? 'not-allowed' : 'pointer', background: past ? 'rgba(160,113,79,0.05)' : 'transparent' }}
+                        title={past ? 'Đã qua giờ — không đặt được' : 'Bấm để đặt lịch'} />
+                    )
+                  })}
                   {/* Block lịch hẹn */}
                   {items.map(h => {
                     const top = (gioToMin(h.gio_hen) - HOUR_START * 60) / SLOT_MIN * ROW_H
                     const height = Math.max(ROW_H - 2, (h.thoi_luong_phut || 60) / SLOT_MIN * ROW_H - 2)
                     const cfg = TRANG_THAI[h.trang_thai] || TRANG_THAI.cho_xac_nhan
+                    const done = h.trang_thai === 'da_xong'
+                    const busy = creatingId === h.id
                     return (
-                      <div key={h.id} onClick={e => { e.stopPropagation(); setModal(h) }}
-                        style={{ position: 'absolute', top: top + 1, left: 3, right: 3, height, background: cfg.bg, borderLeft: `3px solid ${cfg.bar}`, borderRadius: 6, padding: '4px 7px', cursor: 'pointer', overflow: 'hidden', boxShadow: '0 1px 4px rgba(139,94,60,0.12)' }}
+                      <div key={h.id}
+                        style={{ position: 'absolute', top: top + 1, left: 3, right: 3, height, background: cfg.bg, borderLeft: `3px solid ${cfg.bar}`, borderRadius: 6, padding: '4px 7px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(139,94,60,0.12)', display: 'flex', flexDirection: 'column' }}
                         title={`${h.gio_hen} ${h.ten_khach} — ${h.ten_dich_vu || ''}`}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: cfg.color }}>{(h.gio_hen || '').slice(0, 5)} · {h.ten_khach}</div>
-                        {h.ten_dich_vu && height > ROW_H && <div style={{ fontSize: 10, color: C.ink2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.ten_dich_vu}</div>}
-                        {height > ROW_H * 1.6 && (
-                          <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                            {h.trang_thai === 'cho_xac_nhan' && <button onClick={e => { e.stopPropagation(); handleStatus(h.id, 'da_xac_nhan') }} style={miniBtn('#3FA968')}>✓</button>}
-                            {(h.trang_thai === 'cho_xac_nhan' || h.trang_thai === 'da_xac_nhan') && <button onClick={e => { e.stopPropagation(); handleStatus(h.id, 'da_xong') }} style={miniBtn('#3b78d4')}>Xong</button>}
-                            <button onClick={e => { e.stopPropagation(); if (confirm('Hủy lịch hẹn này?')) handleStatus(h.id, 'huy') }} style={miniBtn('#d8654f')}>✕</button>
+                        <div onClick={e => { e.stopPropagation(); setModal(h) }} style={{ cursor: 'pointer' }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: cfg.color }}>{(h.gio_hen || '').slice(0, 5)} · {h.ten_khach}</div>
+                          {h.ten_dich_vu && height > ROW_H && <div style={{ fontSize: 10, color: C.ink2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.ten_dich_vu}</div>}
+                        </div>
+                        {done ? (
+                          height > ROW_H && <div style={{ marginTop: 'auto', fontSize: 9.5, fontWeight: 800, color: '#1a4f96' }}>✓ Đã đến · đã tạo đơn</div>
+                        ) : height > ROW_H * 1.5 && (
+                          <div style={{ display: 'flex', gap: 3, marginTop: 'auto', flexWrap: 'wrap' }}>
+                            <button onClick={e => { e.stopPropagation(); handleCreateOrder(h) }} disabled={busy} style={{ ...miniBtn('#2D7A4F'), opacity: busy ? 0.6 : 1 }}>{busy ? '...' : '✓ Khách đến'}</button>
+                            <button onClick={e => { e.stopPropagation(); setModal(h) }} style={miniBtn('#8a6a35')}>Đổi lịch</button>
+                            <button onClick={e => { e.stopPropagation(); if (confirm('Khách huỷ lịch hẹn này?')) handleStatus(h.id, 'huy') }} style={miniBtn('#d8654f')}>Huỷ</button>
                           </div>
                         )}
                       </div>
@@ -193,7 +239,7 @@ export default function LichHenPage({ user }) {
       {modal && (
         <ModalDatHen
           initial={modal === 'new' ? null : (modal.prefill ? { ten_khach: '', sdt_khach: '', ten_dich_vu: '', dich_vu_id: null, nhan_vien_id: modal.nhan_vien_id, thoi_luong_phut: 60, ngay_hen: modal.ngay_hen, gio_hen: modal.gio_hen, ghi_chu: '' } : modal)}
-          ktvList={ktvList} onSave={handleSave} onClose={() => setModal(null)} user={user}
+          ktvList={workingKtv} onSave={handleSave} onClose={() => setModal(null)} user={user}
         />
       )}
     </div>

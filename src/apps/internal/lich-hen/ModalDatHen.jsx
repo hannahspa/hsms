@@ -4,7 +4,7 @@ import { supabase } from '../../../lib/supabase'
 import { posService } from '../../../services/posService'
 import { todayISO } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
-import { C, fmtDate, dayOfWeek, shortName, GIO_LIST, normalizePhone, dedupeHints } from './lichHenShared'
+import { C, fmtDate, dayOfWeek, shortName, GIO_LIST_15, normalizePhone, dedupeHints, removeAccent } from './lichHenShared'
 
 const safeSearchTerm = (value) => String(value || '')
   .replace(/[,%()]/g, ' ')
@@ -25,10 +25,18 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
   const [customerHints, setCustomerHints] = useState([])
   const [hintLoading, setHintLoading] = useState(false)
   const [creatingOrder, setCreatingOrder] = useState(false)
+  const [showDvList, setShowDvList] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
+  // Lọc dịch vụ theo từ khoá (bỏ dấu) — gõ "co vai" ra "Cổ Vai..."
+  const dvFiltered = (() => {
+    const kw = removeAccent(form.ten_dich_vu)
+    const base = kw ? dichVuList.filter(d => removeAccent(d.ten).includes(kw)) : dichVuList
+    return base.slice(0, 8)
+  })()
+
   useEffect(() => {
-    supabase.from('dich_vu').select('id, ten, thoi_luong_phut').eq('is_active', true).order('ten').then(({ data }) => setDichVuList(data || []))
+    supabase.from('dich_vu').select('id, ten, thoi_gian_phut, danh_muc').eq('is_active', true).order('ten').then(({ data }) => setDichVuList(data || []))
   }, [])
 
   useEffect(() => {
@@ -93,12 +101,6 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
     }
   }, [form.sdt_khach, form.ten_khach])
 
-  const handleSelectDV = e => {
-    const dv = dichVuList.find(d => d.id === e.target.value)
-    if (dv) { set('dich_vu_id', dv.id); set('ten_dich_vu', dv.ten); set('thoi_luong_phut', dv.thoi_luong_phut || 60) }
-    else set('dich_vu_id', null)
-  }
-
   const handleSelectHint = hint => {
     setForm(f => ({
       ...f,
@@ -161,15 +163,13 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div><div style={LBL}>Tên Khách *</div><input style={INP} value={form.ten_khach} onChange={e => set('ten_khach', e.target.value)} placeholder="Nguyễn Thị Lan" /></div>
-            <div><div style={LBL}>Số Điện Thoại</div><input style={INP} value={form.sdt_khach || ''} onChange={e => set('sdt_khach', e.target.value)} placeholder="0901234567" /></div>
+            <div><div style={LBL}>Tên Khách *</div><input style={INP} value={form.ten_khach} onChange={e => set('ten_khach', e.target.value)} placeholder="Tên khách hàng" /></div>
+            <div><div style={LBL}>Số Điện Thoại</div><input style={INP} value={form.sdt_khach || ''} onChange={e => set('sdt_khach', e.target.value)} placeholder="Nhập SĐT để tìm khách cũ" inputMode="numeric" /></div>
           </div>
 
           {(hintLoading || customerHints.length > 0) && (
-            <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, background: '#fffdf9', overflow: 'hidden', marginTop: -4 }}>
-              <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 800, color: C.ink3, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `1px solid ${C.line}` }}>
-                {hintLoading ? 'Đang tìm khách / lịch hẹn cũ...' : `${customerHints.length} kết quả liên quan`}
-              </div>
+            <div style={{ border: `1px solid ${C.line}`, borderRadius: 10, background: '#fffdf9', overflow: 'hidden', marginTop: -4, boxShadow: C.shadow }}>
+              {hintLoading && <div style={{ padding: '8px 10px', fontSize: 11.5, color: C.ink3 }}>Đang tìm khách...</div>}
               {!hintLoading && customerHints.map(hint => (
                 <button key={`${hint.source}-${hint.khach_hang_id || hint.sdt_khach}-${hint.ten_khach}-${hint.note}`}
                   type="button"
@@ -196,19 +196,36 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
             </div>
           )}
 
-          <div><div style={LBL}>Dịch Vụ</div>
-            <select onChange={handleSelectDV} value={form.dich_vu_id || ''} style={INP}>
-              <option value="">— Chọn từ danh mục —</option>
-              {dichVuList.map(dv => <option key={dv.id} value={dv.id}>{dv.ten} ({dv.thoi_luong_phut || 60} phút)</option>)}
-            </select>
-            {!form.dich_vu_id && <input style={{ ...INP, marginTop: 7 }} value={form.ten_dich_vu || ''} onChange={e => set('ten_dich_vu', e.target.value)} placeholder="Hoặc nhập tên dịch vụ tự do..." />}
+          <div style={{ position: 'relative' }}><div style={LBL}>Dịch Vụ</div>
+            <input style={INP} value={form.ten_dich_vu || ''}
+              onChange={e => { set('ten_dich_vu', e.target.value); set('dich_vu_id', null); setShowDvList(true) }}
+              onFocus={() => setShowDvList(true)}
+              onBlur={() => setTimeout(() => setShowDvList(false), 150)}
+              placeholder="Gõ tên dịch vụ, vd: cổ vai, gội đầu..." />
+            {form.dich_vu_id && <div style={{ fontSize: 11, color: '#2D7A4F', fontWeight: 700, marginTop: 4 }}>✓ Dịch vụ trong menu · {form.thoi_luong_phut} phút</div>}
+            {showDvList && dvFiltered.length > 0 && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, marginTop: 4, border: `1px solid ${C.line2}`, borderRadius: 10, background: '#fff', boxShadow: C.shadowLg, maxHeight: 240, overflowY: 'auto' }}>
+                {dvFiltered.map(dv => (
+                  <button type="button" key={dv.id} onMouseDown={e => e.preventDefault()}
+                    onClick={() => { set('dich_vu_id', dv.id); set('ten_dich_vu', dv.ten); set('thoi_luong_phut', dv.thoi_gian_phut || 60); setShowDvList(false) }}
+                    style={{ width: '100%', border: 'none', borderBottom: `1px solid ${C.line}`, background: '#fff', padding: '9px 12px', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--sans)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 13, color: C.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dv.ten}</span>
+                      {dv.danh_muc && <span style={{ display: 'block', fontSize: 10.5, color: C.ink3, marginTop: 1 }}>{dv.danh_muc}</span>}
+                    </span>
+                    {(dv.thoi_gian_phut || 0) > 0 && <span style={{ fontSize: 11, color: C.ink3, flexShrink: 0 }}>{dv.thoi_gian_phut}p</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div><div style={LBL}>Kỹ Thuật Viên Phụ Trách</div>
             <select value={form.nhan_vien_id || ''} onChange={e => set('nhan_vien_id', e.target.value || null)} style={INP}>
-              <option value="">— Chưa phân KTV —</option>
-              {ktvList.map(k => <option key={k.id} value={k.id}>{shortName(k.ho_ten)} ({k.vi_tri === 'ktv' ? 'KTV' : 'Lễ Tân'})</option>)}
+              <option value="">Nhân Viên Bất Kỳ (ai cũng được)</option>
+              {ktvList.map(k => <option key={k.id} value={k.id}>{shortName(k.ho_ten)}</option>)}
             </select>
+            {ktvList.length === 0 && <div style={{ fontSize: 11, color: C.ink3, marginTop: 4, fontStyle: 'italic' }}>Hôm nay chưa có KTV đi làm — chọn "Nhân Viên Bất Kỳ".</div>}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 14 }}>
@@ -218,7 +235,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
               </button>
             </div>
             <div><div style={LBL}>Giờ Hẹn *</div>
-              <select value={form.gio_hen} onChange={e => set('gio_hen', e.target.value)} style={INP}>{GIO_LIST.map(g => <option key={g} value={g}>{g}</option>)}</select>
+              <select value={form.gio_hen} onChange={e => set('gio_hen', e.target.value)} style={INP}>{GIO_LIST_15.map(g => <option key={g} value={g}>{g}</option>)}</select>
             </div>
             <div><div style={LBL}>Thời Lượng</div>
               <select value={form.thoi_luong_phut} onChange={e => set('thoi_luong_phut', +e.target.value)} style={INP}>{[30, 45, 60, 90, 120, 150, 180].map(m => <option key={m} value={m}>{m} phút</option>)}</select>

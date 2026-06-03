@@ -33,6 +33,18 @@ export const GIO_LIST = (() => {
   return list
 })()
 
+// Danh sách giờ mỗi 15 phút (00 15 30 45) — dùng cho modal đặt hẹn
+export const GIO_LIST_15 = (() => {
+  const list = []
+  for (let h = HOUR_START; h <= HOUR_END; h++) {
+    for (const mm of ['00', '15', '30', '45']) {
+      if (h === HOUR_END && mm !== '00') break
+      list.push(`${String(h).padStart(2, '0')}:${mm}`)
+    }
+  }
+  return list
+})()
+
 export const DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 export const fmtDate = iso => { if (!iso) return '—'; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}` }
 export const dayOfWeek = iso => iso ? DOW[getWeekdayISO(iso)] : ''
@@ -40,6 +52,8 @@ export const gioToMin = g => { const [h, m] = String(g || '00:00').split(':').ma
 export const shortName = n => { if (!n) return ''; const p = String(n).trim().split(/\s+/); return p.slice(-2).join(' ') }
 export const getInitials = n => { if (!n) return '?'; const p = String(n).trim().split(' '); return (p[p.length - 1][0] || '').toUpperCase() }
 export const normalizePhone = s => String(s || '').replace(/\D/g, '')
+// Bỏ dấu tiếng Việt + thường hoá để tìm kiếm linh hoạt ("co vai" khớp "Cổ Vai")
+export const removeAccent = s => String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim()
 
 export function dedupeHints(rows) {
   const seen = new Set()

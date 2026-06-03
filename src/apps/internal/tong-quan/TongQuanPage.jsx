@@ -87,6 +87,7 @@ function BarsThuChi({ data }) {
 // ════════════════ MAIN PAGE ════════════════
 export default function TongQuanPage({ onOpenForm }) {
   const { user } = useAuth()
+  const isAdmin = user?.vai_tro === 'admin'
   const [tab, setTab] = useState('thang')
   const [data, setData] = useState({ tongThu: 0, tongChi: 0, barData: [], byHinhThuc: [], viList: [], history: [] })
   const [loading, setLoading] = useState(true)
@@ -123,7 +124,7 @@ export default function TongQuanPage({ onOpenForm }) {
     else if (tab === 'nam') { start = `${now.getFullYear()}-01-01`; end = today }
 
     Promise.all([
-      supabase.from('doanh_thu').select('id, so_tien, hinh_thuc, ngay, dien_giai, chung_tu_url, created_at').gte('ngay', start).lte('ngay', end).order('ngay', { ascending: false }),
+      supabase.from('doanh_thu').select('id, so_tien, hinh_thuc, ngay, dien_giai, chung_tu_url, created_at, nguon, don_hang_id').gte('ngay', start).lte('ngay', end).order('ngay', { ascending: false }),
       supabase.from('chi_phi').select('id, so_tien, hinh_thuc_thanh_toan, ngay, dien_giai, chung_tu_url, vi_id, danh_muc_id, nguoi_nhap, created_at').gte('ngay', start).lte('ngay', end).order('ngay', { ascending: false }),
       supabase.from('so_du_vi_thuc_te').select('*'),
     ]).then(([rDT, rCP, rVi]) => {
@@ -327,12 +328,19 @@ export default function TongQuanPage({ onOpenForm }) {
                       <td><span className={`method ${methodClass}`}>{methodLabel}</span></td>
                       <td className={amtClass}>{amtPrefix}{formatCurrency(tx.so_tien)}đ</td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <button onClick={() => setEditingTx({ loai: tx.loai, data: tx })}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 6px', color: 'var(--espresso)', borderRadius: 6, marginRight: 2 }}
-                          title="Sửa">✏️</button>
-                        <button onClick={() => setDeletingTx({ loai: tx.loai, data: tx })}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 6px', color: '#C0392B', borderRadius: 6 }}
-                          title="Xoá">🗑️</button>
+                        {tx.loai === 'doanh_thu' && tx.nguon === 'pos' && !isAdmin ? (
+                          <span title="Doanh thu từ POS — chỉ Admin sửa/xoá qua đơn hàng"
+                            style={{ fontSize: 11, color: 'var(--ink3)', fontWeight: 700 }}>🔒 POS</span>
+                        ) : (
+                          <>
+                            <button onClick={() => setEditingTx({ loai: tx.loai, data: tx })}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 6px', color: 'var(--espresso)', borderRadius: 6, marginRight: 2 }}
+                              title="Sửa">✏️</button>
+                            <button onClick={() => setDeletingTx({ loai: tx.loai, data: tx })}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 6px', color: '#C0392B', borderRadius: 6 }}
+                              title="Xoá">🗑️</button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   )
@@ -378,9 +386,14 @@ export default function TongQuanPage({ onOpenForm }) {
             <div style={{ fontSize: 13, color: 'var(--ink2)', marginBottom: 6, fontFamily: 'var(--sans)' }}>
               {deletingTx.loai === 'doanh_thu' ? 'Doanh Thu' : 'Chi Phí'} — {formatCurrency(deletingTx.data.so_tien)}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 20, fontFamily: 'var(--sans)' }}>
+            <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: deletingTx.loai === 'doanh_thu' && deletingTx.data.nguon === 'pos' ? 10 : 20, fontFamily: 'var(--sans)' }}>
               {deletingTx.data.dien_giai || 'Không có diễn giải'}
             </div>
+            {deletingTx.loai === 'doanh_thu' && deletingTx.data.nguon === 'pos' && (
+              <div style={{ fontSize: 12, color: '#C0392B', marginBottom: 18, fontFamily: 'var(--sans)', background: 'rgba(192,57,43,.07)', border: '1px solid rgba(192,57,43,.25)', borderRadius: 8, padding: '8px 10px', lineHeight: 1.4 }}>
+                ⚠️ Đây là doanh thu từ <b>đơn POS</b>. Đơn hàng vẫn còn — xoá dòng này sẽ làm <b>lệch sổ với đơn</b>. Chỉ xoá nếu anh thật sự biết mình đang làm gì; nên xử lý qua chính đơn hàng (Hủy/Mở sửa đơn).
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button onClick={() => setDeletingTx(null)} disabled={deleting}
                 style={{ padding: '10px 24px', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink)', fontSize: 14, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
