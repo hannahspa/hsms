@@ -223,30 +223,71 @@ export const posService = {
     }
 
     const service = await findAppointmentService(appointment)
-    const serviceName = service?.ten || appointment.ten_dich_vu || 'Dich vu tu lich hen'
-    const donGia = Number(service?.gia_co_ban || 0)
-    const tiLe = service ? getCommissionPercent(service, 'ktv') : Number(service?.ti_le_hoa_hong || 0)
-    const tienTour = service ? calcServiceCommission(service, donGia, 'ktv') : Math.round(donGia * tiLe / 100)
+    const serviceName = (service?.ten || appointment.ten_dich_vu || '').trim()
+    const tiLe = service ? getCommissionPercent(service, 'ktv') : 0
 
-    await this.addLineItem(order.id, {
-      loai_item: 'dich_vu',
-      dich_vu_id: service?.id || appointment.dich_vu_id || null,
-      nhan_vien_id: appointment.nhan_vien_id || null,
-      so_luong: 1,
-      don_gia: donGia,
-      thanh_tien: donGia,
-      ti_le_hoa_hong: tiLe || null,
-      tien_tour: tienTour,
-      tien_hoa_hong: 0,
-      ghi_chu: `Tu lich hen: ${serviceName}`,
-      meta: {
-        source: 'lich_hen',
-        lichHenId: appointment.id,
-        tenDichVu: serviceName,
-        ngayHen: appointment.ngay_hen || null,
-        gioHen: appointment.gio_hen || null,
-      },
-    })
+    // ── Khách đến DÙNG THẺ đã mua? Tìm thẻ active khớp tên dịch vụ ──
+    const norm = (s) => String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/đ/g, 'd').toLowerCase().replace(/\s+/g, ' ').trim()
+    let matchedCard = null
+    if (khachHangId && serviceName) {
+      try {
+        const { data: cards } = await supabase
+          .from('the_lieu_trinh')
+          .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai')
+          .eq('khach_hang_id', khachHangId)
+          .eq('trang_thai', 'active')
+        const target = norm(serviceName)
+        matchedCard = (cards || []).find((c) => {
+          if ((c.so_buoi_con_lai || 0) <= 0) return false
+          const cn = norm(c.ten_dich_vu)
+          return cn && target && (cn === target || cn.includes(target) || target.includes(cn))
+        }) || null
+      } catch { matchedCard = null }
+    }
+
+    if (matchedCard) {
+      // Dùng thẻ: 0đ với khách, tour KTV = (giá trị thẻ / số buổi) × % hoa hồng
+      const perSession = Math.round((matchedCard.gia_tri_the || 0) / Math.max(1, matchedCard.so_buoi_tong || 1))
+      const tienTourCard = Math.round(perSession * (tiLe || 0) / 100)
+      await this.addLineItem(order.id, {
+        loai_item: 'the_lieu_trinh',
+        the_lieu_trinh_id: matchedCard.id,
+        dich_vu_id: service?.id || appointment.dich_vu_id || null,
+        nhan_vien_id: appointment.nhan_vien_id || null,
+        so_luong: 1,
+        don_gia: 0,
+        thanh_tien: 0,
+        ti_le_hoa_hong: tiLe || null,
+        tien_tour: tienTourCard,
+        tien_hoa_hong: 0,
+        ghi_chu: `Dung the tu lich hen: ${matchedCard.ten_dich_vu}`,
+        meta: { source: 'lich_hen', lichHenId: appointment.id, tenDichVu: matchedCard.ten_dich_vu, dungThe: true },
+      })
+    } else if (service || serviceName) {
+      // Dịch vụ tính tiền bình thường
+      const donGia = Number(service?.gia_co_ban || 0)
+      const tienTour = service ? calcServiceCommission(service, donGia, 'ktv') : 0
+      await this.addLineItem(order.id, {
+        loai_item: 'dich_vu',
+        dich_vu_id: service?.id || appointment.dich_vu_id || null,
+        nhan_vien_id: appointment.nhan_vien_id || null,
+        so_luong: 1,
+        don_gia: donGia,
+        thanh_tien: donGia,
+        ti_le_hoa_hong: tiLe || null,
+        tien_tour: tienTour,
+        tien_hoa_hong: 0,
+        ghi_chu: `Tu lich hen: ${serviceName || 'dich vu'}`,
+        meta: {
+          source: 'lich_hen',
+          lichHenId: appointment.id,
+          tenDichVu: serviceName || null,
+          ngayHen: appointment.ngay_hen || null,
+          gioHen: appointment.gio_hen || null,
+        },
+      })
+    }
+    // Không có dịch vụ lẫn tên DV → KHÔNG thêm dòng rác; Lễ Tân tự chọn trong POS
 
     const appointmentUpdate = { khach_hang_id: khachHangId || null }
     if (appointment.trang_thai === 'cho_xac_nhan') appointmentUpdate.trang_thai = 'da_xac_nhan'
