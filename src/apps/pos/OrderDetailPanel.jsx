@@ -101,7 +101,8 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
   const customer = snap?.customer || order.khach_hang
   const boughtCards = detail.items.filter(i => i.loai_item === 'the_moi')
   const usedCards = detail.items.filter(i => i.loai_item === 'the_lieu_trinh')
-  const productItems = detail.items.filter(i => i.loai_item === 'san_pham')
+  // Dòng "đồng tư vấn thẻ" (KTV thứ 2) chỉ để ghi hoa hồng — ẩn khỏi danh sách hàng & hoá đơn
+  const productItems = detail.items.filter(i => i.loai_item === 'san_pham' && !i.meta?.dongTuVanThe)
   const serviceItems = detail.items.filter(i => i.loai_item === 'dich_vu')
   const totalPaid = detail.payments.reduce((s, p) => s + (p.so_tien || 0), 0)
   const twoCol = typeof window !== 'undefined' && window.innerWidth >= 980
@@ -109,7 +110,7 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
   const handlePrint = () => {
     printReceipt({
       order,
-      items: detail.items.map(it => ({
+      items: detail.items.filter(it => !it.meta?.dongTuVanThe).map(it => ({
         ten: orderItemName(it),
         so_luong: it.so_luong,
         don_gia: it.don_gia,

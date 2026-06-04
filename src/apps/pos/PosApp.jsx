@@ -656,6 +656,34 @@ function PosCreateOrder({ resumeOrderId }) {
         await posService.markCreatedComboCards(oid, comboItems)
       }
 
+      // ── 2 KTV cùng tư vấn 1 thẻ → ghi hoa hồng chia đôi cho KTV thứ 2 ──
+      // Dòng "the_moi" (KTV1) đã giữ nửa hoa hồng; thêm 1 dòng phụ thanh_tien=0 cho KTV2
+      // → doanh số (thanh_tien) chỉ đếm 1 lần, view v_nhan_vien_thu_nhap cộng hoa hồng cho cả 2.
+      try {
+        const dsKtv = orderStaff.filter(r => r.nv?.vi_tri === 'ktv')
+        // Xoá dòng đồng tư vấn cũ (nếu thanh toán lại) để không nhân đôi
+        await supabase.from('don_hang_chi_tiet').delete()
+          .eq('don_hang_id', oid).contains('meta', { dongTuVanThe: true })
+        if (dsKtv.length >= 2) {
+          const ktv2 = dsKtv[1]
+          const theLines = preparedItems.filter(i => i.loai_item === 'the_moi')
+          const comm2 = theLines.reduce((s, i) => s + Math.round((i.thanh_tien || 0) * (ktv2.pct || 0) / 100), 0)
+          if (comm2 > 0) {
+            await supabase.from('don_hang_chi_tiet').insert({
+              don_hang_id: oid,
+              loai_item: 'san_pham',
+              san_pham_id: null,
+              nhan_vien_id: ktv2.nv.id,
+              so_luong: 1, don_gia: 0, thanh_tien: 0,
+              ti_le_hoa_hong: ktv2.pct || null,
+              tien_tour: 0, tien_hoa_hong: comm2,
+              ghi_chu: 'Hoa hồng đồng tư vấn thẻ (KTV thứ 2)',
+              meta: { dongTuVanThe: true },
+            })
+          }
+        }
+      } catch (e) { console.warn('Đồng tư vấn thẻ:', e) }
+
       // 5. Reset
       paymentsInserted.current = false
       setSavedOrderId(null)
@@ -713,8 +741,10 @@ function PosCreateOrder({ resumeOrderId }) {
   const calcStaffPct = (viTri, staffList) => {
     if (viTri === 'le_tan') return 3
     const coLt = staffList.some(s => s.nv.vi_tri === 'le_tan')
-    if (orderKmRefPct >= 30) return 5                // KM ≥ 30% → KTV 5%
-    return coLt ? 7 : 10                             // KTV+LT → 7%, KTV đơn → 10%
+    const base = orderKmRefPct >= 30 ? 5 : (coLt ? 7 : 10)  // KM≥30%→5%, KTV+LT→7%, KTV đơn→10%
+    const soKtv = staffList.filter(s => s.nv.vi_tri === 'ktv').length
+    // 2 KTV cùng tư vấn 1 thẻ → chia đôi % cho mỗi người
+    return soKtv >= 2 ? Math.round((base / soKtv) * 100) / 100 : base
   }
   // Rules pct của NV đang có trong orderStaff (để hiện cảnh báo)
   const coLtInStaff   = orderStaff.some(s => s.nv.vi_tri === 'le_tan')

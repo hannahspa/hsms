@@ -49,6 +49,12 @@ export default function StaffCommissionPanel({
     <div style={{ paddingTop: 10, borderTop: '1px solid var(--line)' }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink2)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>Hoa Hồng Nhân Viên Bán Hàng</div>
 
+      {orderStaff.filter(r => r.nv.vi_tri === 'ktv').length >= 2 && (
+        <div style={{ marginBottom: 8, fontSize: 10.5, color: '#8a6a35', background: 'rgba(201,169,110,.10)', border: '1px solid rgba(201,169,110,.35)', borderRadius: 6, padding: '4px 8px' }}>
+          2 KTV cùng tư vấn — hoa hồng được chia đôi (mỗi người nửa %)
+        </div>
+      )}
+
       <div style={{ position: 'relative', marginBottom: 8 }}>
         <input
           ref={inputRef}
@@ -71,11 +77,13 @@ export default function StaffCommissionPanel({
             <div style={{ position: 'fixed', top: dropPos.top, bottom: dropPos.bottom, left: dropPos.left, width: dropPos.width, zIndex: 9000, background: C.surface2, border: `1px solid ${C.line}`, borderRadius: 8, boxShadow: C.shadow, overflow: 'hidden' }}>
               {filteredStaff.slice(0, 6).map(staff => {
                 const alreadyIn = !!orderStaff.find(row => row.nv.id === staff.id)
-                const slotsBlocked = orderStaff.some(row => row.nv.vi_tri === staff.vi_tri)
+                const sameRole = orderStaff.filter(row => row.nv.vi_tri === staff.vi_tri).length
+                // Lễ Tân: tối đa 1 — KTV: tối đa 2 (2 KTV cùng tư vấn → chia đôi hoa hồng)
+                const slotsBlocked = staff.vi_tri === 'le_tan' ? sameRole >= 1 : sameRole >= 2
                 const blocked = alreadyIn || slotsBlocked
                 const blockLabel = alreadyIn
                   ? 'Đã thêm'
-                  : staff.vi_tri === 'ktv' ? 'Đã có KTV' : 'Đã có Lễ Tân'
+                  : staff.vi_tri === 'ktv' ? 'Đã đủ 2 KTV' : 'Đã có Lễ Tân'
 
                 return (
                   <button key={staff.id}
