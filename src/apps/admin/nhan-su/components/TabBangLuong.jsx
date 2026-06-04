@@ -698,7 +698,7 @@ export default function TabBangLuong({ fixedKy = null }) {
       })()}
 
       {/* Tổng chi lương */}
-      <div style={{ background: ky === 1 ? LUX.heroGrad : 'linear-gradient(135deg,#1A5276,#154360)', borderRadius: LUX.radius, padding: '20px 24px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: LUX.heroGrad, borderRadius: LUX.radius, padding: '20px 24px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
             {ky === 1 ? `Tổng Lương Cứng Tháng ${thang}` : `Tổng Lương KD Tháng ${thang}`}
@@ -1074,7 +1074,7 @@ export default function TabBangLuong({ fixedKy = null }) {
             <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: LUX.bg, overflowY: 'auto', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'blSlideIn .22s ease' }}
               onClick={e => e.stopPropagation()}>
               {/* Header */}
-              <div style={{ background: ky === 1 ? LUX.heroGrad : 'linear-gradient(135deg,#1A5276,#154360)', borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <div style={{ background: LUX.heroGrad, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '22px', color: 'white' }}>{selected.ho_ten}</div>
                   <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
@@ -1366,7 +1366,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                 )}
 
                 {/* Tổng */}
-                <div style={{ background: ky === 1 ? LUX.heroGrad : 'linear-gradient(135deg,#1A5276,#154360)', borderRadius: LUX.radius, padding: '20px 24px', marginBottom: '16px' }}>
+                <div style={{ background: LUX.heroGrad, borderRadius: LUX.radius, padding: '20px 24px', marginBottom: '16px' }}>
                   <div style={{ fontFamily: LUX.fontSans, fontSize: '11px', color: 'rgba(255,255,255,0.6)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>
                     {ky === 1 ? 'Tổng Lương Cứng' : 'Tổng Lương Kinh Doanh'}
                   </div>
