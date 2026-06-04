@@ -7,8 +7,8 @@ import ImageUpload from '../../../../components/shared/ImageUpload'
 import I from '../../../../components/shared/Icons'
 
 const S = {
-  overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 500 },
-  sheet: { background: 'var(--surface)', borderRadius: 20, width: '100%', maxWidth: 560, margin: '0 auto', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' },
+  overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.55)', zIndex: 500 },
+  sheet: { position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'var(--surface)', overflowY: 'auto', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'rpSlideIn .22s ease' },
   handle: { display: 'none' },
   handleBar: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--line2)' },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 16px' },
