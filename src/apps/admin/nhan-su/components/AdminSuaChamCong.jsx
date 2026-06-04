@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { getNowVN } from '../../../../lib/utils'
@@ -44,10 +45,18 @@ function fmtDateLabel(y, m, d) {
 const LOAI_OPTS = [
   { value: 'di_lam', label: 'Đi làm', icon: '💼' },
   { value: 'off_phep', label: 'OFF Phép', icon: '✅' },
-  { value: 'off_ov', label: 'OFF Ko Lương', icon: '❌' },
+  { value: 'off_ov', label: 'OFF Vượt', icon: '❌' },
   { value: 'off_t7', label: 'OFF T7/CN (có lý do)', icon: '📴' },
   { value: 'off_t7x', label: 'OFF T7/CN (vi phạm)', icon: '⚠️' },
 ]
+
+// T7/CN chỉ hiện khi ngày đó thực sự là Thứ 7 / Chủ Nhật
+function isWeekendDate(iso) {
+  if (!iso) return false
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number)
+  const dow = new Date(y, m - 1, d).getDay()
+  return dow === 0 || dow === 6
+}
 
 export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDate = null, initialThang, initialNam }) {
   const now = getNowVN()
@@ -258,9 +267,11 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
     const isDiLam = cc.loai === 'di_lam'
     const autoHeSo = isDiLam && cc.gio_vao && cc.gio_ra ? tinhHeSo(cc.gio_vao, cc.gio_ra) : 0
     const autoTangCa = isDiLam && cc.gio_ra ? tinhTangCa(cc.gio_ra) : 0
+    const cuoiTuan = isWeekendDate(cc.ngay)
+    const loaiOpts = LOAI_OPTS.filter(o => (o.value !== 'off_t7' && o.value !== 'off_t7x') || cuoiTuan)
 
-    return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 2001, display: 'flex', alignItems: 'flex-end' }}
+    return createPortal(
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 10030, display: 'flex', alignItems: 'flex-end' }}
         onClick={() => setEditDay(null)}>
         <div style={{ background: LUX.bg, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
           onClick={e => e.stopPropagation()}>
@@ -299,7 +310,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>Loại Chấm Công</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {LOAI_OPTS.map(opt => (
+                {loaiOpts.map(opt => (
                   <button key={opt.value}
                     onClick={() => updateEditCc('loai', opt.value)}
                     style={{
@@ -389,12 +400,12 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
           </div>
         </div>
       </div>
-    )
+    , document.body)
   }
 
   // ── Main Sheet ──
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 2000, display: 'flex', alignItems: 'flex-end' }}
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 10020, display: 'flex', alignItems: 'flex-end' }}
       onClick={() => { onClose(); if (onSaved) onSaved() }}>
       <div style={{ background: LUX.bg, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
         onClick={e => e.stopPropagation()}>
@@ -404,7 +415,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
 
         {/* Toast */}
         {toast && (
-          <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 2002, background: toast.type === 'error' ? LUX.danger : LUX.sage, color: 'white', padding: '10px 22px', borderRadius: LUX.radiusSm, fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '13px', boxShadow: LUX.shadowLg, whiteSpace: 'nowrap' }}>
+          <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 10041, background: toast.type === 'error' ? LUX.danger : LUX.sage, color: 'white', padding: '10px 22px', borderRadius: LUX.radiusSm, fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '13px', boxShadow: LUX.shadowLg, whiteSpace: 'nowrap' }}>
             {toast.msg}
           </div>
         )}
@@ -533,7 +544,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
         )}
       </div>
     </div>
-  )
+  , document.body)
 }
 
 const labelStyle = {
