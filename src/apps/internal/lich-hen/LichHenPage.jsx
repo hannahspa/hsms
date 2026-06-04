@@ -219,10 +219,11 @@ export default function LichHenPage({ user }) {
                     return (
                       <div key={h.id}
                         style={{ position: 'absolute', top: top + 1, left: 3, right: 3, height, background: cfg.bg, borderLeft: `3px solid ${cfg.bar}`, borderRadius: 6, padding: '4px 7px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(139,94,60,0.12)', display: 'flex', flexDirection: 'column' }}
-                        title={`${h.gio_hen} ${h.ten_khach} — ${h.ten_dich_vu || ''}`}>
+                        title={`${h.gio_hen} ${h.ten_khach} — ${h.ten_dich_vu || ''}${h.ghi_chu ? `\n📝 ${h.ghi_chu}` : ''}`}>
                         <div onClick={e => { e.stopPropagation(); setModal(h) }} style={{ cursor: 'pointer' }}>
                           <div style={{ fontSize: 11, fontWeight: 800, color: cfg.color }}>{(h.gio_hen || '').slice(0, 5)} · {h.ten_khach}</div>
                           {h.ten_dich_vu && height > ROW_H && <div style={{ fontSize: 10, color: C.ink2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.ten_dich_vu}</div>}
+                          {h.ghi_chu && height > ROW_H && <div style={{ fontSize: 9.5, color: '#9a6a2f', marginTop: 1, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📝 {h.ghi_chu}</div>}
                         </div>
                         {done ? (
                           height > ROW_H && <div style={{ marginTop: 'auto', fontSize: 9.5, fontWeight: 800, color: '#1a4f96' }}>✓ Đã đến · đã tạo đơn</div>
