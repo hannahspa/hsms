@@ -275,7 +275,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
       <style>{`@keyframes scSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.45)', zIndex: 10030 }}
         onClick={() => setEditDay(null)}>
-        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - 248px)', maxWidth: '100vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'scSlideIn .22s ease' }}
+        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'scSlideIn .22s ease' }}
           onClick={e => e.stopPropagation()}>
 
           {/* Header — cố định */}
@@ -409,7 +409,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
     <style>{`@keyframes scSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.4)', zIndex: 10020 }}
       onClick={() => { onClose(); if (onSaved) onSaved() }}>
-      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - 248px)', maxWidth: '100vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'scSlideIn .22s ease' }}
+      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'scSlideIn .22s ease' }}
         onClick={e => e.stopPropagation()}>
 
         {/* Confirm Dialog */}

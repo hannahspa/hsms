@@ -76,6 +76,12 @@ body, html {
 }
 
 /* ════════════ DESKTOP LAYOUT ════════════ */
+/* --side-w: bề rộng sidebar hiện tại, dùng cho PANEL CHUẨN (panel trượt phải
+   bám sát mép menu). AdminShell cập nhật giá trị này theo trạng thái thu gọn /
+   mobile. Mặc định 248px. */
+:root { --side-w: 248px; }
+/* Animation trượt phải cho PANEL CHUẨN (dùng chung toàn hệ thống) */
+@keyframes rpSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .app {
   display: grid;
   grid-template-columns: 248px 1fr;

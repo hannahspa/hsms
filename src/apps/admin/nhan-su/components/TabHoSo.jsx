@@ -453,7 +453,7 @@ export default function TabHoSo() {
         <style>{`@keyframes hsSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.4)', zIndex: 10000 }}
           onClick={() => setSelected(null)}>
-          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - 248px)', maxWidth: '100vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'hsSlideIn .22s ease' }}
+          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'hsSlideIn .22s ease' }}
             onClick={e => e.stopPropagation()}>
 
             {/* Header cố định */}
@@ -543,7 +543,7 @@ export default function TabHoSo() {
         <style>{`@keyframes hsSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.4)', zIndex: 10001 }}
           onClick={() => setEditSheet(null)}>
-          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - 248px)', maxWidth: '100vw', background: LUX.bg, overflowY: 'auto', paddingBottom: '24px', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'hsSlideIn .22s ease' }}
+          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: LUX.bg, overflowY: 'auto', paddingBottom: '24px', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'hsSlideIn .22s ease' }}
             onClick={e => e.stopPropagation()}>
             {/* Form header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 28px 14px', position: 'sticky', top: 0, background: LUX.bg, zIndex: 2 }}>

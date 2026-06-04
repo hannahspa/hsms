@@ -61,6 +61,18 @@ export default function AdminShell({ children }) {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  // Cập nhật --side-w (bề rộng sidebar) cho PANEL CHUẨN bám sát mép menu ở mọi
+  // trạng thái: mobile = 0, thu gọn = 64px, mở = 248px.
+  useEffect(() => {
+    const apply = () => {
+      const mobile = window.innerWidth < 768
+      document.documentElement.style.setProperty('--side-w', mobile ? '0px' : (collapsed ? '64px' : '248px'))
+    }
+    apply()
+    window.addEventListener('resize', apply)
+    return () => window.removeEventListener('resize', apply)
+  }, [collapsed])
+
   const role = user?.vai_tro || 'admin'
   const navItems = getNavByRole(role)
 
