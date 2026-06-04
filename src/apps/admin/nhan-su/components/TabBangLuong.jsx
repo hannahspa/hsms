@@ -1071,7 +1071,7 @@ export default function TabBangLuong({ fixedKy = null }) {
           <style>{`@keyframes blSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.4)', zIndex: 9999 }}
             onClick={attemptClose}>
-            <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: ky === 1 ? 'min(1040px, calc(100vw - 256px))' : '560px', maxWidth: '98vw', background: LUX.bg, overflowY: 'auto', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'blSlideIn .22s ease' }}
+            <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: LUX.bg, overflowY: 'auto', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'blSlideIn .22s ease' }}
               onClick={e => e.stopPropagation()}>
               {/* Header */}
               <div style={{ background: ky === 1 ? LUX.heroGrad : 'linear-gradient(135deg,#1A5276,#154360)', borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
@@ -1319,32 +1319,47 @@ export default function TabBangLuong({ fixedKy = null }) {
                     ) : kdDetail.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: 16, color: LUX.ink3, fontFamily: LUX.fontSans, fontSize: 13, background: LUX.bg, borderRadius: LUX.radiusSm }}>Chưa có giao dịch tour/hoa hồng tháng này</div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                        {kdDetail.map(r => {
-                          const ten = r.dich_vu?.ten || r.san_pham?.ten || r.the_lieu_trinh?.ten_dich_vu || (r.loai_item === 'san_pham' ? 'Sản phẩm' : 'Dịch vụ')
-                          return (
-                            <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '38px 1fr auto', gap: 10, alignItems: 'center', padding: '8px 10px', background: LUX.bg, borderRadius: 8, fontFamily: LUX.fontSans, fontSize: 12 }}>
-                              <span style={{ color: LUX.ink3, fontSize: 11, fontFamily: LUX.fontMono }}>{(r.don_hang?.ngay || '').slice(8, 10)}/{(r.don_hang?.ngay || '').slice(5, 7)}</span>
-                              <span style={{ minWidth: 0 }}>
-                                <span style={{ color: LUX.ink2, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ten}{r.don_hang?.khach_hang?.ho_ten ? ` · ${r.don_hang.khach_hang.ho_ten}` : ''}</span>
-                                <span style={{ color: LUX.ink3, fontSize: 10.5, fontFamily: LUX.fontMono }}>DS {formatCurrency(r.thanh_tien || 0)}{r.ti_le_hoa_hong ? ` · ${r.ti_le_hoa_hong}%` : ''}</span>
-                              </span>
-                              <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontFamily: LUX.fontMono, fontSize: 12 }}>
-                                {(r.tien_tour || 0) > 0 && <span style={{ color: LUX.taupe, fontWeight: 700 }}>Tour {formatCurrency(r.tien_tour)}</span>}
-                                {(r.tien_tour || 0) > 0 && (r.tien_hoa_hong || 0) > 0 && <br />}
-                                {(r.tien_hoa_hong || 0) > 0 && <span style={{ color: '#8a6a35', fontWeight: 700 }}>HH {formatCurrency(r.tien_hoa_hong)}</span>}
-                              </span>
-                            </div>
-                          )
-                        })}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 10px', borderTop: `1.5px solid ${LUX.line}`, marginTop: 2, fontFamily: LUX.fontSans, fontSize: 12 }}>
-                          <span style={{ color: LUX.ink3, fontWeight: 600 }}>{kdDetail.length} giao dịch</span>
-                          <span style={{ fontWeight: 700 }}>
-                            Tour <b style={{ color: LUX.taupe }}>{formatCurrency(kdDetail.reduce((s, r) => s + (r.tien_tour || 0), 0))}</b>
-                            <span style={{ color: LUX.ink4, margin: '0 6px' }}>·</span>
-                            Hoa hồng <b style={{ color: '#8a6a35' }}>{formatCurrency(kdDetail.reduce((s, r) => s + (r.tien_hoa_hong || 0), 0))}</b>
-                          </span>
-                        </div>
+                      <div style={{ overflowX: 'auto', border: `1px solid ${LUX.line}`, borderRadius: LUX.radiusSm }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: LUX.fontSans, fontSize: 12.5, minWidth: 760 }}>
+                          <thead>
+                            <tr style={{ background: LUX.bg, color: LUX.ink3, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                              <th style={{ textAlign: 'left', padding: '9px 12px', whiteSpace: 'nowrap' }}>Ngày</th>
+                              <th style={{ textAlign: 'left', padding: '9px 10px', whiteSpace: 'nowrap' }}>Mã đơn</th>
+                              <th style={{ textAlign: 'left', padding: '9px 10px' }}>Khách hàng</th>
+                              <th style={{ textAlign: 'left', padding: '9px 10px' }}>Dịch vụ / SP</th>
+                              <th style={{ textAlign: 'right', padding: '9px 10px', whiteSpace: 'nowrap' }}>Doanh số</th>
+                              <th style={{ textAlign: 'center', padding: '9px 8px' }}>%</th>
+                              <th style={{ textAlign: 'right', padding: '9px 10px', whiteSpace: 'nowrap' }}>Tiền Tour</th>
+                              <th style={{ textAlign: 'right', padding: '9px 14px', whiteSpace: 'nowrap' }}>Hoa Hồng</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {kdDetail.map(r => {
+                              const ten = r.dich_vu?.ten || r.san_pham?.ten || r.the_lieu_trinh?.ten_dich_vu || (r.loai_item === 'san_pham' ? 'Sản phẩm' : 'Dịch vụ')
+                              return (
+                                <tr key={r.id} style={{ borderTop: `1px solid ${LUX.line}`, color: LUX.ink2 }}>
+                                  <td style={{ padding: '9px 12px', fontFamily: LUX.fontMono, fontSize: 11.5, whiteSpace: 'nowrap', color: LUX.ink3 }}>{(r.don_hang?.ngay || '').split('-').reverse().join('/')}</td>
+                                  <td style={{ padding: '9px 10px', fontFamily: LUX.fontMono, fontSize: 11, color: LUX.ink3, whiteSpace: 'nowrap' }}>{r.don_hang?.ma_don || '—'}</td>
+                                  <td style={{ padding: '9px 10px', whiteSpace: 'nowrap' }}>{r.don_hang?.khach_hang?.ho_ten || 'Khách lẻ'}</td>
+                                  <td style={{ padding: '9px 10px' }}>{ten}</td>
+                                  <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: LUX.fontMono }}>{formatCurrency(r.thanh_tien || 0)}</td>
+                                  <td style={{ padding: '9px 8px', textAlign: 'center', color: LUX.ink3 }}>{r.ti_le_hoa_hong ? `${r.ti_le_hoa_hong}%` : '—'}</td>
+                                  <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: LUX.fontMono, fontWeight: 600, color: (r.tien_tour || 0) > 0 ? LUX.taupe : LUX.ink4 }}>{(r.tien_tour || 0) > 0 ? formatCurrency(r.tien_tour) : '—'}</td>
+                                  <td style={{ padding: '9px 14px', textAlign: 'right', fontFamily: LUX.fontMono, fontWeight: 600, color: (r.tien_hoa_hong || 0) > 0 ? '#8a6a35' : LUX.ink4 }}>{(r.tien_hoa_hong || 0) > 0 ? formatCurrency(r.tien_hoa_hong) : '—'}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr style={{ borderTop: `1.5px solid ${LUX.line2}`, background: LUX.bg, fontWeight: 700 }}>
+                              <td colSpan={4} style={{ padding: '10px 12px', color: LUX.ink3 }}>{kdDetail.length} lượt phục vụ</td>
+                              <td style={{ padding: '10px 10px', textAlign: 'right', fontFamily: LUX.fontMono }}>{formatCurrency(kdDetail.reduce((s, r) => s + (r.thanh_tien || 0), 0))}</td>
+                              <td />
+                              <td style={{ padding: '10px 10px', textAlign: 'right', fontFamily: LUX.fontMono, color: LUX.taupe }}>{formatCurrency(kdDetail.reduce((s, r) => s + (r.tien_tour || 0), 0))}</td>
+                              <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: LUX.fontMono, color: '#8a6a35' }}>{formatCurrency(kdDetail.reduce((s, r) => s + (r.tien_hoa_hong || 0), 0))}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
                       </div>
                     )}
                   </BLSection>

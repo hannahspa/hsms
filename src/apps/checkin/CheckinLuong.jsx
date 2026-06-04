@@ -34,13 +34,24 @@ export default function CheckinLuong({ nhanVien, onBack }) {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(getDaysInMonth(year, month)).padStart(2, '0')}`
 
-    const [ccRes, blRes, quyRes, thuNhapRes] = await Promise.all([
+    const [ccRes, blRes, quyRes, thuNhapRes, detailRes] = await Promise.all([
       supabase.from('cham_cong').select('ngay,loai,tang_ca_gio,he_so,gio_vao,gio_ra').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate),
       supabase.from('bang_luong').select('*').eq('nhan_vien_id', nhanVien.id).eq('thang', month).eq('nam', year).maybeSingle(),
       supabase.from('quy_ngay_off').select('*').eq('nhan_vien_id', nhanVien.id).eq('nam', year).maybeSingle(),
       // Real-time Kỳ 2 từ don_hang_chi_tiet (VIEW v_nhan_vien_thu_nhap)
       supabase.from('v_nhan_vien_thu_nhap').select('loai,so_tien').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate).eq('is_test', false),
+      // Chi tiết từng đơn (tour + hoa hồng) — bảng gốc để KTV xem mình đã làm gì
+      supabase.from('don_hang_chi_tiet')
+        .select(`id, thanh_tien, tien_tour, tien_hoa_hong, ti_le_hoa_hong, loai_item,
+          dich_vu:dich_vu_id(ten), san_pham:san_pham_id(ten), the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu),
+          don_hang:don_hang_id!inner(ngay, ma_don, trang_thai, is_test, khach_hang:khach_hang_id(ho_ten))`)
+        .eq('nhan_vien_id', nhanVien.id)
+        .gte('don_hang.ngay', startDate).lte('don_hang.ngay', endDate)
+        .eq('don_hang.is_test', false).neq('don_hang.trang_thai', 'huy'),
     ])
+    const kdDetail = (detailRes.data || [])
+      .filter(r => (r.tien_tour || 0) > 0 || (r.tien_hoa_hong || 0) > 0)
+      .sort((a, b) => String(b.don_hang?.ngay).localeCompare(String(a.don_hang?.ngay)))
 
     const quy = quyRes.data
     const bl  = blRes.data
@@ -77,6 +88,7 @@ export default function CheckinLuong({ nhanVien, onBack }) {
       trangThaiLC: bl?.trang_thai_lc || bl?.trang_thai || 'chua_tinh',
       trangThaiLKD: bl?.trang_thai_lkd || 'chua_tinh',
       quyNgayOff: quy || null,
+      kdDetail,
     })
     setLoading(false)
   }, [year, month, nhanVien.id])
@@ -360,6 +372,35 @@ export default function CheckinLuong({ nhanVien, onBack }) {
                         <span style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 600, color: LUX.espresso }}>Kỳ 2</span>
                         <span style={{ fontFamily: LUX.fontSerif, fontSize: 24, fontWeight: 700, color: LUX.espresso }}>{formatCurrency(tongKy2)}</span>
                       </div>
+
+                      {/* Chi tiết từng đơn — KTV xem mình đã làm gì, bao nhiêu tiền */}
+                      {data?.kdDetail?.length > 0 && (
+                        <div style={{ marginTop: 4 }}>
+                          <div style={{ fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                            Chi tiết {data.kdDetail.length} lượt phục vụ
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {data.kdDetail.map(r => {
+                              const ten = r.dich_vu?.ten || r.san_pham?.ten || r.the_lieu_trinh?.ten_dich_vu || 'Dịch vụ'
+                              return (
+                                <div key={r.id} style={{ background: '#fff', border: `1px solid ${LUX.line}`, borderRadius: 12, padding: '10px 12px' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                    <span style={{ fontFamily: LUX.fontSans, fontSize: 13, fontWeight: 600, color: LUX.espresso, flex: 1, minWidth: 0 }}>{ten}</span>
+                                    <span style={{ fontFamily: LUX.fontMono, fontSize: 11, color: LUX.ink3, whiteSpace: 'nowrap' }}>{(r.don_hang?.ngay || '').split('-').reverse().join('/')}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, gap: 8 }}>
+                                    <span style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.don_hang?.khach_hang?.ho_ten || 'Khách lẻ'} · DS {formatCurrency(r.thanh_tien || 0)}</span>
+                                    <span style={{ fontFamily: LUX.fontMono, fontSize: 12, fontWeight: 700, display: 'flex', gap: 8, whiteSpace: 'nowrap' }}>
+                                      {(r.tien_tour || 0) > 0 && <span style={{ color: LUX.taupe }}>Tour {formatCurrency(r.tien_tour)}</span>}
+                                      {(r.tien_hoa_hong || 0) > 0 && <span style={{ color: '#8a6a35' }}>HH {formatCurrency(r.tien_hoa_hong)}</span>}
+                                    </span>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </>
                   )
                 })()}
