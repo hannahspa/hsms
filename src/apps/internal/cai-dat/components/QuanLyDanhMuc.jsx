@@ -124,8 +124,8 @@ export default function QuanLyDanhMuc({ onClose }) {
 
       {/* POPUP THÊM/SỬA HẠNG MỤC */}
       {editItem && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', zIndex: 999 }} onClick={() => setEditItem(null)}>
-          <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto', background: LUX.bg, borderRadius: '24px 24px 0 0', padding: '24px 20px 40px', animation: 'slideUp 0.2s ease' }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', zIndex: 999 }} onClick={() => setEditItem(null)}>
+          <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto', background: LUX.bg, borderRadius: '20px', padding: '24px 20px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '800' }}>{editItem === 'add' ? 'Thêm Hạng Mục' : 'Sửa Hạng Mục'}</h3>
               <button onClick={() => setEditItem(null)} style={{ background: 'none', border: 'none', fontSize: '20px', color: LUX.ink3 }}>✕</button>

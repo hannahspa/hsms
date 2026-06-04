@@ -263,8 +263,8 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
 
       {/* ── MODAL VỀ SỚM ── */}
       {showVeSom && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 998 }} onClick={() => setShowVeSom(false)}>
-          <div style={{ background: LUX.surface, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 420, margin: '0 auto', padding: '24px 20px 40px' }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', zIndex: 998 }} onClick={() => setShowVeSom(false)}>
+          <div style={{ background: LUX.surface, borderRadius: '20px', width: '100%', maxWidth: 420, margin: '0 auto', padding: '24px 20px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 28, textAlign: 'center', marginBottom: 8 }}>⚠️</div>
             <h3 style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, color: LUX.espresso, textAlign: 'center', margin: '0 0 6px' }}>Về sớm hơn giờ quy định</h3>
             <p style={{ fontSize: 13, color: LUX.ink3, textAlign: 'center', marginBottom: 20 }}>Vui lòng nhập lý do về sớm</p>

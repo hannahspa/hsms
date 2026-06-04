@@ -109,9 +109,9 @@ function FormChienDich({ initial, khuyenMaiList, onSave, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.6)', zIndex: 300,
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div style={{ background: 'white', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '520px',
-        maxHeight: '92vh', overflow: 'auto', boxShadow: '0 -8px 40px rgba(0,0,0,0.25)' }}>
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ background: 'white', borderRadius: '20px', width: '100%', maxWidth: '520px',
+        maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.3)' }}>
         <div style={{ background: COLORS.grad, padding: '18px 20px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderRadius: '20px 20px 0 0', position: 'sticky', top: 0, zIndex: 1 }}>

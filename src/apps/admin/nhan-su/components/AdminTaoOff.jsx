@@ -145,11 +145,11 @@ export default function AdminTaoOff({ open, onClose, onSuccess }) {
       )}
 
       {/* Overlay */}
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998, display: 'flex', alignItems: 'flex-end' }}
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
         onClick={onClose}>
 
         {/* Sheet */}
-        <div style={{ background: COLORS.bg, borderRadius: '28px 28px 0 0', width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: '92vh', overflowY: 'auto', paddingBottom: '40px' }}
+        <div style={{ background: COLORS.bg, borderRadius: '20px', width: '100%', maxWidth: '520px', margin: '0 auto', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }}
           onClick={e => e.stopPropagation()}>
 
           {/* Handle */}

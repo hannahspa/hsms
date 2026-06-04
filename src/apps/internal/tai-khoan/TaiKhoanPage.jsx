@@ -18,8 +18,8 @@ const S = {
   txSub: { fontSize: 11, color: 'var(--ink3)', marginTop: 2, fontFamily: 'var(--sans)' },
   txAmount: (loai) => ({ fontWeight: 700, fontSize: 14, color: loai === 'thu' ? '#2D7A4F' : loai === 'chi' ? '#C0392B' : '#6C3483', textAlign: 'right', fontFamily: 'var(--serif)' }),
   // Date picker modal
-  pickOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 999 },
-  pickSheet: { background: 'var(--surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 520, margin: '0 auto', padding: '24px 20px 40px' },
+  pickOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 999 },
+  pickSheet: { background: 'var(--surface)', borderRadius: 20, width: '100%', maxWidth: 520, margin: '0 auto', padding: '24px 20px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' },
   pickHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   pickTitle: { fontSize: 18, fontWeight: 700, color: 'var(--ink)', fontFamily: 'var(--serif)' },
   closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--ink3)', padding: 4, lineHeight: 1 },

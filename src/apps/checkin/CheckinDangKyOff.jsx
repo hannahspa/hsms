@@ -162,8 +162,8 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
 
       {/* Popup info ngày */}
       {showInfo && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 998 }} onClick={() => setShowInfo(null)}>
-          <div style={{ background: LUX.surface, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 420, margin: '0 auto', padding: '24px 20px 40px' }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', zIndex: 998 }} onClick={() => setShowInfo(null)}>
+          <div style={{ background: LUX.surface, borderRadius: '20px', width: '100%', maxWidth: 420, margin: '0 auto', padding: '24px 20px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }} onClick={e => e.stopPropagation()}>
             {(() => {
               const info = getNgayInfo(showInfo)
               const [y, m, d_val] = showInfo.split('-')

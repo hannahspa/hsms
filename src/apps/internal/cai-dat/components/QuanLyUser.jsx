@@ -142,9 +142,9 @@ export default function QuanLyUser({ onClose }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
       onClick={() => { setEditSheet(null); setConfirmDelete(null); onClose?.() }}>
-      <div style={{ background: LUX.bg, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '520px', margin: '0 auto', maxHeight: '90vh', overflowY: 'auto', paddingBottom: '40px' }}
+      <div style={{ background: LUX.bg, borderRadius: '20px', width: '100%', maxWidth: '520px', margin: '0 auto', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }}
         onClick={e => e.stopPropagation()}>
 
         {/* Toast */}

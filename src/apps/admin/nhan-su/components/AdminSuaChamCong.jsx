@@ -402,9 +402,9 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
 
   // ── Main Sheet ──
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 10020, display: 'flex', alignItems: 'flex-end' }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 10020, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
       onClick={() => { onClose(); if (onSaved) onSaved() }}>
-      <div style={{ background: LUX.bg, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
+      <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '100%', maxWidth: '560px', margin: '0 auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }}
         onClick={e => e.stopPropagation()}>
 
         {/* Confirm Dialog */}
@@ -416,11 +416,6 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
             {toast.msg}
           </div>
         )}
-
-        {/* Handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0', flexShrink: 0 }}>
-          <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: LUX.line2 }} />
-        </div>
 
         {/* Header */}
         <div style={{ padding: '12px 20px', flexShrink: 0 }}>

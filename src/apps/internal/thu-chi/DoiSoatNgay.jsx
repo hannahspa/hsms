@@ -110,9 +110,9 @@ export default function DoiSoatNgay({ user, onClose }) {
   const progressPct = Math.round((doneCount / totalCount) * 100)
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'flex-end', zIndex: 600 }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', zIndex: 600 }}
       onClick={e => { if (e.target === e.currentTarget && onClose) onClose() }}>
-      <div style={{ background: LUX.surface2, borderRadius: '24px 24px 0 0', width: '100%', maxWidth: '520px', margin: '0 auto', padding: '24px 20px 40px', maxHeight: '85vh', overflowY: 'auto' }}
+      <div style={{ background: LUX.surface2, borderRadius: '20px', width: '100%', maxWidth: '520px', margin: '0 auto', padding: '24px 20px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }}
         onClick={e => e.stopPropagation()}>
 
         {msg && (

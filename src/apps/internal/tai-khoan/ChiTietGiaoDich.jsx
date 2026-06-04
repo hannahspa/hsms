@@ -147,9 +147,9 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
 
       {/* Modal Xóa */}
       {showDeleteConfirm && (
-        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',zIndex:999 }}
+        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px',zIndex:999 }}
           onClick={() => setShowDeleteConfirm(false)}>
-          <div style={{ background:LUX.bg,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'420px',margin:'0 auto',padding:'24px 20px 40px' }}
+          <div style={{ background:LUX.bg,borderRadius:'20px',width:'100%',maxWidth:'420px',margin:'0 auto',padding:'24px 20px',maxHeight:'88vh',overflowY:'auto',boxShadow:'0 24px 70px rgba(42,32,26,0.35)' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ fontSize:'32px',textAlign:'center',marginBottom:'12px' }}>🗑️</div>
             <h3 style={{ fontSize:'18px',fontWeight:'800',color:LUX.ink,textAlign:'center',marginBottom:'8px' }}>
@@ -182,9 +182,9 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
 
       {/* Modal Sửa */}
       {showEditForm && (
-        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',zIndex:999 }}
+        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px',zIndex:999 }}
           onClick={() => setShowEditForm(false)}>
-          <div style={{ background:LUX.bg,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'420px',margin:'0 auto',padding:'24px 20px 40px' }}
+          <div style={{ background:LUX.bg,borderRadius:'20px',width:'100%',maxWidth:'420px',margin:'0 auto',padding:'24px 20px',maxHeight:'88vh',overflowY:'auto',boxShadow:'0 24px 70px rgba(42,32,26,0.35)' }}
             onClick={e => e.stopPropagation()}>
             <h3 style={{ fontSize:'18px',fontWeight:'800',color:LUX.ink,marginBottom:'20px' }}>✏️ Sửa Giao Dịch</h3>
             <EditGiaoDich

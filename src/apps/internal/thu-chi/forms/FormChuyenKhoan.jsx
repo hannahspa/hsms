@@ -5,9 +5,9 @@ import DatePicker from '../../../../components/shared/DatePicker'
 import I from '../../../../components/shared/Icons'
 
 const S = {
-  overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'flex-end', zIndex: 500 },
-  sheet: { background: 'var(--surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 520, margin: '0 auto', maxHeight: '92vh', overflowY: 'auto', animation: 'slideUp .3s ease' },
-  handle: { display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 },
+  overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 500 },
+  sheet: { background: 'var(--surface)', borderRadius: 20, width: '100%', maxWidth: 560, margin: '0 auto', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' },
+  handle: { display: 'none' },
   handleBar: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--line2)' },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 16px' },
   headerLeft: { display: 'flex', alignItems: 'center', gap: 10 },
@@ -36,7 +36,7 @@ const S = {
   rowValue: { fontSize: 15, fontWeight: 600, color: 'var(--ink)', fontFamily: 'var(--sans)' },
   textareaRow: { display: 'flex', alignItems: 'flex-start', gap: 12 },
   saveBtn: (saving) => ({ width: '100%', padding: 16, background: saving ? 'var(--ink3)' : 'linear-gradient(135deg,#8B5CF6,#6C3483)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 6px 20px rgba(108,52,131,0.35)', transition: 'all .2s', fontFamily: 'var(--sans)' }),
-  pickSheet: { background: 'var(--surface2)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 520, margin: '0 auto', padding: '24px 20px 40px' },
+  pickSheet: { background: 'var(--surface2)', borderRadius: 20, width: '100%', maxWidth: 520, margin: '0 auto', padding: '24px 20px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' },
   pickHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   pickTitle: { fontSize: 17, fontWeight: 700, color: 'var(--ink)', fontFamily: 'var(--serif)' },
   pickItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '16px 0', background: 'none', border: 'none', cursor: 'pointer' },
