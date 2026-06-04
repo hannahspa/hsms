@@ -7,6 +7,20 @@ import AdminSuaChamCong from './AdminSuaChamCong'
 import AvatarUpload from '../../../../components/shared/AvatarUpload'
 import { KY_QUY_TONG, KY_QUY_MOIS, KY_QUY_THUONG } from '../../../../lib/luong'
 
+// Dò ngược PIN 4 số từ pin_hash (SHA-256 không salt) để admin xem/test. Tính 1 lần, cache.
+let _pinMapCache = null
+async function buildPinMap() {
+  if (_pinMapCache) return _pinMapCache
+  const entries = await Promise.all(
+    Array.from({ length: 10000 }, (_, i) => {
+      const pin = String(i).padStart(4, '0')
+      return hashPin(pin).then(h => [h, pin])
+    })
+  )
+  _pinMapCache = Object.fromEntries(entries)
+  return _pinMapCache
+}
+
 const VI_TRI_OPTS  = [
   { value: 'ktv',    label: 'KTV' },
   { value: 'le_tan', label: 'Lễ Tân' },
@@ -171,6 +185,7 @@ export default function TabHoSo() {
   const [search,    setSearch]    = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [kpi,       setKpi]       = useState({ diLam: 0, choDuyet: 0 })
+  const [pinMap,    setPinMap]    = useState({})   // pin_hash → PIN (dò ngược 4 số để admin xem/test)
 
   // KPI tổng quan (gộp từ trang Danh Sách cũ): đang trực hôm nay + chờ duyệt
   useEffect(() => {
@@ -193,6 +208,14 @@ export default function TabHoSo() {
   }
 
   useEffect(() => { fetchAll() }, [])
+
+  // Dựng bảng dò PIN khi mở 1 hồ sơ (chỉ tính 1 lần nhờ cache)
+  useEffect(() => {
+    if (!selected || Object.keys(pinMap).length > 0) return
+    let alive = true
+    buildPinMap().then(m => { if (alive) setPinMap(m) })
+    return () => { alive = false }
+  }, [selected])
 
   const fetchAll = async () => {
     setLoading(true)
@@ -481,6 +504,7 @@ export default function TabHoSo() {
                 <SheetRow label="Ngày vào làm" value={fmtNgay(selected.ngay_bat_dau)} />
                 <SheetRow label="Thâm niên"    value={soThoiGianLam(selected.ngay_bat_dau)} />
                 <SheetRow label="SĐT"          value={selected.so_dien_thoai || '—'} />
+                <SheetRow label="Mã PIN Check-in" value={selected.pin_hash ? (pinMap[selected.pin_hash] || (Object.keys(pinMap).length === 0 ? 'Đang giải mã…' : 'Không phải PIN 4 số')) : 'Chưa đặt PIN'} highlight />
                 <SheetRow label="Lương cứng"   value={formatCurrency(selected.luong_cung)} highlight />
                 <SheetRow label="Giới hạn OFF" value={`${selected.gioi_han_off_thang || 3} ngày/tháng`} />
               </SheetSection>
