@@ -271,17 +271,14 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
     const loaiOpts = LOAI_OPTS.filter(o => (o.value !== 'off_t7' && o.value !== 'off_t7x') || cuoiTuan)
 
     return createPortal(
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 10030, display: 'flex', alignItems: 'flex-end' }}
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 10030, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
         onClick={() => setEditDay(null)}>
-        <div style={{ background: LUX.bg, borderRadius: `${LUX.radiusLg} ${LUX.radiusLg} 0 0`, width: '100%', maxWidth: '480px', margin: '0 auto', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
+        <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '100%', maxWidth: '640px', margin: '0 auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }}
           onClick={e => e.stopPropagation()}>
 
           {/* Header — cố định */}
           <div style={{ flexShrink: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-              <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: LUX.line2 }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px 12px' }}>
               <div>
                 <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '18px', color: LUX.espresso }}>
                   {editDay.isNew ? 'Thêm Chấm Công' : 'Sửa Chấm Công'}
@@ -305,7 +302,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
           )}
 
           {/* Nội dung — có thể cuộn */}
-          <div style={{ padding: '0 20px', overflowY: 'auto', flex: 1 }}>
+          <div style={{ padding: '4px 24px 8px', overflowY: 'auto', flex: 1 }}>
             {/* Loại */}
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>Loại Chấm Công</label>
@@ -384,7 +381,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
           </div>
 
           {/* Nút Lưu — cố định ở dưới, luôn hiển thị */}
-          <div style={{ padding: '12px 20px 40px', flexShrink: 0, borderTop: `1px solid ${LUX.line}`, background: LUX.bg }}>
+          <div style={{ padding: '14px 24px', flexShrink: 0, borderTop: `1px solid ${LUX.line}`, background: LUX.bg, borderRadius: `0 0 ${LUX.radiusLg} ${LUX.radiusLg}` }}>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={handleSaveDay} disabled={saving}
                 style={{ flex: 1, background: saving ? LUX.champagne2 : LUX.goldGrad, color: 'white', border: 'none', borderRadius: LUX.radius, padding: '14px', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '15px', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: `0 4px 16px ${LUX.gold}50` }}>
