@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, getNowVN } from '../../../../lib/utils'
+import { formatCurrency, getNowVN, todayISO } from '../../../../lib/utils'
 import { tinhLuong as calcLuong } from '../../../../lib/luong'
 import ConfirmDialog from '../../../../components/shared/ConfirmDialog'
 import AdminSuaChamCong from './AdminSuaChamCong'
@@ -175,6 +175,20 @@ export default function TabBangLuong({ fixedKy = null }) {
         result[nv.id].tienTour         = tienTourEff
         result[nv.id].thuongDatDoanhSo = bl?.hoa_hong_the || 0
         result[nv.id].truUngLuong      = bl?.tru_ung_luong || 0
+
+        // ── NV ĐẶC BIỆT (vd Phạm Thị Nhỏ): không check-in, lương cố định ──
+        // Kỳ 1 = 4/7 lương cứng (7tr → 4tr), Kỳ 2 = phần còn lại (3tr). Không tính ngày công.
+        if (nv.trang_thai === 'dac_biet') {
+          const r = result[nv.id]
+          const k1 = Math.round((nv.luong_cung || 0) * 4 / 7)
+          const k2 = (nv.luong_cung || 0) - k1
+          r.ngayCong = r.soNgayThang
+          r.luongCoBan = k1; r.tienTangCa = 0; r.tongTangCa = 0; r.tienPhat = 0; r.truKyQuy = 0; r.truUngLuong = 0
+          r.soOffCoLuong = 0; r.soOffPhepVuot = 0; r.soOffOV = 0; r.soOffT7CN = 0; r.soPhamT7X = 0; r.soNgayLeBuOV = 0
+          r.hoaHongDV = 0; r.thuongDatDoanhSo = 0; r.tienTour = k2  // Kỳ 2 = lương cố định 3tr
+          r.tongLinh = k1
+          result[nv.id] = r
+        }
       })
 
       setNvList(nvData)
@@ -317,6 +331,34 @@ export default function TabBangLuong({ fixedKy = null }) {
               : `✓ Đã phát lương Kỳ ${ky}`)
           } else {
             showToast(`✓ Đã phát lương Kỳ ${ky} cho ${nvIds.length} nhân viên`)
+          }
+
+          // ── Tự động ghi CHI PHÍ LƯƠNG vào Sổ Thu Chi (chống ghi trùng) ──
+          const DM_LUONG_CUNG = 'e9c46ed7-bda4-4e4f-a16f-da15ccc34a32'
+          const DM_LUONG_KD   = '7e30102d-e028-4d96-b607-c1d69c8dcdee'
+          const VI_MB         = '6d69df42-9d5a-4f03-9370-a0b6e007e12d'
+          const danhMucId = ky === 1 ? DM_LUONG_CUNG : DM_LUONG_KD
+          const dienGiai = `Lương Kỳ ${ky} tháng ${thang}/${nam} (tự động)`
+          const { data: daGhi } = await supabase.from('chi_phi').select('id').eq('danh_muc_id', danhMucId).eq('dien_giai', dienGiai).limit(1)
+          if (!daGhi || daGhi.length === 0) {
+            let soTien = 0
+            for (const id of nvIds) {
+              const ld = luongData[id]; if (!ld) continue
+              // Kỳ 1: thực lĩnh + ký quỹ (= lương cơ bản + tăng ca − phạt − ứng).
+              // Kỳ 2: tour + hoa hồng + thưởng.
+              if (ky === 1) soTien += (ld.luongCoBan || 0) + (ld.tienTangCa || 0) - (ld.tienPhat || 0) - (ld.truUngLuong || 0)
+              else soTien += (ld.hoaHongDV || 0) + (ld.tienTour || 0) + (ld.thuongDatDoanhSo || 0)
+            }
+            soTien = Math.round(soTien)
+            if (soTien > 0) {
+              const { error: chiErr } = await supabase.from('chi_phi').insert({
+                ngay: todayISO(), danh_muc_id: danhMucId, so_tien: soTien,
+                hinh_thuc_thanh_toan: 'chuyen_khoan', vi_id: VI_MB,
+                dien_giai: dienGiai, nguoi_nhap: 'Hệ thống (phát lương)',
+              })
+              if (chiErr) showToast('Đã phát lương nhưng LỖI ghi chi phí: ' + chiErr.message, 'error')
+              else showToast(`✓ Đã ghi chi phí ${ky === 1 ? 'Lương Cứng' : 'Lương KD'}: ${formatCurrency(soTien)}`)
+            }
           }
           await fetchAll()
         } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
