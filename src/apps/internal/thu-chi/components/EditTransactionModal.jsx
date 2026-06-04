@@ -26,8 +26,8 @@ export default function EditTransactionModal({
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={event => { if (event.target === event.currentTarget) onClose() }}>
-      <div style={{ background: 'var(--surface2)', borderRadius: 'var(--r-lg)', padding: 24, maxWidth: 440, width: '100%', boxShadow: 'var(--sh-3)' }} onClick={event => event.stopPropagation()}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 999 }} onClick={event => { if (event.target === event.currentTarget) onClose() }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'var(--surface2)', padding: '24px 28px', overflowY: 'auto', boxShadow: '-6px 0 40px rgba(0,0,0,.28)', animation: 'rpSlideIn .22s ease' }} onClick={event => event.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}>
           <h3 style={{ fontFamily: 'var(--serif)', fontSize: 18, fontWeight: 700 }}>{isAdmin ? 'Sửa Giao Dịch' : 'Yêu Cầu Sửa'}</h3>
           <button onClick={onClose} className="icon-btn" style={{ width: 32, height: 32 }}>x</button>

@@ -334,8 +334,8 @@ function EditModal({ row, danhMucList, viMap, onClose, onSaved }) {
   const fmtNgay = d => { const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}` }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(42,29,20,0.4)', backdropFilter: 'blur(3px)', zIndex: 2000, display: 'grid', placeItems: 'center', padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface2)', borderRadius: 16, width: 440, maxWidth: '100%', overflow: 'hidden', boxShadow: '0 20px 60px rgba(42,29,20,0.3)' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(42,29,20,0.4)', backdropFilter: 'blur(3px)', zIndex: 2000 }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'var(--surface2)', overflowY: 'auto', boxShadow: '-6px 0 40px rgba(42,29,20,0.3)', animation: 'rpSlideIn .22s ease' }}>
         <DatePicker open={showLich} selectedDate={ngay} onClose={() => setShowLich(false)} onConfirm={d => { setNgay(d); setShowLich(false) }} />
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontFamily: 'var(--serif)', fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>

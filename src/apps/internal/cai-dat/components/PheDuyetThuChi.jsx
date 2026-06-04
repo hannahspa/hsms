@@ -169,9 +169,9 @@ export default function PheDuyetThuChi({ onClose, onUpdated }) {
 
       {/* Reject Modal */}
       {rejectModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', zIndex: 999 }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999 }}
           onClick={() => setRejectModal(null)}>
-          <div style={{ background: LUX.bg, borderRadius: '20px', width: '100%', maxWidth: '520px', margin: '0 auto', padding: '24px 20px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }}
+          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: LUX.bg, padding: '24px 28px', overflowY: 'auto', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'rpSlideIn .22s ease' }}
             onClick={e => e.stopPropagation()}>
             <h3 style={{ fontSize: '18px', fontWeight: '800', color: LUX.ink, marginBottom: '16px', fontFamily: LUX.fontSerif }}>Lý do từ chối</h3>
             <textarea value={lyDoTuChoi} onChange={e => setLyDoTuChoi(e.target.value)}
