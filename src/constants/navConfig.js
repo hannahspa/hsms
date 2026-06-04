@@ -6,8 +6,6 @@ export const ADMIN_NAV = [
   { id: 'pos', icon: '🛒', label: 'Bán Hàng', children: [
     { id: 'pos-tao', label: 'Tạo Đơn Hàng', path: '/pos' },
     { id: 'pos-ds', label: 'Danh Sách Bán Hàng', path: '/pos/danh-sach' },
-    { id: 'pos-doi-soat', label: 'Đối Soát Bán Hàng', path: '/admin/pos-doi-soat' },
-    { id: 'legacy-sync', label: 'Đối Soát Data Cũ', path: '/admin/doi-soat-data' },
   ]},
   { id: 'lichhen', icon: '📅', label: 'Lịch Hẹn', path: '/SoThuChi/lich-hen' },
 

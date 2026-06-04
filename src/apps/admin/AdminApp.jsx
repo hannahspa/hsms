@@ -15,8 +15,6 @@ const AdminTheLieuTrinhPage = lazy(() => import('./the-lieu-trinh/AdminTheLieuTr
 const AdminBaoCaoTheLieuTrinh = lazy(() => import('./the-lieu-trinh/AdminBaoCaoTheLieuTrinh'))
 const AdminDichVuPage = lazy(() => import('./dich-vu/AdminDichVuPage'))
 const AdminCommissionPage = lazy(() => import('./commission/AdminCommissionPage'))
-const AdminDoiSoatDataPage = lazy(() => import('./doi-soat-data/AdminDoiSoatDataPage'))
-const AdminPosReadinessPage = lazy(() => import('./pos-readiness/AdminPosReadinessPage'))
 
 function AdminRoute({ children }) {
   return (
@@ -96,8 +94,6 @@ export default function AdminApp() {
   if (path.startsWith('/admin/crm'))        return <AdminRoute><AdminCRMPage /></AdminRoute>
   if (path.startsWith('/admin/marketing'))  return <AdminRoute><AdminMarketingPage /></AdminRoute>
   if (path.startsWith('/admin/dashboard'))  return <AdminRoute><AdminDashboardPage /></AdminRoute>
-  if (path.startsWith('/admin/pos-doi-soat')) return <AdminRoute><AdminPosReadinessPage /></AdminRoute>
-  if (path.startsWith('/admin/doi-soat-data')) return <AdminRoute><AdminDoiSoatDataPage /></AdminRoute>
   if (path.startsWith('/admin/lich-su-nop-tien-mat')) return <AdminRoute><AdminLichSuNopTienMat /></AdminRoute>
   if (path.startsWith('/admin/the-lieu-trinh/bao-cao')) return <AdminRoute><AdminBaoCaoTheLieuTrinh /></AdminRoute>
   if (path.startsWith('/admin/the-lieu-trinh'))         return <AdminRoute><AdminTheLieuTrinhPage /></AdminRoute>

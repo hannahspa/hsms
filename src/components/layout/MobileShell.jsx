@@ -21,7 +21,6 @@ const PAGE_TITLES = {
   '/admin/nhan-su/luong-kinh-doanh': 'Lương Kinh Doanh',
   '/admin/nhan-su/quy-ngay-le':      'Quỹ Ngày Lễ',
   '/admin/commission':               'Sổ Hoa Hồng',
-  '/admin/doi-soat-data':            'Đối Soát Data Cũ',
   '/admin/crm':                      'CRM Khách Hàng',
   '/admin/the-lieu-trinh':           'Thẻ Liệu Trình',
   '/admin/kho-hang':                 'Kho Hàng',
@@ -58,7 +57,6 @@ const NHANSU_ITEMS = [
 const MORE_ADMIN = [
   { label: 'Kho Hàng',       path: '/admin/kho-hang',        icon: '📦' },
   { label: 'CRM',             path: '/admin/crm',             icon: '💝' },
-  { label: 'Data Cũ',         path: '/admin/doi-soat-data',   icon: '📋' },
   { label: 'Thẻ LT',         path: '/admin/the-lieu-trinh',  icon: '🎫' },
   { label: 'Khuyến Mãi',     path: '/admin/khuyen-mai',      icon: '🏷️' },
   { label: 'Marketing',       path: '/admin/marketing',       icon: '📣' },
