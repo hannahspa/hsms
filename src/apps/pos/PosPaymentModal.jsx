@@ -57,12 +57,12 @@ export default function PosPaymentModal({ tongHang, selectedCustomer, onConfirm,
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,.5)',
     }} onClick={onCancel}>
       <div style={{
-        background: '#fff', borderRadius: 16, width: 'min(520px, 95vw)',
-        maxHeight: '90vh', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 24px 80px rgba(0,0,0,.28)',
+        position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw',
+        background: '#fff', display: 'flex', flexDirection: 'column',
+        boxShadow: '-6px 0 40px rgba(0,0,0,.28)', animation: 'rpSlideIn .22s ease',
       }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}

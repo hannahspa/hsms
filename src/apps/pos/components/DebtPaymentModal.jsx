@@ -30,13 +30,13 @@ export default function DebtPaymentModal({
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(0,0,0,.5)',
     }} onClick={handleBackdropClick}>
       <div style={{
-        background: '#fff', borderRadius: 14, padding: '22px 24px',
-        width: 360, boxShadow: '0 12px 48px rgba(0,0,0,.28)',
-      }}>
+        position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw',
+        background: '#fff', padding: '24px 28px', overflowY: 'auto',
+        boxShadow: '-6px 0 40px rgba(0,0,0,.28)', animation: 'rpSlideIn .22s ease',
+      }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
           <div style={{
             width: 38, height: 38, borderRadius: '50%', flexShrink: 0,

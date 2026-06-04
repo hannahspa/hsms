@@ -94,11 +94,12 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 999,
-      background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,.45)',
     }} onClick={onClose}>
       <div style={{
-        background: C.surface2, borderRadius: 16, width: 460, maxHeight: '80vh',
-        display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,.25)',
+        position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw',
+        background: C.surface2,
+        display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(0,0,0,.25)', animation: 'rpSlideIn .22s ease',
       }} onClick={e => e.stopPropagation()}>
         <div style={{
           padding: '16px 20px 12px', borderBottom: '1px solid var(--line)',
