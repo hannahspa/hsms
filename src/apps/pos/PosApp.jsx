@@ -248,7 +248,13 @@ function PosCreateOrder({ resumeOrderId }) {
   const handleRemoveItem = async (_lid) => {
     const item = lineItems.find(i => i._lid === _lid)
     if (savedOrderId && item?.id) {
-      try { await posService.removeLineItem(item.id) } catch (_) {}
+      try {
+        await posService.removeLineItem(item.id)
+      } catch (err) {
+        // KHÔNG nuốt lỗi: nếu xoá DB thất bại thì giữ nguyên dòng + báo để nhân viên biết
+        alert('Lỗi xoá dịch vụ: ' + err.message)
+        return
+      }
     }
     setLineItems(prev => prev.filter(i => i._lid !== _lid))
   }
@@ -435,7 +441,12 @@ function PosCreateOrder({ resumeOrderId }) {
       return
     }
     if (savedOrderId) {
-      // Đã lưu rồi → về danh sách
+      // Đã lưu rồi → cập nhật lại khách hàng (có thể vừa đổi/tạo mới) rồi về danh sách
+      try {
+        await supabase.from('don_hang')
+          .update({ khach_hang_id: selectedCustomer?.id || null })
+          .eq('id', savedOrderId)
+      } catch (err) { alert('Lỗi cập nhật khách hàng: ' + err.message); return }
       window.location.href = '/pos/danh-sach'
       return
     }
@@ -593,10 +604,12 @@ function PosCreateOrder({ resumeOrderId }) {
       }
       paymentsInserted.current = true
 
-      // Cập nhật ngày + giờ tạo đơn (admin/lễ tân sửa được) — TRƯỚC finalize để doanh_thu dùng đúng ngày
+      // Cập nhật khách hàng + ngày + giờ tạo đơn — TRƯỚC finalize.
+      // khach_hang_id phải cập nhật ở đây vì đơn nháp có thể tạo lúc CHƯA chọn khách
+      // (khách lẻ) rồi mới gán/tạo khách sau → nếu không update sẽ mất liên kết CRM.
       try {
         await supabase.from('don_hang')
-          .update({ ngay: orderNgay, created_at: `${orderNgay}T${(orderGio || '00:00')}:00+07:00` })
+          .update({ khach_hang_id: selectedCustomer?.id || null, ngay: orderNgay, created_at: `${orderNgay}T${(orderGio || '00:00')}:00+07:00` })
           .eq('id', oid)
       } catch (_) {}
 
