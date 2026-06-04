@@ -207,7 +207,8 @@ export default function TabBangLuong({ fixedKy = null }) {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  // Chi tiết Tour & Hoa Hồng từng đơn cho NV đang mở (chỉ Kỳ 2) — tích hợp từ Sổ Hoa Hồng cũ
+  // Chi tiết Tour & Hoa Hồng từng đơn cho NV đang mở (chỉ Kỳ 2) — tích hợp từ Sổ Hoa Hồng cũ.
+  // Dùng BẢNG GỐC don_hang_chi_tiet (view không join FK được) — mỗi dòng = 1 dịch vụ/SP gồm cả tour + hoa hồng.
   useEffect(() => {
     if (!selected || ky !== 2) { setKdDetail([]); return undefined }
     let alive = true
@@ -215,14 +216,24 @@ export default function TabBangLuong({ fixedKy = null }) {
     const sd = `${nam}-${String(thang).padStart(2, '0')}-01`
     const lastDay = new Date(nam, thang, 0).getDate()
     const ed = `${nam}-${String(thang).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    supabase.from('v_nhan_vien_thu_nhap')
-      .select(`id, loai, nguon, so_tien, ti_le, doanh_so_tinh, ngay, trang_thai,
-        don_hang:don_hang_id(ma_don, khach_hang:khach_hang_id(ho_ten)),
-        line_item:don_hang_chi_tiet_id(loai_item, thanh_tien, dich_vu:dich_vu_id(ten), san_pham:san_pham_id(ten), the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu))`)
-      .gte('ngay', sd).lte('ngay', ed)
-      .eq('nhan_vien_id', selected.id).eq('is_test', false).neq('trang_thai', 'huy')
-      .order('ngay', { ascending: true })
-      .then(({ data }) => { if (alive) { setKdDetail(data || []); setKdDetailLoading(false) } })
+    supabase.from('don_hang_chi_tiet')
+      .select(`id, thanh_tien, tien_tour, tien_hoa_hong, ti_le_hoa_hong, loai_item, so_luong,
+        dich_vu:dich_vu_id(ten), san_pham:san_pham_id(ten), the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu),
+        don_hang:don_hang_id!inner(ngay, ma_don, trang_thai, is_test, khach_hang:khach_hang_id(ho_ten))`)
+      .eq('nhan_vien_id', selected.id)
+      .gte('don_hang.ngay', sd).lte('don_hang.ngay', ed)
+      .eq('don_hang.is_test', false).neq('don_hang.trang_thai', 'huy')
+      .then(({ data, error }) => {
+        if (!alive) return
+        if (error) { console.error('kdDetail:', error); setKdDetail([]) }
+        else {
+          const rows = (data || [])
+            .filter(r => (r.tien_tour || 0) > 0 || (r.tien_hoa_hong || 0) > 0)
+            .sort((a, b) => String(a.don_hang?.ngay).localeCompare(String(b.don_hang?.ngay)))
+          setKdDetail(rows)
+        }
+        setKdDetailLoading(false)
+      })
     return () => { alive = false }
   }, [selected, ky, thang, nam])
 
@@ -1310,25 +1321,28 @@ export default function TabBangLuong({ fixedKy = null }) {
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                         {kdDetail.map(r => {
-                          const ten = r.line_item?.dich_vu?.ten || r.line_item?.san_pham?.ten || r.line_item?.the_lieu_trinh?.ten_dich_vu || (r.loai === 'tour' ? 'Dịch vụ' : 'Sản phẩm/Thẻ')
-                          const isTour = r.loai === 'tour'
+                          const ten = r.dich_vu?.ten || r.san_pham?.ten || r.the_lieu_trinh?.ten_dich_vu || (r.loai_item === 'san_pham' ? 'Sản phẩm' : 'Dịch vụ')
                           return (
-                            <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '42px 1fr auto', gap: 10, alignItems: 'center', padding: '8px 10px', background: LUX.bg, borderRadius: 8, fontFamily: LUX.fontSans, fontSize: 12 }}>
-                              <span style={{ color: LUX.ink3, fontSize: 11, fontFamily: LUX.fontMono }}>{(r.ngay || '').slice(8, 10)}/{(r.ngay || '').slice(5, 7)}</span>
+                            <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '38px 1fr auto', gap: 10, alignItems: 'center', padding: '8px 10px', background: LUX.bg, borderRadius: 8, fontFamily: LUX.fontSans, fontSize: 12 }}>
+                              <span style={{ color: LUX.ink3, fontSize: 11, fontFamily: LUX.fontMono }}>{(r.don_hang?.ngay || '').slice(8, 10)}/{(r.don_hang?.ngay || '').slice(5, 7)}</span>
                               <span style={{ minWidth: 0 }}>
                                 <span style={{ color: LUX.ink2, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ten}{r.don_hang?.khach_hang?.ho_ten ? ` · ${r.don_hang.khach_hang.ho_ten}` : ''}</span>
-                                <span style={{ color: LUX.ink3, fontSize: 10.5, fontFamily: LUX.fontMono }}>DS {formatCurrency(r.doanh_so_tinh || 0)}{r.ti_le ? ` · ${r.ti_le}%` : ''}</span>
+                                <span style={{ color: LUX.ink3, fontSize: 10.5, fontFamily: LUX.fontMono }}>DS {formatCurrency(r.thanh_tien || 0)}{r.ti_le_hoa_hong ? ` · ${r.ti_le_hoa_hong}%` : ''}</span>
                               </span>
-                              <span style={{ fontFamily: LUX.fontMono, fontWeight: 700, fontSize: 12.5, color: isTour ? '#6a4a8a' : '#1A5276', whiteSpace: 'nowrap' }}>{isTour ? 'Tour ' : 'HH '}{formatCurrency(r.so_tien || 0)}</span>
+                              <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontFamily: LUX.fontMono, fontSize: 12 }}>
+                                {(r.tien_tour || 0) > 0 && <span style={{ color: LUX.taupe, fontWeight: 700 }}>Tour {formatCurrency(r.tien_tour)}</span>}
+                                {(r.tien_tour || 0) > 0 && (r.tien_hoa_hong || 0) > 0 && <br />}
+                                {(r.tien_hoa_hong || 0) > 0 && <span style={{ color: '#8a6a35', fontWeight: 700 }}>HH {formatCurrency(r.tien_hoa_hong)}</span>}
+                              </span>
                             </div>
                           )
                         })}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 10px', borderTop: `1.5px solid ${LUX.line}`, marginTop: 2, fontFamily: LUX.fontSans, fontSize: 12 }}>
                           <span style={{ color: LUX.ink3, fontWeight: 600 }}>{kdDetail.length} giao dịch</span>
                           <span style={{ fontWeight: 700 }}>
-                            Tour <b style={{ color: '#6a4a8a' }}>{formatCurrency(kdDetail.filter(r => r.loai === 'tour').reduce((s, r) => s + (r.so_tien || 0), 0))}</b>
+                            Tour <b style={{ color: LUX.taupe }}>{formatCurrency(kdDetail.reduce((s, r) => s + (r.tien_tour || 0), 0))}</b>
                             <span style={{ color: LUX.ink4, margin: '0 6px' }}>·</span>
-                            Hoa hồng <b style={{ color: '#1A5276' }}>{formatCurrency(kdDetail.filter(r => r.loai === 'hoa_hong').reduce((s, r) => s + (r.so_tien || 0), 0))}</b>
+                            Hoa hồng <b style={{ color: '#8a6a35' }}>{formatCurrency(kdDetail.reduce((s, r) => s + (r.tien_hoa_hong || 0), 0))}</b>
                           </span>
                         </div>
                       </div>
