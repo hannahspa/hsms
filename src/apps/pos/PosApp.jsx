@@ -435,11 +435,24 @@ function PosCreateOrder({ resumeOrderId }) {
     }
   }
 
+  // QUY TẮC: 1 đơn KHÔNG được vừa BÁN THẺ MỚI vừa LÀM DỊCH VỤ / DÙNG THẺ.
+  // → tách 2 đơn riêng cho số liệu tour & hoa hồng không chồng chéo. Trả false nếu vi phạm.
+  const checkKhongGopBanTheVaDichVu = () => {
+    const hasCardSale = lineItems.some(i => i.loai_item === 'the_moi')
+    const hasService  = lineItems.some(i => i.loai_item === 'dich_vu' || i.loai_item === 'the_lieu_trinh')
+    if (hasCardSale && hasService) {
+      alert('⚠ KHÔNG gộp BÁN THẺ và LÀM DỊCH VỤ trong cùng 1 đơn hàng.\n\nVui lòng tách thành 2 đơn riêng:\n  • 1 đơn BÁN THẺ liệu trình\n  • 1 đơn LÀM DỊCH VỤ / dùng thẻ\n\n→ để tiền tour & hoa hồng không bị tính chồng chéo.')
+      return false
+    }
+    return true
+  }
+
   const handleSaveDraft = async () => {
     if (lineItems.length === 0) {
       alert('Thêm ít nhất 1 dịch vụ trước khi lưu đơn')
       return
     }
+    if (!checkKhongGopBanTheVaDichVu()) return
     if (savedOrderId) {
       // Đã lưu rồi → cập nhật lại khách hàng (có thể vừa đổi/tạo mới) rồi về danh sách
       try {
@@ -536,6 +549,8 @@ function PosCreateOrder({ resumeOrderId }) {
   // ── Chốt đơn — tạo DB record chỉ tại đây ───────────────────────────────────
   const handleConfirmOrder = async () => {
     if (lineItems.length === 0) return
+    // ── QUY TẮC: KHÔNG gộp BÁN THẺ MỚI và LÀM DỊCH VỤ/DÙNG THẺ trong cùng 1 đơn ──
+    if (!checkKhongGopBanTheVaDichVu()) return
     if (!selectedCustomer?.id) {
       alert('Vui long chon khach hang truoc khi chot don de CRM va doi soat du lieu duoc ghi nhan day du.')
       return
