@@ -83,6 +83,8 @@ export default function TabBangLuong({ fixedKy = null }) {
   const [selected,  setSelected]  = useState(null)
   const [editState, setEditState] = useState({})
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)  // hỏi lưu trước khi đóng
+  const [kdDetail, setKdDetail] = useState([])              // chi tiết tour/hoa hồng từng đơn (Kỳ 2)
+  const [kdDetailLoading, setKdDetailLoading] = useState(false)
   const [saving,    setSaving]    = useState(false)
   const [leTanInput,  setLeTanInput]  = useState({ tongDT: 0, dtMyPham: 0, dsKD: 0, dsNP: 0 })
   const [calcLeTan,   setCalcLeTan]   = useState(null) // preview result Lễ Tân
@@ -204,6 +206,25 @@ export default function TabBangLuong({ fixedKy = null }) {
   }, [thang, nam])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Chi tiết Tour & Hoa Hồng từng đơn cho NV đang mở (chỉ Kỳ 2) — tích hợp từ Sổ Hoa Hồng cũ
+  useEffect(() => {
+    if (!selected || ky !== 2) { setKdDetail([]); return undefined }
+    let alive = true
+    setKdDetailLoading(true)
+    const sd = `${nam}-${String(thang).padStart(2, '0')}-01`
+    const lastDay = new Date(nam, thang, 0).getDate()
+    const ed = `${nam}-${String(thang).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    supabase.from('v_nhan_vien_thu_nhap')
+      .select(`id, loai, nguon, so_tien, ti_le, doanh_so_tinh, ngay, trang_thai,
+        don_hang:don_hang_id(ma_don, khach_hang:khach_hang_id(ho_ten)),
+        line_item:don_hang_chi_tiet_id(loai_item, thanh_tien, dich_vu:dich_vu_id(ten), san_pham:san_pham_id(ten), the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu))`)
+      .gte('ngay', sd).lte('ngay', ed)
+      .eq('nhan_vien_id', selected.id).eq('is_test', false).neq('trang_thai', 'huy')
+      .order('ngay', { ascending: true })
+      .then(({ data }) => { if (alive) { setKdDetail(data || []); setKdDetailLoading(false) } })
+    return () => { alive = false }
+  }, [selected, ky, thang, nam])
 
   const openDetail = (nv) => {
     const ld = luongData[nv.id]
@@ -1277,6 +1298,42 @@ export default function TabBangLuong({ fixedKy = null }) {
                       </>
                     )}
                   </>
+                )}
+
+                {/* Chi Tiết Tour & Hoa Hồng từng đơn (Kỳ 2) — thay cho Sổ Hoa Hồng */}
+                {ky === 2 && (
+                  <BLSection title="Chi Tiết Tour & Hoa Hồng (từng đơn)">
+                    {kdDetailLoading ? (
+                      <div style={{ textAlign: 'center', padding: 16, color: LUX.ink3, fontFamily: LUX.fontSans, fontSize: 13 }}>Đang tải chi tiết...</div>
+                    ) : kdDetail.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: 16, color: LUX.ink3, fontFamily: LUX.fontSans, fontSize: 13, background: LUX.bg, borderRadius: LUX.radiusSm }}>Chưa có giao dịch tour/hoa hồng tháng này</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        {kdDetail.map(r => {
+                          const ten = r.line_item?.dich_vu?.ten || r.line_item?.san_pham?.ten || r.line_item?.the_lieu_trinh?.ten_dich_vu || (r.loai === 'tour' ? 'Dịch vụ' : 'Sản phẩm/Thẻ')
+                          const isTour = r.loai === 'tour'
+                          return (
+                            <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '42px 1fr auto', gap: 10, alignItems: 'center', padding: '8px 10px', background: LUX.bg, borderRadius: 8, fontFamily: LUX.fontSans, fontSize: 12 }}>
+                              <span style={{ color: LUX.ink3, fontSize: 11, fontFamily: LUX.fontMono }}>{(r.ngay || '').slice(8, 10)}/{(r.ngay || '').slice(5, 7)}</span>
+                              <span style={{ minWidth: 0 }}>
+                                <span style={{ color: LUX.ink2, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ten}{r.don_hang?.khach_hang?.ho_ten ? ` · ${r.don_hang.khach_hang.ho_ten}` : ''}</span>
+                                <span style={{ color: LUX.ink3, fontSize: 10.5, fontFamily: LUX.fontMono }}>DS {formatCurrency(r.doanh_so_tinh || 0)}{r.ti_le ? ` · ${r.ti_le}%` : ''}</span>
+                              </span>
+                              <span style={{ fontFamily: LUX.fontMono, fontWeight: 700, fontSize: 12.5, color: isTour ? '#6a4a8a' : '#1A5276', whiteSpace: 'nowrap' }}>{isTour ? 'Tour ' : 'HH '}{formatCurrency(r.so_tien || 0)}</span>
+                            </div>
+                          )
+                        })}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 10px', borderTop: `1.5px solid ${LUX.line}`, marginTop: 2, fontFamily: LUX.fontSans, fontSize: 12 }}>
+                          <span style={{ color: LUX.ink3, fontWeight: 600 }}>{kdDetail.length} giao dịch</span>
+                          <span style={{ fontWeight: 700 }}>
+                            Tour <b style={{ color: '#6a4a8a' }}>{formatCurrency(kdDetail.filter(r => r.loai === 'tour').reduce((s, r) => s + (r.so_tien || 0), 0))}</b>
+                            <span style={{ color: LUX.ink4, margin: '0 6px' }}>·</span>
+                            Hoa hồng <b style={{ color: '#1A5276' }}>{formatCurrency(kdDetail.filter(r => r.loai === 'hoa_hong').reduce((s, r) => s + (r.so_tien || 0), 0))}</b>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </BLSection>
                 )}
 
                 {/* Tổng */}

@@ -20,7 +20,6 @@ const PAGE_TITLES = {
   '/admin/nhan-su/bang-luong':       'Lương Cứng',
   '/admin/nhan-su/luong-kinh-doanh': 'Lương Kinh Doanh',
   '/admin/nhan-su/quy-ngay-le':      'Quỹ Ngày Lễ',
-  '/admin/commission':               'Sổ Hoa Hồng',
   '/admin/crm':                      'CRM Khách Hàng',
   '/admin/the-lieu-trinh':           'Thẻ Liệu Trình',
   '/admin/kho-hang':                 'Kho Hàng',
@@ -51,7 +50,6 @@ const NHANSU_ITEMS = [
   { label: 'Lương Cứng',  path: '/admin/nhan-su/bang-luong' },
   { label: 'Lương Kinh Doanh', path: '/admin/nhan-su/luong-kinh-doanh' },
   { label: 'Quỹ Ngày Lễ', path: '/admin/nhan-su/quy-ngay-le' },
-  { label: 'Sổ Hoa Hồng', path: '/admin/commission' },
 ]
 
 const MORE_ADMIN = [
@@ -143,7 +141,7 @@ export default function MobileShell({ children }) {
   const pageTitle = PAGE_TITLES[path] || 'Hannah Spa'
 
   const isNavActive = (item) => {
-    if (item.hasChildren) return path.startsWith('/admin/nhan-su') || path === '/admin/commission'
+    if (item.hasChildren) return path.startsWith('/admin/nhan-su')
     if (!item.path) return false
     return path === item.path || (item.path !== '/' && path.startsWith(item.path + '/'))
   }

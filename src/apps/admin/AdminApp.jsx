@@ -14,7 +14,6 @@ const AdminLichSuNopTienMat = lazy(() => import('./bao-cao/AdminLichSuNopTienMat
 const AdminTheLieuTrinhPage = lazy(() => import('./the-lieu-trinh/AdminTheLieuTrinhPage'))
 const AdminBaoCaoTheLieuTrinh = lazy(() => import('./the-lieu-trinh/AdminBaoCaoTheLieuTrinh'))
 const AdminDichVuPage = lazy(() => import('./dich-vu/AdminDichVuPage'))
-const AdminCommissionPage = lazy(() => import('./commission/AdminCommissionPage'))
 
 function AdminRoute({ children }) {
   return (
@@ -66,7 +65,6 @@ const MODULES = [
   { icon: '👤', label: 'CRM Khách Hàng', href: '/admin/crm',             badge: null,    group: 'nb',  color: '#8e44ad', desc: 'Hồ sơ · Thẻ liệu trình · Công nợ' },
   { icon: '🎫', label: 'Thẻ Liệu Trình', href: '/admin/the-lieu-trinh', badge: null,    group: 'nb',  color: '#6c3483', desc: 'Danh sách thẻ · Tiến độ · Hết hạn' },
   { icon: '💎', label: 'Dịch Vụ',         href: '/admin/dich-vu',       badge: null,    group: 'nb',  color: '#a0714f', desc: 'Mã DV · Danh mục · Giá bán' },
-  { icon: '💹', label: 'Hoa Hồng KTV',   href: '/admin/commission',     badge: null,    group: 'nb',  color: '#426a2c', desc: 'Tour · Hoa hồng · Tỉ lệ' },
   { icon: '📦', label: 'Kho Hàng',        href: '/admin/kho-hang',        badge: null,    group: 'nb',  color: '#16a085', desc: 'Nhập xuất · Tồn kho · Cảnh báo' },
   { icon: '🏷️', label: 'Khuyến Mãi',     href: '/admin/khuyen-mai',      badge: null,    group: 'nb',  color: '#c0392b', desc: 'CRUD KM · Badge giảm giá · ROI' },
   { icon: '📣', label: 'Marketing',       href: '/admin/marketing',       badge: null,    group: 'nb',  color: '#e67e22', desc: 'Chiến dịch · Phân tích kênh' },
@@ -98,7 +96,6 @@ export default function AdminApp() {
   if (path.startsWith('/admin/the-lieu-trinh/bao-cao')) return <AdminRoute><AdminBaoCaoTheLieuTrinh /></AdminRoute>
   if (path.startsWith('/admin/the-lieu-trinh'))         return <AdminRoute><AdminTheLieuTrinhPage /></AdminRoute>
   if (path.startsWith('/admin/dich-vu'))             return <AdminRoute><AdminDichVuPage /></AdminRoute>
-  if (path.startsWith('/admin/commission'))          return <AdminRoute><AdminCommissionPage /></AdminRoute>
 
   const now = getNowVN()
   const DAYS = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy']

@@ -29,7 +29,6 @@ export const ADMIN_NAV = [
     { id: 'ns-luongcung', label: 'Lương Cứng', path: '/admin/nhan-su/bang-luong' },
     { id: 'ns-luongkd', label: 'Lương Kinh Doanh', path: '/admin/nhan-su/luong-kinh-doanh' },
     { id: 'ns-quyngayle', label: 'Quỹ Ngày Lễ', path: '/admin/nhan-su/quy-ngay-le' },
-    { id: 'commission', label: 'Sổ Hoa Hồng (chi tiết)', path: '/admin/commission' },
   ]},
 
   { id: 'crm', icon: '💝', label: 'CRM Khách Hàng', path: '/admin/crm' },
