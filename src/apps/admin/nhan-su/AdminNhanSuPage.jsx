@@ -10,6 +10,7 @@ import TabLichDieuDong from './components/TabLichDieuDong'
 import TabHoSo        from './components/TabHoSo'
 import TabBangLuong   from './components/TabBangLuong'
 import TabQuyNgayLe  from './components/TabQuyNgayLe'
+import TabBaoCaoThuNhap from './components/TabBaoCaoThuNhap'
 import AdminTaoOff    from './components/AdminTaoOff'
 
 function getInitials(name) {
@@ -82,6 +83,7 @@ const PATH_VIEW = {
   '/admin/nhan-su/xet-duyet':   'off',
   '/admin/nhan-su/bang-luong':  'salary',
   '/admin/nhan-su/luong-kinh-doanh': 'salary-kd',
+  '/admin/nhan-su/bao-cao-thu-nhap': 'income-report',
   '/admin/nhan-su/quy-ngay-le': 'holiday',
 }
 const VIEW_PATH = Object.fromEntries(
@@ -153,6 +155,7 @@ export default function AdminNhanSuPage() {
           {view === 'employees' && <TabHoSo />}
           {view === 'salary'    && <TabBangLuong fixedKy={1} />}
           {view === 'salary-kd' && <TabBangLuong fixedKy={2} />}
+          {view === 'income-report' && <TabBaoCaoThuNhap />}
           {view === 'holiday'   && <TabQuyNgayLe />}
         </div>
         <AdminTaoOff open={showTaoOff} onClose={() => setShowTaoOff(false)} onSuccess={() => setRefreshKey(k=>k+1)} />

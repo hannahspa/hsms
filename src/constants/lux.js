@@ -106,4 +106,11 @@ export const LUX_MENU = [
     accent: '#5a8a6a', iconBg: '#e0f0e8', iconFg: '#3a6a4a',
     icon: 'calendar',
   },
+  {
+    key: 'income-report',
+    title: 'Báo Cáo Hoa Hồng / Tour',
+    desc: 'Tiền tour + hoa hồng từng nhân viên theo tháng',
+    accent: '#c8a675', iconBg: '#ede0c9', iconFg: '#8a6a35',
+    icon: 'chart',
+  },
 ]

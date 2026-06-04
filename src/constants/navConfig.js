@@ -28,6 +28,7 @@ export const ADMIN_NAV = [
     { id: 'ns-xetduyet', label: 'Xét Duyệt', path: '/admin/nhan-su/xet-duyet' },
     { id: 'ns-luongcung', label: 'Lương Cứng', path: '/admin/nhan-su/bang-luong' },
     { id: 'ns-luongkd', label: 'Lương Kinh Doanh', path: '/admin/nhan-su/luong-kinh-doanh' },
+    { id: 'ns-baocaohh', label: 'Báo Cáo Hoa Hồng / Tour', path: '/admin/nhan-su/bao-cao-thu-nhap' },
     { id: 'ns-quyngayle', label: 'Quỹ Ngày Lễ', path: '/admin/nhan-su/quy-ngay-le' },
   ]},
 
