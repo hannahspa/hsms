@@ -60,11 +60,11 @@ export default function ModalCheckoutBuoi({ card, onClose, onDone }) {
   return (
     <>
       <div
-        style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(26,22,18,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(26,22,18,.5)' }}
         onClick={onClose}
       >
         <div
-          style={{ background: LUX.card, borderRadius: 14, width: 400, maxWidth: '92vw', boxShadow: LUX.shadow }}
+          style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: LUX.card, boxShadow: '-6px 0 40px rgba(26,22,18,.3)', overflowY: 'auto', animation: 'rpSlideIn .22s ease' }}
           onClick={e => e.stopPropagation()}
         >
           <div style={{ padding: '18px 22px', borderBottom: `1px solid ${LUX.border}` }}>

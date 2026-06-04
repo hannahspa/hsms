@@ -108,10 +108,9 @@ function FormChienDich({ initial, khuyenMaiList, onSave, onClose }) {
   const selKenh = KENH[f.kenh]
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.6)', zIndex: 300,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div style={{ background: 'white', borderRadius: '20px', width: '100%', maxWidth: '520px',
-        maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.3)' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.6)', zIndex: 300 }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'white',
+        overflow: 'auto', boxShadow: '-6px 0 40px rgba(0,0,0,0.3)', animation: 'rpSlideIn .22s ease' }}>
         <div style={{ background: COLORS.grad, padding: '18px 20px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderRadius: '20px 20px 0 0', position: 'sticky', top: 0, zIndex: 1 }}>

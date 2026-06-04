@@ -54,15 +54,16 @@ export default function CardReviewModal({ card, action, onClose, onSaved }) {
       <div style={{
         position: 'fixed',
         zIndex: 921,
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%,-50%)',
-        width: 'min(520px, 94vw)',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: 'calc(100vw - var(--side-w, 248px))',
+        maxWidth: '100vw',
         background: 'var(--surface)',
-        border: '1px solid var(--bord)',
-        borderRadius: 12,
-        boxShadow: '0 24px 80px rgba(0,0,0,.28)',
-        overflow: 'hidden',
+        borderLeft: '1px solid var(--bord)',
+        boxShadow: '-6px 0 40px rgba(0,0,0,.28)',
+        animation: 'rpSlideIn .22s ease',
+        overflowY: 'auto',
       }}>
         <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
           <div>

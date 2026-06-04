@@ -89,10 +89,9 @@ function KMForm({ initial, dichVuList, onSave, onCancel }) {
   const labelStyle = { fontSize: '12px', fontWeight: '700', color: COLORS.textSub, marginBottom: '6px', display: 'block' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.55)', zIndex: 200,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <div style={{ background: 'white', borderRadius: '20px', width: '100%', maxWidth: '520px',
-        maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.55)', zIndex: 200 }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'white',
+        overflow: 'auto', boxShadow: '-6px 0 40px rgba(0,0,0,0.28)', animation: 'rpSlideIn .22s ease' }}>
 
         {/* Header */}
         <div style={{ background: COLORS.grad, padding: '20px 24px', borderRadius: '20px 20px 0 0',
