@@ -17,8 +17,13 @@ const safeSearchTerm = (value) => String(value || '')
 export default function ModalDatHen({ initial, ktvList, onSave, onClose, user }) {
   const [form, setForm] = useState(initial || {
     ten_khach: '', sdt_khach: '', ten_dich_vu: '', dich_vu_id: null, the_lieu_trinh_id: null, nhan_vien_id: null,
-    thoi_luong_phut: 60, ngay_hen: todayISO(), gio_hen: '10:00', ghi_chu: '',
+    thoi_luong_phut: 60, ngay_hen: todayISO(), gio_hen: '10:00', ghi_chu: '', dich_vu_list: [],
   })
+  // Dịch vụ THÊM (KTV khác phụ trách) — khách đặt nhiều dịch vụ với nhiều KTV
+  const dvThem = Array.isArray(form.dich_vu_list) ? form.dich_vu_list : []
+  const addDvThem = () => set('dich_vu_list', [...dvThem, { ten_dich_vu: '', dich_vu_id: null, nhan_vien_id: null }])
+  const updDvThem = (i, patch) => set('dich_vu_list', dvThem.map((r, idx) => idx === i ? { ...r, ...patch } : r))
+  const delDvThem = (i) => set('dich_vu_list', dvThem.filter((_, idx) => idx !== i))
   const [dichVuList, setDichVuList] = useState([])
   const [custCards, setCustCards] = useState([])   // thẻ liệu trình active của khách đang chọn
   const [saving, setSaving] = useState(false)
@@ -166,6 +171,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
         nhan_vien_id: form.nhan_vien_id || null,
         thoi_luong_phut: form.thoi_luong_phut || 60, ngay_hen: form.ngay_hen, gio_hen: form.gio_hen,
         ghi_chu: form.ghi_chu?.trim() || null, nguoi_nhap: user?.email || user?.ho_ten || 'Lễ Tân',
+        dich_vu_list: dvThem.filter(r => r.dich_vu_id || (r.ten_dich_vu || '').trim()),
       }
       if (initial?.id) await supabase.from('lich_hen').update(payload).eq('id', initial.id)
       else { payload.trang_thai = 'cho_xac_nhan'; await supabase.from('lich_hen').insert(payload) }
@@ -310,6 +316,29 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
               {ktvList.map(k => <option key={k.id} value={k.id}>{shortName(k.ho_ten)}</option>)}
             </select>
             {ktvList.length === 0 && <div style={{ fontSize: 11, color: C.ink3, marginTop: 4, fontStyle: 'italic' }}>Hôm nay chưa có KTV đi làm — chọn "Nhân Viên Bất Kỳ".</div>}
+          </div>
+
+          {/* Dịch vụ THÊM — khách đặt nhiều dịch vụ với KTV khác nhau */}
+          <div>
+            <div style={{ ...LBL, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Dịch Vụ Thêm (KTV khác phụ trách)</span>
+              <button onClick={addDvThem} style={{ padding: '4px 12px', borderRadius: 8, border: `1px solid ${C.gold}`, background: '#fdf3e0', color: '#8a6a35', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)' }}>+ Thêm dịch vụ</button>
+            </div>
+            {dvThem.length === 0
+              ? <div style={{ fontSize: 11.5, color: C.ink3, fontStyle: 'italic' }}>Khách yêu cầu nhiều dịch vụ / nhiều KTV thì bấm "+ Thêm dịch vụ".</div>
+              : dvThem.map((r, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr auto', gap: 8, marginBottom: 7, alignItems: 'center' }}>
+                  <select value={r.dich_vu_id || ''} onChange={e => { const dv = dichVuList.find(d => d.id === e.target.value); updDvThem(i, { dich_vu_id: e.target.value || null, ten_dich_vu: dv?.ten || '' }) }} style={{ ...INP, height: 36 }}>
+                    <option value="">— Chọn dịch vụ —</option>
+                    {dichVuList.map(d => <option key={d.id} value={d.id}>{d.ten}</option>)}
+                  </select>
+                  <select value={r.nhan_vien_id || ''} onChange={e => updDvThem(i, { nhan_vien_id: e.target.value || null })} style={{ ...INP, height: 36 }}>
+                    <option value="">KTV bất kỳ</option>
+                    {ktvList.map(k => <option key={k.id} value={k.id}>{shortName(k.ho_ten)}</option>)}
+                  </select>
+                  <button onClick={() => delDvThem(i)} title="Xoá" style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${C.line2}`, background: '#fff', color: '#d8654f', fontSize: 16, cursor: 'pointer' }}>×</button>
+                </div>
+              ))}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 14 }}>

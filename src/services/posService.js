@@ -300,6 +300,32 @@ export const posService = {
     }
     // Không có dịch vụ lẫn tên DV → KHÔNG thêm dòng rác; Lễ Tân tự chọn trong POS
 
+    // ── Dịch vụ THÊM (KTV khác phụ trách) — mỗi dịch vụ 1 dòng + KTV riêng ──
+    const extraList = Array.isArray(appointment.dich_vu_list) ? appointment.dich_vu_list : []
+    for (const ex of extraList) {
+      if (!ex?.dich_vu_id && !(ex?.ten_dich_vu || '').trim()) continue
+      let exSvc = null
+      if (ex.dich_vu_id) {
+        try {
+          const { data } = await supabase.from('dich_vu').select('*').eq('id', ex.dich_vu_id).maybeSingle()
+          exSvc = data
+        } catch { exSvc = null }
+      }
+      const exName = (exSvc?.ten || ex.ten_dich_vu || '').trim()
+      const exGia = Number(exSvc?.gia_co_ban || 0)
+      const exTiLe = exSvc ? getCommissionPercent(exSvc, 'ktv') : 0
+      const exTour = exSvc ? calcServiceCommission(exSvc, exGia, 'ktv') : 0
+      await this.addLineItem(order.id, {
+        loai_item: 'dich_vu',
+        dich_vu_id: exSvc?.id || ex.dich_vu_id || null,
+        nhan_vien_id: ex.nhan_vien_id || null,
+        so_luong: 1, don_gia: exGia, thanh_tien: exGia,
+        ti_le_hoa_hong: exTiLe || null, tien_tour: exTour, tien_hoa_hong: 0,
+        ghi_chu: `Tu lich hen: ${exName || 'dich vu'}`,
+        meta: { source: 'lich_hen', lichHenId: appointment.id, tenDichVu: exName || null },
+      })
+    }
+
     const appointmentUpdate = { khach_hang_id: khachHangId || null }
     if (appointment.trang_thai === 'cho_xac_nhan') appointmentUpdate.trang_thai = 'da_xac_nhan'
     const { error: appointmentError } = await supabase
