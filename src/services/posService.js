@@ -939,6 +939,63 @@ export const posService = {
   },
 
   // ═══════════════════════════════════════════════════
+  // VÍ TRẢ TRƯỚC (prepaid balance) — migration 080
+  // ═══════════════════════════════════════════════════
+
+  // Số dư ví trả trước hiện tại của khách
+  async getPrepaidBalance(khachHangId) {
+    if (!khachHangId) return 0
+    const { data, error } = await supabase
+      .from('khach_hang')
+      .select('so_du_tra_truoc')
+      .eq('id', khachHangId)
+      .maybeSingle()
+    if (error) throw error
+    return data?.so_du_tra_truoc || 0
+  },
+
+  // Lịch sử nạp/dùng/hoàn ví trả trước
+  async getPrepaidHistory(khachHangId, limit = 50) {
+    if (!khachHangId) return []
+    const { data, error } = await supabase
+      .from('tra_truoc_giao_dich')
+      .select('id, loai, so_tien, so_du_truoc, so_du_sau, hinh_thuc, ghi_chu, nguoi_thuc_hien, ngay, created_at')
+      .eq('khach_hang_id', khachHangId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) throw error
+    return data || []
+  },
+
+  // Nạp tiền vào ví trả trước — tiền vào ví thật + ghi doanh thu lúc nạp (RPC pos_nap_tra_truoc)
+  async napTraTruoc({ khachHangId, soTien, hinhThuc, nguoi = null, ghiChu = null, ngay = null }) {
+    const { data, error } = await supabase.rpc('pos_nap_tra_truoc', {
+      p_khach_hang_id: khachHangId,
+      p_so_tien:       soTien,
+      p_hinh_thuc:     hinhThuc,
+      p_nguoi:         nguoi,
+      p_ghi_chu:       ghiChu,
+      p_ngay:          ngay,
+    })
+    if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Không nạp được ví trả trước')
+    return data
+  },
+
+  // Admin: điều chỉnh số dư ví trả trước về một giá trị (RPC pos_dieu_chinh_tra_truoc)
+  async dieuChinhTraTruoc({ khachHangId, soDuMoi, nguoi = null, ghiChu = null }) {
+    const { data, error } = await supabase.rpc('pos_dieu_chinh_tra_truoc', {
+      p_khach_hang_id: khachHangId,
+      p_so_du_moi:     soDuMoi,
+      p_nguoi:         nguoi,
+      p_ghi_chu:       ghiChu,
+    })
+    if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Không điều chỉnh được số dư')
+    return data
+  },
+
+  // ═══════════════════════════════════════════════════
   // KTV
   // ═══════════════════════════════════════════════════
 

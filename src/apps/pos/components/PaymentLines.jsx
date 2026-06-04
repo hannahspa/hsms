@@ -8,10 +8,13 @@ export default function PaymentLines({
   total,
   debt,
   hasCustomer,
+  prepaidBalance = 0,
+  prepaidUsed = 0,
   onAddLine,
   onRemoveLine,
   onUpdateLine,
 }) {
+  const prepaidOver = prepaidUsed > prepaidBalance
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', gap: 6, marginBottom: 5, paddingLeft: 26 }}>
@@ -68,6 +71,20 @@ export default function PaymentLines({
           </div>
         )
       })}
+
+      {/* Cảnh báo dùng thẻ trả trước vượt số dư */}
+      {payLines.some(l => l.hinhThuc === 'the_tra_truoc') && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 6, marginBottom: 6, fontSize: 11.5,
+          background: prepaidOver ? 'rgba(192,57,43,.07)' : 'rgba(201,169,110,.10)',
+          border: `1px solid ${prepaidOver ? 'rgba(192,57,43,.3)' : 'rgba(201,169,110,.35)'}` }}>
+          <span style={{ color: prepaidOver ? C.chi : '#8a6a35', fontWeight: 700 }}>
+            {prepaidOver ? '⚠ Vượt số dư trả trước' : '👛 Dùng ví trả trước'}
+          </span>
+          <span style={{ fontWeight: 800, color: prepaidOver ? C.chi : '#8a6a35', fontFamily: FONT.serif }}>
+            {formatCurrency(prepaidUsed)} / {formatCurrency(prepaidBalance)}
+          </span>
+        </div>
+      )}
 
       {debt > 0 && (
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 6, background: 'rgba(192,57,43,.06)', border: '1px solid rgba(192,57,43,.2)', fontSize: 12 }}>

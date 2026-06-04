@@ -10,3 +10,8 @@ args = [
     "--browserUrl",
     "http://127.0.0.1:9222",
 ]
+[mcp_servers.codegraph]
+command = "codegraph"
+args = ["serve", "--mcp"]
+startup_timeout_sec = 120
+

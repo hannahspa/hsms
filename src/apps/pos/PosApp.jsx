@@ -11,6 +11,7 @@ import PosProductCatalog from './PosProductCatalog'
 import KtvPopupComponent from './components/KtvPopup'
 import CartLine from './components/CartLine'
 import DebtPaymentModal from './components/DebtPaymentModal'
+import NapTraTruocModal from './components/NapTraTruocModal'
 import PaymentLines from './components/PaymentLines'
 import StaffCommissionPanel from './components/StaffCommissionPanel'
 import DatePicker from '../../components/shared/DatePicker'
@@ -43,6 +44,7 @@ function PosCreateOrder({ resumeOrderId }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [customerCards, setCustomerCards]       = useState([])
   const [customerDebt, setCustomerDebt]         = useState([])
+  const [customerPrepaid, setCustomerPrepaid]   = useState(0)   // số dư ví trả trước
   const [cardHistory, setCardHistory]           = useState([])
   const [showCardHistory, setShowCardHistory]   = useState(false)
   const [custSearch, setCustSearch]     = useState('')
@@ -52,6 +54,12 @@ function PosCreateOrder({ resumeOrderId }) {
   const [debtSoTien, setDebtSoTien]     = useState('')
   const [debtHinhThuc, setDebtHinhThuc] = useState('tien_mat')
   const [debtLoading, setDebtLoading]   = useState(false)
+  // Modal nạp ví trả trước
+  const [napModalOpen, setNapModalOpen] = useState(false)
+  const [napSoTien, setNapSoTien]       = useState('')
+  const [napHinhThuc, setNapHinhThuc]   = useState('tien_mat')
+  const [napGhiChu, setNapGhiChu]       = useState('')
+  const [napLoading, setNapLoading]     = useState(false)
   const [custOpen, setCustOpen]         = useState(false)
   // Ref: payments đã insert cho order hiện tại (tránh insert 2 lần khi retry checkout)
   const paymentsInserted = useRef(false)
@@ -118,6 +126,7 @@ function PosCreateOrder({ resumeOrderId }) {
       setCustomerDebt([])
       setCardHistory([])
       setShowCardHistory(false)
+      setCustomerPrepaid(0)
       return
     }
     posService.getCustomerCards(selectedCustomer.id)
@@ -129,6 +138,9 @@ function PosCreateOrder({ resumeOrderId }) {
     posService.getCustomerDebt(selectedCustomer.id)
       .then(debt => setCustomerDebt(debt || []))
       .catch(() => setCustomerDebt([]))
+    posService.getPrepaidBalance(selectedCustomer.id)
+      .then(bal => setCustomerPrepaid(bal || 0))
+      .catch(() => setCustomerPrepaid(0))
   }, [selectedCustomer?.id])
 
   // Auto-fill ghi chú khi có thẻ liệu trình
@@ -175,6 +187,7 @@ function PosCreateOrder({ resumeOrderId }) {
     setCustResults([])
     setCustomerCards([])
     setCustomerDebt([])
+    setCustomerPrepaid(0)
     setCardHistory([])
     setDebtModal(null)
     setDebtSoTien('')
@@ -432,6 +445,32 @@ function PosCreateOrder({ resumeOrderId }) {
       alert('Lỗi thu nợ: ' + err.message)
     } finally {
       setDebtLoading(false)
+    }
+  }
+
+  // Nạp tiền vào ví trả trước
+  const handleNap = async () => {
+    const soTien = parseVND(napSoTien)
+    if (!selectedCustomer?.id || !soTien) return
+    setNapLoading(true)
+    try {
+      const result = await posService.napTraTruoc({
+        khachHangId: selectedCustomer.id,
+        soTien,
+        hinhThuc: napHinhThuc,
+        nguoi: user?.ho_ten || 'Lễ Tân',
+        ghiChu: napGhiChu || null,
+      })
+      const newBal = result?.so_du ?? (customerPrepaid + soTien)
+      setCustomerPrepaid(newBal)
+      setNapModalOpen(false)
+      setNapSoTien('')
+      setNapGhiChu('')
+      setNapHinhThuc('tien_mat')
+    } catch (err) {
+      alert('Lỗi nạp ví: ' + err.message)
+    } finally {
+      setNapLoading(false)
     }
   }
 
@@ -726,6 +765,9 @@ function PosCreateOrder({ resumeOrderId }) {
   const tienThua   = Math.max(0, tongNhan - tongCuoi)
   const conNo      = Math.max(0, tongCuoi - tongNhan)
   const isOverPaid = tongNhan > tongCuoi
+  // Ví trả trước: tổng tiền dùng PTTT thẻ trả trước không được vượt số dư khách
+  const tongTraTruoc = payLines.reduce((s, l) => l.hinhThuc === 'the_tra_truoc' ? s + (l.soTien || 0) : s, 0)
+  const traTruocVuot = tongTraTruoc > customerPrepaid
 
   // KM_ref% của toàn đơn: lấy từ thẻ mới (meta.kmRefPct) hoặc giảm giá DV tổng
   const orderKmRefPct = (() => {
@@ -825,7 +867,7 @@ function PosCreateOrder({ resumeOrderId }) {
     return prepared
   }
 
-  const canConfirm = lineItems.length > 0 && !!selectedCustomer?.id && !isOverPaid && (
+  const canConfirm = lineItems.length > 0 && !!selectedCustomer?.id && !isOverPaid && !traTruocVuot && (
     tongCuoi === 0
     || (payLines.some(l => l.soTien > 0 && l.hinhThuc) &&
         (tongNhan >= tongCuoi || (conNo > 0 && !!selectedCustomer)))
@@ -835,9 +877,11 @@ function PosCreateOrder({ resumeOrderId }) {
     ? 'Thêm dịch vụ để bắt đầu'
     : !selectedCustomer?.id
       ? 'Vui lòng chọn khách hàng trước khi chốt đơn'
-      : isOverPaid
-        ? 'Số tiền nhận đang lớn hơn tổng đơn'
-        : 'Chưa đủ thanh toán'
+      : traTruocVuot
+        ? `Số dư trả trước không đủ (còn ${formatCurrency(customerPrepaid)}, cần ${formatCurrency(tongTraTruoc)})`
+        : isOverPaid
+          ? 'Số tiền nhận đang lớn hơn tổng đơn'
+          : 'Chưa đủ thanh toán'
 
   const nowVN  = getNowVN()
   const dateStr = nowVN.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -919,6 +963,21 @@ function PosCreateOrder({ resumeOrderId }) {
                   ))}
                 </div>
               )}
+
+              {/* ── VÍ TRẢ TRƯỚC ── */}
+              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(201,169,110,.08)', border: '1.5px solid rgba(201,169,110,.35)', borderRadius: 8, padding: '7px 12px' }}>
+                <span style={{ fontSize: 16 }}>👛</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#8a6a35', textTransform: 'uppercase', letterSpacing: '.05em' }}>Số dư trả trước</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: customerPrepaid > 0 ? '#8a6a35' : C.ink3, fontFamily: FONT.serif }}>
+                    {formatCurrency(customerPrepaid)}
+                  </div>
+                </div>
+                <button onClick={() => setNapModalOpen(true)}
+                  style={{ background: '#fff', border: '1.5px solid var(--champagne)', color: 'var(--champagne)', borderRadius: 7, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  + Nạp tiền
+                </button>
+              </div>
 
               {/* ── CÔNG NỢ KHÁCH HÀNG ── */}
               {customerDebt.length > 0 && (
@@ -1184,6 +1243,8 @@ function PosCreateOrder({ resumeOrderId }) {
                 total={tongCuoi}
                 debt={conNo}
                 hasCustomer={!!selectedCustomer}
+                prepaidBalance={customerPrepaid}
+                prepaidUsed={tongTraTruoc}
                 onAddLine={addPayLine}
                 onRemoveLine={removePayLine}
                 onUpdateLine={updatePayLine}
@@ -1336,6 +1397,21 @@ function PosCreateOrder({ resumeOrderId }) {
       onMethodChange={setDebtHinhThuc}
       onPay={handleThuNo}
       onClose={() => { setDebtModal(null); setDebtSoTien(''); setDebtHinhThuc('tien_mat') }}
+    />
+
+    <NapTraTruocModal
+      open={napModalOpen}
+      customer={selectedCustomer}
+      currentBalance={customerPrepaid}
+      amount={napSoTien}
+      method={napHinhThuc}
+      ghiChu={napGhiChu}
+      loading={napLoading}
+      onAmountChange={setNapSoTien}
+      onMethodChange={setNapHinhThuc}
+      onGhiChuChange={setNapGhiChu}
+      onNap={handleNap}
+      onClose={() => { setNapModalOpen(false); setNapSoTien(''); setNapGhiChu(''); setNapHinhThuc('tien_mat') }}
     />
 
     </>

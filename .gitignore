@@ -55,3 +55,6 @@ scripts/myspa_*.*
 public/images/gallery/
 
 .vercel
+
+# CodeGraph MCP index (local, không commit)
+.codegraph/
