@@ -271,9 +271,11 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
     const loaiOpts = LOAI_OPTS.filter(o => (o.value !== 'off_t7' && o.value !== 'off_t7x') || cuoiTuan)
 
     return createPortal(
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 10030, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+      <>
+      <style>{`@keyframes scSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.45)', zIndex: 10030 }}
         onClick={() => setEditDay(null)}>
-        <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '100%', maxWidth: '640px', margin: '0 auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }}
+        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - 248px)', maxWidth: '100vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'scSlideIn .22s ease' }}
           onClick={e => e.stopPropagation()}>
 
           {/* Header — cố định */}
@@ -301,8 +303,8 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
             </div>
           )}
 
-          {/* Nội dung — có thể cuộn */}
-          <div style={{ padding: '4px 24px 8px', overflowY: 'auto', flex: 1 }}>
+          {/* Nội dung — có thể cuộn, căn giữa cho dễ đọc */}
+          <div style={{ padding: '4px 24px 8px', overflowY: 'auto', flex: 1, width: '100%', maxWidth: 760, margin: '0 auto', boxSizing: 'border-box' }}>
             {/* Loại */}
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>Loại Chấm Công</label>
@@ -397,14 +399,17 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
           </div>
         </div>
       </div>
+      </>
     , document.body)
   }
 
   // ── Main Sheet ──
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 10020, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+    <>
+    <style>{`@keyframes scSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.4)', zIndex: 10020 }}
       onClick={() => { onClose(); if (onSaved) onSaved() }}>
-      <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '100%', maxWidth: '560px', margin: '0 auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }}
+      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - 248px)', maxWidth: '100vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'scSlideIn .22s ease' }}
         onClick={e => e.stopPropagation()}>
 
         {/* Confirm Dialog */}
@@ -449,8 +454,8 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
         ) : (
           <>
             {/* Stats Card */}
-            <div style={{ padding: '0 16px', flexShrink: 0 }}>
-              <div style={{ background: LUX.heroGrad, borderRadius: LUX.radius, padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', boxShadow: LUX.shadow }}>
+            <div style={{ padding: '0 24px', flexShrink: 0 }}>
+              <div style={{ background: LUX.heroGrad, borderRadius: LUX.radius, padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px', boxShadow: LUX.shadow }}>
                 {[
                   { label: 'Ngày công', value: ngayCong.toFixed(1), color: '#86EFAC' },
                   { label: 'Tăng ca (h)', value: tongTangCa.toFixed(1), color: '#C4B5FD' },
@@ -469,11 +474,11 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
             </div>
 
             {/* Day list */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
               <div style={{ fontFamily: LUX.fontSans, fontSize: '10px', color: LUX.ink3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>
                 Chi Tiết Từng Ngày — {lastDay} ngày
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '6px' }}>
                 {days.map(({ d, dateStr, thu, isWeekend, cc, off }) => {
                   const hasCc = !!cc
                   const isOff = !!off
@@ -536,6 +541,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
         )}
       </div>
     </div>
+    </>
   , document.body)
 }
 

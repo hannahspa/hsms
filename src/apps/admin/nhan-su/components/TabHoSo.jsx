@@ -453,7 +453,7 @@ export default function TabHoSo() {
         <style>{`@keyframes hsSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.4)', zIndex: 10000 }}
           onClick={() => setSelected(null)}>
-          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'min(680px, calc(100vw - 256px))', maxWidth: '98vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'hsSlideIn .22s ease' }}
+          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - 248px)', maxWidth: '100vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'hsSlideIn .22s ease' }}
             onClick={e => e.stopPropagation()}>
 
             {/* Header cố định */}
@@ -474,8 +474,9 @@ export default function TabHoSo() {
                 style={{ width: 36, height: 36, borderRadius: 11, border: '1px solid rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.15)', color: 'white', fontSize: 19, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0 }}>×</button>
             </div>
 
-            {/* Nội dung cuộn */}
+            {/* Nội dung cuộn — lưới 2-3 cột để tận dụng bề rộng */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '18px 24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '8px 24px', alignItems: 'start' }}>
               <SheetSection title="Thông Tin Chung">
                 <SheetRow label="Ngày vào làm" value={fmtNgay(selected.ngay_bat_dau)} />
                 <SheetRow label="Thâm niên"    value={soThoiGianLam(selected.ngay_bat_dau)} />
@@ -517,6 +518,7 @@ export default function TabHoSo() {
               <SheetSection title="Ký Quỹ (500k/tháng × 12)">
                 <KyQuyDetail nv={selected} />
               </SheetSection>
+              </div>
             </div>
 
             {/* Nút hành động cố định ở đáy */}
@@ -535,14 +537,16 @@ export default function TabHoSo() {
         </>
       , document.body)}
 
-      {/* ── Modal: Form Thêm / Sửa ── */}
+      {/* ── Panel: Form Thêm / Sửa (full chiều cao tới menu) ── */}
       {editSheet && createPortal(
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+        <>
+        <style>{`@keyframes hsSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.4)', zIndex: 10001 }}
           onClick={() => setEditSheet(null)}>
-          <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '100%', maxWidth: '560px', margin: '0 auto', maxHeight: '92vh', overflowY: 'auto', paddingBottom: '24px', boxShadow: '0 24px 70px rgba(42,32,26,0.4)' }}
+          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - 248px)', maxWidth: '100vw', background: LUX.bg, overflowY: 'auto', paddingBottom: '24px', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'hsSlideIn .22s ease' }}
             onClick={e => e.stopPropagation()}>
             {/* Form header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px 12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 28px 14px', position: 'sticky', top: 0, background: LUX.bg, zIndex: 2 }}>
               <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '22px', color: LUX.espresso }}>
                 {editSheet.mode === 'add' ? 'Thêm Nhân Viên' : 'Chỉnh Sửa Hồ Sơ'}
               </div>
@@ -552,7 +556,7 @@ export default function TabHoSo() {
               </button>
             </div>
 
-            <div style={{ padding: '0 20px' }}>
+            <div style={{ padding: '0 28px', maxWidth: 820, margin: '0 auto' }}>
               {/* Avatar — đặt đầu tiên để dễ nhìn thấy */}
               <AvatarUpload
                 nvId={editSheet.nv.id}
@@ -662,6 +666,7 @@ export default function TabHoSo() {
             </div>
           </div>
         </div>
+        </>
       , document.body)}
 
       {/* ── Admin Sửa Chấm Công Sheet ── */}
