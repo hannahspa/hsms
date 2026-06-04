@@ -769,11 +769,251 @@ function TabChiPhi({ chiPhiMarketing, danhMucMarketing }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// TAB 4-7: AI MARKETING FOUNDATION
+// ══════════════════════════════════════════════════════════════════════════════
+const STATUS_LEAD = {
+  moi:          { label: 'Mới', color: '#1A5276', bg: '#EBF5FB' },
+  dang_tu_van:  { label: 'Đang tư vấn', color: '#8E44AD', bg: '#F5F0FF' },
+  da_dat_hen:   { label: 'Đã đặt hẹn', color: '#A0714F', bg: '#F8EFE8' },
+  da_den:       { label: 'Đã đến', color: '#2D7A4F', bg: '#E8F5E9' },
+  da_mua:       { label: 'Đã mua', color: '#2D7A4F', bg: '#E8F5E9' },
+  mat_co_hoi:   { label: 'Mất cơ hội', color: '#C0392B', bg: '#FDECEA' },
+  spam:         { label: 'Spam', color: '#7F8C8D', bg: '#F0F4F8' },
+}
+
+const STATUS_CONTENT = {
+  y_tuong:   { label: 'Ý tưởng', color: '#1A5276', bg: '#EBF5FB' },
+  nhap:      { label: 'Nháp', color: '#B8A898', bg: '#F5F2EF' },
+  cho_duyet: { label: 'Chờ duyệt', color: '#A0714F', bg: '#F8EFE8' },
+  da_duyet:  { label: 'Đã duyệt', color: '#2D7A4F', bg: '#E8F5E9' },
+  da_dang:   { label: 'Đã đăng', color: '#2D7A4F', bg: '#E8F5E9' },
+  that_bai:  { label: 'Thất bại', color: '#C0392B', bg: '#FDECEA' },
+  huy:       { label: 'Hủy', color: '#7F8C8D', bg: '#F0F4F8' },
+}
+
+const STATUS_AI = {
+  de_xuat:   { label: 'Đề xuất', color: '#1A5276', bg: '#EBF5FB' },
+  cho_duyet: { label: 'Chờ duyệt', color: '#A0714F', bg: '#F8EFE8' },
+  da_duyet:  { label: 'Đã duyệt', color: '#2D7A4F', bg: '#E8F5E9' },
+  tu_choi:   { label: 'Từ chối', color: '#C0392B', bg: '#FDECEA' },
+  dang_chay: { label: 'Đang chạy', color: '#8E44AD', bg: '#F5F0FF' },
+  da_chay:   { label: 'Đã chạy', color: '#2D7A4F', bg: '#E8F5E9' },
+  loi:       { label: 'Lỗi', color: '#C0392B', bg: '#FDECEA' },
+  huy:       { label: 'Hủy', color: '#7F8C8D', bg: '#F0F4F8' },
+}
+
+function Badge({ map, value }) {
+  const s = map[value] || { label: value || '—', color: COLORS.textMute, bg: '#F5F2EF' }
+  return (
+    <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 8px',
+      borderRadius: 999, background: s.bg, color: s.color, whiteSpace: 'nowrap' }}>
+      {s.label}
+    </span>
+  )
+}
+
+function EmptyBlock({ title, sub }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '42px 20px', color: COLORS.textMute,
+      background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: 14 }}>
+      <div style={{ fontWeight: 800, color: COLORS.text, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 12 }}>{sub}</div>
+    </div>
+  )
+}
+
+function TableWrap({ children }) {
+  return (
+    <div style={{ background: 'white', borderRadius: 14, border: `1px solid ${COLORS.border}`,
+      overflow: 'hidden', boxShadow: COLORS.shadow }}>
+      {children}
+    </div>
+  )
+}
+
+function TabLeads({ leads }) {
+  const sorted = [...leads].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+  if (sorted.length === 0) {
+    return <EmptyBlock title="Chưa có lead marketing" sub="Sau khi nối Facebook/Zalo hoặc nhập thủ công, lead sẽ nằm ở đây để đo từ tư vấn đến doanh thu." />
+  }
+  return (
+    <TableWrap>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: COLORS.bg, color: COLORS.textSub, textAlign: 'left' }}>
+            {['Khách', 'Kênh', 'Nhu cầu', 'Trạng thái', 'AI gợi ý', 'Ngày'].map(h => (
+              <th key={h} style={{ padding: '11px 12px', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map(l => (
+            <tr key={l.id} style={{ borderTop: `1px solid ${COLORS.border}` }}>
+              <td style={{ padding: 12, fontWeight: 800, color: COLORS.text }}>
+                {l.ho_ten || 'Khách chưa tên'}
+                <div style={{ fontSize: 11, fontWeight: 500, color: COLORS.textMute }}>{l.so_dien_thoai || 'Chưa có SĐT'}</div>
+              </td>
+              <td style={{ padding: 12 }}>{KENH[l.kenh]?.label || l.kenh || '—'}</td>
+              <td style={{ padding: 12, color: COLORS.textSub }}>{l.nhu_cau || l.ai_intent || '—'}</td>
+              <td style={{ padding: 12 }}><Badge map={STATUS_LEAD} value={l.trang_thai} /></td>
+              <td style={{ padding: 12, color: COLORS.textSub, maxWidth: 260 }}>{l.ai_next_best_action || '—'}</td>
+              <td style={{ padding: 12, color: COLORS.textMute }}>{fmtDate(l.ngay_tao)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableWrap>
+  )
+}
+
+function TabInboxAI({ messages }) {
+  const sorted = [...messages].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+  if (sorted.length === 0) {
+    return <EmptyBlock title="Chưa có tin nhắn AI Inbox" sub="Webhook Facebook/Zalo sẽ đổ tin nhắn vào đây; AI sẽ phân loại và soạn câu trả lời chờ duyệt." />
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {sorted.map(m => (
+        <div key={m.id} style={{ background: 'white', border: `1px solid ${COLORS.border}`,
+          borderRadius: 14, padding: 14, boxShadow: COLORS.shadow }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+            <div style={{ fontWeight: 800, color: COLORS.text }}>
+              {m.direction === 'inbound' ? 'Khách gửi' : m.sender_type === 'ai' ? 'AI soạn' : 'Tin gửi đi'}
+              <span style={{ marginLeft: 8, fontSize: 11, color: COLORS.textMute, fontWeight: 600 }}>
+                {KENH[m.kenh]?.label || m.kenh || '—'}
+              </span>
+            </div>
+            <Badge map={{
+              received: { label: 'Đã nhận', color: '#1A5276', bg: '#EBF5FB' },
+              draft: { label: 'Nháp', color: '#B8A898', bg: '#F5F2EF' },
+              cho_duyet: { label: 'Chờ duyệt', color: '#A0714F', bg: '#F8EFE8' },
+              approved: { label: 'Đã duyệt', color: '#2D7A4F', bg: '#E8F5E9' },
+              sent: { label: 'Đã gửi', color: '#2D7A4F', bg: '#E8F5E9' },
+              failed: { label: 'Lỗi', color: '#C0392B', bg: '#FDECEA' },
+              ignored: { label: 'Bỏ qua', color: '#7F8C8D', bg: '#F0F4F8' },
+            }} value={m.trang_thai} />
+          </div>
+          <div style={{ fontSize: 13, color: COLORS.text, lineHeight: 1.55 }}>{m.noi_dung || '—'}</div>
+          {m.ai_suggested_reply && (
+            <div style={{ marginTop: 10, padding: 10, background: COLORS.bg, borderRadius: 10,
+              fontSize: 13, color: COLORS.textSub }}>
+              <b style={{ color: COLORS.text }}>AI gợi ý:</b> {m.ai_suggested_reply}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function TabContentAI({ contentList }) {
+  const sorted = [...contentList].sort((a, b) =>
+    new Date(a.scheduled_at || a.created_at || 0) - new Date(b.scheduled_at || b.created_at || 0)
+  )
+  if (sorted.length === 0) {
+    return <EmptyBlock title="Chưa có lịch nội dung" sub="AI Content sẽ tạo ý tưởng, caption, hình ảnh và lịch đăng; bài đăng sẽ đi qua bước duyệt trước khi xuất bản." />
+  }
+  return (
+    <TableWrap>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: COLORS.bg, color: COLORS.textSub, textAlign: 'left' }}>
+            {['Tiêu đề', 'Kênh', 'Loại', 'Lịch đăng', 'Trạng thái'].map(h => (
+              <th key={h} style={{ padding: '11px 12px', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map(c => (
+            <tr key={c.id} style={{ borderTop: `1px solid ${COLORS.border}` }}>
+              <td style={{ padding: 12, fontWeight: 800, color: COLORS.text }}>
+                {c.tieu_de}
+                <div style={{ fontSize: 11, fontWeight: 500, color: COLORS.textMute }}>{c.chu_de || c.noi_dung?.slice(0, 80) || '—'}</div>
+              </td>
+              <td style={{ padding: 12 }}>{KENH[c.kenh]?.label || c.kenh || '—'}</td>
+              <td style={{ padding: 12, color: COLORS.textSub }}>{c.loai_noi_dung || '—'}</td>
+              <td style={{ padding: 12, color: COLORS.textMute }}>
+                {c.scheduled_at ? new Date(c.scheduled_at).toLocaleString('vi-VN') : 'Chưa lên lịch'}
+              </td>
+              <td style={{ padding: 12 }}><Badge map={STATUS_CONTENT} value={c.trang_thai} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableWrap>
+  )
+}
+
+function TabAIActions({ aiActions, performance }) {
+  const pending = aiActions.filter(a => ['de_xuat', 'cho_duyet'].includes(a.trang_thai))
+  const bestCampaign = [...performance]
+    .filter(p => (p.revenue || 0) > 0 || (p.leads || 0) > 0)
+    .sort((a, b) => (b.roi ?? -999999) - (a.roi ?? -999999))[0]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="strip" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+        <div className="it">
+          <div className="l">Chờ AI xử lý</div>
+          <div className="v">{pending.length}</div>
+        </div>
+        <div className="it">
+          <div className="l">Lead đo được</div>
+          <div className="v">{performance.reduce((s, p) => s + (p.leads || 0), 0)}</div>
+        </div>
+        <div className="it">
+          <div className="l">Doanh thu gắn nguồn</div>
+          <div className="v">{fmtShort(performance.reduce((s, p) => s + (p.revenue || 0), 0))}<span className="cur">đ</span></div>
+        </div>
+        <div className="it">
+          <div className="l">Chiến dịch tốt nhất</div>
+          <div className="v" style={{ fontSize: 18 }}>{bestCampaign?.roi != null ? `${bestCampaign.roi}%` : '—'}</div>
+        </div>
+      </div>
+
+      {aiActions.length === 0 ? (
+        <EmptyBlock title="Chưa có đề xuất AI" sub="Khi có dữ liệu lead, tin nhắn và chi phí, AI sẽ tạo đề xuất trả lời khách, đăng bài hoặc tối ưu quảng cáo tại đây." />
+      ) : (
+        <TableWrap>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: COLORS.bg, color: COLORS.textSub, textAlign: 'left' }}>
+                {['Đề xuất', 'Phạm vi', 'Rủi ro', 'Ảnh hưởng tiền', 'Trạng thái'].map(h => (
+                  <th key={h} style={{ padding: '11px 12px', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {aiActions.map(a => (
+                <tr key={a.id} style={{ borderTop: `1px solid ${COLORS.border}` }}>
+                  <td style={{ padding: 12, fontWeight: 800, color: COLORS.text }}>
+                    {a.title}
+                    <div style={{ fontSize: 11, fontWeight: 500, color: COLORS.textMute }}>{a.recommendation || a.ly_do || '—'}</div>
+                  </td>
+                  <td style={{ padding: 12 }}>{a.scope}</td>
+                  <td style={{ padding: 12, color: a.risk_level === 'high' ? '#C0392B' : COLORS.textSub }}>{a.risk_level}</td>
+                  <td style={{ padding: 12, color: COLORS.textSub }}>{a.cost_impact ? fmt(a.cost_impact) : '—'}</td>
+                  <td style={{ padding: 12 }}><Badge map={STATUS_AI} value={a.trang_thai} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableWrap>
+      )}
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════════════════
 const MKT_PATH_TAB = {
   '/admin/marketing':            'dashboard',
   '/admin/marketing/chien-dich': 'chien-dich',
+  '/admin/marketing/leads':      'leads',
+  '/admin/marketing/inbox':      'inbox-ai',
+  '/admin/marketing/noi-dung':   'noi-dung',
+  '/admin/marketing/ai':         'ai',
   '/admin/marketing/chi-phi':    'chi-phi',
 }
 
@@ -783,6 +1023,11 @@ export default function AdminMarketingPage() {
   const [khuyenMaiList, setKhuyenMaiList] = useState([])
   const [chiPhiMarketing, setChiPhi]      = useState([])
   const [danhMucMarketing, setDanhMuc]    = useState([])
+  const [leads, setLeads]                 = useState([])
+  const [messages, setMessages]           = useState([])
+  const [contentList, setContentList]      = useState([])
+  const [aiActions, setAiActions]          = useState([])
+  const [performance, setPerformance]      = useState([])
   const [loading, setLoading]             = useState(true)
   const [toast, setToast]                 = useState('')
 
@@ -798,19 +1043,29 @@ export default function AdminMarketingPage() {
     const marketingParent = allDM?.find(d => d.ten.toLowerCase().includes('marketing') && !d.parent_id)
     const mktDMIds = allDM?.filter(d => d.parent_id === marketingParent?.id).map(d => d.id) || []
 
-    const [{ data: cd }, { data: km }, { data: cp }] = await Promise.all([
+    const [{ data: cd }, { data: km }, { data: cp }, leadRes, msgRes, contentRes, actionRes, perfRes] = await Promise.all([
       supabase.from('chien_dich_marketing').select('*').order('created_at', { ascending: false }),
       supabase.from('khuyen_mai').select('id,ten').order('created_at', { ascending: false }),
       mktDMIds.length > 0
         ? supabase.from('chi_phi').select('id,ngay,danh_muc_id,so_tien,dien_giai,created_at')
             .in('danh_muc_id', mktDMIds).order('ngay', { ascending: false }).limit(500)
         : Promise.resolve({ data: [] }),
+      supabase.from('marketing_leads').select('*').order('created_at', { ascending: false }).limit(200),
+      supabase.from('marketing_messages').select('*').order('created_at', { ascending: false }).limit(200),
+      supabase.from('marketing_content_calendar').select('*').order('created_at', { ascending: false }).limit(200),
+      supabase.from('marketing_ai_actions').select('*').order('created_at', { ascending: false }).limit(200),
+      supabase.from('v_marketing_campaign_performance').select('*'),
     ])
 
     setCampaigns(cd || [])
     setKhuyenMaiList(km || [])
     setChiPhi(cp || [])
     setDanhMuc(allDM?.filter(d => d.parent_id === marketingParent?.id) || [])
+    setLeads(leadRes.data || [])
+    setMessages(msgRes.data || [])
+    setContentList(contentRes.data || [])
+    setAiActions(actionRes.data || [])
+    setPerformance(perfRes.data || [])
     setLoading(false)
   }, [])
 
@@ -829,6 +1084,10 @@ export default function AdminMarketingPage() {
   const TABS = [
     { key: 'dashboard',  icon: '📊', label: 'Dashboard' },
     { key: 'chien-dich', icon: '📣', label: 'Chiến Dịch' },
+    { key: 'leads',      icon: '👥', label: 'Lead' },
+    { key: 'inbox-ai',   icon: '💬', label: 'Inbox AI' },
+    { key: 'noi-dung',   icon: '🗓️', label: 'Nội Dung' },
+    { key: 'ai',         icon: '✨', label: 'AI Đề Xuất' },
     { key: 'chi-phi',    icon: '💸', label: 'Chi Phí' },
   ]
 
@@ -838,7 +1097,7 @@ export default function AdminMarketingPage() {
       <div className="mod-head" style={{ marginBottom: 20 }}>
         <div>
           <div className="ttl">Marketing</div>
-          <div className="sub">Chiến dịch · Chi phí kênh · ROI ước tính</div>
+          <div className="sub">Chiến dịch · Lead · Inbox AI · Nội dung · Tối ưu quảng cáo</div>
         </div>
         <div className="acts">
           <div className="subtabs">
@@ -872,8 +1131,8 @@ export default function AdminMarketingPage() {
           <div className="v">{fmtShort(tongNganSach)}<span className="cur">đ</span></div>
         </div>
         <div className="it">
-          <div className="l">KH Mới (Tổng)</div>
-          <div className="v">{tongKHMoi}<span className="cur"> KH</span></div>
+          <div className="l">Lead Đo Được</div>
+          <div className="v">{leads.length || tongKHMoi}<span className="cur"> lead</span></div>
         </div>
       </div>
 
@@ -892,6 +1151,18 @@ export default function AdminMarketingPage() {
           {tab === 'chien-dich' && (
             <TabChienDich campaigns={campaigns} khuyenMaiList={khuyenMaiList}
               onReload={load} showToast={showToast} />
+          )}
+          {tab === 'leads' && (
+            <TabLeads leads={leads} />
+          )}
+          {tab === 'inbox-ai' && (
+            <TabInboxAI messages={messages} />
+          )}
+          {tab === 'noi-dung' && (
+            <TabContentAI contentList={contentList} />
+          )}
+          {tab === 'ai' && (
+            <TabAIActions aiActions={aiActions} performance={performance} />
           )}
           {tab === 'chi-phi' && (
             <TabChiPhi chiPhiMarketing={chiPhiMarketing} danhMucMarketing={danhMucMarketing} />
