@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { formatCurrency, getNowVN, hashPin, todayISO } from '../../../../lib/utils'
@@ -446,33 +447,35 @@ export default function TabHoSo() {
         </>
       )}
 
-      {/* ── Bottom sheet: Chi tiết ── */}
-      {selected && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+      {/* ── Panel trượt phải: Chi tiết hồ sơ (giống Danh Sách Đơn Hàng) ── */}
+      {selected && createPortal(
+        <>
+        <style>{`@keyframes hsSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }`}</style>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.4)', zIndex: 10000 }}
           onClick={() => setSelected(null)}>
-          <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '100%', maxWidth: '560px', margin: '0 auto', maxHeight: '90vh', overflowY: 'auto', paddingBottom: '24px', boxShadow: '0 24px 70px rgba(42,32,26,0.4)' }}
+          <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'min(680px, calc(100vw - 256px))', maxWidth: '98vw', background: LUX.bg, display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(42,32,26,0.28)', animation: 'hsSlideIn .22s ease' }}
             onClick={e => e.stopPropagation()}>
-            {/* Handle */}
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-              <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: LUX.line2 }} />
-            </div>
-            {/* NV header card */}
-            <div style={{ background: LUX.heroGrad, margin: '12px 16px 0', borderRadius: LUX.radius, padding: '20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{ width: '60px', height: '60px', borderRadius: '16px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
+
+            {/* Header cố định */}
+            <div style={{ background: LUX.heroGrad, padding: '22px 24px', display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '18px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
                 {selected.avatar_url
                   ? <img src={selected.avatar_url} alt={selected.ho_ten} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <div style={{ width: '100%', height: '100%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 700, color: 'white', fontFamily: LUX.fontSans }}>{getInitials(selected.ho_ten)}</div>
+                  : <div style={{ width: '100%', height: '100%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: 700, color: 'white', fontFamily: LUX.fontSans }}>{getInitials(selected.ho_ten)}</div>
                 }
               </div>
-              <div>
-                <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '22px', color: 'white', lineHeight: 1.2 }}>{selected.ho_ten}</div>
-                <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '24px', color: 'white', lineHeight: 1.2 }}>{selected.ho_ten}</div>
+                <div style={{ fontFamily: LUX.fontSans, fontSize: '13px', color: 'rgba(255,255,255,0.8)', marginTop: '4px' }}>
                   {VI_TRI_LABEL[selected.vi_tri]} · {soThoiGianLam(selected.ngay_bat_dau)}
                 </div>
               </div>
+              <button onClick={() => setSelected(null)} title="Đóng"
+                style={{ width: 36, height: 36, borderRadius: 11, border: '1px solid rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.15)', color: 'white', fontSize: 19, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0 }}>×</button>
             </div>
 
-            <div style={{ padding: '16px' }}>
+            {/* Nội dung cuộn */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '18px 24px' }}>
               <SheetSection title="Thông Tin Chung">
                 <SheetRow label="Ngày vào làm" value={fmtNgay(selected.ngay_bat_dau)} />
                 <SheetRow label="Thâm niên"    value={soThoiGianLam(selected.ngay_bat_dau)} />
@@ -501,7 +504,6 @@ export default function TabHoSo() {
                       <>
                         <SheetRow label="Đã tích luỹ" value={`${q.so_ngay_tich || 0} ngày`} highlight />
                         <SheetRow label="Đã dùng" value={`${q.so_ngay_da_dung || 0} ngày`} />
-                        <SheetRow label="Đã dùng tháng này" value={`${q.so_dung_thang_nay || 0} ngày`} />
                         <SheetRow label="Còn lại" value={`${(q.so_ngay_tich || 0) - (q.so_ngay_da_dung || 0)} ngày`} highlight />
                         {q.ly_do_tich_luy && <SheetRow label="Lý do" value={q.ly_do_tich_luy} />}
                       </>
@@ -515,30 +517,30 @@ export default function TabHoSo() {
               <SheetSection title="Ký Quỹ (500k/tháng × 12)">
                 <KyQuyDetail nv={selected} />
               </SheetSection>
+            </div>
 
+            {/* Nút hành động cố định ở đáy */}
+            <div style={{ flexShrink: 0, borderTop: `1px solid ${LUX.line}`, background: LUX.bg, padding: '14px 24px', display: 'flex', gap: '10px' }}>
               <button onClick={() => setChamCongSheet(selected)}
-                style={{ width: '100%', background: LUX.surface2, color: LUX.espresso, border: `2px solid ${LUX.gold}60`, borderRadius: LUX.radius, padding: '14px', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginTop: '8px' }}>
-                📋 Sửa Chấm Công Tháng
+                style={{ flex: 1, background: LUX.surface2, color: LUX.espresso, border: `2px solid ${LUX.gold}60`, borderRadius: LUX.radius, padding: '14px', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                📋 Sửa Chấm Công
               </button>
               <button onClick={() => openEdit(selected)}
-                style={{ width: '100%', background: LUX.goldGrad, color: 'white', border: 'none', borderRadius: LUX.radius, padding: '15px', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '15px', cursor: 'pointer', marginTop: '8px', boxShadow: `0 4px 16px ${LUX.gold}50` }}>
+                style={{ flex: 1, background: LUX.goldGrad, color: 'white', border: 'none', borderRadius: LUX.radius, padding: '14px', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: '14px', cursor: 'pointer', boxShadow: `0 4px 16px ${LUX.gold}50` }}>
                 Chỉnh Sửa Hồ Sơ
               </button>
             </div>
           </div>
         </div>
-      )}
+        </>
+      , document.body)}
 
-      {/* ── Bottom sheet: Form Thêm / Sửa ── */}
-      {editSheet && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+      {/* ── Modal: Form Thêm / Sửa ── */}
+      {editSheet && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
           onClick={() => setEditSheet(null)}>
           <div style={{ background: LUX.bg, borderRadius: LUX.radiusLg, width: '100%', maxWidth: '560px', margin: '0 auto', maxHeight: '92vh', overflowY: 'auto', paddingBottom: '24px', boxShadow: '0 24px 70px rgba(42,32,26,0.4)' }}
             onClick={e => e.stopPropagation()}>
-            {/* Handle */}
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-              <div style={{ width: '40px', height: '3px', borderRadius: '2px', background: LUX.line2 }} />
-            </div>
             {/* Form header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px 12px' }}>
               <div style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: '22px', color: LUX.espresso }}>
@@ -660,7 +662,7 @@ export default function TabHoSo() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* ── Admin Sửa Chấm Công Sheet ── */}
       {chamCongSheet && (
