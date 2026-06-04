@@ -392,6 +392,43 @@ export default function TabBangLuong({ fixedKy = null }) {
     })
   }
 
+  // ── Chốt Hàng Loạt (da_tinh → da_chot) ──
+  const handleChotHangLoat = () => {
+    if (!canChot(thang, nam, ky)) {
+      const now = getNowVN()
+      const isCurrent = thang === now.getMonth() + 1 && nam === now.getFullYear()
+      showToast(
+        isCurrent
+          ? 'Không thể chốt lương tháng hiện tại. Hãy đợi hết tháng.'
+          : `Kỳ ${ky} chỉ được chốt từ ngày ${ky === 1 ? '05' : '15'} tháng sau.`,
+        'error'
+      )
+      return
+    }
+    const col = ky === 1 ? 'trangThaiLC' : 'trangThaiLKD'
+    const dbCol = ky === 1 ? 'trang_thai_lc' : 'trang_thai_lkd'
+    const target = nvList.filter(nv => luongData[nv.id]?.[col] === 'da_tinh' && luongData[nv.id]?.bangLuongId)
+    if (target.length === 0) { showToast('Không có nhân viên nào ở trạng thái "Đã Tính" để chốt', 'error'); return }
+    setConfirm({
+      title: `Chốt Lương Hàng Loạt — Kỳ ${ky}`,
+      message: `Chốt lương Kỳ ${ky} cho ${target.length} nhân viên đang "Đã Tính"?`,
+      note: 'Sau khi chốt KHÔNG sửa được — phải "Mở Chốt" mới sửa lại.',
+      confirmLabel: `✓ Chốt ${target.length} Nhân Viên`,
+      onConfirm: async () => {
+        setConfirm(null)
+        setSaving(true)
+        try {
+          const ids = target.map(nv => luongData[nv.id].bangLuongId)
+          const { error } = await supabase.from('bang_luong').update({ [dbCol]: 'da_chot' }).in('id', ids)
+          if (error) throw error
+          showToast(`✓ Đã chốt lương Kỳ ${ky} cho ${target.length} nhân viên`)
+          await fetchAll()
+        } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
+        finally { setSaving(false) }
+      },
+    })
+  }
+
   const handleMoPhatLuong = () => {
     const nvIds = Object.keys(luongData)
     if (nvIds.length === 0) return
@@ -568,6 +605,20 @@ export default function TabBangLuong({ fixedKy = null }) {
           <button onClick={handleTinhHangLoat} disabled={saving}
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '13px 20px', marginBottom: 12, borderRadius: LUX.radius, border: `1.5px dashed ${LUX.champagne}`, background: '#fdf9f2', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, color: LUX.taupe, cursor: 'pointer', transition: 'all .2s' }}>
             🚀 Tính Hàng Loạt Kỳ {ky} <span style={{ background: LUX.champagne, color: 'white', fontSize: 11, fontWeight: 900, borderRadius: 10, padding: '2px 8px' }}>{chuaTinh.length} NV chưa tính</span>
+          </button>
+        )
+      })()}
+
+      {/* Nút Chốt Hàng Loạt — hiện khi có NV đã tính nhưng chưa chốt */}
+      {(() => {
+        const nvIds = Object.keys(luongData)
+        const col = ky === 1 ? 'trangThaiLC' : 'trangThaiLKD'
+        const daTinh = nvIds.filter(id => luongData[id]?.[col] === 'da_tinh')
+        if (daTinh.length === 0) return null
+        return (
+          <button onClick={handleChotHangLoat} disabled={saving}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '13px 20px', marginBottom: 12, borderRadius: LUX.radius, border: 'none', background: 'linear-gradient(135deg,#5a8a6a,#3a6a4a)', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, color: 'white', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 4px 16px rgba(58,106,74,0.3)' }}>
+            ✓ Chốt Hàng Loạt Kỳ {ky} <span style={{ background: 'rgba(255,255,255,0.25)', color: 'white', fontSize: 11, fontWeight: 900, borderRadius: 10, padding: '2px 8px' }}>{daTinh.length} NV đã tính</span>
           </button>
         )
       })()}
