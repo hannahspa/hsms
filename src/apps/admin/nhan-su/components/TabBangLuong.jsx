@@ -376,13 +376,17 @@ export default function TabBangLuong({ fixedKy = null }) {
           const dienGiai = `Lương Kỳ ${ky} tháng ${thang}/${nam} (tự động)`
           const { data: daGhi } = await supabase.from('chi_phi').select('id').eq('danh_muc_id', danhMucId).eq('dien_giai', dienGiai).limit(1)
           if (!daGhi || daGhi.length === 0) {
+            // Ghi chi phí theo SỐ ĐÃ CHỐT (snapshot trong bang_luong), KHÔNG dùng realtime
+            // → chốt xong số cố định, không lệch nếu logic thay đổi giữa lúc chốt và phát.
+            const { data: blSnap } = await supabase.from('bang_luong')
+              .select('luong_co_ban,tien_tang_ca,tien_phat,tru_ung_luong,hoa_hong_dv,tien_tour,hoa_hong_the')
+              .eq('thang', thang).eq('nam', nam)
             let soTien = 0
-            for (const id of nvIds) {
-              const ld = luongData[id]; if (!ld) continue
+            for (const b of (blSnap || [])) {
               // Kỳ 1: thực lĩnh + ký quỹ (= lương cơ bản + tăng ca − phạt − ứng).
               // Kỳ 2: tour + hoa hồng + thưởng.
-              if (ky === 1) soTien += (ld.luongCoBan || 0) + (ld.tienTangCa || 0) - (ld.tienPhat || 0) - (ld.truUngLuong || 0)
-              else soTien += (ld.hoaHongDV || 0) + (ld.tienTour || 0) + (ld.thuongDatDoanhSo || 0)
+              if (ky === 1) soTien += (b.luong_co_ban || 0) + (b.tien_tang_ca || 0) - (b.tien_phat || 0) - (b.tru_ung_luong || 0)
+              else soTien += (b.hoa_hong_dv || 0) + (b.tien_tour || 0) + (b.hoa_hong_the || 0)
             }
             soTien = Math.round(soTien)
             if (soTien > 0) {
