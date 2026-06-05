@@ -843,11 +843,12 @@ export const posService = {
   },
 
   async getSellableProducts(search = '') {
+    // POS chỉ bán "Mỹ phẩm bán" (ban_khach). Mỹ phẩm tiêu hao + vật tư = nội bộ, không bán.
     const { data, error } = await supabase
       .from('kho_san_pham')
       .select('*')
       .eq('is_active', true)
-      .in('loai', ['ban_khach', 'tieu_hao'])
+      .eq('loai', 'ban_khach')
       .gt('ton_kho', 0)
       .order('created_at', { ascending: false })
     if (error) throw error

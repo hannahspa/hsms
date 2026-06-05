@@ -855,7 +855,15 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
   })
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState('')
+  const [ktvList, setKtvList] = useState([])
+  const [nguoiNhanId, setNguoiNhanId] = useState('')
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    supabase.from('nhan_vien').select('id, ho_ten, vi_tri')
+      .eq('trang_thai', 'dang_lam').order('vi_tri').order('ho_ten')
+      .then(({ data }) => setKtvList(data || []))
+  }, [])
 
   const loaiOptions = ['nhap_kho', 'xuat_su_dung', 'xuat_ban', 'dieu_chinh', 'tra_nha_cc']
   const sp = products.find(p => p.id === f.san_pham_id)
@@ -891,12 +899,22 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
     if (f.loai === 'dieu_chinh' && sl === Number(sp.ton_kho))
       return setErr('Tồn kho không thay đổi')
 
+    if (f.loai === 'xuat_su_dung' && !nguoiNhanId)
+      return setErr('Chọn nhân viên nhận để xuất sử dụng')
+
     if (loaiGD.sign < 0) {
       if (Number(sp.ton_kho) < sl)
         return setErr(`Không đủ tồn! Hiện có: ${fmtSL(sp.ton_kho, sp.don_vi)}`)
     }
 
     setSaving(true); setErr('')
+
+    // Ghi chú: xuất sử dụng → ghi rõ "Xuất cho <KTV>" để theo dõi
+    const nguoiNhan = ktvList.find(k => k.id === nguoiNhanId)
+    const ghiChuFinal = (f.loai === 'xuat_su_dung' && nguoiNhan)
+      ? `Xuất cho ${nguoiNhan.ho_ten}${f.ghi_chu.trim() ? ' — ' + f.ghi_chu.trim() : ''}`
+      : (f.ghi_chu.trim() || (f.loai === 'dieu_chinh'
+          ? `Điều chỉnh: ${fmtSL(sp.ton_kho, sp.don_vi)} → ${fmtSL(sl, sp.don_vi)}` : ''))
 
     // so_luong lưu DB:
     // - dieu_chinh: lưu |delta| (để thỏa CHECK > 0)
@@ -908,8 +926,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
     const { error: e1 } = await supabase.from('kho_giao_dich').insert({
       san_pham_id: f.san_pham_id, loai: f.loai, so_luong: soLuongDB,
       gia_don_vi: +f.gia_don_vi || 0,
-      ghi_chu: f.ghi_chu.trim() || (f.loai === 'dieu_chinh'
-        ? `Điều chỉnh: ${fmtSL(sp.ton_kho, sp.don_vi)} → ${fmtSL(sl, sp.don_vi)}` : ''),
+      ghi_chu: ghiChuFinal,
       ngay: f.ngay, nguoi_thuc_hien: userId || null,
     })
     if (e1) { setSaving(false); return setErr(e1.message) }
@@ -1030,6 +1047,21 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
                     })()
                   : fmtSL(tonSau, sp?.don_vi)}
               </strong>
+            </div>
+          )}
+
+          {/* Xuất cho KTV — chỉ khi xuất sử dụng */}
+          {f.loai === 'xuat_su_dung' && (
+            <div>
+              <label style={lbl}>XUẤT CHO (NHÂN VIÊN) *</label>
+              <select style={inp} value={nguoiNhanId} onChange={e => setNguoiNhanId(e.target.value)}>
+                <option value="">— Chọn nhân viên nhận —</option>
+                {ktvList.map(k => (
+                  <option key={k.id} value={k.id}>
+                    {k.ho_ten}{k.vi_tri === 'ktv' ? ' (KTV)' : k.vi_tri === 'le_tan' ? ' (Lễ Tân)' : ''}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
