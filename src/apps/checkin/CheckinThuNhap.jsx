@@ -15,11 +15,14 @@ const backArrow = (
   </svg>
 )
 
+// Tông Hannah: Tour = taupe/nâu, Hoa Hồng = champagne gold
+const TOUR_COLOR = '#a0714f', TOUR_BG = 'rgba(160,113,79,.10)'
+const HH_COLOR = '#8a6a35', HH_BG = 'rgba(201,169,110,.14)'
 const LOAI_CONFIG = {
-  tour:     { label: 'Tiền Tour',    icon: '✈️', color: '#1A5276', bg: '#D6EAF8' },
-  hoa_hong: { label: 'Hoa Hồng DV', icon: '💆', color: '#145A32', bg: '#D5F5E3' },
+  tour:     { label: 'Tiền Tour',    icon: '✈️', color: TOUR_COLOR, bg: TOUR_BG },
+  hoa_hong: { label: 'Hoa Hồng DV', icon: '💆', color: HH_COLOR, bg: HH_BG },
   // Legacy key (không còn data mới nhưng giữ để hiển thị data cũ nếu có)
-  commission: { label: 'Hoa Hồng DV', icon: '💆', color: '#145A32', bg: '#D5F5E3' },
+  commission: { label: 'Hoa Hồng DV', icon: '💆', color: HH_COLOR, bg: HH_BG },
 }
 
 function fmtDate(d) {
@@ -64,25 +67,52 @@ export default function CheckinThuNhap({ nhanVien, onBack }) {
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    let q = supabase
+    const pad = n => String(n).padStart(2, '0')
+
+    if (mode === 'month') {
+      // Theo tháng → đọc CHI TIẾT từng đơn (có tên dịch vụ + tên khách hàng) để NV biết đã làm gì
+      const daysInMonth = new Date(year, month, 0).getDate()
+      const sd = `${year}-${pad(month)}-01`
+      const ed = `${year}-${pad(month)}-${pad(daysInMonth)}`
+      const { data, error } = await supabase.from('don_hang_chi_tiet')
+        .select(`id, thanh_tien, tien_tour, tien_hoa_hong, ti_le_hoa_hong, loai_item,
+          dich_vu:dich_vu_id(ten), san_pham:san_pham_id(ten), the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu),
+          don_hang:don_hang_id!inner(ngay, ma_don, trang_thai, is_test, khach_hang:khach_hang_id(ho_ten))`)
+        .eq('nhan_vien_id', nhanVien.id)
+        .gte('don_hang.ngay', sd).lte('don_hang.ngay', ed)
+        .eq('don_hang.is_test', false).neq('don_hang.trang_thai', 'huy')
+      if (error) { setLoading(false); return }
+      const list = (data || [])
+        .filter(r => (r.tien_tour || 0) > 0 || (r.tien_hoa_hong || 0) > 0)
+        .map(r => ({
+          id: r.id,
+          ngay: r.don_hang?.ngay,
+          ten: r.dich_vu?.ten || r.san_pham?.ten || r.the_lieu_trinh?.ten_dich_vu || (r.loai_item === 'the_moi' ? 'Bán thẻ liệu trình' : 'Dịch vụ'),
+          khach: r.don_hang?.khach_hang?.ho_ten || 'Khách lẻ',
+          thanh_tien: r.thanh_tien || 0,
+          tien_tour: r.tien_tour || 0,
+          tien_hoa_hong: r.tien_hoa_hong || 0,
+        }))
+        .sort((a, b) => String(a.ngay).localeCompare(String(b.ngay)))
+      setSummary({
+        tourTotal: list.reduce((s, r) => s + r.tien_tour, 0),
+        commTotal: list.reduce((s, r) => s + r.tien_hoa_hong, 0),
+        count: list.length,
+      })
+      setRows(list)
+      setLoading(false)
+      return
+    }
+
+    // Toàn bộ → đọc view (nhẹ, gộp theo tháng)
+    const { data, error } = await supabase
       .from('v_nhan_vien_thu_nhap')
       .select('id,ngay,loai,so_tien,doanh_so_tinh,ti_le,ghi_chu,nguon')
       .eq('nhan_vien_id', nhanVien.id)
       .eq('is_test', false)
       .order('ngay', { ascending: false })
       .order('created_at', { ascending: false })
-
-    if (mode === 'month') {
-      const pad  = n => String(n).padStart(2, '0')
-      const daysInMonth = new Date(year, month, 0).getDate()
-      q = q
-        .gte('ngay', `${year}-${pad(month)}-01`)
-        .lte('ngay', `${year}-${pad(month)}-${pad(daysInMonth)}`)
-    }
-
-    const { data, error } = await q
     if (error) { setLoading(false); return }
-
     const list = data || []
     const tourTotal  = list.filter(r => r.loai === 'tour').reduce((s, r) => s + (r.so_tien || 0), 0)
     const commTotal  = list.filter(r => r.loai === 'hoa_hong').reduce((s, r) => s + (r.so_tien || 0), 0)
@@ -214,8 +244,8 @@ export default function CheckinThuNhap({ nhanVien, onBack }) {
         {mode === 'month' && summary && !loading && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
             {[
-              { label: 'Tiền Tour', icon: '✈️', value: summary.tourTotal, color: '#1A5276', bg: '#D6EAF8' },
-              { label: 'Hoa Hồng', icon: '💆', value: summary.commTotal, color: '#145A32', bg: '#D5F5E3' },
+              { label: 'Tiền Tour', icon: '✈️', value: summary.tourTotal, color: TOUR_COLOR, bg: TOUR_BG },
+              { label: 'Hoa Hồng', icon: '💆', value: summary.commTotal, color: HH_COLOR, bg: HH_BG },
             ].map(item => (
               <div key={item.label} style={{ background: item.bg, borderRadius: 14, padding: '14px 14px', border: `1px solid ${item.color}20` }}>
                 <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: item.color, marginBottom: 6, fontWeight: 600 }}>
@@ -240,50 +270,47 @@ export default function CheckinThuNhap({ nhanVien, onBack }) {
             </div>
           </div>
         ) : mode === 'month' ? (
-          /* ── Danh sách giao dịch theo ngày (mode = month) ── */
-          <div style={{ background: LUX.surface2, border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 18px', borderBottom: `1px solid ${LUX.line}` }}>
-              <span style={{ fontFamily: LUX.fontSerif, fontSize: 17, fontWeight: 600, color: LUX.espresso }}>
-                Chi Tiết Tháng {month}/{year}
-              </span>
+          /* ── Danh sách lượt phục vụ (mode = month): STT · DV · ngày · khách · tour · HH ── */
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '0 2px 10px' }}>
+              <span style={{ fontFamily: LUX.fontSerif, fontSize: 17, fontWeight: 600, color: LUX.espresso }}>Chi Tiết Tháng {month}/{year}</span>
+              <span style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3 }}>{rows.length} lượt</span>
             </div>
-            <div style={{ padding: '4px 0' }}>
-              {rows.map((r, i) => {
-                const cfg = LOAI_CONFIG[r.loai] || { label: r.loai, icon: '📌', color: LUX.ink2, bg: LUX.surface2 }
-                return (
-                  <div key={r.id} style={{
-                    display: 'grid', gridTemplateColumns: '40px 1fr auto', gap: 12, alignItems: 'center',
-                    padding: '14px 18px', borderTop: i === 0 ? 'none' : `1px solid ${LUX.line}`,
-                  }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 12, background: cfg.bg, display: 'grid', placeItems: 'center', fontSize: 18, flexShrink: 0 }}>
-                      {cfg.icon}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: LUX.espresso }}>{cfg.label}</span>
-                        <span style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: cfg.color, background: cfg.bg, padding: '2px 6px', borderRadius: 999, fontWeight: 600 }}>
-                          {r.nguon === 'myspa_commission' ? 'MySpa' : r.nguon === 'pos' ? 'POS' : r.nguon}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 11, color: LUX.ink3, lineHeight: 1.4 }}>
-                        {fmtDate(r.ngay)}
-                        {r.ghi_chu ? ` · ${r.ghi_chu}` : ''}
-                        {r.doanh_so_tinh ? ` · DS: ${formatCurrency(r.doanh_so_tinh)}` : ''}
-                        {r.ti_le ? ` (${r.ti_le}%)` : ''}
-                      </div>
-                    </div>
-                    <div style={{ fontFamily: LUX.fontSerif, fontSize: 17, fontWeight: 700, color: cfg.color, textAlign: 'right' }}>
-                      +{formatCurrency(r.so_tien)}
-                    </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {rows.map((r, idx) => (
+                <div key={r.id} style={{ background: '#fff', border: `1px solid ${LUX.line}`, borderRadius: 14, padding: '12px 13px', boxShadow: LUX.shadowSm }}>
+                  {/* Hàng 1: STT + tên dịch vụ + ngày */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 26, height: 26, flexShrink: 0, borderRadius: 8, background: 'linear-gradient(135deg,#c9a96e,#a87f4f)', color: '#fff', fontFamily: LUX.fontSerif, fontWeight: 700, fontSize: 13, display: 'grid', placeItems: 'center' }}>{idx + 1}</span>
+                    <span style={{ fontFamily: LUX.fontSans, fontSize: 13.5, fontWeight: 700, color: LUX.espresso, flex: 1, minWidth: 0, lineHeight: 1.25 }}>{r.ten}</span>
+                    <span style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, whiteSpace: 'nowrap' }}>📅 {fmtDate(r.ngay)}</span>
                   </div>
-                )
-              })}
+                  {/* Hàng 2: khách hàng + doanh số */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '8px 0 0', paddingLeft: 36 }}>
+                    <span style={{ fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>👤 {r.khach}</span>
+                    <span style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, whiteSpace: 'nowrap' }}>DS {formatCurrency(r.thanh_tien)}</span>
+                  </div>
+                  {/* Hàng 3: tiền tour + hoa hồng */}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 9, paddingLeft: 36 }}>
+                    {r.tien_tour > 0 && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: TOUR_BG, border: `1px solid ${TOUR_COLOR}40`, borderRadius: 8, padding: '5px 9px' }}>
+                        <span style={{ fontSize: 11, color: TOUR_COLOR, fontWeight: 600 }}>Tiền Tour</span>
+                        <span style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: TOUR_COLOR }}>{formatCurrency(r.tien_tour)}</span>
+                      </span>
+                    )}
+                    {r.tien_hoa_hong > 0 && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: HH_BG, border: `1px solid ${HH_COLOR}40`, borderRadius: 8, padding: '5px 9px' }}>
+                        <span style={{ fontSize: 11, color: HH_COLOR, fontWeight: 600 }}>Hoa Hồng</span>
+                        <span style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: HH_COLOR }}>{formatCurrency(r.tien_hoa_hong)}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
               {/* Tổng tháng */}
-              <div style={{ borderTop: `1.5px solid ${LUX.line}`, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(180deg,#fdf3e0,#f9ead0)' }}>
-                <span style={{ fontFamily: LUX.fontSerif, fontSize: 15, fontWeight: 600, color: LUX.espresso }}>
-                  Tổng tháng {month}/{year}
-                </span>
-                <span style={{ fontFamily: LUX.fontSerif, fontSize: 22, fontWeight: 700, color: LUX.espresso }}>
+              <div style={{ borderRadius: LUX.radius, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg,#fdf3e0,#f9ead0)', border: '1px solid #ecd9b3', marginTop: 2 }}>
+                <span style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 600, color: LUX.espresso }}>Tổng tháng {month}/{year}</span>
+                <span style={{ fontFamily: LUX.fontSerif, fontSize: 23, fontWeight: 700, color: LUX.espresso }}>
                   {formatCurrency((summary?.tourTotal || 0) + (summary?.commTotal || 0))}
                 </span>
               </div>
@@ -304,8 +331,8 @@ export default function CheckinThuNhap({ nhanVien, onBack }) {
                       {fmtMonth(y, parseInt(m))}
                     </span>
                     <div style={{ display: 'flex', gap: 10, fontSize: 12 }}>
-                      {mTour > 0 && <span style={{ color: '#1A5276', fontWeight: 600 }}>✈️ {formatCurrency(mTour)}</span>}
-                      {mComm > 0 && <span style={{ color: '#145A32', fontWeight: 600 }}>💆 {formatCurrency(mComm)}</span>}
+                      {mTour > 0 && <span style={{ color: TOUR_COLOR, fontWeight: 600 }}>✈️ {formatCurrency(mTour)}</span>}
+                      {mComm > 0 && <span style={{ color: HH_COLOR, fontWeight: 600 }}>💆 {formatCurrency(mComm)}</span>}
                     </div>
                   </div>
                   {/* Rows */}

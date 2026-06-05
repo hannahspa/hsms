@@ -51,7 +51,7 @@ export default function CheckinLuong({ nhanVien, onBack }) {
     ])
     const kdDetail = (detailRes.data || [])
       .filter(r => (r.tien_tour || 0) > 0 || (r.tien_hoa_hong || 0) > 0)
-      .sort((a, b) => String(b.don_hang?.ngay).localeCompare(String(a.don_hang?.ngay)))
+      .sort((a, b) => String(a.don_hang?.ngay).localeCompare(String(b.don_hang?.ngay)))
 
     const quy = quyRes.data
     const bl  = blRes.data
@@ -373,27 +373,49 @@ export default function CheckinLuong({ nhanVien, onBack }) {
                         <span style={{ fontFamily: LUX.fontSerif, fontSize: 24, fontWeight: 700, color: LUX.espresso }}>{formatCurrency(tongKy2)}</span>
                       </div>
 
-                      {/* Chi tiết từng đơn — KTV xem mình đã làm gì, bao nhiêu tiền */}
+                      {/* Chi tiết từng lượt — KTV xem rõ: STT, ngày, dịch vụ, khách, tour, hoa hồng */}
                       {data?.kdDetail?.length > 0 && (
-                        <div style={{ marginTop: 4 }}>
-                          <div style={{ fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
-                            Chi tiết {data.kdDetail.length} lượt phục vụ
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                            <span style={{ fontFamily: LUX.fontSerif, fontSize: 15, fontWeight: 600, color: LUX.espresso }}>Chi Tiết Lượt Phục Vụ</span>
+                            <span style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3 }}>{data.kdDetail.length} lượt</span>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {data.kdDetail.map(r => {
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {data.kdDetail.map((r, idx) => {
                               const ten = r.dich_vu?.ten || r.san_pham?.ten || r.the_lieu_trinh?.ten_dich_vu || 'Dịch vụ'
+                              const ngay = (r.don_hang?.ngay || '').split('-').reverse().join('/')
+                              const khach = r.don_hang?.khach_hang?.ho_ten || 'Khách lẻ'
+                              const tour = r.tien_tour || 0
+                              const hh = r.tien_hoa_hong || 0
                               return (
-                                <div key={r.id} style={{ background: '#fff', border: `1px solid ${LUX.line}`, borderRadius: 12, padding: '10px 12px' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                                    <span style={{ fontFamily: LUX.fontSans, fontSize: 13, fontWeight: 600, color: LUX.espresso, flex: 1, minWidth: 0 }}>{ten}</span>
-                                    <span style={{ fontFamily: LUX.fontMono, fontSize: 11, color: LUX.ink3, whiteSpace: 'nowrap' }}>{(r.don_hang?.ngay || '').split('-').reverse().join('/')}</span>
-                                  </div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, gap: 8 }}>
-                                    <span style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.don_hang?.khach_hang?.ho_ten || 'Khách lẻ'} · DS {formatCurrency(r.thanh_tien || 0)}</span>
-                                    <span style={{ fontFamily: LUX.fontMono, fontSize: 12, fontWeight: 700, display: 'flex', gap: 8, whiteSpace: 'nowrap' }}>
-                                      {(r.tien_tour || 0) > 0 && <span style={{ color: LUX.taupe }}>Tour {formatCurrency(r.tien_tour)}</span>}
-                                      {(r.tien_hoa_hong || 0) > 0 && <span style={{ color: '#8a6a35' }}>HH {formatCurrency(r.tien_hoa_hong)}</span>}
+                                <div key={r.id} style={{ background: '#fff', border: `1px solid ${LUX.line}`, borderRadius: 14, padding: '12px 13px', boxShadow: LUX.shadowSm }}>
+                                  {/* Hàng 1: STT + tên dịch vụ + ngày */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <span style={{ width: 26, height: 26, flexShrink: 0, borderRadius: 8, background: 'linear-gradient(135deg,#c9a96e,#a87f4f)', color: '#fff', fontFamily: LUX.fontSerif, fontWeight: 700, fontSize: 13, display: 'grid', placeItems: 'center' }}>{idx + 1}</span>
+                                    <span style={{ fontFamily: LUX.fontSans, fontSize: 13.5, fontWeight: 700, color: LUX.espresso, flex: 1, minWidth: 0, lineHeight: 1.25 }}>{ten}</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, whiteSpace: 'nowrap' }}>
+                                      📅 {ngay}
                                     </span>
+                                  </div>
+                                  {/* Hàng 2: khách hàng + doanh số */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '8px 0 0', paddingLeft: 36 }}>
+                                    <span style={{ fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>👤 {khach}</span>
+                                    <span style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, whiteSpace: 'nowrap' }}>DS {formatCurrency(r.thanh_tien || 0)}</span>
+                                  </div>
+                                  {/* Hàng 3: tiền tour + hoa hồng (badge) */}
+                                  <div style={{ display: 'flex', gap: 8, marginTop: 9, paddingLeft: 36 }}>
+                                    {tour > 0 && (
+                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(160,113,79,.10)', border: '1px solid rgba(160,113,79,.25)', borderRadius: 8, padding: '5px 9px' }}>
+                                        <span style={{ fontSize: 11, color: LUX.taupe, fontWeight: 600 }}>Tiền Tour</span>
+                                        <span style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: LUX.taupe }}>{formatCurrency(tour)}</span>
+                                      </span>
+                                    )}
+                                    {hh > 0 && (
+                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(201,169,110,.12)', border: '1px solid rgba(201,169,110,.32)', borderRadius: 8, padding: '5px 9px' }}>
+                                        <span style={{ fontSize: 11, color: '#8a6a35', fontWeight: 600 }}>Hoa Hồng</span>
+                                        <span style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: '#8a6a35' }}>{formatCurrency(hh)}</span>
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               )
