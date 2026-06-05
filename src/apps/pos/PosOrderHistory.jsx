@@ -650,7 +650,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
           onVoid={handleVoid}
           isAdmin={isAdmin}
           canVoid={isAdmin}
-          onEdit={(o) => { setDetailOrder(null); onResumeOrder?.(o); window.location.href = '/pos?resume=' + o.id }}
+          onEdit={(o) => { setDetailOrder(null); window.location.href = '/pos?resume=' + o.id + '&mode=edit' }}
           onDeleted={() => load(currentPage)}
         />
       )}

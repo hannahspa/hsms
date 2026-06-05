@@ -22,7 +22,7 @@ import { C, FONT } from '../../constants/colors'
 const PTTT_OPTS = HINH_THUC_THU
 
 // ── PosCreateOrder ────────────────────────────────────────────────────────────
-function PosCreateOrder({ resumeOrderId }) {
+function PosCreateOrder({ resumeOrderId, editMode = false }) {
   const { user } = useAuth()
 
   // Order — local khi chưa lưu, DB mode khi đã lưu/resume
@@ -902,11 +902,21 @@ function PosCreateOrder({ resumeOrderId }) {
 
         {/* Left header */}
         <div style={{ padding: '10px 16px', borderBottom: `1px solid ${C.line}`, background: C.surface, flexShrink: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, fontFamily: FONT.serif, color: C.champagne }}>Tạo Đơn Hàng</div>
+          <div style={{ fontSize: 14, fontWeight: 700, fontFamily: FONT.serif, color: C.champagne }}>{editMode ? 'Sửa Đơn Hàng' : 'Tạo Đơn Hàng'}</div>
           <div style={{ fontSize: 11, color: C.ink3, marginTop: 1 }}>
             {user?.ho_ten} · {todayStats.soDon} đơn hôm nay · {formatCurrency(todayStats.tongThu)}
           </div>
         </div>
+
+        {/* Banner chế độ sửa đơn — nhắc Admin chốt lại để lưu */}
+        {editMode && (
+          <div style={{ padding: '9px 16px', background: 'rgba(160,113,79,.10)', borderBottom: '1px solid rgba(160,113,79,.25)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span style={{ fontSize: 15 }}>✎</span>
+            <span style={{ fontSize: 11.5, color: '#8a6335', fontWeight: 600, lineHeight: 1.35 }}>
+              Đang sửa đơn — chỉnh xong phải bấm <b>"Cập Nhật Đơn"</b> để lưu. Nếu thoát mà chưa cập nhật, vào lại đơn (trạng thái nháp) để chốt lại hoặc Khôi phục.
+            </span>
+          </div>
+        )}
 
         {/* ── CUSTOMER SECTION ── */}
         <div style={{ padding: '10px 16px', borderBottom: `1px solid ${C.line}`, background: C.surface, flexShrink: 0 }}>
@@ -1342,11 +1352,13 @@ function PosCreateOrder({ resumeOrderId }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 }}>
                 {loading ? 'Đang xử lý…' : (
-                  tongCuoi === 0
-                    ? 'Thanh Toán & In'
-                    : conNo > 0 && selectedCustomer
-                      ? 'Ghi Nợ & In'
-                      : 'Thanh Toán & In'
+                  editMode
+                    ? '✓ Cập Nhật Đơn & In'
+                    : tongCuoi === 0
+                      ? 'Thanh Toán & In'
+                      : conNo > 0 && selectedCustomer
+                        ? 'Ghi Nợ & In'
+                        : 'Thanh Toán & In'
                 )}
               </button>
 
@@ -1423,8 +1435,9 @@ export default function PosApp() {
   const path   = window.location.pathname
   const params = new URLSearchParams(window.location.search)
   const resumeId = params.get('resume')
+  const editMode = params.get('mode') === 'edit'
   if (path === '/pos/danh-sach') {
     return <PosOrderHistory onResumeOrder={(o) => { window.location.href = '/pos?resume=' + o.id }} />
   }
-  return <PosCreateOrder resumeOrderId={resumeId} />
+  return <PosCreateOrder resumeOrderId={resumeId} editMode={editMode} />
 }
