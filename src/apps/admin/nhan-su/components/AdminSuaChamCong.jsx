@@ -64,6 +64,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
   const [nam, setNam] = useState(initialNam || now.getFullYear())
   const [ccList, setCcList] = useState([])
   const [offList, setOffList] = useState([])
+  const [buNgayLe, setBuNgayLe] = useState(new Set())  // ngày được bù bằng quỹ ngày lễ (ISO)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [editDay, setEditDay] = useState(null)
@@ -94,7 +95,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
       const lastDay = getDaysInMonth(nam, thang)
       const endDate = `${nam}-${String(thang).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
-      const [resCc, resOff] = await Promise.all([
+      const [resCc, resOff, resQuy] = await Promise.all([
         supabase.from('cham_cong')
           .select('id, ngay, loai, gio_vao, gio_ra, he_so, tang_ca_gio')
           .eq('nhan_vien_id', nhanVien.id)
@@ -105,9 +106,26 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
           .eq('nhan_vien_id', nhanVien.id)
           .gte('ngay_off', startDate).lte('ngay_off', endDate)
           .eq('trang_thai', 'duoc_duyet'),
+        supabase.from('quy_ngay_off')
+          .select('lich_su_dung')
+          .eq('nhan_vien_id', nhanVien.id).eq('nam', nam).maybeSingle(),
       ])
       setCcList(resCc.data || [])
       setOffList(resOff.data || [])
+      // Các ngày được BÙ bằng quỹ ngày lễ trong tháng đang xem
+      const buSet = new Set()
+      const ls = Array.isArray(resQuy.data?.lich_su_dung) ? resQuy.data.lich_su_dung : []
+      ls.filter(e => Number(e.nam) === nam && Number(e.thang) === thang)
+        .forEach(e => (Array.isArray(e.cac_ngay_bu) ? e.cac_ngay_bu : []).forEach(d => {
+          // chuẩn hoá về ISO yyyy-mm-dd (chấp nhận cả dd/mm/yyyy hoặc dd/mm)
+          const s = String(d).trim()
+          if (/^\d{4}-\d{2}-\d{2}/.test(s)) buSet.add(s.slice(0, 10))
+          else {
+            const p = s.split('/')
+            if (p.length >= 2) buSet.add(`${p[2] || nam}-${String(p[1]).padStart(2, '0')}-${String(p[0]).padStart(2, '0')}`)
+          }
+        }))
+      setBuNgayLe(buSet)
     } catch (e) { console.error('AdminSuaChamCong:', e) }
     finally { setLoading(false) }
   }
@@ -484,6 +502,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
                   const isOff = !!off
                   const loaiLabel = cc ? (LOAI_OPTS.find(o => o.value === cc.loai) || LOAI_OPTS[0]) : null
                   const isDiLam = cc?.loai === 'di_lam'
+                  const isBuNgayLe = buNgayLe.has(dateStr)   // ngày được bù bằng quỹ ngày lễ
 
                   let bg = LUX.surface2
                   let border = LUX.line
@@ -520,8 +539,13 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
                       <div style={{ fontSize: '18px', flexShrink: 0 }}>{statusIcon}</div>
                       {/* Details */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', fontWeight: 600, color: statusColor }}>
-                          {isDiLam ? 'Đi làm' : (loaiLabel?.label || (off ? `OFF (${off.loai_off === 'off_phep' ? 'Phép' : off.loai_off === 'off_ov' ? 'Ko Lương' : 'T7/CN'})` : 'Chưa chấm công'))}
+                        <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', fontWeight: 600, color: statusColor, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span>{isDiLam ? 'Đi làm' : (loaiLabel?.label || (off ? `OFF (${off.loai_off === 'off_phep' ? 'Phép' : off.loai_off === 'off_ov' ? 'Ko Lương' : 'T7/CN'})` : 'Chưa chấm công'))}</span>
+                          {isBuNgayLe && (
+                            <span style={{ fontFamily: LUX.fontSans, fontSize: '10px', fontWeight: 700, color: '#8a6a35', background: 'rgba(201,169,110,.16)', border: '1px solid rgba(201,169,110,.4)', borderRadius: 6, padding: '1px 7px' }}>
+                              🎁 Bù Ngày Lễ
+                            </span>
+                          )}
                         </div>
                         {isDiLam && cc.gio_vao && cc.gio_ra && (
                           <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: LUX.ink3, marginTop: '1px' }}>
