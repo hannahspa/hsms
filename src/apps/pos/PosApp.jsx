@@ -28,6 +28,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
   // Order — local khi chưa lưu, DB mode khi đã lưu/resume
   const [lineItems, setLineItems]       = useState([])
   const [savedOrderId, setSavedOrderId] = useState(null)  // null = local, uuid = đã lưu DB
+  // SỬA ĐƠN (editMode): id đơn gốc đang sửa. Giữ dòng hàng LOCAL, CHỈ áp khi bấm Cập Nhật
+  // → bỏ dở giữa chừng KHÔNG đụng đơn gốc (an toàn, không mất thẻ).
+  const [editOrderId, setEditOrderId]   = useState(null)
 
   // Ngày + giờ tạo đơn (sửa được) — mặc định hiện tại, load từ đơn khi resume
   const [orderNgay, setOrderNgay] = useState(() => todayISO())
@@ -98,7 +101,10 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
   // Resume đơn nháp từ danh sách
   useEffect(() => {
     if (!resumeOrderId) return
-    setSavedOrderId(resumeOrderId)
+    // SỬA ĐƠN: giữ dòng hàng LOCAL (không set savedOrderId → không ghi DB khi mở).
+    // Resume nháp bình thường: dùng savedOrderId như cũ (ghi thẳng DB).
+    if (editMode) setEditOrderId(resumeOrderId)
+    else setSavedOrderId(resumeOrderId)
     Promise.all([
       posService.getOrder(resumeOrderId),
       posService.getLineItems(resumeOrderId),
@@ -115,10 +121,24 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
         const vn = new Date(new Date(order.created_at).toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
         setOrderGio(`${String(vn.getHours()).padStart(2, '0')}:${String(vn.getMinutes()).padStart(2, '0')}`)
       }
-      // items từ DB dùng id làm _lid để handlers nhất quán
-      setLineItems((items || []).map(i => ({ ...i, _lid: i.id })))
+      if (editMode) {
+        // Local: bỏ id DB để được xử lý như dòng mới khi ghi lại lúc Cập Nhật
+        setLineItems((items || []).map(i => {
+          const { id, don_hang_id, created_at, ...rest } = i
+          return { ...rest, _lid: crypto.randomUUID() }
+        }))
+        // Khôi phục thanh toán cũ vào payLines để admin thấy/sửa
+        posService.getPayments(resumeOrderId).then(pays => {
+          if (pays && pays.length) {
+            setPayLines(pays.map((p, idx) => ({ _id: idx + 1, soTien: p.so_tien || 0, hinhThuc: p.hinh_thuc })))
+          }
+        }).catch(() => {})
+      } else {
+        // items từ DB dùng id làm _lid để handlers nhất quán
+        setLineItems((items || []).map(i => ({ ...i, _lid: i.id })))
+      }
     }).catch(err => { alert('Lỗi tải đơn: ' + err.message) })
-  }, [resumeOrderId])
+  }, [resumeOrderId, editMode])
 
   useEffect(() => {
     if (!selectedCustomer?.id) {
@@ -398,10 +418,19 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
     const n = getNowVN()
     setOrderNgay(todayISO())
     setOrderGio(`${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`)
+    setEditOrderId(null)
     clearCustomer()
   }
 
   const handleVoidOrder = async () => {
+    // Đang SỬA đơn: thoát KHÔNG đụng đơn gốc (chỉ rời chế độ sửa)
+    if (editOrderId && !savedOrderId) {
+      if (!confirm('Thoát sửa đơn? Đơn gốc giữ nguyên, thay đổi chưa lưu sẽ bỏ qua.')) return
+      setEditOrderId(null)
+      resetCreateForm()
+      window.location.href = '/pos/danh-sach'
+      return
+    }
     if (lineItems.length === 0 && !savedOrderId) return
     if (!confirm('Hủy đơn hiện tại?')) return
     if (savedOrderId) {
@@ -618,10 +647,22 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
       let oid = savedOrderId
       let preparedItems = await prepareLineItemsForCheckout(oid, lineItems)
 
-      if (!oid) {
-        // Chưa lưu nháp → tạo order + items ngay
-        const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: selectedCustomer?.id || null })
-        oid = order.id
+      // ── SỬA ĐƠN: chỉ tới đây (admin bấm Cập Nhật) mới đảo ngược đơn gốc ──
+      // → bỏ dở trước đó KHÔNG đụng đơn gốc. Đảo tác động cũ + dọn dòng/thanh toán cũ,
+      //   rồi ghi lại từ dòng hàng local như tạo mới (vào chính đơn đó).
+      if (!oid && editOrderId) {
+        await posService.reopenOrder(editOrderId)   // hoàn thẻ/kho/doanh thu cũ → draft (giữ chi_tiet/thanh_toan cũ)
+        await supabase.from('don_hang_chi_tiet').delete().eq('don_hang_id', editOrderId)
+        await supabase.from('thanh_toan').delete().eq('don_hang_id', editOrderId)
+        oid = editOrderId
+      }
+
+      if (!savedOrderId) {
+        // Tạo order mới (nếu chưa có), HOẶC ghi vào đơn đang sửa (oid = editOrderId)
+        if (!oid) {
+          const order = await posService.createOrder({ nguoiTao: user?.id, khachHangId: selectedCustomer?.id || null })
+          oid = order.id
+        }
         const insertedItems = await Promise.all(preparedItems.map(item => posService.addLineItem(oid, {
           loai_item:         item.loai_item,
           dich_vu_id:        item.dich_vu_id        || null,
@@ -639,8 +680,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
         })))
         preparedItems = preparedItems.map((item, index) => ({ ...item, ...insertedItems[index], _lid: insertedItems[index].id }))
         setSavedOrderId(oid)
+        setEditOrderId(null)
         setLineItems(preparedItems)
-        paymentsInserted.current = false  // order mới → chưa có payments
+        paymentsInserted.current = false  // order mới/sửa → ghi lại payments
       }
 
       // Đồng bộ thanh toán IDEMPOTENT: luôn xoá sạch payment cũ của đơn rồi ghi lại đúng payLines.
@@ -913,7 +955,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
           <div style={{ padding: '9px 16px', background: 'rgba(160,113,79,.10)', borderBottom: '1px solid rgba(160,113,79,.25)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <span style={{ fontSize: 15 }}>✎</span>
             <span style={{ fontSize: 11.5, color: '#8a6335', fontWeight: 600, lineHeight: 1.35 }}>
-              Đang sửa đơn — chỉnh xong phải bấm <b>"Cập Nhật Đơn"</b> để lưu. Nếu thoát mà chưa cập nhật, vào lại đơn (trạng thái nháp) để chốt lại hoặc Khôi phục.
+              Đang sửa đơn — chỉnh xong bấm <b>"Cập Nhật Đơn"</b> để lưu. Nếu thoát mà chưa cập nhật, <b>đơn gốc vẫn giữ nguyên</b> (an toàn).
             </span>
           </div>
         )}
