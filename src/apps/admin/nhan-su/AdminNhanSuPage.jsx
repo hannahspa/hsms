@@ -4,6 +4,7 @@ import { LUX_MENU } from '../../../constants/lux'
 import { useAuth } from '../../../context/AuthContext'
 import { todayISO, getNowVN, formatCurrency } from '../../../lib/utils'
 import I from '../../../components/shared/Icons'
+import StaffAvatar    from '../../../components/shared/StaffAvatar'
 import TabTongQuan    from './components/TabTongQuan'
 import TabXetDuyet    from './components/TabXetDuyet'
 import TabLichDieuDong from './components/TabLichDieuDong'
@@ -232,10 +233,10 @@ export default function AdminNhanSuPage() {
               {filteredNv.map(nv => (
                 <tr key={nv.id}>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#8a6a52,#3b2a1f)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>{getInitials(nv.ho_ten)}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                      <StaffAvatar nv={nv} size={36} radius={11} />
                       <div>
-                        <div style={{ fontWeight: 750, color: 'var(--ink)' }}>{nv.ho_ten}</div>
+                        <div style={{ fontFamily: 'var(--serif)', fontSize: 16.5, fontWeight: 600, color: 'var(--ink)', letterSpacing: '.005em' }}>{nv.ho_ten}</div>
                         <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 1 }}>{nv.so_dien_thoai || 'Chưa có SĐT'}</div>
                       </div>
                     </div>

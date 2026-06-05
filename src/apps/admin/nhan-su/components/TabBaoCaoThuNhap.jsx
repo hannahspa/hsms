@@ -3,21 +3,10 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../../../../lib/supabase'
 import { formatCurrency, getNowVN } from '../../../../lib/utils'
 import { LUX } from '../../../../constants/lux'
+import StaffAvatar from '../../../../components/shared/StaffAvatar'
 
 const MONTHS = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12']
 const ROLE_LABEL = { ktv: 'KTV', le_tan: 'Lễ Tân', tap_vu: 'Tạp Vụ', quan_ly: 'Quản Lý' }
-
-function getInitials(name) {
-  if (!name) return '?'
-  const p = name.trim().split(' ')
-  return (p[p.length - 1][0] || '').toUpperCase()
-}
-const AV_GRADS = [
-  'linear-gradient(135deg,#c9a96e,#a87f4f)', 'linear-gradient(135deg,#c4998a,#a87366)',
-  'linear-gradient(135deg,#94a085,#6e8a5e)', 'linear-gradient(135deg,#8a6a6e,#634a4e)',
-  'linear-gradient(135deg,#5a4030,#2e2018)',
-]
-const gradOf = (name) => AV_GRADS[Math.abs(name?.charCodeAt(0) || 0) % AV_GRADS.length]
 
 function fmtDate(s) {
   if (!s) return ''
@@ -176,9 +165,9 @@ export default function TabBaoCaoThuNhap() {
                 <tr key={r.nv.id} onClick={() => setSelected(r.nv)} style={{ cursor: 'pointer' }}>
                   <td style={{ color: LUX.ink3, fontWeight: 700 }}>{i + 1}</td>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 9, background: gradOf(r.nv.ho_ten), color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13 }}>{getInitials(r.nv.ho_ten)}</div>
-                      <span style={{ fontWeight: 750, color: LUX.ink }}>{r.nv.ho_ten}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                      <StaffAvatar nv={r.nv} size={34} radius={10} />
+                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 16.5, fontWeight: 600, color: LUX.ink, letterSpacing: '.005em' }}>{r.nv.ho_ten}</span>
                     </div>
                   </td>
                   <td><span className="tag sv">{ROLE_LABEL[r.nv.vi_tri] || r.nv.vi_tri}</span></td>
@@ -215,11 +204,11 @@ export default function TabBaoCaoThuNhap() {
             {/* Header */}
             <div style={{ padding: '20px 26px', background: LUX.heroGrad, color: '#fff', position: 'sticky', top: 0, zIndex: 2 }}>
               <button onClick={() => setSelected(null)} style={{ position: 'absolute', top: 16, right: 18, background: 'rgba(255,255,255,.2)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>✕</button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,.22)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 17 }}>{getInitials(selected.ho_ten)}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
+                <StaffAvatar nv={selected} size={48} radius={14} style={{ border: '2px solid rgba(255,255,255,.5)' }} />
                 <div>
-                  <div style={{ fontFamily: LUX.fontSerif, fontSize: 22, fontWeight: 700 }}>{selected.ho_ten}</div>
-                  <div style={{ fontSize: 12, opacity: .9 }}>{ROLE_LABEL[selected.vi_tri] || selected.vi_tri} · {MONTHS[thang]} {nam}</div>
+                  <div style={{ fontFamily: LUX.fontSerif, fontSize: 23, fontWeight: 600, letterSpacing: '.005em' }}>{selected.ho_ten}</div>
+                  <div style={{ fontSize: 12, opacity: .9, marginTop: 1 }}>{ROLE_LABEL[selected.vi_tri] || selected.vi_tri} · {MONTHS[thang]} {nam}</div>
                 </div>
               </div>
               {(() => {

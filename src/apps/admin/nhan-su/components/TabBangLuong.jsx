@@ -5,6 +5,7 @@ import { LUX } from '../../../../constants/lux'
 import { formatCurrency, getNowVN, todayISO } from '../../../../lib/utils'
 import { tinhLuong as calcLuong } from '../../../../lib/luong'
 import ConfirmDialog from '../../../../components/shared/ConfirmDialog'
+import StaffAvatar from '../../../../components/shared/StaffAvatar'
 import AdminSuaChamCong from './AdminSuaChamCong'
 
 const DON_GIA_TANG_CA = 25000
@@ -957,10 +958,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                     {/* NV */}
                     <td style={{ padding: '10px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '34px', height: '34px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0 }}>
-                          {nv.avatar_url ? <img src={nv.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : <div style={{ width: '100%', height: '100%', background: getAvatarColor(nv.ho_ten), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: 'white' }}>{getInitials(nv.ho_ten)}</div>}
-                        </div>
+                        <StaffAvatar nv={nv} size={34} radius={10} />
                         <div>
                           <div style={{ fontFamily: LUX.fontSerif, fontSize: '14px', fontWeight: 600, color: LUX.espresso }}>{nv.ho_ten.trim().split(' ').slice(-2).join(' ')}</div>
                           <div style={{ fontSize: '10.5px', color: LUX.ink3 }}>{nv.vi_tri === 'ktv' ? 'KTV' : nv.vi_tri === 'le_tan' ? 'Lễ Tân' : 'Tạp Vụ'}</div>
@@ -1018,10 +1016,7 @@ export default function TabBangLuong({ fixedKy = null }) {
               <button key={nv.id} onClick={() => openDetail(nv)}
                 style={{ background: LUX.surface, borderRadius: LUX.radius, padding: '14px 16px', border: `1px solid ${LUX.line}`, boxShadow: LUX.shadowSm, display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                 {/* Avatar */}
-                <div style={{ width: '48px', height: '48px', borderRadius: '14px', overflow: 'hidden', flexShrink: 0 }}>
-                  {nv.avatar_url ? <img src={nv.avatar_url} alt={nv.ho_ten} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <div style={{ width: '100%', height: '100%', background: getAvatarColor(nv.ho_ten), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: 'white', fontFamily: LUX.fontSans }}>{getInitials(nv.ho_ten)}</div>}
-                </div>
+                <StaffAvatar nv={nv} size={48} radius={14} />
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: LUX.fontSerif, fontSize: '17px', fontWeight: 600, color: LUX.espresso, marginBottom: '4px' }}>
