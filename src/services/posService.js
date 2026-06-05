@@ -852,12 +852,13 @@ export const posService = {
   },
 
   async getSellableProducts(search = '') {
-    // POS chỉ bán "Mỹ phẩm bán" (ban_khach). Mỹ phẩm tiêu hao + vật tư = nội bộ, không bán.
+    // POS bán SP có cờ "Hiển thị trên POS" (hien_tren_pos) — mặc định chỉ Mỹ phẩm bán.
+    // Muốn bán 1 SP kho tiêu hao/vật tư → bật cờ này trong Sửa SP (không cần đổi loại).
     const { data, error } = await supabase
       .from('kho_san_pham')
       .select('*')
       .eq('is_active', true)
-      .eq('loai', 'ban_khach')
+      .eq('hien_tren_pos', true)
       .gt('ton_kho', 0)
       .order('created_at', { ascending: false })
     if (error) throw error
