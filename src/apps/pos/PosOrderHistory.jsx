@@ -158,9 +158,9 @@ export default function PosOrderHistory({ onResumeOrder }) {
 
   const handleVoid = async () => {
     if (!detailOrder) return
-    // Lễ Tân chỉ được hủy đơn trong ngày hôm nay
-    if (!isAdmin && detailOrder.ngay !== todayISO()) {
-      alert('Lễ Tân chỉ được hủy đơn trong ngày hôm nay.\nĐơn cũ cần liên hệ Admin để xử lý.')
+    // Chỉ Admin được hủy/sửa/xóa đơn. Lễ Tân không có quyền (tránh mất dữ liệu).
+    if (!isAdmin) {
+      alert('Chỉ Admin được hủy đơn hàng.\nVui lòng liên hệ Admin để xử lý.')
       return
     }
     if (!confirm(`Hủy đơn ${detailOrder.ma_don}?`)) return
@@ -569,7 +569,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
                         </button>
 
                         {}
-                        {o.trang_thai !== 'huy' && (
+                        {o.trang_thai !== 'huy' && isAdmin && (
                           <button
                             onClick={(e) => { e.stopPropagation(); setDetailOrder(o); setTimeout(() => {}, 0) }}
                             title="Hủy đơn"
@@ -649,7 +649,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
           onClose={() => setDetailOrder(null)}
           onVoid={handleVoid}
           isAdmin={isAdmin}
-          canVoid={isAdmin || detailOrder.ngay === todayISO()}
+          canVoid={isAdmin}
           onEdit={(o) => { setDetailOrder(null); onResumeOrder?.(o); window.location.href = '/pos?resume=' + o.id }}
           onDeleted={() => load(currentPage)}
         />

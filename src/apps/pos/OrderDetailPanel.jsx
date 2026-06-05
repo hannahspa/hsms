@@ -461,7 +461,7 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
 
         {/* Footer hành động */}
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', flexShrink: 0, display: 'flex', gap: 8, background: '#fafaf9' }}>
-          {order.trang_thai !== 'huy' && canVoid && (
+          {order.trang_thai !== 'huy' && isAdmin && (
             <button onClick={onVoid} disabled={busy} style={{ padding: '0 14px', height: 40, border: '1px solid rgba(192,57,43,.35)', borderRadius: 8, background: 'rgba(192,57,43,.06)', color: '#C0392B', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
               Hủy đơn
             </button>
@@ -476,9 +476,9 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
               🗑 Xóa vĩnh viễn
             </button>
           )}
-          {order.trang_thai !== 'huy' && !canVoid && !isAdmin && (
+          {!isAdmin && (
             <span style={{ padding: '0 12px', height: 40, display: 'inline-flex', alignItems: 'center', fontSize: 11, color: 'var(--ink3)', fontStyle: 'italic' }}>
-              Đơn cũ · liên hệ Admin hủy
+              Chỉ Admin được hủy / sửa / xóa đơn
             </span>
           )}
           <div style={{ flex: 1 }} />
