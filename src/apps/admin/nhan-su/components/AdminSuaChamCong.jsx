@@ -45,10 +45,10 @@ function fmtDateLabel(y, m, d) {
 
 const LOAI_OPTS = [
   { value: 'di_lam', label: 'Đi làm', icon: '💼' },
-  { value: 'off_phep', label: 'OFF Phép', icon: '✅' },
-  { value: 'off_ov', label: 'OFF Vượt', icon: '❌' },
-  { value: 'off_t7', label: 'OFF T7/CN (có lý do)', icon: '📴' },
-  { value: 'off_t7x', label: 'OFF T7/CN (vi phạm)', icon: '⚠️' },
+  { value: 'off_phep', label: 'Nghỉ Có Lương', icon: '✅' },
+  { value: 'off_ov', label: 'Nghỉ Không Lương', icon: '❌' },
+  { value: 'off_t7', label: 'Nghỉ T7/CN (có lý do)', icon: '📴' },
+  { value: 'off_t7x', label: 'Nghỉ T7/CN (vi phạm)', icon: '⚠️' },
 ]
 
 // T7/CN chỉ hiện khi ngày đó thực sự là Thứ 7 / Chủ Nhật
@@ -541,7 +541,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
                       {/* Details */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', fontWeight: 600, color: statusColor, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span>{isDiLam ? ('Đi làm' + (() => { const lt = leTanCaInfo(nhanVien.vi_tri, cc.ngay, cc.gio_vao, cc.gio_ra); return lt ? ` · Ca ${lt.ca}` : '' })()) : (loaiLabel?.label || (off ? `OFF (${off.loai_off === 'off_phep' ? 'Phép' : off.loai_off === 'off_ov' ? 'Ko Lương' : 'T7/CN'})` : 'Chưa chấm công'))}</span>
+                          <span>{isDiLam ? ('Đi làm' + (() => { const lt = leTanCaInfo(nhanVien.vi_tri, cc.ngay, cc.gio_vao, cc.gio_ra); return lt ? ` · Ca ${lt.ca}` : '' })()) : (loaiLabel?.label || (off ? (off.loai_off === 'off_phep' ? 'Nghỉ Có Lương' : off.loai_off === 'off_ov' ? 'Nghỉ Không Lương' : 'Nghỉ T7/CN') : 'Chưa chấm công'))}</span>
                           {isBuNgayLe && (
                             <span style={{ fontFamily: LUX.fontSans, fontSize: '10px', fontWeight: 700, color: '#8a6a35', background: 'rgba(201,169,110,.16)', border: '1px solid rgba(201,169,110,.4)', borderRadius: 6, padding: '1px 7px' }}>
                               🎁 Bù Ngày Lễ

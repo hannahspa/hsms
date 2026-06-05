@@ -1163,27 +1163,42 @@ export default function TabBangLuong({ fixedKy = null }) {
                           _cumW += w
                         })
                         const x2 = (day) => isWeekendDay(day) ? ' ×2' : ''
+                        const _vaoMin = (t) => { if (!t) return null; const p = String(t).split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) }
+                        // Bảng màu trạng thái (đồng bộ + Hannah tone)
+                        const ST = {
+                          diLam:    { bg: '#eaf4ea', bd: '#bcdcbc', col: '#3f7a4f' },  // xanh
+                          veSom:    { bg: '#fff4e3', bd: '#f0c088', col: '#b8791f' },  // cam
+                          diTre:    { bg: '#fbe9d6', bd: '#e3b483', col: '#a8612a' },  // cam đậm
+                          coLuong:  { bg: '#f3ead6', bd: '#ddc794', col: '#9c7a2c' },  // be vàng
+                          khongLuong:{ bg: '#f8e1da', bd: '#e3a899', col: '#c0392b' }, // đỏ
+                          t7cn:     { bg: '#f0d2c8', bd: '#d89a86', col: '#a83c28' },  // đỏ đất
+                        }
                         const cellOf = (day) => {
                           const r = byDay[day]
                           if (!r) {
                             if (noShowDays.includes(day)) return phepCoLuong.has(day)
-                              ? { bg: '#f5e8d4', bd: '#e0c98a', lbl: 'Nghỉ (phép)' + x2(day), col: LUX.taupe }
-                              : { bg: '#f7e0da', bd: '#e0a99a', lbl: 'Nghỉ (vượt)' + x2(day), col: LUX.danger }
+                              ? { ...ST.coLuong, lbl: 'Nghỉ Có Lương' + x2(day) }
+                              : { ...ST.khongLuong, lbl: 'Nghỉ Không Lương' + x2(day) }
                             return { bg: '#faf7f2', bd: LUX.line, lbl: '', col: LUX.ink4 }  // hôm nay / tương lai
                           }
                           if (r.loai === 'di_lam') {
                             const lt = leTanCaInfo(selected.vi_tri, r.ngay, r.gio_vao, r.gio_ra)
                             const h = lt ? lt.heSo : (r.he_so ?? 1)
-                            return { bg: h < 1 ? '#fff7ed' : '#eef5ee', bd: h < 1 ? '#f0c088' : '#bcdcbc', lbl: 'Đi làm' + (lt ? ` · Ca ${lt.ca}` : ''), col: h < 1 ? '#b8860b' : LUX.sage, heSoEff: h }
+                            const ca = lt ? ` · Ca ${lt.ca}` : ''
+                            const vaoMin = _vaoMin(r.gio_vao)
+                            const diTre = vaoMin != null && vaoMin - (9 * 60 + 15) >= 15  // vào sau 9:30
+                            if (diTre) return { ...ST.diTre, lbl: 'Đi trễ' + ca, heSoEff: h }
+                            if (h < 0.999) return { ...ST.veSom, lbl: 'Về sớm' + ca, heSoEff: h }
+                            return { ...ST.diLam, lbl: 'Đi làm' + ca, heSoEff: h }
                           }
-                          if (r.loai === 'off_phep') return phepCoLuong.has(day) ? { bg: '#f5e8d4', bd: '#e0c98a', lbl: 'OFF phép' + x2(day), col: LUX.taupe } : { bg: '#f7e0da', bd: '#e0a99a', lbl: 'OFF vượt' + x2(day), col: LUX.danger }
-                          if (r.loai === 'off_ov') return { bg: '#f7e0da', bd: '#e0a99a', lbl: 'OFF vượt', col: LUX.danger }
-                          if (r.loai === 'off_t7' || r.loai === 'off_t7x') return { bg: '#f0d0c8', bd: '#d89a86', lbl: 'OFF T7/CN', col: LUX.danger }
+                          if (r.loai === 'off_phep') return phepCoLuong.has(day) ? { ...ST.coLuong, lbl: 'Nghỉ Có Lương' + x2(day) } : { ...ST.khongLuong, lbl: 'Nghỉ Không Lương' + x2(day) }
+                          if (r.loai === 'off_ov') return { ...ST.khongLuong, lbl: 'Nghỉ Không Lương' }
+                          if (r.loai === 'off_t7' || r.loai === 'off_t7x') return { ...ST.t7cn, lbl: 'Nghỉ T7/CN' }
                           return { bg: '#fff', bd: LUX.line, lbl: r.loai, col: LUX.ink3 }
                         }
                         const LEGEND = [
-                          { c: '#bcdcbc', l: 'Đi làm' }, { c: '#f0c088', l: 'Về sớm (HS<1)' },
-                          { c: '#e0c98a', l: 'OFF phép (có lương)' }, { c: '#e0a99a', l: 'OFF vượt' }, { c: '#d89a86', l: 'OFF T7/CN' },
+                          { c: ST.diLam.bd, l: 'Đi làm' }, { c: ST.veSom.bd, l: 'Về sớm (HS<1)' }, { c: ST.diTre.bd, l: 'Đi trễ' },
+                          { c: ST.coLuong.bd, l: 'Nghỉ Có Lương' }, { c: ST.khongLuong.bd, l: 'Nghỉ Không Lương' }, { c: ST.t7cn.bd, l: 'Nghỉ T7/CN' },
                           { c: '#c9a96e', l: '🎁 Bù Ngày Lễ' },
                         ]
                         return (
