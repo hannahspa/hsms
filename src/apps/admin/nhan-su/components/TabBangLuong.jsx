@@ -1186,7 +1186,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                             const h = lt ? lt.heSo : (r.he_so ?? 1)
                             const ca = lt ? ` · Ca ${lt.ca}` : ''
                             const vaoMin = _vaoMin(r.gio_vao)
-                            const diTre = vaoMin != null && vaoMin - (9 * 60 + 15) >= 15  // vào sau 9:30
+                            const diTre = vaoMin != null && vaoMin > (9 * 60 + 15)  // vào sau 9:15 = đi trễ
                             if (diTre) return { ...ST.diTre, lbl: 'Đi trễ' + ca, heSoEff: h }
                             if (h < 0.999) return { ...ST.veSom, lbl: 'Về sớm' + ca, heSoEff: h }
                             return { ...ST.diLam, lbl: 'Đi làm' + ca, heSoEff: h }
