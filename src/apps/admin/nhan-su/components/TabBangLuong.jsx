@@ -78,6 +78,7 @@ export default function TabBangLuong({ fixedKy = null }) {
   const [nvList,    setNvList]    = useState([])
   const [luongData, setLuongData] = useState({})
   const [ccByNv,    setCcByNv]    = useState({})   // chấm công theo NV (chi tiết ngày công check-in/out)
+  const [quyByNv,   setQuyByNv]   = useState({})   // quỹ ngày lễ theo NV (để hiện ngày Bù Ngày Lễ trên lịch)
   const [chamCongSheet, setChamCongSheet] = useState(null)  // mở editor sửa chấm công cả tháng
   const [chamCongInitDay, setChamCongInitDay] = useState(null)  // ngày click → mở thẳng form sửa ngày đó
   const [loading,   setLoading]   = useState(false)
@@ -133,6 +134,7 @@ export default function TabBangLuong({ fixedKy = null }) {
       ;(resOff.data || []).forEach(r => { if (!offByNv[r.nhan_vien_id]) offByNv[r.nhan_vien_id] = []; offByNv[r.nhan_vien_id].push(r) })
       const bangLuongMap = {}; (resBangLuong.data || []).forEach(r => { bangLuongMap[r.nhan_vien_id] = r })
       const quyOffMap    = {}; (resQuyOff.data || []).forEach(r => { quyOffMap[r.nhan_vien_id] = r })
+      setQuyByNv(quyOffMap)
 
       // ── Tổng hợp thu nhập real-time từ HSMS POS ──
       const posDataByNv = {}
@@ -1127,6 +1129,15 @@ export default function TabBangLuong({ fixedKy = null }) {
                       {(() => {
                         const rows = ccByNv[selected.id] || []
                         const gioiHan = selected.gioi_han_off_thang || 3
+                        // Ngày được BÙ bằng quỹ ngày lễ (đọc cac_ngay_bu của tháng đang xem)
+                        const buDays = new Set()
+                        const _ls = Array.isArray(quyByNv[selected.id]?.lich_su_dung) ? quyByNv[selected.id].lich_su_dung : []
+                        _ls.filter(e => Number(e.nam) === nam && Number(e.thang) === thang)
+                          .forEach(e => (Array.isArray(e.cac_ngay_bu) ? e.cac_ngay_bu : []).forEach(d => {
+                            const s = String(d).trim()
+                            const day = /^\d{4}-\d{2}-\d{2}/.test(s) ? parseInt(s.slice(8, 10), 10) : parseInt(s.split('/')[0], 10)
+                            if (day) buDays.add(day)
+                          }))
                         const byDay = {}
                         rows.forEach(r => { byDay[parseInt(String(r.ngay).slice(8, 10), 10)] = r })
                         const daysInM = new Date(nam, thang, 0).getDate()
@@ -1169,6 +1180,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                         const LEGEND = [
                           { c: '#bcdcbc', l: 'Đi làm' }, { c: '#f0c088', l: 'Về sớm (HS<1)' },
                           { c: '#e0c98a', l: 'OFF phép (có lương)' }, { c: '#e0a99a', l: 'OFF vượt' }, { c: '#d89a86', l: 'OFF T7/CN' },
+                          { c: '#c9a96e', l: '🎁 Bù Ngày Lễ' },
                         ]
                         return (
                           <>
@@ -1192,11 +1204,13 @@ export default function TabBangLuong({ fixedKy = null }) {
                                 const day = i + 1
                                 const c = cellOf(day)
                                 const r = byDay[day]
+                                const isBu = buDays.has(day)
                                 return (
-                                  <button key={day} onClick={() => { setChamCongInitDay(`${nam}-${String(thang).padStart(2, '0')}-${String(day).padStart(2, '0')}`); setChamCongSheet(selected) }} title="Bấm để sửa chấm công ngày này"
-                                    style={{ minHeight: 60, border: `1px solid ${c.bd}`, background: c.bg, borderRadius: 8, padding: '4px 5px', textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 1, fontFamily: LUX.fontSans }}>
+                                  <button key={day} onClick={() => { setChamCongInitDay(`${nam}-${String(thang).padStart(2, '0')}-${String(day).padStart(2, '0')}`); setChamCongSheet(selected) }} title={isBu ? 'Ngày được bù bằng quỹ ngày lễ' : 'Bấm để sửa chấm công ngày này'}
+                                    style={{ minHeight: 60, border: isBu ? '2px solid #c9a96e' : `1px solid ${c.bd}`, background: isBu ? '#fbf1dd' : c.bg, borderRadius: 8, padding: '4px 5px', textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 1, fontFamily: LUX.fontSans, boxShadow: isBu ? '0 0 0 1px rgba(201,169,110,.25)' : 'none' }}>
                                     <span style={{ fontSize: 11, fontWeight: 700, color: LUX.ink2 }}>{day}</span>
                                     {c.lbl && <span style={{ fontSize: 9.5, fontWeight: 700, color: c.col, lineHeight: 1.1 }}>{c.lbl}</span>}
+                                    {isBu && <span style={{ fontSize: 9, fontWeight: 800, color: '#8a6a35', lineHeight: 1.1 }}>🎁 Bù Ngày Lễ</span>}
                                     {r?.loai === 'di_lam' && r.gio_vao && <span style={{ fontSize: 8.5, color: LUX.ink3, fontFamily: LUX.fontMono }}>{String(r.gio_vao).slice(0, 5)}-{r.gio_ra ? String(r.gio_ra).slice(0, 5) : '?'}</span>}
                                     {r?.loai === 'di_lam' && (r.he_so ?? 1) < 1 && <span style={{ fontSize: 8.5, color: LUX.danger, fontWeight: 700 }}>HS {r.he_so}</span>}
                                     {(r?.tang_ca_gio || 0) > 0 && <span style={{ fontSize: 8.5, color: '#6a4a8a', fontWeight: 700 }}>TC {r.tang_ca_gio}h</span>}
