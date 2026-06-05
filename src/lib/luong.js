@@ -167,16 +167,45 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
     : (quyNgayOff?.so_dung_thang_nay || 0)
 
   // ═══════════════════════════════════════════
-  // PASS 3: Ngày không lương (số ngày bị trừ lương)
+  // PASS 3: Ngày không lương — tính theo TỪNG NGÀY OFF VƯỢT (có trọng số)
   // ═══════════════════════════════════════════
-  let ngayKhongLuong = 0
-  ngayKhongLuong += truVuotPhep                                 // vượt phép: T7/CN ×2, thường ×1
-  ngayKhongLuong += offOVList.length                            // OV ghi rõ: ×1
-  ngayKhongLuong += (offT7List.length + offT7XList.length) * 2  // T7/CN ghi rõ: ×2
+  // Trọng số vượt theo từng ngày: phần vượt hạn của phép-pool + offOV + offT7/CN.
+  const vuotByDay = {}
+  let _cum = 0
+  phepPoolDates.forEach(ds => {
+    const w = wOf(ds)
+    const paid = Math.max(0, Math.min(w, gioiHanOff - _cum))  // phần trong hạn (có lương)
+    const vuot = w - paid                                      // phần vượt (trừ)
+    if (vuot > 0) vuotByDay[ds] = (vuotByDay[ds] || 0) + vuot
+    _cum += w
+  })
+  offOVList.forEach(o => { vuotByDay[o.ngay] = (vuotByDay[o.ngay] || 0) + wOf(o.ngay) })          // OV: T7/CN ×2, thường ×1
+  ;[...offT7List, ...offT7XList].forEach(o => { vuotByDay[o.ngay] = (vuotByDay[o.ngay] || 0) + 2 }) // T7/CN ghi rõ ×2
 
-  // Quỹ ngày lễ bù 1:1 vào số ngày bị trừ
-  const soNgayLeBuOV = Math.min(soNgayLeDungThangNay, ngayKhongLuong)
-  ngayKhongLuong -= soNgayLeBuOV
+  // Ngày được BÙ bằng quỹ lễ (cac_ngay_bu của tháng) → phục hồi TRỌN ngày đó (có công),
+  // tốn quỹ = trọng số ngày đó (T7/CN tốn 2). Ngày vượt KHÔNG bù → trừ lương.
+  const buDates = new Set()
+  lichSuDungQuy.filter(x => Number(x.nam) === year && Number(x.thang) === month)
+    .forEach(x => (Array.isArray(x.cac_ngay_bu) ? x.cac_ngay_bu : []).forEach(d => {
+      const s = String(d).trim()
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) buDates.add(s.slice(0, 10))
+    }))
+
+  let ngayKhongLuong = 0
+  let soNgayLeBuOV = 0
+  const ngayDuocBu = []
+  if (buDates.size > 0) {
+    // Bù theo NGÀY cụ thể
+    Object.entries(vuotByDay).forEach(([ds, w]) => {
+      if (buDates.has(ds)) { soNgayLeBuOV += w; ngayDuocBu.push(ds) }
+      else ngayKhongLuong += w
+    })
+  } else {
+    // Fallback (chưa gắn ngày): bù theo TỔNG số quỹ dùng tháng (cơ chế cũ)
+    const totalVuot = Object.values(vuotByDay).reduce((s, w) => s + w, 0)
+    soNgayLeBuOV = Math.min(soNgayLeDungThangNay, totalVuot)
+    ngayKhongLuong = totalVuot - soNgayLeBuOV
+  }
 
   // Partial day deductions (he_so < 1) — only up to todayRef
   chamCongList.filter(r => {
@@ -271,6 +300,7 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
     soNgayLeDaDung,
     soNgayLeDungThangNay,
     soNgayLeBuOV,
+    ngayLeBuDates: ngayDuocBu,   // ngày off vượt được quỹ lễ bù (ISO) → hiển thị "có công"
 
     // Attendance
     tongTangCa: +tongTangCa.toFixed(2),

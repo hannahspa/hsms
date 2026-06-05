@@ -1174,6 +1174,8 @@ export default function TabBangLuong({ fixedKy = null }) {
                           t7cn:     { bg: '#f0d2c8', bd: '#d89a86', col: '#a83c28' },  // đỏ đất
                         }
                         const cellOf = (day) => {
+                          // Ngày được BÙ bằng quỹ lễ → phục hồi thành CÓ CÔNG (xanh)
+                          if (buDays.has(day)) return { ...ST.diLam, lbl: 'Có công (Bù Lễ)', heSoEff: 1 }
                           const r = byDay[day]
                           if (!r) {
                             if (noShowDays.includes(day)) return phepCoLuong.has(day)
