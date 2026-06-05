@@ -52,6 +52,17 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
     } catch (e) { alert('Lỗi xóa đơn: ' + e.message); setBusy(false) }
   }
 
+  // Admin: khôi phục đơn đã hủy (dựng lại thẻ/kho/doanh thu)
+  const handleRestore = async () => {
+    if (!window.confirm('Khôi phục đơn này?\nThẻ liệu trình, kho, doanh thu, hoa hồng của đơn sẽ được dựng lại như lúc chốt.')) return
+    setBusy(true)
+    try {
+      await posService.restoreOrder(order.id)
+      onClose()
+      onDeleted?.()   // reload danh sách
+    } catch (e) { alert('Lỗi khôi phục đơn: ' + e.message); setBusy(false) }
+  }
+
   const handleSaveDateTime = async () => {
     if (!dNgay) return
     setSavingDT(true)
@@ -469,6 +480,11 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
           {isAdmin && order.trang_thai !== 'huy' && order.trang_thai !== 'draft' && (
             <button onClick={handleReopen} disabled={busy} style={{ padding: '0 14px', height: 40, border: '1px solid var(--bord)', borderRadius: 8, background: 'rgba(160,113,79,.08)', color: '#8a6335', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--sans)' }}>
               ✎ Sửa đơn
+            </button>
+          )}
+          {isAdmin && order.trang_thai === 'huy' && (
+            <button onClick={handleRestore} disabled={busy} style={{ padding: '0 14px', height: 40, border: '1px solid rgba(45,122,79,.4)', borderRadius: 8, background: 'rgba(45,122,79,.08)', color: '#2D7A4F', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--sans)' }}>
+              ↺ Khôi phục đơn
             </button>
           )}
           {isAdmin && order.trang_thai === 'huy' && (

@@ -785,6 +785,15 @@ export const posService = {
     return data
   },
 
+  // Admin: khôi phục đơn đã hủy (dựng lại thẻ/kho/doanh thu). Migration 081.
+  async restoreOrder(orderId) {
+    const { data, error } = await supabase
+      .rpc('pos_restore_order', { p_don_hang_id: orderId })
+    if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Không thể khôi phục đơn')
+    return data
+  },
+
   // Admin: sửa ngày + giờ tạo của 1 đơn (đồng bộ doanh_thu theo ngày đơn).
   async updateOrderDateTime(orderId, ngay, createdAtISO) {
     const { error } = await supabase
