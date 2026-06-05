@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { formatCurrency, getNowVN, todayISO } from '../../../../lib/utils'
-import { tinhLuong as calcLuong } from '../../../../lib/luong'
+import { tinhLuong as calcLuong, leTanCaInfo } from '../../../../lib/luong'
 import ConfirmDialog from '../../../../components/shared/ConfirmDialog'
 import StaffAvatar from '../../../../components/shared/StaffAvatar'
 import AdminSuaChamCong from './AdminSuaChamCong'
@@ -1171,7 +1171,11 @@ export default function TabBangLuong({ fixedKy = null }) {
                               : { bg: '#f7e0da', bd: '#e0a99a', lbl: 'Nghỉ (vượt)' + x2(day), col: LUX.danger }
                             return { bg: '#faf7f2', bd: LUX.line, lbl: '', col: LUX.ink4 }  // hôm nay / tương lai
                           }
-                          if (r.loai === 'di_lam') { const h = r.he_so ?? 1; return { bg: h < 1 ? '#fff7ed' : '#eef5ee', bd: h < 1 ? '#f0c088' : '#bcdcbc', lbl: 'Đi làm', col: h < 1 ? '#b8860b' : LUX.sage } }
+                          if (r.loai === 'di_lam') {
+                            const lt = leTanCaInfo(selected.vi_tri, r.ngay, r.gio_vao, r.gio_ra)
+                            const h = lt ? lt.heSo : (r.he_so ?? 1)
+                            return { bg: h < 1 ? '#fff7ed' : '#eef5ee', bd: h < 1 ? '#f0c088' : '#bcdcbc', lbl: 'Đi làm' + (lt ? ` · Ca ${lt.ca}` : ''), col: h < 1 ? '#b8860b' : LUX.sage, heSoEff: h }
+                          }
                           if (r.loai === 'off_phep') return phepCoLuong.has(day) ? { bg: '#f5e8d4', bd: '#e0c98a', lbl: 'OFF phép' + x2(day), col: LUX.taupe } : { bg: '#f7e0da', bd: '#e0a99a', lbl: 'OFF vượt' + x2(day), col: LUX.danger }
                           if (r.loai === 'off_ov') return { bg: '#f7e0da', bd: '#e0a99a', lbl: 'OFF vượt', col: LUX.danger }
                           if (r.loai === 'off_t7' || r.loai === 'off_t7x') return { bg: '#f0d0c8', bd: '#d89a86', lbl: 'OFF T7/CN', col: LUX.danger }
@@ -1212,7 +1216,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                                     {c.lbl && <span style={{ fontSize: 9.5, fontWeight: 700, color: c.col, lineHeight: 1.1 }}>{c.lbl}</span>}
                                     {isBu && <span style={{ fontSize: 9, fontWeight: 800, color: '#8a6a35', lineHeight: 1.1 }}>🎁 Bù Ngày Lễ</span>}
                                     {r?.loai === 'di_lam' && r.gio_vao && <span style={{ fontSize: 8.5, color: LUX.ink3, fontFamily: LUX.fontMono }}>{String(r.gio_vao).slice(0, 5)}-{r.gio_ra ? String(r.gio_ra).slice(0, 5) : '?'}</span>}
-                                    {r?.loai === 'di_lam' && (r.he_so ?? 1) < 1 && <span style={{ fontSize: 8.5, color: LUX.danger, fontWeight: 700 }}>HS {r.he_so}</span>}
+                                    {r?.loai === 'di_lam' && (c.heSoEff ?? r.he_so ?? 1) < 1 && <span style={{ fontSize: 8.5, color: LUX.danger, fontWeight: 700 }}>HS {c.heSoEff ?? r.he_so}</span>}
                                     {(r?.tang_ca_gio || 0) > 0 && <span style={{ fontSize: 8.5, color: '#6a4a8a', fontWeight: 700 }}>TC {r.tang_ca_gio}h</span>}
                                   </button>
                                 )

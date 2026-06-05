@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { LUX } from '../../constants/lux'
 import { getNowVN } from '../../lib/utils'
-import { tinhLuong } from '../../lib/luong'
+import { tinhLuong, leTanCaInfo } from '../../lib/luong'
 import './styles.css'
 
 const CA_VAO_CHUAN = { h: 9, m: 15 }
@@ -122,7 +122,10 @@ export default function CheckinLich({ nhanVien, onBack }) {
       label: '', subLabel: 'Làm', border: '1px solid #FDE68A', isMuted: false,
     }
 
-    const heSo = cc.he_so ?? 0
+    // Lễ Tân ngày thường: dùng hệ số theo mốc 18:00 + nhãn Ca A/Ca B
+    const lt = leTanCaInfo(nhanVien.vi_tri, cc.ngay, cc.gio_vao, cc.gio_ra)
+    const caLbl = lt ? `Ca ${lt.ca}` : ''
+    const heSo = lt ? lt.heSo : (cc.he_so ?? 0)
     const pct = Math.round(heSo * 100)
     const vaoPhut = cc.gio_vao ? toPhut(cc.gio_vao.slice(0, 5)) : 0
     const chuanVao = CA_VAO_CHUAN.h * 60 + CA_VAO_CHUAN.m
@@ -130,11 +133,11 @@ export default function CheckinLich({ nhanVien, onBack }) {
 
     if (pct >= 100 && treLate === 0) return {
       bg: 'rgba(122,138,106,0.15)', textColor: LUX.sage, numColor: LUX.sage,
-      label: 'OK', subLabel: '', border: `1px solid rgba(122,138,106,0.3)`, isMuted: false,
+      label: caLbl || 'OK', subLabel: '', border: `1px solid rgba(122,138,106,0.3)`, isMuted: false,
     }
     if (pct >= 100) return {
       bg: '#FDF6EE', textColor: LUX.taupe, numColor: LUX.taupe,
-      label: 'OK', subLabel: treLate > 0 ? `+${treLate}p` : '',
+      label: caLbl || 'OK', subLabel: treLate > 0 ? `+${treLate}p` : '',
       border: `1px solid ${LUX.champagne}40`, isMuted: false,
     }
     if (pct >= 50) return {

@@ -58,6 +58,29 @@ export function isWeekend(dateStr) {
   return getDayOfWeek(dateStr) === 0 || getDayOfWeek(dateStr) === 6
 }
 
+// ─── CA LÀM LỄ TÂN (quy tắc riêng) ──────────────────────────────────────────
+// Lễ Tân có 2 ca thay phiên NGÀY THƯỜNG (T2–T6):
+//   • Ca A: được về 18:00 — VẪN full công (mốc 100% = 9:15→18:00).
+//   • Ca B: làm tới 20:00.
+//   • Về < 19:30 → Ca A ; ≥ 19:30 → Ca B.
+//   • Về sớm hơn 18:00 → hệ số theo tỉ lệ thời gian làm trong khung 9:15→18:00.
+// T7/CN: KHÔNG áp dụng (cả 2 ca làm tới 20:00 — dùng quy tắc chung như KTV).
+const _toMin = (t) => { if (!t) return null; const p = String(t).split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0) }
+const LT_VAO = 9 * 60 + 15      // 09:15
+const LT_FULL = 18 * 60         // 18:00 = mốc full công Lễ Tân ngày thường
+const LT_WINDOW = LT_FULL - LT_VAO  // 525 phút = 100%
+const LT_CA_MOC = 19 * 60 + 30  // 19:30 ranh giới Ca A/Ca B
+
+export function leTanCaInfo(viTri, ngay, gioVao, gioRa) {
+  if (viTri !== 'le_tan' || !gioRa || !ngay) return null
+  if (isWeekend(ngay)) return null   // T7/CN → quy tắc chung
+  const ra  = _toMin(gioRa)
+  const vao = Math.max(_toMin(gioVao) ?? LT_VAO, LT_VAO)
+  const worked = Math.max(0, Math.min(ra, LT_FULL) - vao)
+  const heSo = Math.min(1, worked / LT_WINDOW)
+  return { ca: ra < LT_CA_MOC ? 'A' : 'B', heSo: +heSo.toFixed(2) }
+}
+
 /**
  * Tinh toan luong cho 1 nhan vien trong 1 thang
  *
@@ -165,7 +188,10 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
     }
     return true
   }).forEach(r => {
-    ngayKhongLuong += (1 - (r.he_so ?? 1))
+    // Lễ Tân ngày thường: dùng hệ số theo mốc 18:00 (Ca A về 18:00 = full công)
+    const ltCa = leTanCaInfo(nv.vi_tri, r.ngay, r.gio_vao, r.gio_ra)
+    const heSoEff = ltCa ? ltCa.heSo : (r.he_so ?? 1)
+    ngayKhongLuong += (1 - heSoEff)
   })
 
   // ═══════════════════════════════════════════

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { getNowVN } from '../../../../lib/utils'
+import { leTanCaInfo } from '../../../../lib/luong'
 import ConfirmDialog from '../../../../components/shared/ConfirmDialog'
 
 const CA_VAO_CHUAN = { h: 9, m: 15 }
@@ -540,7 +541,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
                       {/* Details */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: LUX.fontSans, fontSize: '12px', fontWeight: 600, color: statusColor, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span>{isDiLam ? 'Đi làm' : (loaiLabel?.label || (off ? `OFF (${off.loai_off === 'off_phep' ? 'Phép' : off.loai_off === 'off_ov' ? 'Ko Lương' : 'T7/CN'})` : 'Chưa chấm công'))}</span>
+                          <span>{isDiLam ? ('Đi làm' + (() => { const lt = leTanCaInfo(nhanVien.vi_tri, cc.ngay, cc.gio_vao, cc.gio_ra); return lt ? ` · Ca ${lt.ca}` : '' })()) : (loaiLabel?.label || (off ? `OFF (${off.loai_off === 'off_phep' ? 'Phép' : off.loai_off === 'off_ov' ? 'Ko Lương' : 'T7/CN'})` : 'Chưa chấm công'))}</span>
                           {isBuNgayLe && (
                             <span style={{ fontFamily: LUX.fontSans, fontSize: '10px', fontWeight: 700, color: '#8a6a35', background: 'rgba(201,169,110,.16)', border: '1px solid rgba(201,169,110,.4)', borderRadius: 6, padding: '1px 7px' }}>
                               🎁 Bù Ngày Lễ
