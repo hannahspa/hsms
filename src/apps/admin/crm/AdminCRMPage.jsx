@@ -243,6 +243,7 @@ function AdminCRMDetailPage({ customerId }) {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('info')
   const [expandedOrderId, setExpandedOrderId] = useState(null)
+  const [prepaidHistory, setPrepaidHistory] = useState([])
 
   useEffect(() => {
     let cancelled = false
@@ -251,6 +252,9 @@ function AdminCRMDetailPage({ customerId }) {
       .then(data => { if (!cancelled) setSnapshot(data) })
       .catch(() => { if (!cancelled) setSnapshot(null) })
       .finally(() => { if (!cancelled) setLoading(false) })
+    posService.getPrepaidHistory(customerId, 100)
+      .then(rows => { if (!cancelled) setPrepaidHistory(rows || []) })
+      .catch(() => { if (!cancelled) setPrepaidHistory([]) })
     return () => { cancelled = true }
   }, [customerId])
 
@@ -316,6 +320,7 @@ function AdminCRMDetailPage({ customerId }) {
   const tabs = [
     { k: 'info', l: 'Thông Tin', icon: I.User },
     { k: 'debt', l: 'Công Nợ', icon: I.Receipt, n: snapshot.debtBalance > 0 ? 1 : 0 },
+    { k: 'prepaid', l: 'Ví Trả Trước', icon: I.Wallet, n: (customer.so_du_tra_truoc || 0) > 0 ? 1 : 0 },
     { k: 'appointment', l: 'Đặt Hẹn', icon: I.Calendar },
     { k: 'service', l: 'Dịch Vụ Đã Sử Dụng', icon: I.Box, n: orderGroups.length },
     { k: 'cards', l: 'Thẻ Dịch Vụ', icon: I.CreditCard, n: cards.length },
@@ -414,6 +419,7 @@ function AdminCRMDetailPage({ customerId }) {
                   ['Da liễu / nhu cầu', customer.ghi_chu_da_lieu || '—'],
                   ['Thẻ đang dùng', `${activeCards.length} thẻ`],
                   ['Công nợ', formatCurrency(snapshot.debtBalance || 0)],
+                  ['Số dư trả trước', formatCurrency(customer.so_du_tra_truoc || 0)],
                 ].map(([label, value]) => (
                   <div key={label} style={{ background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px' }}>
                     <div style={{ fontSize: 11, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>{label}</div>
@@ -440,6 +446,52 @@ function AdminCRMDetailPage({ customerId }) {
               )) : <CRMEmpty>Khách hàng không còn công nợ.</CRMEmpty>}
             </div>
           )}
+
+          {activeTab === 'prepaid' && (() => {
+            const PRE_META = {
+              nap:        { label: 'Nạp tiền',    sign: '+', color: 'var(--thu)' },
+              su_dung:    { label: 'Dùng thanh toán', sign: '−', color: 'var(--danger)' },
+              hoan:       { label: 'Hoàn lại',    sign: '+', color: 'var(--thu)' },
+              dieu_chinh: { label: 'Điều chỉnh',  sign: '',  color: 'var(--ink2)' },
+            }
+            const soDu = customer.so_du_tra_truoc || 0
+            return (
+              <div>
+                <h2 style={{ margin: '0 0 16px', fontFamily: 'var(--serif)', color: 'var(--ink)' }}>Ví trả trước</h2>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 200, background: 'rgba(201,169,110,.10)', border: '1px solid rgba(201,169,110,.32)', borderRadius: 'var(--r)', padding: '14px 18px' }}>
+                    <div style={{ fontSize: 11, color: '#8a6a35', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6, fontWeight: 600 }}>Số dư khả dụng</div>
+                    <div style={{ fontFamily: 'var(--serif)', fontSize: 30, fontWeight: 700, color: '#8a6a35', lineHeight: 1 }}>{formatCurrency(soDu)}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--ink)', marginBottom: 10 }}>
+                  Lịch sử giao dịch{prepaidHistory.length ? ` (${prepaidHistory.length})` : ''}
+                </div>
+                {prepaidHistory.length ? (
+                  <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 130px 130px', gap: 10, padding: '9px 14px', background: 'var(--bg)', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--ink3)', fontWeight: 700 }}>
+                      <div>Ngày</div><div>Loại / Ghi chú</div><div style={{ textAlign: 'right' }}>Số tiền</div><div style={{ textAlign: 'right' }}>Số dư sau</div>
+                    </div>
+                    {prepaidHistory.map(h => {
+                      const m = PRE_META[h.loai] || { label: h.loai, sign: '', color: 'var(--ink2)' }
+                      return (
+                        <div key={h.id} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 130px 130px', gap: 10, padding: '11px 14px', borderTop: '1px solid var(--line)', fontSize: 12.5, alignItems: 'center' }}>
+                          <div style={{ color: 'var(--ink3)' }}>{fmtDate(h.ngay)}</div>
+                          <div>
+                            <span style={{ fontWeight: 700, color: m.color }}>{m.label}</span>
+                            {h.hinh_thuc && <span style={{ fontSize: 11, color: 'var(--ink3)' }}> · {h.hinh_thuc === 'tien_mat' ? 'Tiền mặt' : h.hinh_thuc === 'chuyen_khoan' ? 'CK' : h.hinh_thuc === 'quet_the' ? 'Quẹt thẻ' : h.hinh_thuc}</span>}
+                            {h.ghi_chu && <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 2 }}>{h.ghi_chu}</div>}
+                          </div>
+                          <div style={{ textAlign: 'right', fontWeight: 800, color: m.color }}>{m.sign}{formatCurrency(h.so_tien || 0)}</div>
+                          <div style={{ textAlign: 'right', fontWeight: 700, color: 'var(--ink2)' }}>{formatCurrency(h.so_du_sau || 0)}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : <CRMEmpty>Khách hàng chưa có giao dịch ví trả trước.</CRMEmpty>}
+              </div>
+            )
+          })()}
 
           {activeTab === 'appointment' && (
             <CRMEmpty>Tab Đặt Hẹn đã đúng vị trí như MySpa. Bước sau mình sẽ nối dữ liệu lịch hẹn/booking của HSMS vào đây.</CRMEmpty>
