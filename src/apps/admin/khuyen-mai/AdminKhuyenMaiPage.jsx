@@ -309,10 +309,144 @@ function KMRow({ km, dichVuMap, onEdit, onDelete, onToggle }) {
   )
 }
 
+// ── Máy Tính Khuyến Mãi (lời/lỗ + biên đóng góp) ───────────────────────────────
+// % tiêu hao ước lượng theo nhóm (anh Nam chỉnh được). Spa dịch vụ biến phí thấp.
+const TIEU_HAO_GOI_Y = [
+  { k: 5,  l: 'Gội đầu / chăm sóc tóc (~5%)' },
+  { k: 8,  l: 'Triệt lông / Body / Massage (~8%)' },
+  { k: 10, l: 'Bio·Elight / công nghệ cao (~10%)' },
+  { k: 12, l: 'Tắm trắng / dưỡng trắng (~12%)' },
+  { k: 15, l: 'Chăm sóc da mặt (~15%)' },
+]
+function MayTinhKM({ dichVuList }) {
+  const [dichVuId, setDichVuId] = useState('')
+  const [giaGoc, setGiaGoc]     = useState('')
+  const [kieu, setKieu]         = useState('percent')   // 'percent' | 'tang'
+  const [pctGiam, setPctGiam]   = useState(40)
+  const [muaX, setMuaX]         = useState(10)
+  const [tangY, setTangY]       = useState(3)
+  const [pctTieuHao, setPctTieuHao] = useState(10)
+
+  const dv = dichVuList.find(d => d.id === dichVuId)
+  const hhPct = Number(dv?.ti_le_hoa_hong) || 0
+  const G = Number(giaGoc) || 0
+
+  const handleDV = (id) => {
+    setDichVuId(id)
+    const d = dichVuList.find(x => x.id === id)
+    if (d?.gia_co_ban) setGiaGoc(d.gia_co_ban)
+  }
+
+  // Tính toán
+  const giamThuc = kieu === 'percent'
+    ? (Number(pctGiam) || 0) / 100
+    : (Number(tangY) || 0) / ((Number(muaX) || 0) + (Number(tangY) || 0) || 1)
+  const giaThucThu = G * (1 - giamThuc)                       // mỗi buổi
+  const bienPhi    = G * (hhPct + (Number(pctTieuHao) || 0)) / 100  // mỗi buổi
+  const bienDongGop = giaThucThu - bienPhi
+  const pctLai = giaThucThu > 0 ? (bienDongGop / giaThucThu) * 100 : 0
+  const soBuoi = kieu === 'tang' ? (Number(muaX) || 0) + (Number(tangY) || 0) : 1
+  const tienKhachTra = kieu === 'tang' ? G * (Number(muaX) || 0) : giaThucThu
+  const laiThe = bienDongGop * soBuoi
+
+  const verdict = !G ? null
+    : bienDongGop <= 0 ? { t: '🔴 LỖ — giá sau giảm thấp hơn vốn', c: '#C0392B', bg: '#FDECEA' }
+    : pctLai >= 45 ? { t: '🟢 LỜI TỐT — biên rộng, làm được', c: '#2D7A4F', bg: '#EAF4EA' }
+    : pctLai >= 20 ? { t: '🟡 LỜI MỎNG — cân nhắc số lượng để bù định phí', c: '#B8791F', bg: '#FFF4E3' }
+    : { t: '🟠 LỜI RẤT MỎNG — chỉ nên dùng để kéo khách mới', c: '#A8612A', bg: '#FBE9D6' }
+
+  const lbl = { fontSize: 12, fontWeight: 700, color: COLORS.textSub, marginBottom: 6, display: 'block' }
+  const inp = { width: '100%', padding: '10px 14px', border: `1px solid ${COLORS.border}`, borderRadius: 10, fontSize: 14, background: COLORS.bg, color: COLORS.text, outline: 'none', boxSizing: 'border-box' }
+  const Row = ({ k, v, big, color }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '8px 0', borderBottom: `1px solid ${COLORS.border}` }}>
+      <span style={{ fontSize: big ? 14 : 13, color: COLORS.textSub, fontWeight: big ? 800 : 600 }}>{k}</span>
+      <span style={{ fontSize: big ? 18 : 14, fontWeight: 800, color: color || COLORS.text }}>{v}</span>
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
+      {/* INPUT */}
+      <div style={{ background: 'white', borderRadius: 16, border: `1px solid ${COLORS.border}`, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: COLORS.text }}>⚙️ Thiết lập chương trình</div>
+        <div>
+          <label style={lbl}>DỊCH VỤ</label>
+          <select style={inp} value={dichVuId} onChange={e => handleDV(e.target.value)}>
+            <option value="">— Chọn dịch vụ (tự lấy giá + hoa hồng) —</option>
+            {dichVuList.map(d => <option key={d.id} value={d.id}>{d.ten} ({fmt(d.gia_co_ban)})</option>)}
+          </select>
+          {dv && <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 4 }}>Hoa hồng KTV dịch vụ này: {hhPct.toFixed(1)}%</div>}
+        </div>
+        <div>
+          <label style={lbl}>GIÁ GỐC / BUỔI (đ)</label>
+          <input style={inp} type="number" value={giaGoc} onChange={e => setGiaGoc(e.target.value)} placeholder="VD: 700000" />
+        </div>
+        <div>
+          <label style={lbl}>KIỂU KHUYẾN MÃI</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[['percent', '% Giảm giá'], ['tang', 'Mua X tặng Y']].map(([k, l]) => (
+              <button key={k} onClick={() => setKieu(k)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: kieu === k ? 'none' : `1px solid ${COLORS.border}`, background: kieu === k ? COLORS.grad : COLORS.bg, color: kieu === k ? 'white' : COLORS.textSub, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{l}</button>
+            ))}
+          </div>
+        </div>
+        {kieu === 'percent' ? (
+          <div>
+            <label style={lbl}>GIẢM (%)</label>
+            <input style={inp} type="number" value={pctGiam} onChange={e => setPctGiam(e.target.value)} />
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><label style={lbl}>MUA (X buổi)</label><input style={inp} type="number" value={muaX} onChange={e => setMuaX(e.target.value)} /></div>
+            <div><label style={lbl}>TẶNG (Y buổi)</label><input style={inp} type="number" value={tangY} onChange={e => setTangY(e.target.value)} /></div>
+          </div>
+        )}
+        <div>
+          <label style={lbl}>% TIÊU HAO ƯỚC LƯỢNG</label>
+          <select style={inp} value={pctTieuHao} onChange={e => setPctTieuHao(e.target.value)}>
+            {TIEU_HAO_GOI_Y.map(t => <option key={t.k} value={t.k}>{t.l}</option>)}
+          </select>
+          <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 4 }}>Biến phí = hoa hồng KTV + tiêu hao (trên giá gốc). Điều chỉnh khi có data thật.</div>
+        </div>
+      </div>
+
+      {/* KẾT QUẢ */}
+      <div style={{ background: 'white', borderRadius: 16, border: `1px solid ${COLORS.border}`, padding: 20 }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: COLORS.text, marginBottom: 10 }}>📊 Kết quả cân đối</div>
+        {!G ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: COLORS.textMute, fontSize: 13 }}>Chọn dịch vụ / nhập giá gốc để tính</div>
+        ) : (
+          <>
+            <Row k="Giảm thực tế" v={`${(giamThuc * 100).toFixed(1)}%`} color="#C0392B" />
+            <Row k="Giá thực thu / buổi" v={fmt(Math.round(giaThucThu))} />
+            <Row k="Biến phí / buổi (HH + tiêu hao)" v={fmt(Math.round(bienPhi))} color="#B8791F" />
+            <Row k="Biên đóng góp / buổi" v={fmt(Math.round(bienDongGop))} color={bienDongGop > 0 ? '#2D7A4F' : '#C0392B'} big />
+            <Row k="% Lãi biên / buổi" v={`${pctLai.toFixed(1)}%`} color={pctLai > 0 ? '#2D7A4F' : '#C0392B'} big />
+            {kieu === 'tang' && (
+              <>
+                <Row k={`Khách trả (${muaX} buổi)`} v={fmt(Math.round(tienKhachTra))} />
+                <Row k={`Lãi cả thẻ (${soBuoi} buổi)`} v={fmt(Math.round(laiThe))} color={laiThe > 0 ? '#2D7A4F' : '#C0392B'} big />
+              </>
+            )}
+            {verdict && (
+              <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: verdict.bg, color: verdict.c, fontWeight: 800, fontSize: 13.5, textAlign: 'center' }}>
+                {verdict.t}
+              </div>
+            )}
+            <div style={{ marginTop: 10, fontSize: 11, color: COLORS.textMute, lineHeight: 1.5 }}>
+              * Biên đóng góp = phần "góp" để nuôi định phí (nhà/điện/lương cứng). Lãi ròng cuối tháng = tổng biên đóng góp − định phí. KM biên rộng → cần đủ lượt khách để có lãi ròng.
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 const KM_PATH_TAB = {
-  '/admin/khuyen-mai':      'list',
-  '/admin/khuyen-mai/roi':  'roi',
+  '/admin/khuyen-mai':         'list',
+  '/admin/khuyen-mai/may-tinh':'calc',
+  '/admin/khuyen-mai/roi':     'roi',
 }
 
 export default function AdminKhuyenMaiPage() {
@@ -340,7 +474,7 @@ export default function AdminKhuyenMaiPage() {
   useEffect(() => {
     load()
     supabase.from('dich_vu')
-      .select('id, ten, gia_co_ban, nhom_hien_thi')
+      .select('id, ten, gia_co_ban, nhom_hien_thi, ti_le_hoa_hong, danh_muc')
       .eq('is_active', true)
       .order('nhom_hien_thi')
       .order('ten')
@@ -392,6 +526,7 @@ export default function AdminKhuyenMaiPage() {
         <div className="acts">
           <div className="subtabs">
             <div className={`st${tab === 'list' ? ' active' : ''}`} onClick={() => setTab('list')}>Danh Sách</div>
+            <div className={`st${tab === 'calc' ? ' active' : ''}`} onClick={() => setTab('calc')}>🧮 Máy Tính KM</div>
             <div className={`st${tab === 'roi' ? ' active' : ''}`} onClick={() => setTab('roi')}>Phân Tích ROI</div>
           </div>
           <button className="btn gold" onClick={handleCreate}>
@@ -419,6 +554,9 @@ export default function AdminKhuyenMaiPage() {
           <div className="v" style={{ color: 'var(--ink3)' }}>{stats.expired}</div>
         </div>
       </div>
+
+      {/* Máy tính KM */}
+      {tab === 'calc' && <MayTinhKM dichVuList={dichVuList} />}
 
       {/* ROI Tab */}
       {tab === 'roi' && <ROITab list={list} />}
