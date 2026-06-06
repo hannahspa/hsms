@@ -912,12 +912,16 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
   const sp = products.find(p => p.id === f.san_pham_id)
   const loaiGD = LOAI_GD[f.loai]
 
-  // Tồn sau giao dịch (preview)
+  // Quy đổi: chỉ áp dụng khi NHẬP KHO + SP có đơn vị nhập lớn (vd 1 hộp = 10 miếng)
+  const qd = (f.loai === 'nhap_kho' && Number(sp?.quy_doi) > 1 && sp?.don_vi_nhap) ? Number(sp.quy_doi) : 1
+  const dvInput = qd > 1 ? sp.don_vi_nhap : (sp?.don_vi || '')
+
+  // Tồn sau giao dịch (preview) — quy ra đơn vị cơ sở
   let tonSau = null
   if (sp && f.so_luong) {
     const sl = +f.so_luong
     if (f.loai === 'dieu_chinh') tonSau = sl
-    else tonSau = Math.max(0, Number(sp.ton_kho) + loaiGD.sign * sl)
+    else tonSau = Math.max(0, Number(sp.ton_kho) + loaiGD.sign * sl * qd)
   }
 
   const tongTien = (sp && f.so_luong && f.gia_don_vi)
@@ -962,25 +966,30 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
     // so_luong lưu DB:
     // - dieu_chinh: lưu |delta| (để thỏa CHECK > 0)
     // - các loại khác: lưu sl bình thường
+    // Quy đổi ra đơn vị cơ sở (nhập theo đơn vị lớn → nhân quy_doi)
+    const slCoSo = sl * qd
     const soLuongDB = f.loai === 'dieu_chinh'
       ? Math.max(0.001, Math.abs(sl - Number(sp.ton_kho)))
-      : sl
+      : slCoSo
 
     const { error: e1 } = await supabase.from('kho_giao_dich').insert({
       san_pham_id: f.san_pham_id, loai: f.loai, so_luong: soLuongDB,
-      gia_don_vi: +f.gia_don_vi || 0,
+      gia_don_vi: Math.round((+f.gia_don_vi || 0) / qd),   // đơn giá / đơn vị cơ sở
       ghi_chu: ghiChuFinal,
       ngay: f.ngay, nguoi_thuc_hien: userId || null,
       nhan_vien_nhan_id: (f.loai === 'xuat_su_dung' && nguoiNhanId) ? nguoiNhanId : null,
     })
     if (e1) { setSaving(false); return setErr(e1.message) }
 
-    // Cập nhật tồn kho
+    // Cập nhật tồn kho (đơn vị cơ sở)
     const tonMoi = f.loai === 'dieu_chinh'
       ? sl
-      : Number(sp.ton_kho) + loaiGD.sign * sl
+      : Number(sp.ton_kho) + loaiGD.sign * slCoSo
+    const updSP = { ton_kho: Math.max(0, tonMoi) }
+    // Nhập kho → cập nhật luôn giá nhập/đơn vị cơ sở mới nhất (cho giá trị tồn chính xác)
+    if (f.loai === 'nhap_kho' && +f.gia_don_vi) updSP.gia_nhap = Math.round((+f.gia_don_vi || 0) / qd)
     const { error: e2 } = await supabase.from('kho_san_pham')
-      .update({ ton_kho: Math.max(0, tonMoi) }).eq('id', f.san_pham_id)
+      .update(updSP).eq('id', f.san_pham_id)
     if (e2) { setSaving(false); return setErr(e2.message) }
 
     // Auto tạo chi_phi khi nhập kho
@@ -991,7 +1000,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
           ngay: f.ngay, danh_muc_id: dm.id,
           so_tien: tongTien,
           hinh_thuc_thanh_toan: f.hinh_thuc,
-          dien_giai: `Nhập kho: ${sp.ten} (${sl} ${sp.don_vi} × ${fmt(+f.gia_don_vi)})`,
+          dien_giai: `Nhập kho: ${sp.ten} (${sl} ${dvInput} × ${fmt(+f.gia_don_vi)}${qd > 1 ? ` = ${slCoSo} ${sp.don_vi}` : ''})`,
           nguoi_nhap: userId || null,
         })
       }
@@ -1040,7 +1049,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
             <select style={inp} value={f.san_pham_id} onChange={e => {
               set('san_pham_id', e.target.value)
               const p = products.find(x => x.id === e.target.value)
-              if (p?.gia_nhap && f.loai === 'nhap_kho') set('gia_don_vi', p.gia_nhap)
+              if (p?.gia_nhap && f.loai === 'nhap_kho') set('gia_don_vi', Math.round(p.gia_nhap * (p.quy_doi || 1)))
             }}>
               <option value="">— Chọn sản phẩm —</option>
               {Object.entries(LOAI_SP).map(([loai, lv]) => (
@@ -1059,10 +1068,15 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
               <label style={lbl}>
-                {f.loai === 'dieu_chinh' ? 'TỒN KHO THỰC TẾ' : 'SỐ LƯỢNG'} {sp ? `(${sp.don_vi})` : ''}  *
+                {f.loai === 'dieu_chinh' ? 'TỒN KHO THỰC TẾ' : 'SỐ LƯỢNG'} {sp ? `(${dvInput})` : ''}  *
               </label>
               <input style={inp} type="number" step="0.1" min="0"
                 value={f.so_luong} onChange={e => set('so_luong', e.target.value)} />
+              {qd > 1 && f.so_luong > 0 && (
+                <div style={{ fontSize: '11px', color: '#2D7A4F', marginTop: '3px', fontWeight: 700 }}>
+                  = {+f.so_luong * qd} {sp.don_vi} (1 {dvInput} = {qd} {sp.don_vi})
+                </div>
+              )}
               {f.loai === 'dieu_chinh' && sp && (
                 <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '3px' }}>
                   Hiện DB: {fmtSL(sp.ton_kho, sp.don_vi)}
@@ -1070,9 +1084,14 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
               )}
             </div>
             <div>
-              <label style={lbl}>ĐƠN GIÁ (đ)</label>
+              <label style={lbl}>ĐƠN GIÁ {qd > 1 ? `(/${dvInput})` : '(đ)'}</label>
               <input style={inp} type="number" value={f.gia_don_vi}
                 onChange={e => set('gia_don_vi', e.target.value)} placeholder="0" />
+              {qd > 1 && +f.gia_don_vi > 0 && (
+                <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '3px' }}>
+                  ≈ {fmt(Math.round(+f.gia_don_vi / qd))}/{sp.don_vi}
+                </div>
+              )}
             </div>
           </div>
 
