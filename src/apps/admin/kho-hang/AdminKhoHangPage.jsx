@@ -44,6 +44,18 @@ function fmtSL(n, dv) {
   const num = Number(n)
   return (Number.isInteger(num) ? num : +num.toFixed(2)) + ' ' + (dv || '')
 }
+// Tồn theo đơn vị cơ sở + quy đổi ≈ đơn vị nhập (vd "650 gram ≈ 0,93 túi")
+function fmtTonQD(p) {
+  const base = fmtSL(p.ton_kho, p.don_vi)
+  const qd = Number(p.quy_doi) || 1
+  if (qd > 1 && p.don_vi_nhap) {
+    const lon = Number(p.ton_kho) / qd
+    return `${base} ≈ ${Number.isInteger(lon) ? lon : +lon.toFixed(2)} ${p.don_vi_nhap}`
+  }
+  return base
+}
+// Đơn giá theo đơn vị cơ sở (gia_nhap đã lưu = giá / đơn vị cơ sở)
+function donGiaCoSo(p) { return Number(p?.gia_nhap) || 0 }
 function todayISO() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
     .toISOString().slice(0, 10)
@@ -167,7 +179,7 @@ function KiemKhoModal({ products, userId, onSave, onClose, showToast }) {
                   {p.ten}
                 </div>
                 <div style={{ fontSize: '11px', color: COLORS.textMute }}>
-                  Hệ thống: <strong style={{ color: COLORS.primary }}>{fmtSL(p.ton_kho, p.don_vi)}</strong>
+                  Hệ thống: <strong style={{ color: COLORS.primary }}>{fmtTonQD(p)}</strong>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -223,9 +235,9 @@ function TabTongQuan({ products, transactions, onNavigate, onKiemKho }) {
   const active = products.filter(p => p.is_active)
   const sapHet  = active.filter(p => Number(p.ton_kho) <= Number(p.canh_bao_ton) && Number(p.canh_bao_ton) > 0)
   const hetHang = active.filter(p => Number(p.ton_kho) <= 0)
+  // Giá trị kho = toàn bộ SP (tồn cơ sở × giá nhập/đơn vị cơ sở) → tổng tiền quy đổi trong kho
   const giaTriKho = active
-    .filter(p => p.loai !== 'ban_khach')
-    .reduce((s, p) => s + Number(p.ton_kho) * Number(p.gia_nhap || 0), 0)
+    .reduce((s, p) => s + Number(p.ton_kho) * donGiaCoSo(p), 0)
   const spMap = Object.fromEntries(products.map(p => [p.id, p]))
   const recent = [...transactions]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -345,8 +357,10 @@ function FormSanPham({ initial, products, onSave, onClose }) {
     danh_muc: initial?.danh_muc || '',
     don_vi: DON_VI_LIST.includes(initial?.don_vi) ? (initial?.don_vi || 'cái') : '__custom',
     don_vi_custom: DON_VI_LIST.includes(initial?.don_vi) ? '' : (initial?.don_vi || ''),
+    don_vi_nhap: initial?.don_vi_nhap || '',
+    quy_doi: initial?.quy_doi || 1,
     mo_ta: initial?.mo_ta || '',
-    gia_nhap: initial?.gia_nhap || '',
+    gia_nhap: initial?.gia_nhap ? Math.round(initial.gia_nhap * (initial?.quy_doi || 1)) : '',  // hiển thị theo đơn vị nhập
     gia_ban: initial?.gia_ban || '',
     gia_uu_dai: initial?.gia_uu_dai || '',
     gia_uu_dai_ecommerce: initial?.gia_uu_dai_ecommerce || '',
@@ -369,10 +383,12 @@ function FormSanPham({ initial, products, onSave, onClose }) {
     const dv = f.don_vi === '__custom' ? f.don_vi_custom.trim() : f.don_vi
     if (!dv) return setErr('Chọn đơn vị tính')
     setSaving(true); setErr('')
+    const qd = +f.quy_doi || 1
+    const giaNhapCoSo = Math.round((+f.gia_nhap || 0) / qd)  // giá / 1 đơn vị cơ sở
     const payload = {
       ten: f.ten.trim(), loai: f.loai, don_vi: dv,
       mo_ta: f.mo_ta.trim(),
-      gia_nhap: +f.gia_nhap || 0, gia_ban: +f.gia_ban || 0,
+      gia_nhap: giaNhapCoSo, gia_ban: +f.gia_ban || 0,
       canh_bao_ton: +f.canh_bao_ton || 0,
       co_the_chiet: f.co_the_chiet,
       san_pham_chiet_id: f.co_the_chiet && f.san_pham_chiet_id ? f.san_pham_chiet_id : null,
@@ -385,6 +401,8 @@ function FormSanPham({ initial, products, onSave, onClose }) {
       barcode: f.barcode.trim() || null,
       nhan_hieu: f.nhan_hieu.trim() || null,
       danh_muc: f.danh_muc.trim() || null,
+      don_vi_nhap: f.don_vi_nhap.trim() || null,
+      quy_doi: +f.quy_doi || 1,
       gia_uu_dai: +f.gia_uu_dai || 0,
       gia_uu_dai_ecommerce: +f.gia_uu_dai_ecommerce || 0,
       hien_tren_pos: !!f.hien_tren_pos,
@@ -504,11 +522,36 @@ function FormSanPham({ initial, products, onSave, onClose }) {
                   value={f.don_vi_custom} onChange={e => set('don_vi_custom', e.target.value)} />
               )}
             </div>
+            <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '4px' }}>
+              Đơn vị nhỏ nhất để theo dõi tồn + xuất (gram, miếng, ml...)
+            </div>
+          </div>
+
+          {/* Quy đổi đơn vị nhập → đơn vị cơ sở */}
+          <div style={{ background: '#FDF8F1', borderRadius: '12px', padding: '14px', border: `1px solid ${COLORS.border}` }}>
+            <div style={{ fontWeight: '800', fontSize: '13px', color: COLORS.primary, marginBottom: '8px' }}>
+              📦 Đơn vị mua vào (quy đổi)
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label style={lbl}>ĐƠN VỊ NHẬP</label>
+                <input style={inp} value={f.don_vi_nhap} onChange={e => set('don_vi_nhap', e.target.value)}
+                  placeholder="VD: túi, hộp, chai..." />
+              </div>
+              <div>
+                <label style={lbl}>1 {f.don_vi_nhap || 'đv nhập'} = ? {f.don_vi === '__custom' ? (f.don_vi_custom || 'đv') : f.don_vi}</label>
+                <input style={inp} type="number" step="0.01" min="1" value={f.quy_doi}
+                  onChange={e => set('quy_doi', e.target.value)} placeholder="1" />
+              </div>
+            </div>
+            <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '6px' }}>
+              VD: 1 túi = 700 gram → nhập "túi" và 700. Để trống/để 1 nếu không quy đổi.
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
-              <label style={lbl}>GIÁ NHẬP (đ)</label>
+              <label style={lbl}>GIÁ NHẬP {Number(f.quy_doi) > 1 && f.don_vi_nhap ? `(/${f.don_vi_nhap})` : '(đ)'}</label>
               <input style={inp} type="number" value={f.gia_nhap}
                 onChange={e => set('gia_nhap', e.target.value)} placeholder="0" />
             </div>
