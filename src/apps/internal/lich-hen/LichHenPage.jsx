@@ -115,6 +115,27 @@ export default function LichHenPage({ user }) {
   const visSlots = SLOTS.filter(m => m >= visStartMin)
   const timelineH = visSlots.length * ROW_H
 
+  const ktvMap = Object.fromEntries(ktvList.map(k => [k.id, k.ho_ten]))
+  // Xếp tất cả lịch hẹn vào 1 timeline chung; trùng giờ → xếp ngang (lane theo cụm chồng giờ)
+  const dayItems = henList.filter(h => h.trang_thai !== 'huy')
+    .map(h => ({ h, start: gioToMin(h.gio_hen), end: gioToMin(h.gio_hen) + (h.thoi_luong_phut || 60) }))
+    .sort((a, b) => a.start - b.start || a.end - b.end)
+  { let i = 0
+    while (i < dayItems.length) {
+      let j = i, clusterEnd = dayItems[i].end
+      while (j + 1 < dayItems.length && dayItems[j + 1].start < clusterEnd) { j++; clusterEnd = Math.max(clusterEnd, dayItems[j].end) }
+      const grp = dayItems.slice(i, j + 1)
+      const laneEnds = []
+      grp.forEach(it => {
+        let lane = laneEnds.findIndex(e => e <= it.start)
+        if (lane === -1) { lane = laneEnds.length; laneEnds.push(it.end) } else laneEnds[lane] = it.end
+        it.lane = lane
+      })
+      grp.forEach(it => { it.laneCount = laneEnds.length })
+      i = j + 1
+    }
+  }
+
   return (
     <div style={{ padding: '20px 24px 40px', fontFamily: 'var(--sans)' }}>
       {toast && (
@@ -166,25 +187,12 @@ export default function LichHenPage({ user }) {
           onGoDay={(d) => { setNgayXem(d); setViewMode('day') }} />
       )}
 
-      {/* ── VIEW NGÀY (timeline cột KTV) ── */}
+      {/* ── VIEW NGÀY (1 timeline chung — lịch hẹn xếp theo giờ, trùng giờ xếp ngang) ── */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: 50, color: C.ink3 }}>Đang tải...</div>
-      ) : viewMode !== 'day' ? null : columns.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 48, color: C.ink3, background: C.card, borderRadius: 12, border: `1px solid ${C.line}` }}>Chưa có KTV đang làm việc</div>
-      ) : (
+      ) : viewMode !== 'day' ? null : (
         <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.line}`, boxShadow: C.shadow, overflow: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `64px repeat(${columns.length}, minmax(150px, 1fr))`, minWidth: 64 + columns.length * 150 }}>
-            {/* Header hàng KTV */}
-            <div style={{ position: 'sticky', top: 0, zIndex: 3, background: C.bg, borderBottom: `1px solid ${C.line2}`, borderRight: `1px solid ${C.line}` }} />
-            {columns.map(col => (
-              <div key={col.id || 'none'} style={{ position: 'sticky', top: 0, zIndex: 3, background: C.bg, borderBottom: `1px solid ${C.line2}`, borderRight: `1px solid ${C.line}`, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                {col.vi_tri === 'none'
-                  ? <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>?</div>
-                  : <Avatar nv={col} size={30} />}
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortName(col.ho_ten)}</div>
-              </div>
-            ))}
-
+          <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr', minWidth: 480 }}>
             {/* Cột giờ */}
             <div style={{ position: 'relative', borderRight: `1px solid ${C.line}`, height: timelineH }}>
               {visSlots.map((m, i) => (
@@ -194,55 +202,54 @@ export default function LichHenPage({ user }) {
               ))}
             </div>
 
-            {/* Cột mỗi KTV */}
-            {columns.map(col => {
-              const items = henByCol(col.id)
-              return (
-                <div key={col.id || 'none'} style={{ position: 'relative', borderRight: `1px solid ${C.line}`, height: timelineH }}>
-                  {/* Lưới slot + click để đặt lịch (slot quá khứ bị khoá) */}
-                  {visSlots.map((m, i) => {
-                    const past = isPastSlot(m)
-                    return (
-                      <div key={m}
-                        onClick={past ? undefined : () => setModal({ prefill: true, gio_hen: `${String(Math.floor(m / 60)).padStart(2, '0')}:${m % 60 === 0 ? '00' : '30'}`, nhan_vien_id: col.id, ngay_hen: ngayXem })}
-                        style={{ position: 'absolute', top: i * ROW_H, left: 0, right: 0, height: ROW_H, borderBottom: `1px solid ${m % 60 === 0 ? C.line : 'rgba(160,113,79,0.06)'}`, cursor: past ? 'not-allowed' : 'pointer', background: past ? 'rgba(160,113,79,0.05)' : 'transparent' }}
-                        title={past ? 'Đã qua giờ — không đặt được' : 'Bấm để đặt lịch'} />
-                    )
-                  })}
-                  {/* Block lịch hẹn */}
-                  {items.map(h => {
-                    const top = (gioToMin(h.gio_hen) - visStartMin) / SLOT_MIN * ROW_H
-                    const height = Math.max(ROW_H - 2, (h.thoi_luong_phut || 60) / SLOT_MIN * ROW_H - 2)
-                    const cfg = TRANG_THAI[h.trang_thai] || TRANG_THAI.cho_xac_nhan
-                    const done = h.trang_thai === 'da_xong'
-                    const busy = creatingId === h.id
-                    return (
-                      <div key={h.id}
-                        style={{ position: 'absolute', top: top + 1, left: 3, right: 3, height, background: cfg.bg, borderLeft: `3px solid ${cfg.bar}`, borderRadius: 6, padding: '4px 7px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(139,94,60,0.12)', display: 'flex', flexDirection: 'column' }}
-                        title={`${h.gio_hen} ${h.ten_khach} — ${h.ten_dich_vu || ''}${h.ghi_chu ? `\n📝 ${h.ghi_chu}` : ''}`}>
-                        <div onClick={e => { e.stopPropagation(); setModal(h) }} style={{ cursor: 'pointer' }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: cfg.color, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(h.gio_hen || '').slice(0, 5)} · {h.ten_khach}</span>
-                            {Array.isArray(h.dich_vu_list) && h.dich_vu_list.length > 0 && <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 800, background: '#8a6a35', color: '#fff', borderRadius: 999, padding: '1px 5px' }}>+{h.dich_vu_list.length} DV</span>}
-                          </div>
-                          {h.ten_dich_vu && height > ROW_H && <div style={{ fontSize: 10, color: C.ink2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.ten_dich_vu}{Array.isArray(h.dich_vu_list) && h.dich_vu_list.length > 0 ? ` +${h.dich_vu_list.map(x => x.ten_dich_vu).filter(Boolean).join(', ')}` : ''}</div>}
-                          {h.ghi_chu && height > ROW_H && <div style={{ fontSize: 9.5, color: '#9a6a2f', marginTop: 1, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📝 {h.ghi_chu}</div>}
-                        </div>
-                        {done ? (
-                          height > ROW_H && <div style={{ marginTop: 'auto', fontSize: 9.5, fontWeight: 800, color: '#1a4f96' }}>✓ Đã đến · đã tạo đơn</div>
-                        ) : height > ROW_H * 1.5 && (
-                          <div style={{ display: 'flex', gap: 3, marginTop: 'auto', flexWrap: 'wrap' }}>
-                            <button onClick={e => { e.stopPropagation(); handleCreateOrder(h) }} disabled={busy} style={{ ...miniBtn('#2D7A4F'), opacity: busy ? 0.6 : 1 }}>{busy ? '...' : '✓ Khách đến'}</button>
-                            <button onClick={e => { e.stopPropagation(); setModal(h) }} style={miniBtn('#8a6a35')}>Đổi lịch</button>
-                            <button onClick={e => { e.stopPropagation(); if (confirm('Khách huỷ lịch hẹn này?')) handleStatus(h.id, 'huy') }} style={miniBtn('#d8654f')}>Huỷ</button>
-                          </div>
-                        )}
+            {/* Vùng lịch hẹn chung */}
+            <div style={{ position: 'relative', height: timelineH }}>
+              {/* Lưới slot + click để đặt lịch (slot quá khứ bị khoá) */}
+              {visSlots.map((m, i) => {
+                const past = isPastSlot(m)
+                return (
+                  <div key={m}
+                    onClick={past ? undefined : () => setModal({ prefill: true, gio_hen: `${String(Math.floor(m / 60)).padStart(2, '0')}:${m % 60 === 0 ? '00' : '30'}`, nhan_vien_id: null, ngay_hen: ngayXem })}
+                    style={{ position: 'absolute', top: i * ROW_H, left: 0, right: 0, height: ROW_H, borderBottom: `1px solid ${m % 60 === 0 ? C.line : 'rgba(160,113,79,0.06)'}`, cursor: past ? 'not-allowed' : 'pointer', background: past ? 'rgba(160,113,79,0.05)' : 'transparent' }}
+                    title={past ? 'Đã qua giờ — không đặt được' : 'Bấm để đặt lịch'} />
+                )
+              })}
+              {/* Block lịch hẹn — xếp ngang khi trùng giờ */}
+              {dayItems.map(({ h, start, lane, laneCount }) => {
+                const top = (start - visStartMin) / SLOT_MIN * ROW_H
+                const height = Math.max(ROW_H - 2, (h.thoi_luong_phut || 60) / SLOT_MIN * ROW_H - 2)
+                const cfg = TRANG_THAI[h.trang_thai] || TRANG_THAI.cho_xac_nhan
+                const done = h.trang_thai === 'da_xong'
+                const busy = creatingId === h.id
+                const w = 100 / laneCount
+                const ktvTen = h.nhan_vien_id ? ktvMap[h.nhan_vien_id] : null
+                return (
+                  <div key={h.id}
+                    style={{ position: 'absolute', top: top + 1, left: `calc(${lane * w}% + 3px)`, width: `calc(${w}% - 6px)`, height, background: cfg.bg, borderLeft: `3px solid ${cfg.bar}`, borderRadius: 6, padding: '4px 7px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(139,94,60,0.12)', display: 'flex', flexDirection: 'column' }}
+                    title={`${h.gio_hen} ${h.ten_khach}${ktvTen ? ` (KTV: ${ktvTen})` : ' (KTV bất kỳ)'} — ${h.ten_dich_vu || ''}${h.ghi_chu ? `\n📝 ${h.ghi_chu}` : ''}`}>
+                    <div onClick={e => { e.stopPropagation(); setModal(h) }} style={{ cursor: 'pointer' }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: cfg.color, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(h.gio_hen || '').slice(0, 5)} · {h.ten_khach}</span>
+                        {Array.isArray(h.dich_vu_list) && h.dich_vu_list.length > 0 && <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 800, background: '#8a6a35', color: '#fff', borderRadius: 999, padding: '1px 5px' }}>+{h.dich_vu_list.length} DV</span>}
                       </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
+                      {height > ROW_H && <div style={{ fontSize: 10, color: C.ink2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {h.ten_dich_vu || 'Dịch vụ'}<span style={{ color: ktvTen ? '#8a6a35' : C.ink4, fontWeight: 700 }}> · {ktvTen ? `@${shortName(ktvTen)}` : 'KTV bất kỳ'}</span>
+                      </div>}
+                      {h.ghi_chu && height > ROW_H && <div style={{ fontSize: 9.5, color: '#9a6a2f', marginTop: 1, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📝 {h.ghi_chu}</div>}
+                    </div>
+                    {done ? (
+                      height > ROW_H && <div style={{ marginTop: 'auto', fontSize: 9.5, fontWeight: 800, color: '#1a4f96' }}>✓ Đã đến · đã tạo đơn</div>
+                    ) : height > ROW_H * 1.5 && (
+                      <div style={{ display: 'flex', gap: 3, marginTop: 'auto', flexWrap: 'wrap' }}>
+                        <button onClick={e => { e.stopPropagation(); handleCreateOrder(h) }} disabled={busy} style={{ ...miniBtn('#2D7A4F'), opacity: busy ? 0.6 : 1 }}>{busy ? '...' : '✓ Khách đến'}</button>
+                        <button onClick={e => { e.stopPropagation(); setModal(h) }} style={miniBtn('#8a6a35')}>Đổi lịch</button>
+                        <button onClick={e => { e.stopPropagation(); if (confirm('Khách huỷ lịch hẹn này?')) handleStatus(h.id, 'huy') }} style={miniBtn('#d8654f')}>Huỷ</button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
