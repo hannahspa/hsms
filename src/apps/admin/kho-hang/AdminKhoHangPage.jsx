@@ -61,6 +61,30 @@ function todayISO() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
     .toISOString().slice(0, 10)
 }
+// Ảnh thu nhỏ — bấm vào để phóng to (lightbox)
+function ZoomImg({ src, size = 42, radius = 9, alt = '' }) {
+  const [open, setOpen] = useState(false)
+  if (!src) return null
+  return (
+    <>
+      <img src={src} alt={alt} loading="lazy"
+        onClick={(e) => { e.stopPropagation(); setOpen(true) }}
+        style={{ width: size, height: size, borderRadius: radius, objectFit: 'cover',
+          flexShrink: 0, border: `1px solid ${COLORS.border}`, cursor: 'zoom-in' }} />
+      {open && createPortal((
+        <div onClick={() => setOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, cursor: 'zoom-out' }}>
+          <img src={src} alt={alt}
+            style={{ maxWidth: '92vw', maxHeight: '92vh', borderRadius: 12, boxShadow: '0 12px 60px rgba(0,0,0,0.55)' }} />
+          <button onClick={() => setOpen(false)}
+            style={{ position: 'absolute', top: 20, right: 24, width: 40, height: 40, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', fontSize: 18, cursor: 'pointer' }}>✕</button>
+        </div>
+      ), document.body)}
+    </>
+  )
+}
 // Gợi ý DANH MỤC từ tên sản phẩm (suy đoán theo từ khóa phổ biến ngành spa)
 const _DM_RULES = [
   ['Sữa rửa mặt', ['rửa mặt', 'cleansing foam', 'wash powder', 'enzyme wash', 'srm', 'facial wash']],
@@ -549,7 +573,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
             <label style={lbl}>ẢNH SẢN PHẨM</label>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               {f.anh_url ? (
-                <img src={f.anh_url} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', border: `1px solid ${COLORS.border}` }} />
+                <ZoomImg src={f.anh_url} size={64} radius={10} alt={f.ten} />
               ) : (
                 <div style={{ width: 64, height: 64, borderRadius: 10, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: COLORS.textMute }}>📷</div>
               )}
@@ -846,7 +870,7 @@ function TabSanPham({ products, onReload, showToast }) {
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px',
                     borderBottom: `1px solid ${COLORS.border}`, cursor: 'pointer', transition: 'background .12s' }}>
                   {p.anh_url ? (
-                    <img src={p.anh_url} alt="" loading="lazy" style={{ width: 42, height: 42, borderRadius: 9, objectFit: 'cover', flexShrink: 0, border: `1px solid ${COLORS.border}` }} />
+                    <ZoomImg src={p.anh_url} size={42} radius={9} alt={p.ten} />
                   ) : (
                     <div style={{ width: 42, height: 42, borderRadius: 9, background: loai.bg, color: loai.color,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{loai.icon}</div>
@@ -1100,7 +1124,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
               <label style={lbl}>ẢNH SẢN PHẨM {(anhSP || sp.anh_url) ? '' : '(chưa có — chụp/chọn để thêm)'}</label>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 {(anhSP || sp.anh_url) ? (
-                  <img src={anhSP || sp.anh_url} alt="" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: `1px solid ${COLORS.border}` }} />
+                  <ZoomImg src={anhSP || sp.anh_url} size={56} radius={8} alt={sp.ten} />
                 ) : (
                   <div style={{ width: 56, height: 56, borderRadius: 8, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: COLORS.textMute }}>📷</div>
                 )}
