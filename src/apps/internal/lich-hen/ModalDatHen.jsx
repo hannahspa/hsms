@@ -161,17 +161,23 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
 
   const handleSave = async () => {
     if (!form.ten_khach.trim()) return alert('Vui lòng nhập tên khách')
+    // Bắt buộc ít nhất 1 dịch vụ (tránh để trống)
+    const coDichVu = (form.ten_dich_vu || '').trim() || form.dich_vu_id || form.the_lieu_trinh_id
+      || dvThem.some(r => r.dich_vu_id || (r.ten_dich_vu || '').trim())
+    if (!coDichVu) return alert('⚠️ Vui lòng chọn ít nhất 1 DỊCH VỤ khách cần làm')
     setSaving(true)
     try {
+      const dvThemSaved = dvThem.filter(r => r.dich_vu_id || (r.ten_dich_vu || '').trim())
+      const tongThoiLuong = (+form.thoi_luong_phut || 60) + dvThemSaved.reduce((s, r) => s + (+r.thoi_luong || 0), 0)
       const payload = {
         ten_khach: form.ten_khach.trim(), sdt_khach: form.sdt_khach?.trim() || null,
         khach_hang_id: form.khach_hang_id || null,
         dich_vu_id: form.dich_vu_id || null, ten_dich_vu: form.ten_dich_vu?.trim() || null,
         the_lieu_trinh_id: form.the_lieu_trinh_id || null,
         nhan_vien_id: form.nhan_vien_id || null,
-        thoi_luong_phut: form.thoi_luong_phut || 60, ngay_hen: form.ngay_hen, gio_hen: form.gio_hen,
+        thoi_luong_phut: tongThoiLuong, ngay_hen: form.ngay_hen, gio_hen: form.gio_hen,
         ghi_chu: form.ghi_chu?.trim() || null, nguoi_nhap: user?.email || user?.ho_ten || 'Lễ Tân',
-        dich_vu_list: dvThem.filter(r => r.dich_vu_id || (r.ten_dich_vu || '').trim()),
+        dich_vu_list: dvThemSaved,
       }
       if (initial?.id) await supabase.from('lich_hen').update(payload).eq('id', initial.id)
       else { payload.trang_thai = 'cho_xac_nhan'; await supabase.from('lich_hen').insert(payload) }
@@ -328,7 +334,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
               ? <div style={{ fontSize: 11.5, color: C.ink3, fontStyle: 'italic' }}>Khách yêu cầu nhiều dịch vụ / nhiều KTV thì bấm "+ Thêm dịch vụ".</div>
               : dvThem.map((r, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr auto', gap: 8, marginBottom: 7, alignItems: 'center' }}>
-                  <select value={r.dich_vu_id || ''} onChange={e => { const dv = dichVuList.find(d => d.id === e.target.value); updDvThem(i, { dich_vu_id: e.target.value || null, ten_dich_vu: dv?.ten || '' }) }} style={{ ...INP, height: 36 }}>
+                  <select value={r.dich_vu_id || ''} onChange={e => { const dv = dichVuList.find(d => d.id === e.target.value); updDvThem(i, { dich_vu_id: e.target.value || null, ten_dich_vu: dv?.ten || '', thoi_luong: dv?.thoi_gian_phut || 60 }) }} style={{ ...INP, height: 36 }}>
                     <option value="">— Chọn dịch vụ —</option>
                     {dichVuList.map(d => <option key={d.id} value={d.id}>{d.ten}</option>)}
                   </select>
@@ -354,10 +360,21 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
                   : gioOptions.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
-            <div><div style={LBL}>Thời Lượng</div>
-              <select value={form.thoi_luong_phut} onChange={e => set('thoi_luong_phut', +e.target.value)} style={INP}>{[30, 45, 60, 90, 120, 150, 180].map(m => <option key={m} value={m}>{m} phút</option>)}</select>
+            <div><div style={LBL}>Thời Lượng (DV chính)</div>
+              <select value={form.thoi_luong_phut} onChange={e => set('thoi_luong_phut', +e.target.value)} style={INP}>{[15, 30, 45, 60, 90, 120, 150, 180].map(m => <option key={m} value={m}>{m} phút</option>)}</select>
             </div>
           </div>
+          {(() => {
+            const tong = (+form.thoi_luong_phut || 60) + dvThem.reduce((s, r) => s + (+r.thoi_luong || 0), 0)
+            const gioRa = (() => { const [h, m] = (form.gio_hen || '10:00').split(':').map(Number); const t = h * 60 + m + tong; return `${String(Math.floor(t / 60) % 24).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}` })()
+            return (
+              <div style={{ background: '#FBF7F2', border: `1px solid ${C.line}`, borderRadius: 9, padding: '9px 13px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                <span style={{ fontWeight: 800, color: C.espresso }}>⏱ Tổng thời gian khách ở spa: {tong >= 60 ? `${Math.floor(tong / 60)}h${tong % 60 ? tong % 60 + "'" : ''}` : `${tong}'`}</span>
+                <span style={{ color: C.ink3 }}>({form.gio_hen} → ~{gioRa})</span>
+                {dvThem.length > 0 && <span style={{ color: C.ink4, fontSize: 11.5 }}>· gồm {dvThem.length + 1} dịch vụ</span>}
+              </div>
+            )
+          })()}
 
           <div><div style={LBL}>Ghi Chú</div>
             <textarea value={form.ghi_chu || ''} onChange={e => set('ghi_chu', e.target.value)} placeholder="Yêu cầu đặc biệt, da liễu cần lưu ý..." style={{ ...INP, height: 60, paddingTop: 8, resize: 'vertical' }} />

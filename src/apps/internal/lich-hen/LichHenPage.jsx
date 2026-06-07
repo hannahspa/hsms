@@ -271,6 +271,26 @@ export default function LichHenPage({ user }) {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 50, color: C.ink3 }}>Đang tải...</div>
       ) : viewMode !== 'day' ? null : (
+        <>
+        {/* Cảnh báo sức chứa: số KTV đi làm vs cao điểm khách cùng lúc */}
+        {(() => {
+          const soKtv = workingKtv.length
+          const peak = globalMaxLane
+          const full = soKtv > 0 && peak >= soKtv
+          const near = soKtv > 0 && peak === soKtv - 1
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12, padding: '10px 14px', borderRadius: 10,
+              background: full ? '#FDECEA' : near ? '#FFF6E6' : '#EAF4EC', border: `1px solid ${full ? '#F5C6C0' : near ? '#F0D9A8' : '#BCDCBC'}` }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: C.espresso }}>👥 {soKtv} KTV đi làm hôm nay</span>
+              <span style={{ fontSize: 13, color: C.ink2 }}>· Cao điểm: <b>{peak}</b> khách cùng lúc</span>
+              {full
+                ? <span style={{ fontSize: 12.5, fontWeight: 800, color: '#C0392B' }}>⚠️ CÓ KHUNG GIỜ KÍN LỊCH — cân nhắc kỹ khi nhận thêm khách</span>
+                : near
+                  ? <span style={{ fontSize: 12.5, fontWeight: 700, color: '#B8791F' }}>⚡ Gần kín — còn rất ít chỗ ở khung cao điểm</span>
+                  : <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2D7A4F' }}>✓ Còn nhận thêm được khách</span>}
+            </div>
+          )
+        })()}
         <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.line}`, boxShadow: C.shadow, overflow: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: `64px ${apptColW}`, minWidth: 480 }}>
             {/* Cột giờ */}
@@ -345,6 +365,7 @@ export default function LichHenPage({ user }) {
             </div>
           </div>
         </div>
+        </>
       )}
 
       {modal && (
