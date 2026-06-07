@@ -26,6 +26,8 @@ export default function LichHenPage({ user }) {
   const [toast, setToast] = useState(null)
   const [offIds, setOffIds] = useState([])   // KTV nghỉ/off trong ngày đang xem
   const [creatingId, setCreatingId] = useState(null)  // lịch hẹn đang tạo đơn
+  const [listSearch, setListSearch] = useState('')
+  const [listStatus, setListStatus] = useState('all')
 
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 2800) }
 
@@ -39,8 +41,9 @@ export default function LichHenPage({ user }) {
     let q = supabase.from('lich_hen').select('*')
     if (viewMode === 'day') q = q.eq('ngay_hen', ngayXem)
     else if (viewMode === 'week') { const w = weekDaysOf(ngayXem); q = q.gte('ngay_hen', w[0]).lte('ngay_hen', w[6]) }
+    else if (viewMode === 'list') { q = q.gte('ngay_hen', todayISO()).lte('ngay_hen', addDaysISO(todayISO(), 60)) }
     else { const [y, m] = ngayXem.split('-').map(Number); const last = daysInMonth(y, m); q = q.gte('ngay_hen', `${y}-${String(m).padStart(2, '0')}-01`).lte('ngay_hen', `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`) }
-    const { data, error } = await q.order('gio_hen')
+    const { data, error } = await q.order('ngay_hen').order('gio_hen')
     if (error) showToast('Lỗi tải dữ liệu', 'error')
     setHenList(data || [])
     setLoading(false)
@@ -192,6 +195,77 @@ export default function LichHenPage({ user }) {
         <MonthView matrix={monthMatrixOf(ngayXem)} curMonth={monthOf(ngayXem)} henList={henList}
           onGoDay={(d) => { setNgayXem(d); setViewMode('day') }} />
       )}
+
+      {/* ── VIEW DANH SÁCH (bảng — lọc/tìm, xem nhiều ngày sắp tới) ── */}
+      {!loading && viewMode === 'list' && (() => {
+        const rows = henList.filter(h => {
+          if (listStatus === 'all' ? h.trang_thai === 'huy' : h.trang_thai !== listStatus) return false
+          if (listSearch) { const q = listSearch.toLowerCase(); if (!`${h.ten_khach || ''} ${h.sdt_khach || ''}`.toLowerCase().includes(q)) return false }
+          return true
+        })
+        return (
+          <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input value={listSearch} onChange={e => setListSearch(e.target.value)} placeholder="🔍 Tìm khách / SĐT..."
+                style={{ flex: '0 0 240px', padding: '9px 14px', borderRadius: 9, border: `1px solid ${C.line}`, fontSize: 13, background: C.card, color: C.ink, outline: 'none' }} />
+              {[['all', 'Sắp tới'], ['cho_xac_nhan', 'Chờ XN'], ['da_xac_nhan', 'Đã XN'], ['da_xong', 'Hoàn thành'], ['huy', 'Đã hủy']].map(([k, l]) => (
+                <button key={k} onClick={() => setListStatus(k)}
+                  style={{ padding: '7px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
+                    background: listStatus === k ? C.espresso : C.card, color: listStatus === k ? '#f3e6d2' : C.ink2, boxShadow: C.shadow }}>{l}</button>
+              ))}
+              <div style={{ flex: 1 }} />
+              <span style={{ fontSize: 13, color: C.ink3, fontWeight: 600 }}>{rows.length} lịch</span>
+            </div>
+            <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.line}`, boxShadow: C.shadow, overflow: 'auto' }}>
+              {rows.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 40, color: C.ink3 }}>Không có lịch hẹn</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+                  <thead><tr style={{ background: C.bg }}>
+                    {['Ngày', 'Giờ', 'Khách hàng', 'Dịch vụ', 'KTV', 'Trạng thái', ''].map((h, i) => (
+                      <th key={h} style={{ padding: '10px 12px', textAlign: i >= 6 ? 'right' : 'left', fontSize: 11, color: C.ink3, textTransform: 'uppercase', letterSpacing: '.03em', borderBottom: `1px solid ${C.line2}`, whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {rows.map(h => {
+                      const ktvNv = h.nhan_vien_id ? ktvList.find(k => k.id === h.nhan_vien_id) : null
+                      const cfg = TRANG_THAI[h.trang_thai] || TRANG_THAI.cho_xac_nhan
+                      const busy = creatingId === h.id
+                      return (
+                        <tr key={h.id} style={{ borderBottom: `1px solid ${C.line}`, cursor: 'pointer' }}
+                          onClick={() => setModal(h)}
+                          onMouseEnter={e => e.currentTarget.style.background = C.bg}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <td style={{ padding: '10px 12px', fontSize: 12.5, color: C.ink2, whiteSpace: 'nowrap' }}>{h.ngay_hen === todayISO() ? <b style={{ color: C.primary }}>Hôm nay</b> : fmtDate(h.ngay_hen)}</td>
+                          <td style={{ padding: '10px 12px', fontSize: 13, fontWeight: 800, color: C.ink, whiteSpace: 'nowrap' }}>{(h.gio_hen || '').slice(0, 5)}</td>
+                          <td style={{ padding: '10px 12px', minWidth: 150 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{h.ten_khach}</div>
+                            {h.sdt_khach && <div style={{ fontSize: 11.5, color: C.ink3 }}>{h.sdt_khach}</div>}
+                          </td>
+                          <td style={{ padding: '10px 12px', fontSize: 12.5, color: C.ink2, minWidth: 140 }}>{h.ten_dich_vu || '—'}{Array.isArray(h.dich_vu_list) && h.dich_vu_list.length > 0 ? ` +${h.dich_vu_list.length}` : ''}</td>
+                          <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              {ktvNv ? <Avatar nv={ktvNv} size={20} /> : <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#e8ddc9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#8a6a35' }}>?</span>}
+                              <span style={{ fontSize: 12.5, fontWeight: 700, color: ktvNv ? '#5B2C6F' : C.ink4 }}>{ktvNv ? twoWords(ktvNv.ho_ten) : 'Bất kỳ'}</span>
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}><span style={{ background: cfg.bg, color: cfg.color, padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{cfg.label}</span></td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                            {h.trang_thai !== 'da_xong' && h.trang_thai !== 'huy' && (
+                              <button onClick={() => handleCreateOrder(h)} disabled={busy}
+                                style={{ padding: '6px 11px', borderRadius: 7, border: 'none', background: '#2D7A4F', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? '...' : '✓ Khách đến'}</button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── VIEW NGÀY (1 timeline chung — lịch hẹn xếp theo giờ, trùng giờ xếp ngang) ── */}
       {loading ? (
