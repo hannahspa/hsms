@@ -8,6 +8,14 @@ import { COLORS } from '../../../constants/colors'
 const DON_VI_LIST = ['cái', 'chai', 'lọ', 'hộp', 'gói', 'thùng', 'túi', 'cuộn',
                      'lít', 'ml', 'kg', 'g', 'đôi', 'bộ', 'tờ', 'miếng']
 
+// Danh mục sản phẩm CỐ ĐỊNH (mô hình Hannah Spa) — nhân viên chọn, không gõ tự do
+const DANH_MUC_LIST = [
+  'Sữa rửa mặt', 'Toner', 'Serum / Tinh chất', 'Kem dưỡng', 'Kem mắt',
+  'Mặt nạ', 'Tẩy trang', 'Tẩy tế bào chết', 'Chống nắng',
+  'Dầu gội', 'Dầu xả', 'Ủ / Hấp tóc', 'Dầu massage', 'Muối / Sữa tắm',
+  'Thực phẩm chức năng', 'Vật tư y tế', 'Mỹ phẩm khác',
+]
+
 const LOAI_SP = {
   tieu_hao:  { label: 'Mỹ Phẩm Tiêu Hao', icon: '🧴', color: '#2D7A4F',  bg: '#E8F5E9' },
   ban_khach: { label: 'Sản Phẩm Bán Khách', icon: '🛍️', color: '#A0714F',  bg: '#FDF3E9' },
@@ -702,9 +710,12 @@ function FormSanPham({ initial, products, onSave, onClose }) {
             </div>
             <div>
               <label style={lbl}>DANH MỤC</label>
-              <input style={inp} value={f.danh_muc} onChange={e => set('danh_muc', e.target.value)}
-                placeholder="VD: Mỹ phẩm bán khách" />
-              {suyDanhMuc(f.ten) && suyDanhMuc(f.ten) !== f.danh_muc.trim() && (
+              <select style={inp} value={f.danh_muc} onChange={e => set('danh_muc', e.target.value)}>
+                <option value="">— Chọn danh mục —</option>
+                {DANH_MUC_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                {f.danh_muc && !DANH_MUC_LIST.includes(f.danh_muc) && <option value={f.danh_muc}>{f.danh_muc} (cũ)</option>}
+              </select>
+              {suyDanhMuc(f.ten) && suyDanhMuc(f.ten) !== f.danh_muc && (
                 <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 4 }}>
                   Gợi ý: <button type="button" onClick={() => set('danh_muc', suyDanhMuc(f.ten))}
                     style={{ background: '#FDF8F1', border: `1px solid ${COLORS.border}`, color: COLORS.primary,
