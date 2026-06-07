@@ -497,7 +497,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
       anh_url: f.anh_url || null,
       gia_uu_dai: +f.gia_uu_dai || 0,
       gia_uu_dai_ecommerce: +f.gia_uu_dai_ecommerce || 0,
-      hien_tren_pos: !!f.hien_tren_pos,
+      hien_tren_pos: f.loai === 'ban_khach' ? true : !!f.hien_tren_pos,
       hoa_hong_kieu: f.hoa_hong_kieu || 'none',
       ti_le_hoa_hong: +f.ti_le_hoa_hong || 0,
       tien_hoa_hong: +f.tien_hoa_hong || 0,
@@ -538,6 +538,8 @@ function FormSanPham({ initial, products, onSave, onClose }) {
   }, 0)
   const nextMa = `SP-${String(maxMa + 1).padStart(5, '0')}`
   const maHienThi = isEdit ? (f.ma_sp || '(chưa có)') : nextMa
+  // SP có bán cho khách? (Sản phẩm bán, hoặc tiêu hao/vật tư được bật bán)
+  const laBan = f.loai === 'ban_khach' || f.hien_tren_pos
 
   return createPortal((
     <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 'var(--side-w, 248px)',
@@ -751,31 +753,39 @@ function FormSanPham({ initial, products, onSave, onClose }) {
           </div>
           )})()}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={lbl}>GIÁ NHẬP {Number(f.quy_doi) > 1 && f.don_vi_nhap ? `(/${f.don_vi_nhap})` : '(đ)'}</label>
-              <input style={inp} type="number" value={f.gia_nhap}
-                onChange={e => set('gia_nhap', e.target.value)} placeholder="0" />
-            </div>
-            <div>
-              <label style={lbl}>GIÁ BÁN (đ)</label>
-              <input style={inp} type="number" value={f.gia_ban}
-                onChange={e => set('gia_ban', e.target.value)} placeholder="0" />
-            </div>
+          {/* GIÁ NHẬP — luôn có (để tính chi phí + giá trị tồn) */}
+          <div>
+            <label style={lbl}>GIÁ NHẬP {Number(f.quy_doi) > 1 && f.don_vi_nhap ? `(/${f.don_vi_nhap})` : '(đ)'}</label>
+            <input style={inp} type="number" value={f.gia_nhap}
+              onChange={e => set('gia_nhap', e.target.value)} placeholder="0" />
+            <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 4 }}>Dùng để tính chi phí + giá trị tồn kho (mọi sản phẩm nên có).</div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={lbl}>GIÁ ƯU ĐÃI</label>
-              <input style={inp} type="number" value={f.gia_uu_dai}
-                onChange={e => set('gia_uu_dai', e.target.value)} placeholder="0" />
+          {/* Tiêu hao/vật tư: bật nếu cũng bán cho khách */}
+          {f.loai !== 'ban_khach' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700,
+              color: COLORS.textSub, cursor: 'pointer', background: '#FBF7F2', border: `1px solid ${COLORS.border}`,
+              borderRadius: 10, padding: '11px 13px' }}>
+              <input type="checkbox" checked={f.hien_tren_pos} onChange={e => set('hien_tren_pos', e.target.checked)} />
+              🛒 Sản phẩm này cũng <b>&nbsp;bán cho khách&nbsp;</b> (hiện trên POS + nhập giá bán)
+            </label>
+          )}
+
+          {/* Giá bán — chỉ khi SP có bán */}
+          {laBan && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label style={lbl}>GIÁ BÁN (đ)</label>
+                <input style={inp} type="number" value={f.gia_ban}
+                  onChange={e => set('gia_ban', e.target.value)} placeholder="0" />
+              </div>
+              <div>
+                <label style={lbl}>GIÁ ƯU ĐÃI (đ)</label>
+                <input style={inp} type="number" value={f.gia_uu_dai}
+                  onChange={e => set('gia_uu_dai', e.target.value)} placeholder="0" />
+              </div>
             </div>
-            <div>
-              <label style={lbl}>GIÁ TMĐT</label>
-              <input style={inp} type="number" value={f.gia_uu_dai_ecommerce}
-                onChange={e => set('gia_uu_dai_ecommerce', e.target.value)} placeholder="0" />
-            </div>
-          </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
@@ -800,15 +810,10 @@ function FormSanPham({ initial, products, onSave, onClose }) {
               value={f.mo_ta} onChange={e => set('mo_ta', e.target.value)} />
           </div>
 
+          {laBan && (
           <div style={{ background: '#FDF8F1', borderRadius: '12px', padding: '14px', border: `1px solid ${COLORS.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
               <span style={{ fontWeight: '800', fontSize: '13px', color: COLORS.primary }}>Hoa hồng bán sản phẩm</span>
-              <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px',
-                fontSize: '13px', fontWeight: '700', color: COLORS.textSub, cursor: 'pointer' }}>
-                <input type="checkbox" checked={f.hien_tren_pos}
-                  onChange={e => set('hien_tren_pos', e.target.checked)} />
-                Hiển thị trên POS
-              </label>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
@@ -830,6 +835,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
               </div>
             </div>
           </div>
+          )}
 
           {err && (
             <div style={{ background: '#FDECEA', color: '#C0392B', padding: '10px 14px',
