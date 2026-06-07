@@ -60,6 +60,31 @@ function todayISO() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
     .toISOString().slice(0, 10)
 }
+// Gợi ý DANH MỤC từ tên sản phẩm (suy đoán theo từ khóa phổ biến ngành spa)
+const _DM_RULES = [
+  ['Sữa rửa mặt', ['rửa mặt', 'cleansing foam', 'wash powder', 'enzyme wash', 'srm', 'facial wash']],
+  ['Dầu gội', ['gội', 'shampoo']],
+  ['Dầu xả', ['dầu xả', 'conditioner']],
+  ['Ủ / Hấp tóc', ['ủ tóc', 'hấp tóc', 'hair mask', 'scalp', 'keratin', 'l.p.p', 'lpp']],
+  ['Tẩy trang', ['tẩy trang', 'remover', 'cleansing milk', 'lip & eye']],
+  ['Toner', ['toner', 'soothing toner']],
+  ['Serum / Tinh chất', ['serum', 'ampoule', 'tinh chất', 'treatment', 'essence']],
+  ['Tẩy tế bào chết', ['tẩy tế bào', 'tbc', 'peeling', 'pelling', 'scrub', 'polish', 'exfoli']],
+  ['Mặt nạ', ['nạ', 'mask', 'modeling', 'gypsum', 'thạch cao']],
+  ['Chống nắng', ['chống nắng', 'sunblock', 'spf']],
+  ['Kem mắt', ['eye cream', 'kem mắt', 'eye']],
+  ['Kem dưỡng', ['kem dưỡng', 'collagen cream', 'whitening cream', 'moisture', 'cream', 'kem ']],
+  ['Dầu massage', ['massage oil', 'dầu massage', 'massage cream', 'kem massage', 'body massage', 'dầu nướng']],
+  ['Muối / Sữa tắm', ['muối tắm', 'sữa tắm', 'spa milk', 'milk salt', 'shower', 'body scrub']],
+  ['Thực phẩm chức năng', ['collagen uống', 'liquid collagen', 'biotin', 'viên uống', 'viên thải']],
+  ['Vật tư y tế', ['kim', 'lưỡi lam', 'dao số', 'bông', 'gạc', 'ống hút', 'găng tay', 'bao tay', 'cồn', 'povidon', 'bovidon', 'nước muối', 'khăn giấy', 'đầu nano', 'needle', 'lancet', 'que nặn', 'vĩ nặn', 'tăm']],
+]
+function suyDanhMuc(ten) {
+  const s = (ten || '').toLowerCase()
+  if (!s) return ''
+  for (const [dm, kws] of _DM_RULES) if (kws.some(k => s.includes(k))) return dm
+  return ''
+}
 // Nén ảnh phía client (canvas): resize max 1000px + JPEG ~0.82 → giảm ~70-85% dung lượng
 function compressImage(file, maxW = 1000, quality = 0.82) {
   return new Promise((resolve) => {
@@ -566,6 +591,15 @@ function FormSanPham({ initial, products, onSave, onClose }) {
               <label style={lbl}>DANH MỤC</label>
               <input style={inp} value={f.danh_muc} onChange={e => set('danh_muc', e.target.value)}
                 placeholder="VD: Mỹ phẩm bán khách" />
+              {suyDanhMuc(f.ten) && suyDanhMuc(f.ten) !== f.danh_muc.trim() && (
+                <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 4 }}>
+                  Gợi ý: <button type="button" onClick={() => set('danh_muc', suyDanhMuc(f.ten))}
+                    style={{ background: '#FDF8F1', border: `1px solid ${COLORS.border}`, color: COLORS.primary,
+                      borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    {suyDanhMuc(f.ten)} ✓
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -784,30 +818,34 @@ function TabSanPham({ products, onReload, showToast }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-        <input style={{ ...inp, flex: 1, padding: '9px 14px' }}
-          placeholder="🔍 Tìm sản phẩm..." value={search}
-          onChange={e => setSearch(e.target.value)} />
-        <button onClick={() => { setEditing(null); setShowForm(true) }}
-          style={{ padding: '9px 18px', background: COLORS.grad, color: 'white', border: 'none',
-            borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          + Thêm
-        </button>
-      </div>
+      {/* Header dính — search + filter cố định khi trượt danh sách */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: COLORS.bg,
+        paddingBottom: '12px', marginBottom: '2px', boxShadow: `0 6px 8px -6px rgba(139,94,60,0.12)` }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <input style={{ ...inp, flex: 1, padding: '9px 14px' }}
+            placeholder="🔍 Tìm sản phẩm..." value={search}
+            onChange={e => setSearch(e.target.value)} />
+          <button onClick={() => { setEditing(null); setShowForm(true) }}
+            style={{ padding: '9px 18px', background: COLORS.grad, color: 'white', border: 'none',
+              borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            + Thêm
+          </button>
+        </div>
 
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', flexWrap: 'wrap' }}>
-        {[['all', '📦 Tất cả'], ...Object.entries(LOAI_SP).map(([k, v]) => [k, `${v.icon} ${v.label}`])]
-          .map(([k, l]) => (
-            <button key={k} onClick={() => setFilter(k)}
-              style={{ padding: '6px 14px', borderRadius: '999px', border: 'none', cursor: 'pointer',
-                fontWeight: '700', fontSize: '12px',
-                background: filter === k ? COLORS.primary : 'white',
-                color: filter === k ? 'white' : COLORS.textSub,
-                boxShadow: COLORS.shadow }}>
-              {l} ({k === 'all' ? products.filter(p => p.is_active).length
-                : products.filter(p => p.is_active && p.loai === k).length})
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {[['all', '📦 Tất cả'], ...Object.entries(LOAI_SP).map(([k, v]) => [k, `${v.icon} ${v.label}`])]
+            .map(([k, l]) => (
+              <button key={k} onClick={() => setFilter(k)}
+                style={{ padding: '6px 14px', borderRadius: '999px', border: 'none', cursor: 'pointer',
+                  fontWeight: '700', fontSize: '12px',
+                  background: filter === k ? COLORS.primary : 'white',
+                  color: filter === k ? 'white' : COLORS.textSub,
+                  boxShadow: COLORS.shadow }}>
+                {l} ({k === 'all' ? products.filter(p => p.is_active).length
+                  : products.filter(p => p.is_active && p.loai === k).length})
+              </button>
+            ))}
+        </div>
       </div>
 
       <div style={{ background: 'white', borderRadius: '14px', border: `1px solid ${COLORS.border}`,
@@ -818,118 +856,56 @@ function TabSanPham({ products, onReload, showToast }) {
             <div>Chưa có sản phẩm nào</div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1060 }}>
-              <thead>
-                <tr style={{ background: COLORS.bg }}>
-                  {['Mã SP / Chi nhánh', 'Tên sản phẩm', 'SKU/Barcode', 'Nhãn hiệu', 'Danh mục', 'Giá nhập', 'Giá sản phẩm', 'Ưu đãi', 'Tồn kho', 'Trạng thái', ''].map(h => (
-                    <th key={h} style={{ padding: '11px 10px', textAlign: h ? 'left' : 'right',
-                      fontSize: 11, color: COLORS.textSub, textTransform: 'uppercase',
-                      letterSpacing: '.03em', borderBottom: `1px solid ${COLORS.border}` }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(p => {
-                  const loai = LOAI_SP[p.loai] || {}
-                  const warn = Number(p.ton_kho) <= Number(p.canh_bao_ton) && Number(p.canh_bao_ton) > 0
-                  const chietSP = p.co_the_chiet && p.san_pham_chiet_id ? spMap[p.san_pham_chiet_id] : null
-                  const commission = p.hoa_hong_kieu === 'fixed'
-                    ? fmt(p.tien_hoa_hong)
-                    : p.hoa_hong_kieu === 'percent' && Number(p.ti_le_hoa_hong) > 0
-                      ? `${p.ti_le_hoa_hong}%`
-                      : ''
-                  return (
-                    <tr key={p.id} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', width: 130 }}>
-                        <div style={{ fontWeight: 800, color: COLORS.primary, fontSize: 13 }}>
-                          {p.ma_sp || '—'}
-                        </div>
-                        <div style={{ color: COLORS.textMute, fontSize: 11 }}>{p.chi_nhanh || 'Hannah Spa'}</div>
-                      </td>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', minWidth: 260 }}>
-                        <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                          {p.anh_url ? (
-                            <img src={p.anh_url} alt="" loading="lazy" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: `1px solid ${COLORS.border}` }} />
-                          ) : (
-                            <div style={{ width: 32, height: 32, borderRadius: 8, background: loai.bg,
-                              color: loai.color, display: 'flex', alignItems: 'center',
-                              justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
-                              {loai.icon}
-                            </div>
-                          )}
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 800, color: COLORS.text, fontSize: 13,
-                              lineHeight: 1.35 }}>
-                              {p.ten}
-                            </div>
-                            <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 2 }}>
-                              {loai.label} · {p.don_vi}
-                              {commission && <span> · Hoa hồng {commission}</span>}
-                            </div>
-                            {chietSP && (
-                              <div style={{ marginTop: 5, fontSize: 11, color: '#8E44AD' }}>
-                                Chiết rót: 1 {p.don_vi} → {p.he_so_chiet} {chietSP.don_vi}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontSize: 12, color: COLORS.textSub }}>
-                        <div>{p.sku || '—'}</div>
-                        <div style={{ color: COLORS.textMute, marginTop: 2 }}>{p.barcode || ''}</div>
-                      </td>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontSize: 12, color: COLORS.textSub }}>
-                        {p.nhan_hieu || '—'}
-                      </td>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontSize: 12, color: COLORS.textSub }}>
-                        {p.danh_muc || '—'}
-                      </td>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontWeight: 700, fontSize: 12 }}>
-                        {fmtMoneyShort(p.gia_nhap)}
-                      </td>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontWeight: 800, color: COLORS.primary, fontSize: 12 }}>
-                        {fmtMoneyShort(p.gia_ban)}
-                      </td>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', fontWeight: 700, fontSize: 12 }}>
-                        {fmtMoneyShort(p.gia_uu_dai || p.gia_uu_dai_ecommerce)}
-                      </td>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', width: 110 }}>
-                        <div style={{ fontWeight: 800, fontSize: 12,
-                          color: Number(p.ton_kho) <= 0 ? '#C0392B' : warn ? '#E67E22' : '#2D7A4F' }}>
-                          {fmtSL(p.ton_kho, p.don_vi)}
-                        </div>
-                        {p.canh_bao_ton > 0 && (
-                          <div style={{ color: COLORS.textMute, fontSize: 10 }}>CB ≤ {p.canh_bao_ton}</div>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', width: 110 }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5,
-                          padding: '4px 8px', borderRadius: 999, fontSize: 11, fontWeight: 800,
-                          background: p.hien_tren_pos === false ? '#F4F1ED' : '#E8F5E9',
-                          color: p.hien_tren_pos === false ? COLORS.textMute : '#2D7A4F' }}>
-                          ● {p.hien_tren_pos === false ? 'Ẩn POS' : 'Active'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 10px', verticalAlign: 'top', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <button onClick={() => { setEditing(p); setShowForm(true) }}
-                          style={{ padding: '7px 10px', background: COLORS.bg, border: `1px solid ${COLORS.border}`,
-                            borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', marginRight: 6 }}>
-                          Sửa
-                        </button>
-                        <button onClick={() => handleToggleActive(p)}
-                          style={{ padding: '7px 10px', background: '#FDECEA', border: '1px solid #FADBD8',
-                            borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', color: '#C0392B' }}>
-                          Ẩn
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div>
+            {filtered.map(p => {
+              const loai = LOAI_SP[p.loai] || {}
+              const warn = Number(p.ton_kho) <= Number(p.canh_bao_ton) && Number(p.canh_bao_ton) > 0
+              const commission = p.hoa_hong_kieu === 'fixed'
+                ? fmt(p.tien_hoa_hong)
+                : p.hoa_hong_kieu === 'percent' && Number(p.ti_le_hoa_hong) > 0 ? `${p.ti_le_hoa_hong}%` : ''
+              return (
+                <div key={p.id} onClick={() => { setEditing(p); setShowForm(true) }}
+                  onMouseEnter={e => e.currentTarget.style.background = COLORS.bg}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px',
+                    borderBottom: `1px solid ${COLORS.border}`, cursor: 'pointer', transition: 'background .12s' }}>
+                  {p.anh_url ? (
+                    <img src={p.anh_url} alt="" loading="lazy" style={{ width: 42, height: 42, borderRadius: 9, objectFit: 'cover', flexShrink: 0, border: `1px solid ${COLORS.border}` }} />
+                  ) : (
+                    <div style={{ width: 42, height: 42, borderRadius: 9, background: loai.bg, color: loai.color,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{loai.icon}</div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, color: COLORS.text, fontSize: 13.5, lineHeight: 1.3,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.ten}</div>
+                    <div style={{ fontSize: 11.5, color: COLORS.textMute, marginTop: 2,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {loai.label} · {p.don_vi}
+                      {p.danh_muc ? ` · ${p.danh_muc}` : ''}
+                      {p.nhan_hieu ? ` · ${p.nhan_hieu}` : ''}
+                      {commission ? ` · HH ${commission}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 84 }}>
+                    <div style={{ fontWeight: 800, fontSize: 12.5,
+                      color: Number(p.ton_kho) <= 0 ? '#C0392B' : warn ? '#E67E22' : '#2D7A4F' }}>
+                      {fmtSL(p.ton_kho, p.don_vi)}
+                    </div>
+                    {p.loai === 'ban_khach' && <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary }}>{fmtMoneyShort(p.gia_ban)}</div>}
+                  </div>
+                  <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '3px 8px', borderRadius: 999, fontSize: 10.5, fontWeight: 800,
+                    background: p.hien_tren_pos === false ? '#F4F1ED' : '#E8F5E9',
+                    color: p.hien_tren_pos === false ? COLORS.textMute : '#2D7A4F' }}>
+                    ● {p.hien_tren_pos === false ? 'Ẩn POS' : 'POS'}
+                  </span>
+                  <button onClick={e => { e.stopPropagation(); handleToggleActive(p) }}
+                    title="Ẩn sản phẩm"
+                    style={{ flexShrink: 0, width: 30, height: 30, background: '#FDECEA', border: '1px solid #FADBD8',
+                      borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', color: '#C0392B' }}>✕</button>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
