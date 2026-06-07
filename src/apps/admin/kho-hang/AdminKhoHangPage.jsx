@@ -563,7 +563,11 @@ function FormSanPham({ initial, products, onSave, onClose }) {
                 </label>
                 {f.anh_url && !uploading && (
                   <button type="button" onClick={() => set('anh_url', '')}
-                    style={{ marginLeft: 10, fontSize: 11.5, color: '#C0392B', background: 'none', border: 'none', cursor: 'pointer' }}>Xóa ảnh</button>
+                    style={{ marginLeft: 10, display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '9px 16px', background: '#FDECEA', color: '#C0392B',
+                      border: '1px solid #F5C6C0', borderRadius: 10, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>
+                    🗑 Xóa ảnh
+                  </button>
                 )}
                 <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 5 }}>Ảnh tự nén nhẹ trước khi tải · JPG/PNG</div>
               </div>
