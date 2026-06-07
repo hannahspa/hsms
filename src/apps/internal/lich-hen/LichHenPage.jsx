@@ -135,6 +135,12 @@ export default function LichHenPage({ user }) {
       i = j + 1
     }
   }
+  // Nhiều khách trùng giờ (>3 làn) → mỗi block rộng cố định + cuộn ngang cho dễ đọc
+  const globalMaxLane = dayItems.reduce((m, it) => Math.max(m, it.laneCount || 1), 1)
+  const LANE_W = 210
+  const wideDay = globalMaxLane > 3
+  const apptColW = wideDay ? `${globalMaxLane * LANE_W}px` : '1fr'
+  const twoWords = (t) => (t || '').trim().split(/\s+/).slice(-2).join(' ')
 
   return (
     <div style={{ padding: '20px 24px 40px', fontFamily: 'var(--sans)' }}>
@@ -192,7 +198,7 @@ export default function LichHenPage({ user }) {
         <div style={{ textAlign: 'center', padding: 50, color: C.ink3 }}>Đang tải...</div>
       ) : viewMode !== 'day' ? null : (
         <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.line}`, boxShadow: C.shadow, overflow: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr', minWidth: 480 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `64px ${apptColW}`, minWidth: 480 }}>
             {/* Cột giờ */}
             <div style={{ position: 'relative', borderRight: `1px solid ${C.line}`, height: timelineH }}>
               {visSlots.map((m, i) => (
@@ -218,24 +224,37 @@ export default function LichHenPage({ user }) {
               {dayItems.map(({ h, start, lane, laneCount }) => {
                 const top = (start - visStartMin) / SLOT_MIN * ROW_H
                 const height = Math.max(ROW_H - 2, (h.thoi_luong_phut || 60) / SLOT_MIN * ROW_H - 2)
-                const cfg = TRANG_THAI[h.trang_thai] || TRANG_THAI.cho_xac_nhan
                 const done = h.trang_thai === 'da_xong'
                 const busy = creatingId === h.id
-                const w = 100 / laneCount
-                const ktvTen = h.nhan_vien_id ? ktvMap[h.nhan_vien_id] : null
+                const ktvNv = h.nhan_vien_id ? ktvList.find(k => k.id === h.nhan_vien_id) : null
+                // Màu phân biệt: CÓ chọn KTV (tím) ↔ KTV bất kỳ (nâu/vàng)
+                const cfg = ktvNv
+                  ? { bg: '#F0E9F7', bar: '#7E57C2', color: '#5B2C6F' }
+                  : { bg: '#FBF1E2', bar: '#C9A96E', color: '#8a6a35' }
+                // Vị trí: nhiều làn → px cố định + cuộn ngang; ít làn → chia % vừa màn
+                const pos = wideDay
+                  ? { left: `${lane * LANE_W + 3}px`, width: `${LANE_W - 6}px` }
+                  : { left: `calc(${lane * (100 / laneCount)}% + 3px)`, width: `calc(${100 / laneCount}% - 6px)` }
                 return (
                   <div key={h.id}
-                    style={{ position: 'absolute', top: top + 1, left: `calc(${lane * w}% + 3px)`, width: `calc(${w}% - 6px)`, height, background: cfg.bg, borderLeft: `3px solid ${cfg.bar}`, borderRadius: 6, padding: '4px 7px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(139,94,60,0.12)', display: 'flex', flexDirection: 'column' }}
-                    title={`${h.gio_hen} ${h.ten_khach}${ktvTen ? ` (KTV: ${ktvTen})` : ' (KTV bất kỳ)'} — ${h.ten_dich_vu || ''}${h.ghi_chu ? `\n📝 ${h.ghi_chu}` : ''}`}>
+                    style={{ position: 'absolute', top: top + 1, ...pos, height, background: cfg.bg, borderLeft: `3px solid ${cfg.bar}`, borderRadius: 6, padding: '4px 7px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(139,94,60,0.12)', display: 'flex', flexDirection: 'column', opacity: done ? 0.82 : 1 }}
+                    title={`${h.gio_hen} ${h.ten_khach}${ktvNv ? ` (KTV: ${ktvNv.ho_ten})` : ' (KTV bất kỳ)'} — ${h.ten_dich_vu || ''}${h.ghi_chu ? `\n📝 ${h.ghi_chu}` : ''}`}>
                     <div onClick={e => { e.stopPropagation(); setModal(h) }} style={{ cursor: 'pointer' }}>
                       <div style={{ fontSize: 11, fontWeight: 800, color: cfg.color, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(h.gio_hen || '').slice(0, 5)} · {h.ten_khach}</span>
                         {Array.isArray(h.dich_vu_list) && h.dich_vu_list.length > 0 && <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 800, background: '#8a6a35', color: '#fff', borderRadius: 999, padding: '1px 5px' }}>+{h.dich_vu_list.length} DV</span>}
                       </div>
-                      {height > ROW_H && <div style={{ fontSize: 10, color: C.ink2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {h.ten_dich_vu || 'Dịch vụ'}<span style={{ color: ktvTen ? '#8a6a35' : C.ink4, fontWeight: 700 }}> · {ktvTen ? `@${shortName(ktvTen)}` : 'KTV bất kỳ'}</span>
-                      </div>}
-                      {h.ghi_chu && height > ROW_H && <div style={{ fontSize: 9.5, color: '#9a6a2f', marginTop: 1, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📝 {h.ghi_chu}</div>}
+                      {/* KTV: avatar + tên 2 chữ (hoặc KTV bất kỳ) */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, overflow: 'hidden' }}>
+                        {ktvNv
+                          ? <Avatar nv={ktvNv} size={16} />
+                          : <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#e8ddc9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#8a6a35', flexShrink: 0 }}>?</span>}
+                        <span style={{ fontSize: 10, fontWeight: 700, color: ktvNv ? '#5B2C6F' : C.ink4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {ktvNv ? twoWords(ktvNv.ho_ten) : 'KTV bất kỳ'}
+                        </span>
+                      </div>
+                      {h.ten_dich_vu && height > ROW_H * 1.3 && <div style={{ fontSize: 9.5, color: C.ink2, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.ten_dich_vu}</div>}
+                      {h.ghi_chu && height > ROW_H * 1.3 && <div style={{ fontSize: 9.5, color: '#9a6a2f', marginTop: 1, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📝 {h.ghi_chu}</div>}
                     </div>
                     {done ? (
                       height > ROW_H && <div style={{ marginTop: 'auto', fontSize: 9.5, fontWeight: 800, color: '#1a4f96' }}>✓ Đã đến · đã tạo đơn</div>
