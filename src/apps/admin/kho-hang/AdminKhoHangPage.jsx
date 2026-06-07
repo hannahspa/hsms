@@ -10,7 +10,7 @@ const DON_VI_LIST = ['cái', 'chai', 'lọ', 'hộp', 'gói', 'thùng', 'túi', 
 
 const LOAI_SP = {
   tieu_hao:  { label: 'Mỹ Phẩm Tiêu Hao', icon: '🧴', color: '#2D7A4F',  bg: '#E8F5E9' },
-  ban_khach: { label: 'Hàng Bán Khách',    icon: '🛍️', color: '#A0714F',  bg: '#FDF3E9' },
+  ban_khach: { label: 'Sản Phẩm Bán Khách', icon: '🛍️', color: '#A0714F',  bg: '#FDF3E9' },
   vat_tu:    { label: 'Vật Tư Tiêu Hao',   icon: '📦', color: '#1A5276',  bg: '#EBF5FB' },
 }
 
@@ -486,7 +486,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
     }
     const extendedPayload = {
       ...payload,
-      ma_sp: f.ma_sp.trim() || null,
+      ma_sp: f.ma_sp.trim() || (isEdit ? null : nextMa),
       sku: f.sku.trim() || null,
       barcode: f.barcode.trim() || null,
       nhan_hieu: f.nhan_hieu.trim() || null,
@@ -522,6 +522,13 @@ function FormSanPham({ initial, products, onSave, onClose }) {
   }
 
   const otherProducts = products.filter(p => p.id !== initial?.id)
+  // Mã SP tự động: SP-xxxxx = (mã lớn nhất hiện có) + 1
+  const maxMa = products.reduce((m, p) => {
+    const n = parseInt(String(p.ma_sp || '').replace(/\D/g, ''), 10)
+    return Number.isFinite(n) && n > m ? n : m
+  }, 0)
+  const nextMa = `SP-${String(maxMa + 1).padStart(5, '0')}`
+  const maHienThi = isEdit ? (f.ma_sp || '(chưa có)') : nextMa
 
   return createPortal((
     <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 'var(--side-w, 248px)',
@@ -600,9 +607,9 @@ function FormSanPham({ initial, products, onSave, onClose }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
             <div>
-              <label style={lbl}>MÃ SP</label>
-              <input style={inp} value={f.ma_sp} onChange={e => set('ma_sp', e.target.value)}
-                placeholder="SP-00001" />
+              <label style={lbl}>MÃ SP (tự động)</label>
+              <input style={{ ...inp, background: '#F4F1ED', color: COLORS.textSub, fontWeight: 700 }}
+                value={maHienThi} readOnly title="Mã tự sinh, không cần nhập" />
             </div>
             <div>
               <label style={lbl}>SKU</label>
@@ -656,27 +663,36 @@ function FormSanPham({ initial, products, onSave, onClose }) {
             </div>
           </div>
 
-          {/* Quy đổi đơn vị nhập → đơn vị cơ sở */}
+          {/* Quy cách đóng gói — quy đổi đơn vị mua vào ↔ đơn vị dùng */}
+          {(() => { const dvCoSo = f.don_vi === '__custom' ? (f.don_vi_custom || 'đơn vị') : f.don_vi; return (
           <div style={{ background: '#FDF8F1', borderRadius: '12px', padding: '14px', border: `1px solid ${COLORS.border}` }}>
-            <div style={{ fontWeight: '800', fontSize: '13px', color: COLORS.primary, marginBottom: '8px' }}>
-              📦 Đơn vị mua vào (quy đổi)
+            <div style={{ fontWeight: '800', fontSize: '13px', color: COLORS.primary, marginBottom: '4px' }}>
+              📦 Quy cách đóng gói (giúp hệ thống tự tính tồn kho)
+            </div>
+            <div style={{ fontSize: '11.5px', color: COLORS.textSub, marginBottom: '10px', lineHeight: 1.5 }}>
+              Mua theo <b>đơn vị lớn</b> (túi/hộp/chai) nhưng dùng theo <b>{dvCoSo}</b>. Khai 1 lần,
+              hệ thống tự đổi: nhập theo túi/hộp → tự thành {dvCoSo}; xuất {dvCoSo} → tự trừ.
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label style={lbl}>ĐƠN VỊ NHẬP</label>
+                <label style={lbl}>① ĐƠN VỊ MUA VÀO</label>
                 <input style={inp} value={f.don_vi_nhap} onChange={e => set('don_vi_nhap', e.target.value)}
-                  placeholder="VD: túi, hộp, chai..." />
+                  placeholder="VD: túi / hộp / chai / lốc" />
               </div>
               <div>
-                <label style={lbl}>1 {f.don_vi_nhap || 'đv nhập'} = ? {f.don_vi === '__custom' ? (f.don_vi_custom || 'đv') : f.don_vi}</label>
+                <label style={lbl}>② 1 {f.don_vi_nhap || 'đơn vị mua'} CHỨA MẤY {dvCoSo.toUpperCase()}?</label>
                 <input style={inp} type="number" step="0.01" min="1" value={f.quy_doi}
-                  onChange={e => set('quy_doi', e.target.value)} placeholder="1" />
+                  onChange={e => set('quy_doi', e.target.value)} placeholder="VD: 700" />
               </div>
             </div>
-            <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '6px' }}>
-              VD: 1 túi = 700 gram → nhập "túi" và 700. Để trống/để 1 nếu không quy đổi.
+            <div style={{ fontSize: '11.5px', color: '#2D7A4F', background: '#EAF4EA', border: '1px solid #BCDCBC',
+              borderRadius: 8, padding: '8px 10px', marginTop: '8px', lineHeight: 1.55 }}>
+              💡 <b>Ví dụ:</b> 1 túi nạ nặng 700 gram → ô ① ghi <b>"túi"</b>, ô ② ghi <b>700</b>.<br/>
+              → Nhập 2 túi = kho có <b>1400 gram</b>. Xuất 50 gram → còn <b>1350 gram</b>.<br/>
+              <span style={{ color: COLORS.textMute }}>Nếu bán/dùng nguyên đơn vị (vd chai dầu gội bán cả chai) → bỏ trống mục này.</span>
             </div>
           </div>
+          )})()}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
