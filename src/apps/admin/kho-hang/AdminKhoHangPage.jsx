@@ -508,9 +508,13 @@ function FormSanPham({ initial, products, onSave, onClose }) {
       ti_le_hoa_hong: +f.ti_le_hoa_hong || 0,
       tien_hoa_hong: +f.tien_hoa_hong || 0,
     }
-    if (!isEdit) payload.ton_kho = +f.ton_kho || 0
-    if (!isEdit) extendedPayload.ton_kho = +f.ton_kho || 0
-    if (!isEdit) extendedPayload.ton_dinh_muc = +f.ton_kho || 0   // mốc 100% ban đầu
+    // Tồn ban đầu: nếu có quy đổi → nhập theo đơn vị mua (hũ) → ×quy_doi ra đơn vị cơ sở
+    const _qd = +f.quy_doi || 1
+    const _hasQD = _qd > 1 && f.don_vi_nhap.trim()
+    const tonBanDau = _hasQD ? (+f.ton_kho || 0) * _qd : (+f.ton_kho || 0)
+    if (!isEdit) payload.ton_kho = tonBanDau
+    if (!isEdit) extendedPayload.ton_kho = tonBanDau
+    if (!isEdit) extendedPayload.ton_dinh_muc = tonBanDau   // mốc 100% ban đầu
     // Cân kho % (1 lần) cho tiêu hao/vật tư → đặt tồn = % của định mức, rồi khoá
     if (isEdit && !initial?.da_can_kho && (f.loai === 'tieu_hao' || f.loai === 'vat_tu') && canKhoPct !== '') {
       const pct = Math.max(0, Math.min(100, +canKhoPct || 0))
@@ -546,6 +550,8 @@ function FormSanPham({ initial, products, onSave, onClose }) {
   const maHienThi = isEdit ? (f.ma_sp || '(chưa có)') : nextMa
   // SP có bán cho khách? (Sản phẩm bán, hoặc tiêu hao/vật tư được bật bán)
   const laBan = f.loai === 'ban_khach' || f.hien_tren_pos
+  const dvCoSo = f.don_vi === '__custom' ? (f.don_vi_custom || 'đơn vị') : f.don_vi
+  const hasQD = Number(f.quy_doi) > 1 && !!f.don_vi_nhap.trim()
 
   return createPortal((
     <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 'var(--side-w, 248px)',
@@ -795,13 +801,26 @@ function FormSanPham({ initial, products, onSave, onClose }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
-              <label style={lbl}>TỒN KHO BAN ĐẦU</label>
-              <input style={{ ...inp, opacity: isEdit ? 0.6 : 1 }} type="number" step="0.1"
-                value={f.ton_kho} onChange={e => set('ton_kho', e.target.value)}
-                placeholder="0" disabled={isEdit} />
-              {isEdit && <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '3px' }}>
-                Dùng tab Nhập/Xuất để thay đổi
-              </div>}
+              <label style={lbl}>TỒN KHO {isEdit ? 'HIỆN TẠI' : `BAN ĐẦU ${hasQD ? `(số ${f.don_vi_nhap})` : `(${dvCoSo})`}`}</label>
+              {isEdit ? (
+                <>
+                  <input style={{ ...inp, background: '#F4F1ED', color: COLORS.textSub, fontWeight: 700 }}
+                    value={fmtTonQD(initial)} readOnly />
+                  <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '3px' }}>
+                    Dùng tab Nhập/Xuất để thay đổi
+                  </div>
+                </>
+              ) : (
+                <>
+                  <input style={inp} type="number" step="0.1" value={f.ton_kho}
+                    onChange={e => set('ton_kho', e.target.value)} placeholder="0" />
+                  {hasQD && +f.ton_kho > 0 && (
+                    <div style={{ fontSize: '11px', color: '#2D7A4F', marginTop: '3px', fontWeight: 700 }}>
+                      = {(+f.ton_kho) * (+f.quy_doi || 1)} {dvCoSo}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <div>
               <label style={lbl}>CẢNH BÁO KHI TỒN ≤</label>
