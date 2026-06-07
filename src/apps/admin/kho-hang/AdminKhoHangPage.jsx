@@ -1955,13 +1955,6 @@ export default function AdminKhoHangPage() {
           </div>
         </div>
         <div className="acts">
-          <div className="subtabs">
-            {TABS.map(t => (
-              <div key={t.key} className={`st${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
-                {t.label}
-              </div>
-            ))}
-          </div>
           <button className="btn" onClick={() => setShowKiemKho(true)}>
             ⊞ Kiểm Kho
           </button>
