@@ -455,6 +455,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
   })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [canKhoPct, setCanKhoPct] = useState('')   // % còn lại để cân kho 1 lần
   const [err, setErr] = useState('')
   const set = (k, v) => setF(prev => ({ ...prev, [k]: v }))
 
@@ -504,6 +505,13 @@ function FormSanPham({ initial, products, onSave, onClose }) {
     if (!isEdit) payload.ton_kho = +f.ton_kho || 0
     if (!isEdit) extendedPayload.ton_kho = +f.ton_kho || 0
     if (!isEdit) extendedPayload.ton_dinh_muc = +f.ton_kho || 0   // mốc 100% ban đầu
+    // Cân kho % (1 lần) cho tiêu hao/vật tư → đặt tồn = % của định mức, rồi khoá
+    if (isEdit && !initial?.da_can_kho && (f.loai === 'tieu_hao' || f.loai === 'vat_tu') && canKhoPct !== '') {
+      const pct = Math.max(0, Math.min(100, +canKhoPct || 0))
+      const base = Number(initial?.ton_dinh_muc) || Number(initial?.ton_kho) || 1
+      extendedPayload.ton_kho = Math.round(base * pct / 100 * 100) / 100
+      extendedPayload.da_can_kho = true
+    }
 
     let error
     if (isEdit) {
@@ -569,6 +577,30 @@ function FormSanPham({ initial, products, onSave, onClose }) {
                   {pct <= 15
                     ? <span style={{ color: '#C0392B', fontWeight: 700 }}>⚠️ Sắp hết — nên nhập thêm</span>
                     : `Đầy 100% = ${fmtSL(dm, initial?.don_vi)} (mức nhập cao nhất)`}
+                </div>
+
+                {/* Cân kho %: nhập 1 lần rồi khoá */}
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${COLORS.border}` }}>
+                  {initial?.da_can_kho ? (
+                    <div style={{ fontSize: 12, color: COLORS.textSub, fontWeight: 700 }}>
+                      🔒 Đã cân kho — thay đổi tồn qua <b>Nhập / Xuất</b> (không sửa tay)
+                    </div>
+                  ) : (
+                    <>
+                      <label style={{ ...lbl, marginBottom: 4 }}>CÂN KHO — % CÒN LẠI THỰC TẾ (nhập 1 lần)</label>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input style={{ ...inp, width: 110 }} type="number" min="0" max="100"
+                          value={canKhoPct} onChange={e => setCanKhoPct(e.target.value)} placeholder="VD: 80" />
+                        <span style={{ fontSize: 13, fontWeight: 800, color: COLORS.primary }}>%</span>
+                        <span style={{ fontSize: 11, color: COLORS.textMute }}>
+                          → tồn = {canKhoPct ? Math.round((Number(dm) * (+canKhoPct || 0) / 100) * 100) / 100 : '…'} {initial?.don_vi}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#B8791F', marginTop: 5 }}>
+                        ⚠️ Nhập đúng % thực tế rồi bấm Lưu → hệ thống <b>khoá lại</b>, sau này chỉ đổi qua Nhập/Xuất (chống thất thoát).
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )
