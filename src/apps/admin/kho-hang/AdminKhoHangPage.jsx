@@ -553,12 +553,18 @@ function FormSanPham({ initial, products, onSave, onClose }) {
                 <div style={{ width: 64, height: 64, borderRadius: 10, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: COLORS.textMute }}>📷</div>
               )}
               <div style={{ flex: 1 }}>
-                <input type="file" accept="image/*" onChange={e => handleUploadAnh(e.target.files?.[0])} style={{ fontSize: 12 }} />
-                {uploading && <div style={{ fontSize: 11, color: COLORS.primary, marginTop: 4 }}>Đang tải ảnh...</div>}
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px',
+                  background: COLORS.grad, color: 'white', borderRadius: 10, fontWeight: 800, fontSize: 12.5,
+                  cursor: uploading ? 'wait' : 'pointer', opacity: uploading ? 0.7 : 1 }}>
+                  📷 {uploading ? 'Đang tải...' : f.anh_url ? 'Đổi ảnh' : 'Tải ảnh lên'}
+                  <input type="file" accept="image/*" disabled={uploading}
+                    onChange={e => handleUploadAnh(e.target.files?.[0])} style={{ display: 'none' }} />
+                </label>
                 {f.anh_url && !uploading && (
                   <button type="button" onClick={() => set('anh_url', '')}
-                    style={{ marginTop: 4, fontSize: 11, color: '#C0392B', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Xóa ảnh</button>
+                    style={{ marginLeft: 10, fontSize: 11.5, color: '#C0392B', background: 'none', border: 'none', cursor: 'pointer' }}>Xóa ảnh</button>
                 )}
+                <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 5 }}>Ảnh tự nén nhẹ trước khi tải · JPG/PNG</div>
               </div>
             </div>
           </div>
@@ -1129,8 +1135,14 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
                   <div style={{ width: 56, height: 56, borderRadius: 8, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: COLORS.textMute }}>📷</div>
                 )}
                 <div style={{ flex: 1 }}>
-                  <input type="file" accept="image/*" onChange={e => handleUploadAnhSP(e.target.files?.[0])} style={{ fontSize: 12 }} />
-                  {uploadingAnh && <div style={{ fontSize: 11, color: COLORS.primary, marginTop: 4 }}>Đang nén & tải ảnh...</div>}
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px',
+                    background: COLORS.grad, color: 'white', borderRadius: 10, fontWeight: 800, fontSize: 12.5,
+                    cursor: uploadingAnh ? 'wait' : 'pointer', opacity: uploadingAnh ? 0.7 : 1 }}>
+                    📷 {uploadingAnh ? 'Đang nén & tải...' : (anhSP || sp.anh_url) ? 'Đổi ảnh' : 'Tải ảnh lên'}
+                    <input type="file" accept="image/*" disabled={uploadingAnh}
+                      onChange={e => handleUploadAnhSP(e.target.files?.[0])} style={{ display: 'none' }} />
+                  </label>
+                  <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 5 }}>Chụp/chọn ảnh SP — tự nén trước khi tải</div>
                 </div>
               </div>
             </div>
