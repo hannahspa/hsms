@@ -177,7 +177,7 @@ function KiemKhoModal({ products, userId, onSave, onClose, showToast }) {
   }
 
   return createPortal((
-    <div style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 300,
+    <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 'var(--side-w, 248px)', background: 'white', zIndex: 300,
       display: 'flex', flexDirection: 'column', fontFamily: 'inherit' }}>
       {/* Header */}
       <div style={{ background: COLORS.grad, padding: '44px 20px 16px',
@@ -500,10 +500,10 @@ function FormSanPham({ initial, products, onSave, onClose }) {
   const otherProducts = products.filter(p => p.id !== initial?.id)
 
   return createPortal((
-    <div style={{ position: 'fixed', inset: 0,
+    <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 'var(--side-w, 248px)',
       background: 'rgba(250,247,244,0.78)', backdropFilter: 'blur(10px)',
       zIndex: 200 }}>
-      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'white',
+      <div style={{ position: 'absolute', inset: 0, maxWidth: '100vw', background: 'white',
         overflow: 'auto', borderLeft: `1px solid ${COLORS.border}`,
         boxShadow: '-6px 0 40px rgba(139,94,60,0.25)', animation: 'rpSlideIn .22s ease' }}>
         <div style={{ background: COLORS.grad, padding: '18px 20px',
@@ -1071,8 +1071,8 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
   }
 
   return createPortal((
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.55)', zIndex: 200 }}>
-      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'white',
+    <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 'var(--side-w, 248px)', background: 'rgba(26,18,9,0.55)', zIndex: 200 }}>
+      <div style={{ position: 'absolute', inset: 0, maxWidth: '100vw', background: 'white',
         overflow: 'auto', boxShadow: '-6px 0 40px rgba(0,0,0,0.3)', animation: 'rpSlideIn .22s ease' }}>
         <div style={{ background: COLORS.grad, padding: '18px 20px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
