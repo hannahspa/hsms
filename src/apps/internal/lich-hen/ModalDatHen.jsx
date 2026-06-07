@@ -32,6 +32,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
   const [hintLoading, setHintLoading] = useState(false)
   const [creatingOrder, setCreatingOrder] = useState(false)
   const [showDvList, setShowDvList] = useState(false)
+  const [chuaChonDV, setChuaChonDV] = useState(() => initial?.ten_dich_vu === 'Khách chọn sau')
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   // Tải thẻ liệu trình ACTIVE còn buổi của khách đang chọn → cho bấm chọn nhanh
@@ -164,7 +165,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
     // Bắt buộc ít nhất 1 dịch vụ (tránh để trống)
     const coDichVu = (form.ten_dich_vu || '').trim() || form.dich_vu_id || form.the_lieu_trinh_id
       || dvThem.some(r => r.dich_vu_id || (r.ten_dich_vu || '').trim())
-    if (!coDichVu) return alert('⚠️ Vui lòng chọn ít nhất 1 DỊCH VỤ khách cần làm')
+    if (!chuaChonDV && !coDichVu) return alert('⚠️ Vui lòng chọn ít nhất 1 DỊCH VỤ — hoặc tích "Khách chọn dịch vụ sau"')
     setSaving(true)
     try {
       const dvThemSaved = dvThem.filter(r => r.dich_vu_id || (r.ten_dich_vu || '').trim())
@@ -172,7 +173,8 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
       const payload = {
         ten_khach: form.ten_khach.trim(), sdt_khach: form.sdt_khach?.trim() || null,
         khach_hang_id: form.khach_hang_id || null,
-        dich_vu_id: form.dich_vu_id || null, ten_dich_vu: form.ten_dich_vu?.trim() || null,
+        dich_vu_id: chuaChonDV ? null : (form.dich_vu_id || null),
+        ten_dich_vu: chuaChonDV ? 'Khách chọn sau' : (form.ten_dich_vu?.trim() || null),
         the_lieu_trinh_id: form.the_lieu_trinh_id || null,
         nhan_vien_id: form.nhan_vien_id || null,
         thoi_luong_phut: tongThoiLuong, ngay_hen: form.ngay_hen, gio_hen: form.gio_hen,
@@ -290,7 +292,18 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
           )}
 
           <div style={{ position: 'relative' }}>
-            <div style={LBL}>{form.the_lieu_trinh_id ? 'Dịch vụ (dùng thẻ)' : 'Dịch Vụ'}</div>
+            <div style={{ ...LBL, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{form.the_lieu_trinh_id ? 'Dịch vụ (dùng thẻ)' : 'Dịch Vụ'}{!chuaChonDV && ' *'}</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, fontSize: 11, color: '#8a6a35', cursor: 'pointer', textTransform: 'none', letterSpacing: 0 }}>
+                <input type="checkbox" checked={chuaChonDV} onChange={e => { setChuaChonDV(e.target.checked); if (e.target.checked) { set('ten_dich_vu', ''); set('dich_vu_id', null); set('the_lieu_trinh_id', null); setShowDvList(false) } }} />
+                ⏳ Khách chọn dịch vụ sau
+              </label>
+            </div>
+            {chuaChonDV ? (
+              <div style={{ padding: '11px 13px', borderRadius: 9, border: `1px dashed ${C.line2}`, background: '#FBF7F2', fontSize: 12.5, color: C.ink2 }}>
+                Khách chỉ đặt <b>giữ chỗ theo giờ</b> — dịch vụ sẽ chọn khi khách đến. Lịch sẽ hiện <b>"Khách chọn sau"</b>.
+              </div>
+            ) : (<>
             <input style={{ ...INP, ...(form.the_lieu_trinh_id ? { borderColor: '#2D7A4F', background: '#f3f8f3' } : {}) }} value={form.ten_dich_vu || ''}
               onChange={e => { set('ten_dich_vu', e.target.value); set('dich_vu_id', null); set('the_lieu_trinh_id', null); setShowDvList(true) }}
               onFocus={() => setShowDvList(true)}
@@ -314,6 +327,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
                 ))}
               </div>
             )}
+            </>)}
           </div>
 
           <div><div style={LBL}>Kỹ Thuật Viên Phụ Trách</div>
