@@ -25,7 +25,6 @@ const PAGE_TITLES = {
   '/admin/kho-hang':                 'Kho Hàng',
   '/admin/kho-hang/san-pham':        'Sản Phẩm',
   '/admin/kho-hang/giao-dich':       'Nhập / Xuất',
-  '/admin/kho-hang/chiet-rot':       'Chiết Rót',
   '/admin/kho-hang/bao-cao':         'Báo Cáo Kho',
   '/admin/khuyen-mai':               'Khuyến Mãi',
   '/admin/khuyen-mai/roi':           'Phân Tích ROI',

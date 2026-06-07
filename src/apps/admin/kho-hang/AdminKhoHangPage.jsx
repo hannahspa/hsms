@@ -734,41 +734,6 @@ function FormSanPham({ initial, products, onSave, onClose }) {
             </div>
           </div>
 
-          <div style={{ background: '#F5F0FF', borderRadius: '12px', padding: '14px', border: '1px solid #D8C8FF' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '16px' }}>🧪</span>
-              <span style={{ fontWeight: '800', fontSize: '13px', color: '#6C3483' }}>Chiết Rót</span>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto',
-                cursor: 'pointer', fontSize: '13px', color: '#6C3483', fontWeight: '700' }}>
-                <input type="checkbox" checked={f.co_the_chiet}
-                  onChange={e => set('co_the_chiet', e.target.checked)} />
-                Bật chiết rót
-              </label>
-            </div>
-            {f.co_the_chiet && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div>
-                  <label style={lbl}>SẢN PHẨM CHIẾT NHỎ (đích)</label>
-                  <select style={inp} value={f.san_pham_chiet_id}
-                    onChange={e => set('san_pham_chiet_id', e.target.value)}>
-                    <option value="">— Chọn sản phẩm —</option>
-                    {otherProducts.map(p => (
-                      <option key={p.id} value={p.id}>{p.ten} ({p.don_vi})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={lbl}>
-                    HỆ SỐ: 1 {f.don_vi === '__custom' ? f.don_vi_custom || 'đv' : f.don_vi} lớn ={' '}
-                    ? {otherProducts.find(p => p.id === f.san_pham_chiet_id)?.don_vi || 'đv'} nhỏ
-                  </label>
-                  <input style={inp} type="number" step="0.1" min="0.1"
-                    value={f.he_so_chiet} onChange={e => set('he_so_chiet', e.target.value)} />
-                </div>
-              </div>
-            )}
-          </div>
-
           {err && (
             <div style={{ background: '#FDECEA', color: '#C0392B', padding: '10px 14px',
               borderRadius: '8px', fontSize: '13px', fontWeight: '600' }}>⚠️ {err}</div>
@@ -1914,7 +1879,6 @@ const KHO_PATH_TAB = {
   '/admin/kho-hang':           'tong-quan',
   '/admin/kho-hang/san-pham':  'san-pham',
   '/admin/kho-hang/giao-dich': 'giao-dich',
-  '/admin/kho-hang/chiet-rot': 'chiet-rot',
   '/admin/kho-hang/bao-cao':   'bao-cao',
 }
 
@@ -1951,7 +1915,6 @@ export default function AdminKhoHangPage() {
     { key: 'tong-quan', icon: '📊', label: 'Tổng Quan' },
     { key: 'san-pham',  icon: '📋', label: 'Sản Phẩm' },
     { key: 'giao-dich', icon: '📥', label: 'Nhập/Xuất' },
-    { key: 'chiet-rot', icon: '🧪', label: 'Chiết Rót' },
     { key: 'bao-cao',   icon: '📈', label: 'Báo Cáo' },
   ]
 
@@ -2031,10 +1994,6 @@ export default function AdminKhoHangPage() {
           {tab === 'giao-dich' && (
             <TabGiaoDich products={products} transactions={transactions}
               userId={user?.id} danhMucKho={danhMucKho} onReload={load} showToast={showToast} />
-          )}
-          {tab === 'chiet-rot' && (
-            <TabChietRot products={products} transactions={transactions}
-              userId={user?.id} onReload={load} showToast={showToast} />
           )}
           {tab === 'bao-cao' && (
             <TabBaoCao products={products} />
