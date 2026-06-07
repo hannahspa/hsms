@@ -65,7 +65,8 @@ function fmtTonQD(p) {
   const qd = Number(p.quy_doi) || 1
   if (qd > 1 && p.don_vi_nhap) {
     const lon = Number(p.ton_kho) / qd
-    return `${base} ≈ ${Number.isInteger(lon) ? lon : +lon.toFixed(2)} ${p.don_vi_nhap}`
+    const lonStr = Number.isInteger(lon) ? lon : +lon.toFixed(2)
+    return `${lonStr} ${p.don_vi_nhap} ≈ ${base}`   // vd: 1 hũ ≈ 230 gram
   }
   return base
 }
@@ -1007,10 +1008,10 @@ function TabSanPham({ products, onReload, showToast }) {
                       {commission ? ` · HH ${commission}` : ''}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 84 }}>
+                  <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 110 }}>
                     <div style={{ fontWeight: 800, fontSize: 12.5,
                       color: Number(p.ton_kho) <= 0 ? '#C0392B' : warn ? '#E67E22' : '#2D7A4F' }}>
-                      {fmtSL(p.ton_kho, p.don_vi)}
+                      {fmtTonQD(p)}
                     </div>
                     {p.loai === 'ban_khach' && <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.primary }}>{fmtMoneyShort(p.gia_ban)}</div>}
                   </div>
