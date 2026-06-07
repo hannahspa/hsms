@@ -28,6 +28,7 @@ export default function LichHenPage({ user }) {
   const [creatingId, setCreatingId] = useState(null)  // lịch hẹn đang tạo đơn
   const [listSearch, setListSearch] = useState('')
   const [listStatus, setListStatus] = useState('all')
+  const [nowTick, setNowTick] = useState(0)   // ép render lại Bảng Điều Phối mỗi 30s
 
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 2800) }
 
@@ -40,6 +41,7 @@ export default function LichHenPage({ user }) {
     setLoading(true)
     let q = supabase.from('lich_hen').select('*')
     if (viewMode === 'day') q = q.eq('ngay_hen', ngayXem)
+    else if (viewMode === 'live') q = q.eq('ngay_hen', todayISO())
     else if (viewMode === 'week') { const w = weekDaysOf(ngayXem); q = q.gte('ngay_hen', w[0]).lte('ngay_hen', w[6]) }
     else if (viewMode === 'list') { q = q.gte('ngay_hen', todayISO()).lte('ngay_hen', addDaysISO(todayISO(), 60)) }
     else { const [y, m] = ngayXem.split('-').map(Number); const last = daysInMonth(y, m); q = q.gte('ngay_hen', `${y}-${String(m).padStart(2, '0')}-01`).lte('ngay_hen', `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`) }
@@ -66,6 +68,13 @@ export default function LichHenPage({ user }) {
     }).catch(() => { if (alive) setOffIds([]) })
     return () => { alive = false }
   }, [ngayXem, viewMode])
+
+  // Bảng Điều Phối: tự cập nhật giờ + dữ liệu mỗi 30s
+  useEffect(() => {
+    if (viewMode !== 'live') return undefined
+    const t = setInterval(() => { setNowTick(n => n + 1); fetchHen() }, 30000)
+    return () => clearInterval(t)
+  }, [viewMode, fetchHen])
 
   const handleSave = async () => { setModal(null); await fetchHen(); showToast('Đã lưu lịch hẹn ✓') }
 
@@ -183,6 +192,106 @@ export default function LichHenPage({ user }) {
           <span key={k} style={{ background: cfg.bg, color: cfg.color, padding: '4px 11px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>{cfg.label}: {stats[k]}</span>
         ) : null)}
       </div>
+
+      {/* ── BẢNG ĐIỀU PHỐI (realtime — ai đang làm, còn bao lâu, KTV rảnh) ── */}
+      {!loading && viewMode === 'live' && (() => {
+        void nowTick
+        const dn = getNowVN(); const nowM = dn.getHours() * 60 + dn.getMinutes()
+        const fmtM = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+        const items = henList.filter(h => h.trang_thai !== 'huy').map(h => ({ h, start: gioToMin(h.gio_hen), end: gioToMin(h.gio_hen) + (h.thoi_luong_phut || 60) }))
+        const dangLam = items.filter(it => it.start <= nowM && nowM < it.end).sort((a, b) => a.end - b.end)
+        const sapToi = items.filter(it => it.start > nowM).sort((a, b) => a.start - b.start).slice(0, 6)
+        const busyIds = new Set(dangLam.map(it => it.h.nhan_vien_id).filter(Boolean))
+        const ktvRanh = workingKtv.filter(k => !busyIds.has(k.id))
+        const kpi = [
+          { l: 'Bây giờ', v: fmtM(nowM), c: C.espresso },
+          { l: 'Khách đang làm', v: dangLam.length, c: '#6C3483' },
+          { l: 'KTV đang bận', v: busyIds.size, c: '#C0392B' },
+          { l: 'KTV đang rảnh', v: ktvRanh.length, c: '#2D7A4F' },
+        ]
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+              {kpi.map(s => (
+                <div key={s.l} style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.line}`, boxShadow: C.shadow, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11.5, color: C.ink3, fontWeight: 600 }}>{s.l}</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: s.c, fontFamily: 'var(--serif)' }}>{s.v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Đang phục vụ */}
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.espresso, marginBottom: 10 }}>🟣 Đang phục vụ ({dangLam.length}) · cập nhật mỗi 30 giây</div>
+              {dangLam.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 28, color: C.ink3, background: C.card, borderRadius: 12, border: `1px solid ${C.line}` }}>Hiện không có khách nào đang làm</div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                  {dangLam.map(({ h, start, end }) => {
+                    const total = end - start, doneMin = nowM - start, leftMin = end - nowM
+                    const pct = Math.max(2, Math.min(100, Math.round(doneMin / total * 100)))
+                    const ktvNv = h.nhan_vien_id ? ktvList.find(k => k.id === h.nhan_vien_id) : null
+                    const soon = leftMin <= 10
+                    return (
+                      <div key={h.id} onClick={() => setModal(h)} style={{ background: C.card, borderRadius: 12, border: `1px solid ${soon ? '#F0D9A8' : C.line}`, boxShadow: C.shadow, padding: '12px 14px', cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                          {ktvNv ? <Avatar nv={ktvNv} size={30} /> : <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#e8ddc9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#8a6a35' }}>?</span>}
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.ten_khach}</div>
+                            <div style={{ fontSize: 11.5, color: ktvNv ? '#5B2C6F' : C.ink4, fontWeight: 700 }}>{ktvNv ? twoWords(ktvNv.ho_ten) : 'KTV bất kỳ'} · {h.ten_dich_vu || 'Dịch vụ'}</div>
+                          </div>
+                          <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 800, color: soon ? '#B8791F' : '#2D7A4F' }}>{soon ? `⏰ còn ${leftMin}'` : `còn ${leftMin}'`}</span>
+                        </div>
+                        <div style={{ height: 8, background: '#EFE7DD', borderRadius: 6, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: soon ? '#E0A82E' : '#7E57C2', borderRadius: 6, transition: 'width .4s' }} />
+                        </div>
+                        <div style={{ fontSize: 10.5, color: C.ink3, marginTop: 5 }}>Bắt đầu {fmtM(start)} · đã làm {doneMin}' / {total}' · xong ~{fmtM(end)}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* KTV rảnh */}
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.espresso, marginBottom: 10 }}>🟢 KTV đang rảnh ({ktvRanh.length}) · sẵn sàng nhận khách</div>
+              {ktvRanh.length === 0 ? (
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: '#FDECEA', border: '1px solid #F5C6C0', color: '#C0392B', fontWeight: 700, fontSize: 13 }}>⚠️ Tất cả KTV đang bận — chưa có người rảnh</div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {ktvRanh.map(k => (
+                    <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#EAF4EC', border: '1px solid #BCDCBC', borderRadius: 999, padding: '5px 12px 5px 5px' }}>
+                      <Avatar nv={k} size={24} />
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2D7A4F' }}>{twoWords(k.ho_ten)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sắp tới */}
+            {sapToi.length > 0 && (
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.espresso, marginBottom: 10 }}>⏳ Sắp tới</div>
+                <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.line}`, boxShadow: C.shadow, overflow: 'hidden' }}>
+                  {sapToi.map(({ h, start }) => {
+                    const ktvNv = h.nhan_vien_id ? ktvList.find(k => k.id === h.nhan_vien_id) : null
+                    return (
+                      <div key={h.id} onClick={() => setModal(h)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: `1px solid ${C.line}`, cursor: 'pointer' }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: C.ink, width: 48 }}>{fmtM(start)}</span>
+                        <span style={{ fontSize: 11.5, color: C.primary, fontWeight: 700, width: 70 }}>còn {start - nowM}'</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.ten_khach}</span>
+                        <span style={{ fontSize: 12, color: C.ink3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{h.ten_dich_vu || 'Dịch vụ'} · {ktvNv ? twoWords(ktvNv.ho_ten) : 'KTV bất kỳ'}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── VIEW TUẦN ── */}
       {!loading && viewMode === 'week' && (

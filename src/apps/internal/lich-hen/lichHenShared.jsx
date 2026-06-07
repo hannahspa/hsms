@@ -85,7 +85,7 @@ export function monthMatrixOf(iso) {
   return Array.from({ length: 6 }, (_, w) => Array.from({ length: 7 }, (_, i) => addDaysISO(start, w * 7 + i)))
 }
 export const monthOf = iso => Number(iso.split('-')[1])
-export const VIEW_TABS = [{ k: 'day', l: 'Ngày' }, { k: 'week', l: 'Tuần' }, { k: 'month', l: 'Tháng' }, { k: 'list', l: '☰ Danh Sách' }]
+export const VIEW_TABS = [{ k: 'live', l: '🟢 Điều Phối' }, { k: 'day', l: 'Ngày' }, { k: 'week', l: 'Tuần' }, { k: 'month', l: 'Tháng' }, { k: 'list', l: '☰ Danh Sách' }]
 
 export const navBtn = { width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.line2}`, background: '#fdfcfb', cursor: 'pointer', fontSize: 16, color: C.ink3, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }
 export const miniBtn = (color) => ({ border: 'none', background: color, color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: 9.5, fontWeight: 700, cursor: 'pointer', lineHeight: 1.4 })
