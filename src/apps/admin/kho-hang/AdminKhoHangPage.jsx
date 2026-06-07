@@ -526,8 +526,10 @@ function FormSanPham({ initial, products, onSave, onClose }) {
     // Cân kho % (1 lần) cho tiêu hao/vật tư → đặt tồn = % của định mức, rồi khoá
     if (isEdit && !initial?.da_can_kho && (f.loai === 'tieu_hao' || f.loai === 'vat_tu') && canKhoPct !== '') {
       const pct = Math.max(0, Math.min(100, +canKhoPct || 0))
-      const base = Number(initial?.ton_dinh_muc) || Number(initial?.ton_kho) || 1
+      // Mốc 100% = 1 đơn vị mua (quy đổi) nếu có; nếu không thì định mức/tồn cũ
+      const base = _hasQD ? _qd : (Number(initial?.ton_dinh_muc) || Number(initial?.ton_kho) || 1)
       extendedPayload.ton_kho = Math.round(base * pct / 100 * 100) / 100
+      extendedPayload.ton_dinh_muc = base
       extendedPayload.da_can_kho = true
     }
 
@@ -609,18 +611,22 @@ function FormSanPham({ initial, products, onSave, onClose }) {
                     </div>
                   ) : (
                     <>
-                      <label style={{ ...lbl, marginBottom: 4 }}>CÂN KHO — % CÒN LẠI THỰC TẾ (nhập 1 lần)</label>
+                      {(() => { const canBase = hasQD ? (+f.quy_doi || 1) : dm; return (<>
+                      <label style={{ ...lbl, marginBottom: 4 }}>
+                        CÂN KHO — % CÒN LẠI THỰC TẾ {hasQD ? `(100% = 1 ${f.don_vi_nhap} = ${+f.quy_doi || 1} ${dvCoSo})` : ''}
+                      </label>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <input style={{ ...inp, width: 110 }} type="number" min="0" max="100"
                           value={canKhoPct} onChange={e => setCanKhoPct(e.target.value)} placeholder="VD: 80" />
                         <span style={{ fontSize: 13, fontWeight: 800, color: COLORS.primary }}>%</span>
                         <span style={{ fontSize: 11, color: COLORS.textMute }}>
-                          → tồn = {canKhoPct ? Math.round((Number(dm) * (+canKhoPct || 0) / 100) * 100) / 100 : '…'} {initial?.don_vi}
+                          → tồn = {canKhoPct ? Math.round((canBase * (+canKhoPct || 0) / 100) * 100) / 100 : '…'} {dvCoSo}
                         </span>
                       </div>
                       <div style={{ fontSize: 11, color: '#B8791F', marginTop: 5 }}>
                         ⚠️ Nhập đúng % thực tế rồi bấm Lưu → hệ thống <b>khoá lại</b>, sau này chỉ đổi qua Nhập/Xuất (chống thất thoát).
                       </div>
+                      </>)})()}
                     </>
                   )}
                 </div>
