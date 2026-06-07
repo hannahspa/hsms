@@ -359,6 +359,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
     don_vi_custom: DON_VI_LIST.includes(initial?.don_vi) ? '' : (initial?.don_vi || ''),
     don_vi_nhap: initial?.don_vi_nhap || '',
     quy_doi: initial?.quy_doi || 1,
+    anh_url: initial?.anh_url || '',
     mo_ta: initial?.mo_ta || '',
     gia_nhap: initial?.gia_nhap ? Math.round(initial.gia_nhap * (initial?.quy_doi || 1)) : '',  // hiển thị theo đơn vị nhập
     gia_ban: initial?.gia_ban || '',
@@ -375,8 +376,21 @@ function FormSanPham({ initial, products, onSave, onClose }) {
     he_so_chiet: initial?.he_so_chiet || 1,
   })
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [err, setErr] = useState('')
   const set = (k, v) => setF(prev => ({ ...prev, [k]: v }))
+
+  const handleUploadAnh = async (file) => {
+    if (!file) return
+    setUploading(true); setErr('')
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const path = `sp_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('san-pham').upload(path, file, { upsert: true, contentType: file.type })
+    if (error) { setUploading(false); return setErr('Lỗi tải ảnh: ' + error.message) }
+    const { data } = supabase.storage.from('san-pham').getPublicUrl(path)
+    set('anh_url', data.publicUrl)
+    setUploading(false)
+  }
 
   const handleSave = async () => {
     if (!f.ten.trim()) return setErr('Nhập tên sản phẩm')
@@ -403,6 +417,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
       danh_muc: f.danh_muc.trim() || null,
       don_vi_nhap: f.don_vi_nhap.trim() || null,
       quy_doi: +f.quy_doi || 1,
+      anh_url: f.anh_url || null,
       gia_uu_dai: +f.gia_uu_dai || 0,
       gia_uu_dai_ecommerce: +f.gia_uu_dai_ecommerce || 0,
       hien_tren_pos: !!f.hien_tren_pos,
@@ -476,6 +491,25 @@ function FormSanPham({ initial, products, onSave, onClose }) {
             <label style={lbl}>TÊN SẢN PHẨM *</label>
             <input style={inp} value={f.ten} onChange={e => set('ten', e.target.value)}
               placeholder="VD: Dầu massage Body, Bông tẩy trang..." />
+          </div>
+
+          <div>
+            <label style={lbl}>ẢNH SẢN PHẨM</label>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {f.anh_url ? (
+                <img src={f.anh_url} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', border: `1px solid ${COLORS.border}` }} />
+              ) : (
+                <div style={{ width: 64, height: 64, borderRadius: 10, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: COLORS.textMute }}>📷</div>
+              )}
+              <div style={{ flex: 1 }}>
+                <input type="file" accept="image/*" onChange={e => handleUploadAnh(e.target.files?.[0])} style={{ fontSize: 12 }} />
+                {uploading && <div style={{ fontSize: 11, color: COLORS.primary, marginTop: 4 }}>Đang tải ảnh...</div>}
+                {f.anh_url && !uploading && (
+                  <button type="button" onClick={() => set('anh_url', '')}
+                    style={{ marginTop: 4, fontSize: 11, color: '#C0392B', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Xóa ảnh</button>
+                )}
+              </div>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
@@ -791,11 +825,15 @@ function TabSanPham({ products, onReload, showToast }) {
                       </td>
                       <td style={{ padding: '12px 10px', verticalAlign: 'top', minWidth: 260 }}>
                         <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                          <div style={{ width: 32, height: 32, borderRadius: 8, background: loai.bg,
-                            color: loai.color, display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
-                            {loai.icon}
-                          </div>
+                          {p.anh_url ? (
+                            <img src={p.anh_url} alt="" loading="lazy" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0, border: `1px solid ${COLORS.border}` }} />
+                          ) : (
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: loai.bg,
+                              color: loai.color, display: 'flex', alignItems: 'center',
+                              justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
+                              {loai.icon}
+                            </div>
+                          )}
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontWeight: 800, color: COLORS.text, fontSize: 13,
                               lineHeight: 1.35 }}>

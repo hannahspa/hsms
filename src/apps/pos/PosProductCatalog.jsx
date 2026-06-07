@@ -295,7 +295,7 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
           {products.map(sp => (
-            <CatalogButton key={sp.id} onClick={() => handleAddProduct(sp)} title={sp.ten} meta={`Tồn: ${sp.ton_kho} ${sp.don_vi}`} price={sp.gia_ban} />
+            <CatalogButton key={sp.id} onClick={() => handleAddProduct(sp)} title={sp.ten} meta={`Tồn: ${sp.ton_kho} ${sp.don_vi}`} price={sp.gia_ban} img={sp.anh_url} />
           ))}
         </div>
       )}
@@ -405,7 +405,7 @@ function Empty({ text }) {
   return <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink3)', fontSize: 13 }}>{text}</div>
 }
 
-function CatalogButton({ title, meta, price, onClick, wide = false }) {
+function CatalogButton({ title, meta, price, onClick, wide = false, img }) {
   return (
     <button onClick={onClick} style={{
       border: `1px solid ${C.line}`,
@@ -420,6 +420,12 @@ function CatalogButton({ title, meta, price, onClick, wide = false }) {
       fontFamily: FONT.sans,
       boxShadow: C.shadowSm,
     }}>
+      {img && (
+        <img src={img} alt="" loading="lazy" style={{
+          width: '100%', height: 76, objectFit: 'cover', borderRadius: 6,
+          marginBottom: 6, background: C.surface,
+        }} />
+      )}
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, lineHeight: 1.35 }}>{title}</div>
         {meta && <div style={{ fontSize: 11, color: C.ink3, marginTop: 4, lineHeight: 1.35 }}>{meta}</div>}
