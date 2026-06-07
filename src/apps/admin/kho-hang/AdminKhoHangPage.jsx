@@ -503,6 +503,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
     }
     if (!isEdit) payload.ton_kho = +f.ton_kho || 0
     if (!isEdit) extendedPayload.ton_kho = +f.ton_kho || 0
+    if (!isEdit) extendedPayload.ton_dinh_muc = +f.ton_kho || 0   // mốc 100% ban đầu
 
     let error
     if (isEdit) {
@@ -549,6 +550,30 @@ function FormSanPham({ initial, products, onSave, onClose }) {
         </div>
 
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Thanh % pin — mức tồn còn lại (chỉ tiêu hao/vật tư) */}
+          {isEdit && (f.loai === 'tieu_hao' || f.loai === 'vat_tu') && (() => {
+            const ton = Number(initial?.ton_kho) || 0
+            const dm  = Number(initial?.ton_dinh_muc) || ton || 1
+            const pct = Math.max(0, Math.min(100, Math.round(ton / dm * 100)))
+            const col = pct <= 15 ? '#C0392B' : pct <= 40 ? '#E67E22' : '#2D7A4F'
+            return (
+              <div style={{ background: '#FBF7F2', border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: '12px 14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: COLORS.textSub, letterSpacing: '.03em' }}>🔋 MỨC TỒN CÒN LẠI</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: col }}>{pct}% · {fmtTonQD(initial)}</span>
+                </div>
+                <div style={{ height: 16, background: '#EFE7DD', borderRadius: 8, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: col, borderRadius: 8, transition: 'width .3s' }} />
+                </div>
+                <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 6 }}>
+                  {pct <= 15
+                    ? <span style={{ color: '#C0392B', fontWeight: 700 }}>⚠️ Sắp hết — nên nhập thêm</span>
+                    : `Đầy 100% = ${fmtSL(dm, initial?.don_vi)} (mức nhập cao nhất)`}
+                </div>
+              </div>
+            )
+          })()}
+
           <div>
             <label style={lbl}>LOẠI SẢN PHẨM</label>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -1057,6 +1082,8 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
     const updSP = { ton_kho: Math.max(0, tonMoi) }
     // Nhập kho → cập nhật luôn giá nhập/đơn vị cơ sở mới nhất (cho giá trị tồn chính xác)
     if (f.loai === 'nhap_kho' && +f.gia_don_vi) updSP.gia_nhap = Math.round((+f.gia_don_vi || 0) / qd)
+    // Nhập kho → nâng "định mức 100%" = mức tồn cao nhất từng đạt (cho thanh % pin)
+    if (f.loai === 'nhap_kho') updSP.ton_dinh_muc = Math.max(Number(sp.ton_dinh_muc) || 0, tonMoi)
     const { error: e2 } = await supabase.from('kho_san_pham')
       .update(updSP).eq('id', f.san_pham_id)
     if (e2) { setSaving(false); return setErr(e2.message) }
