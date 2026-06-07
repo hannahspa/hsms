@@ -81,6 +81,13 @@ export const LETAN_NAV = [
     { id: 'settings',   label: 'Cài Đặt',          path: '/SoThuChi/cai-dat' },
   ]},
 
+  { id: 'kho', icon: '📦', label: 'Kho Hàng', children: [
+    { id: 'kho-tongquan', label: 'Tổng Quan',   path: '/admin/kho-hang' },
+    { id: 'kho-sanpham',  label: 'Sản Phẩm',    path: '/admin/kho-hang/san-pham' },
+    { id: 'kho-giaodich', label: 'Nhập / Xuất', path: '/admin/kho-hang/giao-dich' },
+    { id: 'kho-baocao',   label: 'Báo Cáo',     path: '/admin/kho-hang/bao-cao' },
+  ]},
+
   { sec: 'Khách Hàng' },
   { id: 'crm',          icon: '💝', label: 'CRM Khách Hàng',  path: '/admin/crm' },
   { id: 'the-lieu-trinh', icon: '🎫', label: 'Thẻ Liệu Trình', path: '/admin/the-lieu-trinh' },

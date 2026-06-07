@@ -60,6 +60,34 @@ function todayISO() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
     .toISOString().slice(0, 10)
 }
+// Nén ảnh phía client (canvas): resize max 1000px + JPEG ~0.82 → giảm ~70-85% dung lượng
+function compressImage(file, maxW = 1000, quality = 0.82) {
+  return new Promise((resolve) => {
+    if (!file || !file.type?.startsWith('image/')) return resolve(file)
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxW / (img.width || maxW))
+      const w = Math.round((img.width || maxW) * scale)
+      const h = Math.round((img.height || maxW) * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w; canvas.height = h
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+      canvas.toBlob(b => resolve(b || file), 'image/jpeg', quality)
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
+// Upload ảnh (đã nén) lên Storage → trả publicUrl
+async function uploadAnhSP(file) {
+  const blob = await compressImage(file)
+  const path = `sp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.jpg`
+  const { error } = await supabase.storage.from('san-pham').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
+  if (error) throw error
+  return supabase.storage.from('san-pham').getPublicUrl(path).data.publicUrl
+}
 function monthRange(year, month) {
   const from = `${year}-${String(month).padStart(2, '0')}-01`
   const last  = new Date(year, month, 0).getDate()
@@ -383,12 +411,10 @@ function FormSanPham({ initial, products, onSave, onClose }) {
   const handleUploadAnh = async (file) => {
     if (!file) return
     setUploading(true); setErr('')
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-    const path = `sp_${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('san-pham').upload(path, file, { upsert: true, contentType: file.type })
-    if (error) { setUploading(false); return setErr('Lỗi tải ảnh: ' + error.message) }
-    const { data } = supabase.storage.from('san-pham').getPublicUrl(path)
-    set('anh_url', data.publicUrl)
+    try {
+      const url = await uploadAnhSP(file)   // tự nén trước khi upload
+      set('anh_url', url)
+    } catch (e) { setErr('Lỗi tải ảnh: ' + e.message) }
     setUploading(false)
   }
 
@@ -938,7 +964,20 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
   const [err, setErr]       = useState('')
   const [ktvList, setKtvList] = useState([])
   const [nguoiNhanId, setNguoiNhanId] = useState('')
+  const [anhSP, setAnhSP] = useState('')
+  const [uploadingAnh, setUploadingAnh] = useState(false)
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))
+
+  const handleUploadAnhSP = async (file) => {
+    if (!file || !f.san_pham_id) return
+    setUploadingAnh(true); setErr('')
+    try {
+      const url = await uploadAnhSP(file)   // tự nén trước khi upload
+      await supabase.from('kho_san_pham').update({ anh_url: url }).eq('id', f.san_pham_id)
+      setAnhSP(url)
+    } catch (e) { setErr('Lỗi tải ảnh: ' + e.message) }
+    setUploadingAnh(false)
+  }
 
   useEffect(() => {
     supabase.from('nhan_vien').select('id, ho_ten, vi_tri')
@@ -1086,6 +1125,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
             <label style={lbl}>SẢN PHẨM *</label>
             <select style={inp} value={f.san_pham_id} onChange={e => {
               set('san_pham_id', e.target.value)
+              setAnhSP('')
               const p = products.find(x => x.id === e.target.value)
               if (p?.gia_nhap && f.loai === 'nhap_kho') set('gia_don_vi', Math.round(p.gia_nhap * (p.quy_doi || 1)))
             }}>
@@ -1101,6 +1141,24 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
               ))}
             </select>
           </div>
+
+          {/* Ảnh sản phẩm — khi nhập kho (tự nén trước khi tải) */}
+          {f.loai === 'nhap_kho' && sp && (
+            <div>
+              <label style={lbl}>ẢNH SẢN PHẨM {(anhSP || sp.anh_url) ? '' : '(chưa có — chụp/chọn để thêm)'}</label>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                {(anhSP || sp.anh_url) ? (
+                  <img src={anhSP || sp.anh_url} alt="" style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', border: `1px solid ${COLORS.border}` }} />
+                ) : (
+                  <div style={{ width: 56, height: 56, borderRadius: 8, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: COLORS.textMute }}>📷</div>
+                )}
+                <div style={{ flex: 1 }}>
+                  <input type="file" accept="image/*" onChange={e => handleUploadAnhSP(e.target.files?.[0])} style={{ fontSize: 12 }} />
+                  {uploadingAnh && <div style={{ fontSize: 11, color: COLORS.primary, marginTop: 4 }}>Đang nén & tải ảnh...</div>}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Số lượng + đơn giá */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>

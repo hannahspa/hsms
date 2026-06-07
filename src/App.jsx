@@ -15,7 +15,7 @@ const PosApp = lazy(() => import('./apps/pos/PosApp'))
 
 // Các /admin/* paths mà Lễ Tân được phép truy cập (không yêu cầu admin)
 // LƯU Ý: /admin/the-lieu-trinh/bao-cao chỉ Admin — phải exclude trước khi check
-const LETAN_ALLOWED_ADMIN = ['/admin/crm', '/admin/the-lieu-trinh']
+const LETAN_ALLOWED_ADMIN = ['/admin/crm', '/admin/the-lieu-trinh', '/admin/kho-hang']
 const LETAN_BLOCKED_ADMIN = ['/admin/the-lieu-trinh/bao-cao'] // báo cáo chỉ Admin
 
 function LoadingScreen() {
