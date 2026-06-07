@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../context/AuthContext'
 import { COLORS } from '../../../constants/colors'
@@ -175,7 +176,7 @@ function KiemKhoModal({ products, userId, onSave, onClose, showToast }) {
     onSave()
   }
 
-  return (
+  return createPortal((
     <div style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 300,
       display: 'flex', flexDirection: 'column', fontFamily: 'inherit' }}>
       {/* Header */}
@@ -278,7 +279,7 @@ function KiemKhoModal({ products, userId, onSave, onClose, showToast }) {
         </button>
       </div>
     </div>
-  )
+  ), document.body)
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -498,7 +499,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
 
   const otherProducts = products.filter(p => p.id !== initial?.id)
 
-  return (
+  return createPortal((
     <div style={{ position: 'fixed', inset: 0,
       background: 'rgba(250,247,244,0.78)', backdropFilter: 'blur(10px)',
       zIndex: 200 }}>
@@ -785,7 +786,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
         </div>
       </div>
     </div>
-  )
+  ), document.body)
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1069,7 +1070,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
     onSave()
   }
 
-  return (
+  return createPortal((
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.55)', zIndex: 200 }}>
       <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'white',
         overflow: 'auto', boxShadow: '-6px 0 40px rgba(0,0,0,0.3)', animation: 'rpSlideIn .22s ease' }}>
@@ -1279,7 +1280,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
         </div>
       </div>
     </div>
-  )
+  ), document.body)
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
