@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext'
 import { getNavByRole } from '../../constants/navConfig'
 import { getNowVN } from '../../lib/utils'
 import I from '../shared/Icons'
+import SmartSearch from '../shared/SmartSearch'
+import NotificationBell from '../shared/NotificationBell'
 import MobileShell from './MobileShell'
 import '../../styles/hannah-admin.css'
 import '../../styles/modules.css'
@@ -276,14 +278,11 @@ export default function AdminShell({ children }) {
           </div>
 
           <div className="search">
-            <I.Search />
-            <input placeholder="Tìm khách hàng, dịch vụ, hoá đơn…" />
-            <kbd>⌘K</kbd>
+            <SmartSearch />
           </div>
 
           <div className="top-actions">
-            <button className="icon-btn"><I.Filter style={{ width: 16, height: 16 }} /></button>
-            <button className="icon-btn"><I.Bell style={{ width: 17, height: 17 }} /><span className="dot" /></button>
+            {role === 'admin' && <NotificationBell />}
             {role !== 'ktv' && (
               <button className="btn gold" onClick={() => window.location.href = '/pos'}>
                 <I.Plus style={{ width: 14, height: 14 }} /> Tạo Đơn

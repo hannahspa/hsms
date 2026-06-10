@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../context/AuthContext'
-import { todayISO, getNowVN, fmtCompact, fmtFull, addDays, pctChange } from '../../../lib/utils'
+import { todayISO, getNowVN, fmtCompact, addDays, pctChange } from '../../../lib/utils'
+
+const fmtNum = n => new Intl.NumberFormat('vi-VN').format(n || 0)
 import I from '../../../components/shared/Icons'
 import '../../../styles/hannah-admin.css'
 
@@ -65,28 +67,28 @@ function KPIs({ kpiData, chartData }) {
   const cards = [
     {
       k: 'revenue', icon: I.Coin, label: 'Doanh Thu Hôm Nay', color: '#3e5a32',
-      value: fmtFull(kpiData?.doanhThu?.value || 0),
+      value: fmtNum(kpiData?.doanhThu?.value || 0),
       change: kpiData?.doanhThu?.yesterday ? pctChange(kpiData.doanhThu.value, kpiData.doanhThu.yesterday) : null,
       sub: kpiData?.donHangHomNay ? <>{kpiData.donHangHomNay} đơn hàng · <b>POS</b></> : 'Đang cập nhật',
       data: (chartData || []).map(d => d.value),
     },
     {
       k: 'expense', icon: I.Receipt, label: 'Chi Phí Hôm Nay', color: '#6b3a28',
-      value: fmtFull(kpiData?.chiPhi?.value || 0),
+      value: fmtNum(kpiData?.chiPhi?.value || 0),
       change: kpiData?.chiPhi?.yesterday ? pctChange(kpiData.chiPhi.value, kpiData.chiPhi.yesterday) : null,
       sub: <>Theo dõi <b>37 hạng mục</b> chi phí</>,
       data: (chartData || []).map(d => Math.max(0, d.value * 0.35)),
     },
     {
       k: 'orders', icon: I.Cart, label: 'Lợi Nhuận Hôm Nay', color: '#5a3e22',
-      value: fmtFull((kpiData?.doanhThu?.value || 0) - (kpiData?.chiPhi?.value || 0)),
+      value: fmtNum((kpiData?.doanhThu?.value || 0) - (kpiData?.chiPhi?.value || 0)),
       change: null,
       sub: <>Thực thu = <b>Doanh thu − Chi phí</b></>,
       data: (chartData || []).map(d => d.value * 0.6),
     },
     {
       k: 'assets', icon: I.Bank, label: 'Tổng Tài Sản', color: '#2e2018',
-      value: fmtFull(kpiData?.tongTS?.value || 0),
+      value: fmtNum(kpiData?.tongTS?.value || 0),
       change: null,
       sub: <><b>3 ví</b> · Tiền Mặt + MB Bank + TP Bank</>,
       data: (chartData || []).map((_, i) => 90 + i),
