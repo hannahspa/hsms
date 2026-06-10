@@ -60,8 +60,10 @@ function fmtSL(n, dv) {
   return (Number.isInteger(num) ? num : +num.toFixed(2)) + ' ' + (dv || '')
 }
 // Tồn theo đơn vị cơ sở + quy đổi ≈ đơn vị nhập (vd "650 gram ≈ 0,93 túi")
+// Hàng BÁN KHÁCH bán nguyên đơn vị → KHÔNG quy đổi lẻ.
 function fmtTonQD(p) {
   const base = fmtSL(p.ton_kho, p.don_vi)
+  if (p.loai === 'ban_khach') return base
   const qd = Number(p.quy_doi) || 1
   if (qd > 1 && p.don_vi_nhap) {
     const lon = Number(p.ton_kho) / qd
@@ -752,8 +754,8 @@ function FormSanPham({ initial, products, onSave, onClose }) {
             </div>
           </div>
 
-          {/* Quy cách đóng gói — quy đổi đơn vị mua vào ↔ đơn vị dùng */}
-          {(() => { const dvCoSo = f.don_vi === '__custom' ? (f.don_vi_custom || 'đơn vị') : f.don_vi; return (
+          {/* Quy cách đóng gói — chỉ cho tiêu hao/vật tư (bán khách bán nguyên, không quy đổi) */}
+          {f.loai !== 'ban_khach' && (() => { const dvCoSo = f.don_vi === '__custom' ? (f.don_vi_custom || 'đơn vị') : f.don_vi; return (
           <div style={{ background: '#FDF8F1', borderRadius: '12px', padding: '14px', border: `1px solid ${COLORS.border}` }}>
             <div style={{ fontWeight: '800', fontSize: '13px', color: COLORS.primary, marginBottom: '4px' }}>
               📦 Quy cách đóng gói (giúp hệ thống tự tính tồn kho)
