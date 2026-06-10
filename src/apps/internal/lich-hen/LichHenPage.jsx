@@ -29,6 +29,8 @@ export default function LichHenPage({ user }) {
   const [listSearch, setListSearch] = useState('')
   const [listStatus, setListStatus] = useState('all')
   const [nowTick, setNowTick] = useState(0)   // ép render lại Bảng Điều Phối mỗi 30s
+  const [servingOrders, setServingOrders] = useState([])   // đơn POS đang phục vụ (chưa thanh toán) hôm nay
+  const [dvDur, setDvDur] = useState({})                   // dich_vu_id → { ten, phut }
 
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 2800) }
 
@@ -69,12 +71,29 @@ export default function LichHenPage({ user }) {
     return () => { alive = false }
   }, [ngayXem, viewMode])
 
+  // Đơn POS đang phục vụ (chưa thanh toán) hôm nay — nguồn "đang làm" CHÍNH XÁC
+  const fetchServing = useCallback(async () => {
+    const { data } = await supabase.from('don_hang')
+      .select('id, ma_don, created_at, khach_hang_id, khach_hang:khach_hang_id(ho_ten), lich_hen_id, don_hang_chi_tiet(nhan_vien_id, dich_vu_id, loai_item)')
+      .eq('ngay', todayISO()).eq('is_test', false)
+      .not('trang_thai', 'in', '(da_thanh_toan,huy)')
+      .order('created_at')
+    setServingOrders(data || [])
+  }, [])
+
+  useEffect(() => {
+    if (viewMode !== 'live') return
+    supabase.from('dich_vu').select('id, ten, thoi_gian_phut').then(({ data }) =>
+      setDvDur(Object.fromEntries((data || []).map(d => [d.id, { ten: d.ten, phut: d.thoi_gian_phut || 0 }]))))
+  }, [viewMode])
+
   // Bảng Điều Phối: tự cập nhật giờ + dữ liệu mỗi 30s
   useEffect(() => {
     if (viewMode !== 'live') return undefined
-    const t = setInterval(() => { setNowTick(n => n + 1); fetchHen() }, 30000)
+    fetchServing()
+    const t = setInterval(() => { setNowTick(n => n + 1); fetchHen(); fetchServing() }, 30000)
     return () => clearInterval(t)
-  }, [viewMode, fetchHen])
+  }, [viewMode, fetchHen, fetchServing])
 
   const handleSave = async () => { setModal(null); await fetchHen(); showToast('Đã lưu lịch hẹn ✓') }
 
@@ -198,14 +217,24 @@ export default function LichHenPage({ user }) {
         void nowTick
         const dn = getNowVN(); const nowM = dn.getHours() * 60 + dn.getMinutes()
         const fmtM = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
-        const items = henList.filter(h => h.trang_thai !== 'huy').map(h => ({ h, start: gioToMin(h.gio_hen), end: gioToMin(h.gio_hen) + (h.thoi_luong_phut || 60) }))
-        const dangLam = items.filter(it => it.start <= nowM && nowM < it.end).sort((a, b) => a.end - b.end)
-        const sapToi = items.filter(it => it.start > nowM).sort((a, b) => a.start - b.start).slice(0, 6)
-        const busyIds = new Set(dangLam.map(it => it.h.nhan_vien_id).filter(Boolean))
+        // ĐANG PHỤC VỤ THẬT = đơn POS chưa thanh toán hôm nay (đã lên đơn khi khách đến)
+        const serving = servingOrders.map(o => {
+          const svc = (o.don_hang_chi_tiet || []).filter(it => it.loai_item === 'dich_vu' || it.dich_vu_id)
+          const ktvIds = [...new Set(svc.map(it => it.nhan_vien_id).filter(Boolean))]
+          const dvNames = [...new Set(svc.map(it => dvDur[it.dich_vu_id]?.ten).filter(Boolean))]
+          const tongPhut = svc.reduce((s, it) => s + (dvDur[it.dich_vu_id]?.phut || 0), 0) || 60
+          const cd = new Date(new Date(o.created_at).toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+          const startM = cd.getHours() * 60 + cd.getMinutes()
+          return { o, ktvIds, dvNames, tongPhut, startM, endM: startM + tongPhut, tenKhach: o.khach_hang?.ho_ten || 'Khách lẻ' }
+        }).sort((a, b) => a.endM - b.endM)
+        const busyIds = new Set(serving.flatMap(s => s.ktvIds))
         const ktvRanh = workingKtv.filter(k => !busyIds.has(k.id))
+        // Sắp tới = lịch hẹn chưa "khách đến" (chưa thành đơn), giờ tương lai
+        const sapToi = henList.filter(h => h.trang_thai !== 'huy' && h.trang_thai !== 'da_xong')
+          .map(h => ({ h, start: gioToMin(h.gio_hen) })).filter(x => x.start > nowM).sort((a, b) => a.start - b.start).slice(0, 6)
         const kpi = [
           { l: 'Bây giờ', v: fmtM(nowM), c: C.espresso },
-          { l: 'Khách đang làm', v: dangLam.length, c: '#6C3483' },
+          { l: 'Khách đang làm', v: serving.length, c: '#6C3483' },
           { l: 'KTV đang bận', v: busyIds.size, c: '#C0392B' },
           { l: 'KTV đang rảnh', v: ktvRanh.length, c: '#2D7A4F' },
         ]
@@ -220,32 +249,38 @@ export default function LichHenPage({ user }) {
               ))}
             </div>
 
-            {/* Đang phục vụ */}
+            {/* Đang phục vụ — từ đơn POS đang mở */}
             <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: C.espresso, marginBottom: 10 }}>🟣 Đang phục vụ ({dangLam.length}) · cập nhật mỗi 30 giây</div>
-              {dangLam.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 28, color: C.ink3, background: C.card, borderRadius: 12, border: `1px solid ${C.line}` }}>Hiện không có khách nào đang làm</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.espresso, marginBottom: 10 }}>🟣 Đang phục vụ ({serving.length}) · từ đơn hàng · cập nhật mỗi 30 giây</div>
+              {serving.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 28, color: C.ink3, background: C.card, borderRadius: 12, border: `1px solid ${C.line}` }}>Hiện không có đơn nào đang mở (chưa có khách đang làm)</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
-                  {dangLam.map(({ h, start, end }) => {
-                    const total = end - start, doneMin = nowM - start, leftMin = end - nowM
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 10 }}>
+                  {serving.map(s => {
+                    const total = s.tongPhut, doneMin = Math.max(0, nowM - s.startM), leftMin = s.endM - nowM
                     const pct = Math.max(2, Math.min(100, Math.round(doneMin / total * 100)))
-                    const ktvNv = h.nhan_vien_id ? ktvList.find(k => k.id === h.nhan_vien_id) : null
-                    const soon = leftMin <= 10
+                    const ktv0 = s.ktvIds[0] ? ktvList.find(k => k.id === s.ktvIds[0]) : null
+                    const moreKtv = s.ktvIds.length - 1
+                    const late = leftMin < 0, soon = !late && leftMin <= 10
+                    const barCol = late ? '#C0392B' : soon ? '#E0A82E' : '#7E57C2'
                     return (
-                      <div key={h.id} onClick={() => setModal(h)} style={{ background: C.card, borderRadius: 12, border: `1px solid ${soon ? '#F0D9A8' : C.line}`, boxShadow: C.shadow, padding: '12px 14px', cursor: 'pointer' }}>
+                      <div key={s.o.id} onClick={() => { window.location.href = `/pos?resume=${s.o.id}` }}
+                        title="Mở đơn POS"
+                        style={{ background: C.card, borderRadius: 12, border: `1px solid ${late ? '#F5C6C0' : soon ? '#F0D9A8' : C.line}`, boxShadow: C.shadow, padding: '12px 14px', cursor: 'pointer' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                          {ktvNv ? <Avatar nv={ktvNv} size={30} /> : <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#e8ddc9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#8a6a35' }}>?</span>}
+                          {ktv0 ? <Avatar nv={ktv0} size={30} /> : <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#e8ddc9', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: '#8a6a35' }}>?</span>}
                           <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.ten_khach}</div>
-                            <div style={{ fontSize: 11.5, color: ktvNv ? '#5B2C6F' : C.ink4, fontWeight: 700 }}>{ktvNv ? twoWords(ktvNv.ho_ten) : 'KTV bất kỳ'} · {h.ten_dich_vu || 'Dịch vụ'}</div>
+                            <div style={{ fontSize: 13.5, fontWeight: 800, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.tenKhach}</div>
+                            <div style={{ fontSize: 11.5, color: ktv0 ? '#5B2C6F' : C.ink4, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {ktv0 ? twoWords(ktv0.ho_ten) : 'KTV bất kỳ'}{moreKtv > 0 ? ` +${moreKtv}` : ''} · {s.dvNames.join(', ') || 'Dịch vụ'}
+                            </div>
                           </div>
-                          <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 800, color: soon ? '#B8791F' : '#2D7A4F' }}>{soon ? `⏰ còn ${leftMin}'` : `còn ${leftMin}'`}</span>
+                          <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 800, color: late ? '#C0392B' : soon ? '#B8791F' : '#2D7A4F' }}>{late ? `⚠️ trễ ${-leftMin}'` : soon ? `⏰ còn ${leftMin}'` : `còn ${leftMin}'`}</span>
                         </div>
                         <div style={{ height: 8, background: '#EFE7DD', borderRadius: 6, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: soon ? '#E0A82E' : '#7E57C2', borderRadius: 6, transition: 'width .4s' }} />
+                          <div style={{ height: '100%', width: `${pct}%`, background: barCol, borderRadius: 6, transition: 'width .4s' }} />
                         </div>
-                        <div style={{ fontSize: 10.5, color: C.ink3, marginTop: 5 }}>Bắt đầu {fmtM(start)} · đã làm {doneMin}' / {total}' · xong ~{fmtM(end)}</div>
+                        <div style={{ fontSize: 10.5, color: C.ink3, marginTop: 5 }}>Bắt đầu {fmtM(s.startM)} · đã làm {doneMin}' / {total}' · xong ~{fmtM(s.endM)} · {s.o.ma_don}</div>
                       </div>
                     )
                   })}

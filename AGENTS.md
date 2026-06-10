@@ -3,6 +3,7 @@
 # Cập nhật: 14/05/2026 | Đang cải tạo giao diện — Phase 0
 
 ---
+Trước mỗi phiên Codex mới, đọc `docs/CODEX_SESSION_MEMORY.md`; nếu đang làm Marketing/Facebook thì đọc thêm `docs/AI_MARKETING_MEMORY.md`.
 Trước khi viết bất kỳ UI nào, đọc src/DESIGN_SYSTEM.md
 Dự án cải tạo giao diện: D:\Hannah Spa\Du An WebApp Hannah Spa\Cai Tao Giao Dien Web\KE_HOACH_Cai_Tao_Giao_Dien.md
 ## 🇻🇳 NGÔN NGỮ — BẮT BUỘC

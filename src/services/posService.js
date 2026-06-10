@@ -91,13 +91,24 @@ async function ensureCustomerForAppointment(appointment = {}) {
     ho_ten: name || 'Khach dat hen',
     so_dien_thoai: phone || null,
     nguon: 'lich_hen',
+    marketing_lead_id: appointment.marketing_lead_id || null,
+    chien_dich_marketing_id: appointment.chien_dich_marketing_id || null,
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('khach_hang')
     .insert(payload)
     .select('*')
     .single()
+
+  if (hasMissingColumnError(error)) {
+    const { marketing_lead_id, chien_dich_marketing_id, ...fallbackPayload } = payload
+    ;({ data, error } = await supabase
+      .from('khach_hang')
+      .insert(fallbackPayload)
+      .select('*')
+      .single())
+  }
 
   if (error) {
     const retry = await findCustomerByPhone(phone)
@@ -190,6 +201,8 @@ export const posService = {
       ngay: appointment.ngay_hen || todayISO(),
       ghi_chu: noteParts.join(' - '),
       lich_hen_id: appointment.id,
+      marketing_lead_id: appointment.marketing_lead_id || null,
+      chien_dich_marketing_id: appointment.chien_dich_marketing_id || null,
     }
 
     let order = null
@@ -210,7 +223,7 @@ export const posService = {
         if (!duplicateError && duplicate?.id) return { orderId: duplicate.id, reused: true }
       }
       if (!hasMissingColumnError(inserted.error)) throw inserted.error
-      const { lich_hen_id, ...fallbackData } = insertData
+      const { lich_hen_id, marketing_lead_id, chien_dich_marketing_id, ...fallbackData } = insertData
       const fallback = await supabase
         .from('don_hang')
         .insert(fallbackData)
