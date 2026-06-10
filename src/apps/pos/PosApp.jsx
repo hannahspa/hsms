@@ -299,7 +299,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
       ? calcNextTour(item, nextThanhTien, qty)
       : (item?.tien_tour || 0)
     const updatePayload = item?.loai_item === 'dich_vu'
-      ? { so_luong: qty, thanh_tien: nextThanhTien, tien_tour: nextTour, tien_hoa_hong: 0 }
+      ? { so_luong: qty, thanh_tien: nextThanhTien, tien_tour: nextTour, tien_hoa_hong: item?.meta?.upsale?.tien_upsale || 0 }
       : { so_luong: qty, thanh_tien: nextThanhTien }
     if (savedOrderId && item?.id) {
       try {
@@ -318,7 +318,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
       ? calcNextTour(item, newThanhTien, qty)
       : (item?.tien_tour || 0)
     const updatePayload = item?.loai_item === 'dich_vu'
-      ? { thanh_tien: newThanhTien, tien_tour: nextTour, tien_hoa_hong: 0 }
+      ? { thanh_tien: newThanhTien, tien_tour: nextTour, tien_hoa_hong: item?.meta?.upsale?.tien_upsale || 0 }
       : { thanh_tien: newThanhTien }
     if (savedOrderId && item?.id) {
       try {
@@ -338,7 +338,8 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
     const finalTiLe = tourMeta?.tourMode === 'free_warranty' ? 0 : tiLe
     const incomeAmount = tienTourFromPopup !== undefined ? Math.round(Number(tienTourFromPopup || 0)) : Math.round(baseTT * finalTiLe / 100)
     const tienTour       = isSaleCommission ? 0 : incomeAmount
-    const tienCommission = isSaleCommission ? incomeAmount : 0
+    // Dịch vụ upsale: KTV vẫn nhận tour theo DV mới + HOA HỒNG = 10% chênh lệch
+    const tienCommission = isSaleCommission ? incomeAmount : (item.meta?.upsale?.tien_upsale || 0)
 
     // ── Với thẻ mới: tính lại hoa hồng theo rules và update meta ──
     // Cần thiết vì lễ tân có thể tick thẻ TRƯỚC khi chọn NV
@@ -389,6 +390,56 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
       ...(updatedMeta !== item.meta ? { meta: updatedMeta } : {}),
     } : i))
     setKtvPopup(null)
+  }
+
+  // ── Upsale: KTV nâng cấp lên dịch vụ cao hơn → KTV hưởng 10% chênh lệch ──
+  const handleUpsale = (lid, dvB) => {
+    setLineItems(prev => prev.map(i => {
+      if (i._lid !== lid) return i
+      const u = i.meta?.upsale || null
+      let next
+      if (!dvB) {
+        // Bỏ upsale → khôi phục dịch vụ gốc
+        if (!u) return i
+        const qty = i.so_luong || 1
+        const meta = { ...(i.meta || {}) }; delete meta.upsale
+        next = {
+          ...i, dich_vu_id: u.dich_vu_goc_id,
+          dich_vu: { ...(i.dich_vu || {}), ten: u.ten_goc },
+          don_gia: u.gia_goc, thanh_tien: u.gia_goc * qty,
+          ti_le_hoa_hong: u.ti_le_goc ?? i.ti_le_hoa_hong,
+          tien_hoa_hong: 0, meta,
+        }
+        next.tien_tour = i.nhan_vien_id ? calcNextTour(next, next.thanh_tien, qty) : 0
+      } else {
+        const giaGoc = u?.gia_goc ?? i.don_gia
+        const tenGoc = u?.ten_goc ?? (i.dich_vu?.ten || '')
+        const dvGocId = u?.dich_vu_goc_id ?? i.dich_vu_id
+        const tiLeGoc = u?.ti_le_goc ?? i.ti_le_hoa_hong
+        const giaB = dvB.gia_co_ban || 0
+        const qty = i.so_luong || 1
+        const chenh = Math.max(0, giaB - giaGoc)
+        const tienUpsale = Math.round(chenh * 0.10)
+        const upMeta = { dich_vu_goc_id: dvGocId, ten_goc: tenGoc, gia_goc: giaGoc, ti_le_goc: tiLeGoc, ten_moi: dvB.ten, gia_moi: giaB, chenh, tien_upsale: tienUpsale }
+        next = {
+          ...i, dich_vu_id: dvB.id,
+          dich_vu: { ...(i.dich_vu || {}), ten: dvB.ten, danh_muc: dvB.danh_muc },
+          don_gia: giaB, thanh_tien: giaB * qty,
+          ti_le_hoa_hong: Number(dvB.ti_le_hoa_hong || 0),
+          tien_hoa_hong: tienUpsale,
+          meta: { ...(i.meta || {}), upsale: upMeta },
+        }
+        next.tien_tour = i.nhan_vien_id ? calcNextTour(next, next.thanh_tien, qty) : 0
+      }
+      if (savedOrderId && i.id) {
+        supabase.from('don_hang_chi_tiet').update({
+          dich_vu_id: next.dich_vu_id, don_gia: next.don_gia, thanh_tien: next.thanh_tien,
+          ti_le_hoa_hong: next.ti_le_hoa_hong, tien_hoa_hong: next.tien_hoa_hong,
+          tien_tour: next.tien_tour, meta: next.meta,
+        }).eq('id', i.id).then(() => {}, () => {})
+      }
+      return next
+    }))
   }
 
   const handleCreateGuest = async () => {
@@ -1232,6 +1283,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
                   onDiscountChange={handleItemDiscount}
                   onSelectKTV={setKtvPopup}
                   onToggleCard={handleToggleCard}
+                  onUpsale={handleUpsale}
                 />
               ))}
             </div>

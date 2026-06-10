@@ -3,9 +3,10 @@ import DatePicker from '../../../components/shared/DatePicker'
 import { formatCurrency } from '../../../lib/utils'
 import { calcKmRefPct, kmRefAlert } from '../../../lib/serviceCommission'
 import { C } from '../../../constants/colors'
+import { posService } from '../../../services/posService'
 import { parseVND, fmtInput, NvAvatar, shortName } from '../posShared'
 
-export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange, onSelectKTV, onToggleCard }) {
+export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange, onSelectKTV, onToggleCard, onUpsale }) {
   const name = item.dich_vu?.ten || item.san_pham?.ten || item.the_lieu_trinh?.ten_dich_vu || item.meta?.tenDichVu || '-'
   const donGia = item.don_gia || 0
   const isDichVu = item.loai_item === 'dich_vu'
@@ -16,6 +17,17 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
 
   const [qty, setQty] = useState(item.so_luong || 1)
   const [discAmt, setDiscAmt] = useState(Math.max(0, donGia * (item.so_luong || 1) - (item.thanh_tien || 0)))
+
+  // Upsale: KTV nâng cấp lên dịch vụ cao hơn → KTV hưởng 10% chênh lệch
+  const upsale = item.meta?.upsale || null
+  const [upOpen, setUpOpen] = useState(false)
+  const [upSearch, setUpSearch] = useState('')
+  const [upResults, setUpResults] = useState([])
+  const doUpSearch = async (q) => {
+    setUpSearch(q)
+    if (!q || q.length < 2) { setUpResults([]); return }
+    try { setUpResults((await posService.getServices(q)).slice(0, 8)) } catch { setUpResults([]) }
+  }
 
   const [cardBuoiMua, setCardBuoiMua] = useState(item.meta?.soBuoiMua || 10)
   const [cardBuoiTang, setCardBuoiTang] = useState(item.meta?.soBuoiTang || 0)
@@ -86,6 +98,11 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
             <div style={{ fontSize: 10, color: C.thu }}>Còn {theLTConLai}/{theLTTong} buổi{theLTHH ? ` · HH: ${theLTHH}` : ''}</div>
           )}
           {!isTheLT && !isCard && <div style={{ fontSize: 10.5, color: 'var(--ink3)' }}>{formatCurrency(donGia)}</div>}
+          {upsale && (
+            <div style={{ fontSize: 10, color: '#6C3483', fontWeight: 700, marginTop: 1 }}>
+              🔼 Upsale từ {upsale.ten_goc} · chênh {formatCurrency(upsale.chenh)} · HH KTV {formatCurrency(upsale.tien_upsale)}
+            </div>
+          )}
           {isCard && <div style={{ fontSize: 10.5, color: 'var(--champagne)', fontWeight: 600 }}>
             {cardBuoiMua}+{cardBuoiTang} buổi
             {cardEffPct > 0 && <span style={{ color: C.chi }}> -{cardEffPct.toFixed(0)}%</span>}
@@ -134,7 +151,47 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
             <span style={{ fontSize: 10.5, color: isCard ? 'var(--champagne)' : 'var(--ink3)', fontWeight: isCard ? 700 : 400, whiteSpace: 'nowrap' }}>Thẻ LT</span>
           </label>
         )}
+
+        {isDichVu && !isCard && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}>
+            <input
+              type="checkbox" checked={!!upsale || upOpen}
+              onChange={e => {
+                if (e.target.checked) { setUpOpen(true) }
+                else { setUpOpen(false); if (upsale) onUpsale(item._lid, null) }
+              }}
+              style={{ cursor: 'pointer', width: 13, height: 13, accentColor: '#7E57C2' }}
+            />
+            <span style={{ fontSize: 10.5, color: (upsale || upOpen) ? '#6C3483' : 'var(--ink3)', fontWeight: (upsale || upOpen) ? 700 : 400, whiteSpace: 'nowrap' }}>🔼 Upsale</span>
+          </label>
+        )}
       </div>
+
+      {isDichVu && upOpen && (
+        <div style={{ marginTop: 6, marginLeft: 16, marginRight: 4, padding: '8px 10px', background: '#F4EFFA', border: '1px solid #D8C8F0', borderRadius: 8 }}>
+          <div style={{ fontSize: 11, color: '#5B2C6F', fontWeight: 700, marginBottom: 6 }}>Khách được upsale lên dịch vụ nào?</div>
+          <input autoFocus value={upSearch} onChange={e => doUpSearch(e.target.value)}
+            placeholder="Gõ tên dịch vụ cao hơn..."
+            style={{ width: '100%', border: '1px solid #D8C8F0', borderRadius: 6, padding: '6px 9px', fontSize: 12.5, outline: 'none', boxSizing: 'border-box', background: '#fff' }} />
+          {upResults.length > 0 && (
+            <div style={{ marginTop: 6, background: '#fff', border: '1px solid #D8C8F0', borderRadius: 6, maxHeight: 200, overflowY: 'auto' }}>
+              {upResults.map(dv => {
+                const chenh = Math.max(0, (dv.gia_co_ban || 0) - (upsale?.gia_goc ?? donGia))
+                return (
+                  <button key={dv.id} type="button"
+                    onClick={() => { onUpsale(item._lid, dv); setUpOpen(false); setUpSearch(''); setUpResults([]) }}
+                    style={{ width: '100%', border: 'none', borderBottom: '1px solid #EEE', background: '#fff', padding: '7px 10px', textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12.5, color: C.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dv.ten}</span>
+                    <span style={{ fontSize: 11, color: '#6C3483', fontWeight: 700, flexShrink: 0 }}>
+                      {formatCurrency(dv.gia_co_ban)}{chenh > 0 ? ` · +${formatCurrency(chenh)}` : ''}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {isCard && (
         <div style={{ marginTop: 6, paddingLeft: 16, paddingRight: 4 }}>
