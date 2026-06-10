@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../context/AuthContext'
-import { todayISO, getNowVN, fmtCompact, addDays, pctChange } from '../../../lib/utils'
+import { todayISO, getNowVN, fmtCompact, formatCurrency, addDays, pctChange } from '../../../lib/utils'
 
 const fmtNum = n => new Intl.NumberFormat('vi-VN').format(n || 0)
 import I from '../../../components/shared/Icons'
@@ -160,7 +160,7 @@ function RevenueChart({ chartData }) {
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-.01em', lineHeight: 1 }}>
-              {fmtFull(totalRevenue)}<span style={{ fontSize: 12, color: 'var(--ink3)', marginLeft: 2 }}>đ</span>
+              {fmtNum(totalRevenue)}<span style={{ fontSize: 12, color: 'var(--ink3)', marginLeft: 2 }}>đ</span>
             </div>
             <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 2 }}>7 ngày gần nhất</div>
           </div>
@@ -258,7 +258,7 @@ function RecentTxTable({ data }) {
                   )}
                 </td>
                 <td className="amount" style={{ paddingRight: 18, color: tx.loai === 'chi_phi' ? 'var(--danger)' : tx.loai === 'doanh_thu' ? 'var(--success)' : 'var(--ink)' }}>
-                  {tx.loai === 'chi_phi' ? '−' : tx.loai === 'doanh_thu' ? '+' : ''}{fmtFull(tx.so_tien)}
+                  {tx.loai === 'chi_phi' ? '−' : tx.loai === 'doanh_thu' ? '+' : ''}{formatCurrency(tx.so_tien)}
                 </td>
               </tr>
             ))}
@@ -345,7 +345,7 @@ function WalletCards({ viList }) {
               <div className={`wallet ${cls}`} key={vi.id}>
                 <div>
                   <div className="nm">{vi.ten}</div>
-                  <div className="vl">{fmtFull(vi.so_du_hien_tai)}<span className="cur">đ</span></div>
+                  <div className="vl">{fmtNum(vi.so_du_hien_tai)}<span className="cur">đ</span></div>
                 </div>
                 <div className="sb">{vi.loai === 'tien_mat' ? 'Két quầy lễ tân' : vi.loai === 'chuyen_khoan' ? 'MB Bank · Chuyển khoản' : 'TP Bank · Quẹt thẻ'}</div>
               </div>
@@ -363,7 +363,7 @@ function AlertsCard({ kpiData, khoAlerts }) {
 
   // Chi vượt thu
   if (kpiData?.chiPhi?.value > kpiData?.doanhThu?.value && kpiData?.doanhThu?.value > 0) {
-    alerts.push({ type: 'danger', icon: I.TrendDown, msg: <><b>Chi phí vượt doanh thu</b> — Chi ({fmtFull(kpiData.chiPhi.value)}) &gt; Thu ({fmtFull(kpiData.doanhThu.value)})</>, time: 'Hôm nay' })
+    alerts.push({ type: 'danger', icon: I.TrendDown, msg: <><b>Chi phí vượt doanh thu</b> — Chi ({formatCurrency(kpiData.chiPhi.value)}) &gt; Thu ({formatCurrency(kpiData.doanhThu.value)})</>, time: 'Hôm nay' })
   }
 
   // Kho sắp hết
