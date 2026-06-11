@@ -1489,7 +1489,7 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
         <button onClick={() => setShowForm(true)}
           style={{ padding: '9px 18px', background: COLORS.grad, color: 'white', border: 'none',
             borderRadius: '10px', fontWeight: '800', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-          + Giao dịch
+          + Nhập / Xuất Kho
         </button>
       </div>
 
@@ -2041,7 +2041,7 @@ export default function AdminKhoHangPage() {
   const [danhMucKho, setDanhMucKho]     = useState([])
   const [loading, setLoading]           = useState(true)
   const [toast, setToast]               = useState('')
-  const [showKiemKho, setShowKiemKho]   = useState(false)
+  const [showKiemKho, setShowKiemKho]   = useState(() => window.location.pathname === '/admin/kho-hang/kiem-kho')
 
   const showToast = useCallback((msg) => {
     setToast(msg); setTimeout(() => setToast(''), 2800)
@@ -2084,14 +2084,6 @@ export default function AdminKhoHangPage() {
             {activeProducts.length} sản phẩm · Mỹ phẩm · Vật tư · Chiết rót
             {lowStockCount > 0 && <span style={{ color: 'var(--chi)', marginLeft: 8 }}>· {lowStockCount} cần nhập</span>}
           </div>
-        </div>
-        <div className="acts">
-          <button className="btn" onClick={() => setShowKiemKho(true)}>
-            ⊞ Kiểm Kho
-          </button>
-          <button className="btn gold" onClick={() => setTab('giao-dich')}>
-            + Nhập/Xuất
-          </button>
         </div>
       </div>
 
@@ -2157,8 +2149,8 @@ export default function AdminKhoHangPage() {
         <KiemKhoModal
           products={products}
           userId={user?.id}
-          onSave={() => { setShowKiemKho(false); load() }}
-          onClose={() => setShowKiemKho(false)}
+          onSave={() => { setShowKiemKho(false); load(); if (window.location.pathname === '/admin/kho-hang/kiem-kho') window.history.replaceState(null, '', '/admin/kho-hang') }}
+          onClose={() => { setShowKiemKho(false); if (window.location.pathname === '/admin/kho-hang/kiem-kho') window.history.replaceState(null, '', '/admin/kho-hang') }}
           showToast={showToast}
         />
       )}
