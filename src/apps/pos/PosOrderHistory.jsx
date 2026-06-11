@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { posService } from '../../services/posService'
+import { supabase } from '../../lib/supabase'
 import { formatCurrency, todayISO } from '../../lib/utils'
 import DatePicker from '../../components/shared/DatePicker'
 import I from '../../components/shared/Icons'
@@ -94,6 +95,24 @@ export default function PosOrderHistory({ onResumeOrder }) {
   }, [computeRange, activeSearch])
 
   useEffect(() => { load() }, [load])
+
+  // Cảnh báo: đơn "Chờ thanh toán" từ ngày TRƯỚC chưa xử lý (qua ngày hôm sau)
+  const [draftQuaNgay, setDraftQuaNgay] = useState(0)
+  const [orderParamDone, setOrderParamDone] = useState(false)
+  useEffect(() => {
+    supabase.from('don_hang').select('id', { count: 'exact', head: true })
+      .eq('trang_thai', 'draft').eq('is_test', false).lt('ngay', todayISO())
+      .then(({ count }) => setDraftQuaNgay(count || 0))
+  }, [])
+
+  // Từ SmartSearch (?order=) → mở giao diện XEM chi tiết (không phải sửa)
+  useEffect(() => {
+    if (orderParamDone) return
+    const oid = new URLSearchParams(window.location.search).get('order')
+    if (!oid) return
+    setOrderParamDone(true)
+    posService.getOrder(oid).then(o => { if (o) setDetailOrder(o) }).catch(() => {})
+  }, [orderParamDone])
 
   const handleSearch = (q) => {
     setSearch(q)
@@ -202,6 +221,21 @@ export default function PosOrderHistory({ onResumeOrder }) {
 
   return (
     <div>
+      {draftQuaNgay > 0 && (
+        <div onClick={() => { setStatusTab('draft'); setDateTab('all') }}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, padding: '12px 16px',
+            borderRadius: 10, background: '#FDECEA', border: '2px solid #E74C3C', cursor: 'pointer',
+            animation: 'pulse 1.6s ease-in-out infinite' }}>
+          <span style={{ fontSize: 22 }}>🔴</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: '#C0392B' }}>
+              Có {draftQuaNgay} đơn CHỜ THANH TOÁN từ ngày trước chưa xử lý!
+            </div>
+            <div style={{ fontSize: 12, color: '#A93226' }}>Khách cuối ngày nhân viên có thể quên chốt — bấm để xem & xử lý ngay</div>
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 800, color: '#fff', background: '#E74C3C', borderRadius: 8, padding: '6px 12px' }}>Xem ngay →</span>
+        </div>
+      )}
       {}
       <div className="mod-head" style={{ marginBottom: 16 }}>
         <div>
@@ -308,18 +342,22 @@ export default function PosOrderHistory({ onResumeOrder }) {
             {STATUS_TABS.map(t => {
               const cnt = countByStatus(t.key)
               const active = statusTab === t.key
+              const alertDraft = t.key === 'draft' && draftQuaNgay > 0
               return (
                 <button key={t.key} onClick={() => setStatusTab(t.key)}
                   style={{
-                    padding: '5px 12px', borderRadius: 20, border: '1px solid var(--line)',
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-                    background: active ? 'var(--grad-gold)' : 'var(--surface)',
-                    color: active ? '#2a1d14' : 'var(--ink3)',
+                    padding: '5px 12px', borderRadius: 20,
+                    border: alertDraft ? '2px solid #E74C3C' : '1px solid var(--line)',
+                    fontSize: 12, fontWeight: alertDraft ? 800 : 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                    background: active ? 'var(--grad-gold)' : (alertDraft ? '#FDECEA' : 'var(--surface)'),
+                    color: active ? '#2a1d14' : (alertDraft ? '#C0392B' : 'var(--ink3)'),
                     boxShadow: active ? '0 2px 8px rgba(160,113,79,.25)' : 'none',
                     transition: 'all .15s',
                   }}>
-                  {t.label}
-                  {cnt > 0 && <span style={{ marginLeft: 5, opacity: .7 }}>({cnt})</span>}
+                  {alertDraft && '🔴 '}{t.label}
+                  {alertDraft
+                    ? <span style={{ marginLeft: 5 }}>({draftQuaNgay} quá ngày)</span>
+                    : cnt > 0 && <span style={{ marginLeft: 5, opacity: .7 }}>({cnt})</span>}
                 </button>
               )
             })}

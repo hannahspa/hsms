@@ -49,7 +49,8 @@ function navigateTo(groupKey, item) {
       window.location.href = `/admin/crm/khach-hang/${item.id}`
       break
     case 'orders':
-      window.location.href = `/pos?resume=${item.id}`
+      // Tìm đơn → mở giao diện XEM (chi tiết), KHÔNG vào chế độ sửa
+      window.location.href = `/pos/danh-sach?order=${item.id}`
       break
     case 'cards':
       window.location.href = `/admin/the-lieu-trinh?search=${encodeURIComponent(item.ma_the || '')}`
