@@ -6,7 +6,8 @@ import { COLORS } from '../../../constants/colors'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const DON_VI_LIST = ['cái', 'chai', 'lọ', 'hộp', 'gói', 'thùng', 'túi', 'cuộn',
-                     'lít', 'ml', 'kg', 'gram', 'đôi', 'bộ', 'tờ', 'miếng', 'viên', 'ống']
+                     'lít', 'ml', 'kg', 'gram', 'đôi', 'bộ', 'tờ', 'miếng', 'viên', 'ống',
+                     'tuýp', 'cặp', 'hũ', 'set', 'can', 'bịch', 'vỉ', 'bọc']
 
 // Danh mục sản phẩm CỐ ĐỊNH (mô hình Hannah Spa) — nhân viên chọn, không gõ tự do
 const DANH_MUC_LIST = [
