@@ -1313,7 +1313,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
                       const d = +f.so_luong - Number(sp.ton_kho)
                       return `${d >= 0 ? '+' : ''}${fmtSL(d, sp.don_vi)}`
                     })()
-                  : fmtSL(tonSau, sp?.don_vi)}
+                  : (sp ? fmtTonQD({ ...sp, ton_kho: tonSau }) : fmtSL(tonSau, sp?.don_vi))}
               </strong>
             </div>
           )}
