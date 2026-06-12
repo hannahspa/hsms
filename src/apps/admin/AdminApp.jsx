@@ -14,6 +14,7 @@ const AdminLichSuNopTienMat = lazy(() => import('./bao-cao/AdminLichSuNopTienMat
 const AdminTheLieuTrinhPage = lazy(() => import('./the-lieu-trinh/AdminTheLieuTrinhPage'))
 const AdminBaoCaoTheLieuTrinh = lazy(() => import('./the-lieu-trinh/AdminBaoCaoTheLieuTrinh'))
 const AdminDichVuPage = lazy(() => import('./dich-vu/AdminDichVuPage'))
+const AdminChamSocKhachPage = lazy(() => import('./cham-soc-khach/AdminChamSocKhachPage'))
 
 function AdminRoute({ children }) {
   return (
@@ -63,6 +64,7 @@ const MODULES = [
   { icon: '🛒', label: 'POS Bán Hàng',   href: '/pos',                   badge: 'Mới',   group: 'nb',  color: '#e74c3c', desc: 'Tạo đơn · Thanh toán · Hoa hồng' },
   { icon: '👥', label: 'Nhân Sự',         href: '/admin/nhan-su',         badge: null,    group: 'nb',  color: '#a0714f', desc: 'Chấm công · Duyệt OFF · Bảng lương' },
   { icon: '👤', label: 'CRM Khách Hàng', href: '/admin/crm',             badge: null,    group: 'nb',  color: '#8e44ad', desc: 'Hồ sơ · Thẻ liệu trình · Công nợ' },
+  { icon: '💗', label: 'Chăm Sóc Khách', href: '/admin/cham-soc-khach',  badge: 'Mới',   group: 'nb',  color: '#d6336c', desc: 'Cần gọi hôm nay · Rời bỏ · Sinh nhật' },
   { icon: '🎫', label: 'Thẻ Liệu Trình', href: '/admin/the-lieu-trinh', badge: null,    group: 'nb',  color: '#6c3483', desc: 'Danh sách thẻ · Tiến độ · Hết hạn' },
   { icon: '💎', label: 'Dịch Vụ',         href: '/admin/dich-vu',       badge: null,    group: 'nb',  color: '#a0714f', desc: 'Mã DV · Danh mục · Giá bán' },
   { icon: '📦', label: 'Kho Hàng',        href: '/admin/kho-hang',        badge: null,    group: 'nb',  color: '#16a085', desc: 'Nhập xuất · Tồn kho · Cảnh báo' },
@@ -89,6 +91,7 @@ export default function AdminApp() {
   if (path.startsWith('/admin/khuyen-mai')) return <AdminRoute><AdminKhuyenMaiPage /></AdminRoute>
   if (path.startsWith('/admin/trang-chu'))  return <AdminRoute><AdminHomepagePage /></AdminRoute>
   if (path.startsWith('/admin/kho-hang'))   return <AdminRoute><AdminKhoHangPage /></AdminRoute>
+  if (path.startsWith('/admin/cham-soc-khach')) return <AdminRoute><AdminChamSocKhachPage /></AdminRoute>
   if (path.startsWith('/admin/crm'))        return <AdminRoute><AdminCRMPage /></AdminRoute>
   if (path.startsWith('/admin/marketing'))  return <AdminRoute><AdminMarketingPage /></AdminRoute>
   if (path.startsWith('/admin/dashboard'))  return <AdminRoute><AdminDashboardPage /></AdminRoute>
