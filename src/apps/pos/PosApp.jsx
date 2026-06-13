@@ -108,7 +108,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
     Promise.all([
       posService.getOrder(resumeOrderId),
       posService.getLineItems(resumeOrderId),
-    ]).then(([order, items]) => {
+    ]).then(async ([order, items]) => {
       // Restore customer
       if (order.khach_hang) {
         setSelectedCustomer({ id: order.khach_hang_id, ho_ten: order.khach_hang.ho_ten, so_dien_thoai: order.khach_hang.so_dien_thoai })
@@ -122,11 +122,37 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
         setOrderGio(`${String(vn.getHours()).padStart(2, '0')}:${String(vn.getMinutes()).padStart(2, '0')}`)
       }
       if (editMode) {
+        const allItems = items || []
+        // Dòng phụ "đồng tư vấn thẻ" (KTV thứ 2): san_pham giá 0, chỉ để ghi hoa hồng.
+        // KHÔNG hiển thị như dòng hàng → khôi phục vào panel Hoa Hồng NV bán thay vì.
+        const isDongTuVan = i => i.loai_item === 'san_pham'
+          && (i.meta?.dongTuVanThe || (!i.san_pham_id && (i.thanh_tien || 0) === 0 && i.nhan_vien_id))
+        const phuLines = allItems.filter(isDongTuVan)
+        const visibleItems = allItems.filter(i => !isDongTuVan(i))
         // Local: bỏ id DB để được xử lý như dòng mới khi ghi lại lúc Cập Nhật
-        setLineItems((items || []).map(i => {
+        setLineItems(visibleItems.map(i => {
           const { id, don_hang_id, created_at, ...rest } = i
           return { ...rest, _lid: crypto.randomUUID() }
         }))
+        // Khôi phục panel "Hoa Hồng NV bán" (orderStaff) cho đơn bán thẻ:
+        // KTV bán (dòng the_moi) + Lễ tân tư vấn (meta) + KTV thứ 2 (dòng phụ).
+        const theMoi = allItems.filter(i => i.loai_item === 'the_moi')
+        if (theMoi.length > 0) {
+          try {
+            const kl = ktvList.length ? ktvList : (await posService.getKTVs() || [])
+            const staff = []
+            const addStaff = (nvId, pct, role) => {
+              if (!nvId || staff.find(s => s.nv.id === nvId)) return
+              const nv = kl.find(k => k.id === nvId)
+              if (nv) staff.push({ nv, role, pct: Number(pct || 0) })
+            }
+            const first = theMoi[0]
+            addStaff(first.meta?.nhanVienBanId || first.nhan_vien_id, first.meta?.tiLeCommKtv || first.ti_le_hoa_hong, 'ban')
+            addStaff(first.meta?.nhanVienTuVanLtId, first.meta?.tiLeCommLt, 'tu_van')
+            phuLines.forEach(p => addStaff(p.nhan_vien_id, p.ti_le_hoa_hong, 'tu_van'))
+            if (staff.length) setOrderStaff(staff)
+          } catch (_) {}
+        }
         // Khôi phục thanh toán cũ vào payLines để admin thấy/sửa
         posService.getPayments(resumeOrderId).then(pays => {
           if (pays && pays.length) {
