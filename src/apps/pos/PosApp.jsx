@@ -1413,13 +1413,22 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
             {/* 4 nút chính */}
             <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
 
-              {/* ← Hủy / Đơn mới */}
-              <button onClick={handleVoidOrder} title="Hủy đơn / Đơn mới"
-                style={{
-                  width: 44, height: 40, border: `1.5px solid ${C.line2}`, borderRadius: 999,
-                  background: C.surface2, color: C.ink2,
-                  cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}>←</button>
+              {/* ← Thoát (chế độ sửa: không lưu, đơn gốc giữ nguyên) / Hủy / Đơn mới */}
+              {editOrderId ? (
+                <button onClick={handleVoidOrder} title="Thoát — KHÔNG lưu thay đổi, đơn gốc giữ nguyên"
+                  style={{
+                    padding: '0 16px', height: 40, border: `1.5px solid ${C.line2}`, borderRadius: 999,
+                    background: C.surface2, color: C.ink2, fontWeight: 700, fontSize: 13, fontFamily: FONT.sans,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'center', flexShrink: 0,
+                  }}>← Thoát</button>
+              ) : (
+                <button onClick={handleVoidOrder} title="Hủy đơn / Đơn mới"
+                  style={{
+                    width: 44, height: 40, border: `1.5px solid ${C.line2}`, borderRadius: 999,
+                    background: C.surface2, color: C.ink2,
+                    cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>←</button>
+              )}
 
               {/* Lưu nháp */}
               <button onClick={handleSaveDraft} title="Lưu đơn nháp để khách thanh toán sau"

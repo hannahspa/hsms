@@ -505,17 +505,23 @@ export const posService = {
     return this.enrichOrders(data || [])
   },
 
-  async getOrdersPage({ page = 1, pageSize = 50, fromDate = null, toDate = null, search = '' } = {}) {
+  async getOrdersPage({ page = 1, pageSize = 50, fromDate = null, toDate = null, search = '', status = null, cardSaleOnly = false } = {}) {
     const from = Math.max(0, (page - 1) * pageSize)
     const to = from + pageSize - 1
     const keyword = safeSearchTerm(search)
+    // cardSaleOnly: dùng inner join để CHỈ lấy đơn có ít nhất 1 dòng bán thẻ (the_moi)
+    const selectStr = cardSaleOnly
+      ? '*, khach_hang:khach_hang_id(ho_ten, so_dien_thoai), _ct:don_hang_chi_tiet!inner(loai_item)'
+      : '*, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)'
     let query = supabase
       .from('don_hang')
-      .select('*, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)', { count: 'exact' })
+      .select(selectStr, { count: 'exact' })
       .order('ngay', { ascending: false })
       .order('ma_don', { ascending: false })
       .range(from, to)
 
+    if (cardSaleOnly) query = query.eq('_ct.loai_item', 'the_moi')
+    if (status) query = query.eq('trang_thai', status)
     if (fromDate) query = query.gte('ngay', fromDate)
     if (toDate) query = query.lte('ngay', toDate)
     if (keyword.length >= 2) {

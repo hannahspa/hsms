@@ -154,6 +154,17 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
           const staffName = itemStaffName(item)
           const income = itemIncomeInfo(item)
           const typeLabel = itemTypeLabel(item)
+          // Chi tiết bán thẻ liệu trình (lấy từ meta) — hiện đầy đủ như màn bán hàng
+          const meta = item.meta || {}
+          const isCardSale = item.loai_item === 'the_moi'
+          const kmPct = Math.round(Number(meta.kmRefPct || meta.phanTramGiam || 0))
+          const giaBanBuoi = Number(meta.giaBanBuoi || meta.giaGocBuoi || item.don_gia || 0)
+          const giaGocBuoi = Number(meta.giaGocBuoi || item.don_gia || 0)
+          const soBuoiMua = Number(meta.soBuoiMua || item.so_luong || 0)
+          const soBuoiTang = Number(meta.soBuoiTang || 0)
+          const cardThanhTien = Number(meta.giaTriThe || giaBanBuoi * soBuoiMua || item.thanh_tien || 0)
+          const tiLeKtv = Number(meta.tiLeCommKtv || 0)
+          const tiLeLt = Number(meta.tiLeCommLt || 0)
           return (
             <div key={item.id} style={{ padding: '9px 0', borderBottom: '1px solid var(--line)' }}>
               <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
@@ -197,6 +208,40 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
                   </span>
                 )}
               </div>
+
+              {/* Chi tiết BÁN THẺ — đầy đủ như màn bán hàng: giá gốc, KM%, buổi mua/tặng, hết hạn */}
+              {isCardSale && (
+                <div style={{ marginTop: 7, padding: '9px 11px', background: 'rgba(201,169,110,.08)', border: '1px solid rgba(201,169,110,.28)', borderRadius: 9, fontSize: 11.5, color: 'var(--ink2)', lineHeight: 1.7 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 16px' }}>
+                    <span>Giá bán/buổi:&nbsp;
+                      <b style={{ color: 'var(--champagne)', fontFamily: 'var(--serif)' }}>{formatCurrency(giaBanBuoi)}</b>
+                      {kmPct > 0 && giaGocBuoi > giaBanBuoi && (
+                        <span style={{ textDecoration: 'line-through', color: 'var(--ink3)', marginLeft: 6 }}>{formatCurrency(giaGocBuoi)}</span>
+                      )}
+                    </span>
+                    <span>Số buổi:&nbsp;<b style={{ color: 'var(--ink)' }}>{soBuoiMua}</b>{soBuoiTang > 0 && <> + tặng <b style={{ color: '#2D7A4F' }}>{soBuoiTang}</b></>}</span>
+                    {kmPct > 0 && (
+                      <span style={{ fontWeight: 800, color: kmPct >= 50 ? '#C0392B' : kmPct >= 30 ? '#E67E22' : '#27AE60' }}>KM {kmPct}%</span>
+                    )}
+                  </div>
+                  <div style={{ color: 'var(--ink3)' }}>
+                    {formatCurrency(giaBanBuoi)} × {soBuoiMua} buổi{soBuoiTang > 0 ? ` (+${soBuoiTang} tặng)` : ''} =&nbsp;
+                    <b style={{ color: 'var(--ink)' }}>{formatCurrency(cardThanhTien)}</b>
+                  </div>
+                  <div>
+                    Ngày hết hạn:&nbsp;
+                    <b style={{ color: meta.ngayHetHan ? 'var(--ink)' : 'var(--ink3)' }}>
+                      {meta.ngayHetHan ? String(meta.ngayHetHan).split('-').reverse().join('/') : 'Không giới hạn ∞'}
+                    </b>
+                  </div>
+                  {(tiLeKtv > 0 || tiLeLt > 0) && (
+                    <div style={{ color: 'var(--ink3)' }}>
+                      Hoa hồng: <b style={{ color: '#426a2c' }}>KTV {tiLeKtv}%</b>
+                      {tiLeLt > 0 && <> · <b style={{ color: '#426a2c' }}>Lễ tân {tiLeLt}%</b></>}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}

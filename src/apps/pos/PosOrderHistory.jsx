@@ -29,6 +29,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
   const [fromDate, setFromDate]     = useState(todayISO())
   const [toDate, setToDate]         = useState(todayISO())
   const [orderTypeFilter, setOrderTypeFilter] = useState('all')
+  const [cardSaleOnly, setCardSaleOnly] = useState(false)   // lọc nhanh: chỉ đơn bán thẻ liệu trình
   const [statusTab, setStatusTab]   = useState('all')
   const [orders, setOrders]         = useState([])
   const [totalOrders, setTotalOrders] = useState(0)
@@ -87,12 +88,17 @@ export default function PosOrderHistory({ onResumeOrder }) {
     setLoading(true)
     setDetailOrder(null)
     try {
-      const result = await posService.getOrdersPage({ page, pageSize: PAGE_SIZE, search: activeSearch, ...computeRange() })
+      const result = await posService.getOrdersPage({
+        page, pageSize: PAGE_SIZE, search: activeSearch,
+        status: statusTab !== 'all' ? statusTab : null,   // lọc trạng thái server-side (đơn draft quá ngày hiện đủ)
+        cardSaleOnly,                                      // lọc chỉ đơn bán thẻ
+        ...computeRange(),
+      })
       setOrders(result.orders)
       setTotalOrders(result.total)
       setCurrentPage(page)
     } catch (_) {} finally { setLoading(false) }
-  }, [computeRange, activeSearch])
+  }, [computeRange, activeSearch, statusTab, cardSaleOnly])
 
   useEffect(() => { load() }, [load])
 
@@ -338,7 +344,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
         )}
 
         {!showAdvanced && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
             {STATUS_TABS.map(t => {
               const cnt = countByStatus(t.key)
               const active = statusTab === t.key
@@ -361,6 +367,21 @@ export default function PosOrderHistory({ onResumeOrder }) {
                 </button>
               )
             })}
+            {/* Phân cách + nút lọc nhanh CHỈ ĐƠN BÁN THẺ liệu trình */}
+            <span style={{ width: 1, height: 20, background: 'var(--line)', margin: '0 4px' }} />
+            <button onClick={() => setCardSaleOnly(v => !v)}
+              title="Chỉ hiển thị đơn có bán thẻ liệu trình"
+              style={{
+                padding: '5px 12px', borderRadius: 20,
+                border: cardSaleOnly ? '1px solid var(--champagne)' : '1px solid var(--line)',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                background: cardSaleOnly ? 'var(--grad-gold)' : 'var(--surface)',
+                color: cardSaleOnly ? '#2a1d14' : 'var(--ink3)',
+                boxShadow: cardSaleOnly ? '0 2px 8px rgba(160,113,79,.25)' : 'none',
+                transition: 'all .15s',
+              }}>
+              🎫 Chỉ đơn bán thẻ
+            </button>
           </div>
         )}
       </div>
