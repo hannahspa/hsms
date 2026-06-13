@@ -22,6 +22,7 @@ const YC_LABEL = {
 export default function NotificationBell() {
   const [offList, setOffList] = useState([])
   const [otherList, setOtherList] = useState([])
+  const [donList, setDonList] = useState([])   // yêu cầu sửa ĐƠN HÀNG (Lễ tân đề xuất)
   const [nvMap, setNvMap] = useState({})
   const [show, setShow] = useState(false)
   const [actionId, setActionId] = useState(null)        // id đang xử lý
@@ -35,17 +36,19 @@ export default function NotificationBell() {
   // ── Fetch data ──
   const fetchData = async () => {
     try {
-      const [{ data: nvData }, { data: offData }, { data: leData }, { data: sxData }] = await Promise.all([
+      const [{ data: nvData }, { data: offData }, { data: leData }, { data: sxData }, { data: donData }] = await Promise.all([
         supabase.from('nhan_vien').select('id, ho_ten'),
         supabase.from('dang_ky_off').select('id, nhan_vien_id, ngay_off, loai_off, ly_do').eq('trang_thai', 'cho_duyet').order('ngay_off'),
         supabase.from('yeu_cau_chinh_sua').select('id, loai_yeu_cau, loai_bang, ly_do, du_lieu_cu').eq('loai_yeu_cau', 'dung_ngay_le').eq('trang_thai', 'cho_duyet').order('created_at'),
-        supabase.from('yeu_cau_chinh_sua').select('id, loai_yeu_cau, loai_bang, ly_do').in('loai_yeu_cau', ['sua', 'xoa']).eq('trang_thai', 'cho_duyet').order('created_at'),
+        supabase.from('yeu_cau_chinh_sua').select('id, loai_yeu_cau, loai_bang, ly_do').in('loai_yeu_cau', ['sua', 'xoa']).eq('trang_thai', 'cho_duyet').neq('loai_bang', 'don_hang').order('created_at'),
+        supabase.from('yeu_cau_chinh_sua').select('id, ban_ghi_id, ly_do, du_lieu_cu, nguoi_yeu_cau, created_at').eq('loai_yeu_cau', 'sua').eq('loai_bang', 'don_hang').eq('trang_thai', 'cho_duyet').order('created_at'),
       ])
       const map = {}
       nvData?.forEach(n => { map[n.id] = n.ho_ten })
       setNvMap(map)
       setOffList(offData || [])
       setOtherList([...(leData || []), ...(sxData || [])])
+      setDonList(donData || [])
     } catch (_) { /* silence */ }
   }
 
@@ -85,7 +88,7 @@ export default function NotificationBell() {
     setActionId(null)
   }
 
-  const total = offList.length + otherList.length
+  const total = offList.length + otherList.length + donList.length
 
   // ── Styles ──
   const badgeStyle = {
@@ -213,6 +216,32 @@ export default function NotificationBell() {
                           </button>
                         </div>
                       )}
+                    </div>
+                  )
+                })}
+              </>
+            )}
+
+            {/* ── YÊU CẦU SỬA ĐƠN HÀNG (Lễ tân đề xuất) ── */}
+            {donList.length > 0 && (
+              <>
+                <div className="smart-search-group-label" style={{ paddingTop: 8 }}>Yêu Cầu Sửa Đơn ({donList.length})</div>
+                {donList.map((don, i) => {
+                  const isLast = i === donList.length - 1 && otherList.length === 0
+                  const maDon = don.du_lieu_cu?.ma_don || ''
+                  return (
+                    <div key={don.id} style={rowStyle(isLast)}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ background: '#F4EFFA', color: '#6C3483', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>✏️ Sửa đơn</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>{maDon}</span>
+                        {don.nguoi_yeu_cau && <span style={{ fontSize: 11, color: 'var(--ink3)' }}>· {don.nguoi_yeu_cau}</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 8 }}>{don.ly_do || '—'}</div>
+                      <button
+                        onClick={() => { setShow(false); window.location.href = `/pos?resume=${don.ban_ghi_id}&yc=${don.id}` }}
+                        style={{ ...btnBase, background: 'var(--grad-gold, #C9A96E)', color: '#2a1d14' }}>
+                        Xem & Duyệt →
+                      </button>
                     </div>
                   )
                 })}

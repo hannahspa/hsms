@@ -45,6 +45,7 @@ export default function TabXetDuyet({ onUpdate }) {
   const [danhSachCho, setDanhSachCho] = useState([])
   const [dungLeList,  setDungLeList]  = useState([])
   const [suaXoaList,  setSuaXoaList]  = useState([])
+  const [suaDonList,  setSuaDonList]  = useState([])   // yêu cầu sửa ĐƠN HÀNG (Lễ tân đề xuất)
   const [nvMap,       setNvMap]       = useState({})
   const [loading,     setLoading]     = useState(true)
 
@@ -81,14 +82,16 @@ export default function TabXetDuyet({ onUpdate }) {
       })
       setNvMap(map)
 
-      const [offRes, leRes, sxRes] = await Promise.all([
+      const [offRes, leRes, sxRes, donRes] = await Promise.all([
         supabase.from('dang_ky_off').select('*').eq('trang_thai', 'cho_duyet').order('ngay_off'),
         supabase.from('yeu_cau_chinh_sua').select('*').eq('loai_yeu_cau', 'dung_ngay_le').eq('trang_thai', 'cho_duyet').order('created_at', { ascending: false }),
-        supabase.from('yeu_cau_chinh_sua').select('*').in('loai_yeu_cau', ['sua', 'xoa']).eq('trang_thai', 'cho_duyet').order('created_at', { ascending: false }),
+        supabase.from('yeu_cau_chinh_sua').select('*').in('loai_yeu_cau', ['sua', 'xoa']).eq('trang_thai', 'cho_duyet').neq('loai_bang', 'don_hang').order('created_at', { ascending: false }),
+        supabase.from('yeu_cau_chinh_sua').select('*').eq('loai_yeu_cau', 'sua').eq('loai_bang', 'don_hang').eq('trang_thai', 'cho_duyet').order('created_at', { ascending: false }),
       ])
       setDanhSachCho(offRes.data || [])
       setDungLeList(leRes.data || [])
       setSuaXoaList(sxRes.data || [])
+      setSuaDonList(donRes.data || [])
     } catch (e) { console.error('TabXetDuyet:', e) }
     finally { setLoading(false) }
   }
@@ -183,7 +186,7 @@ export default function TabXetDuyet({ onUpdate }) {
     const tt = o.trang_thai; acc[tt] = (acc[tt] || 0) + 1; return acc
   }, {})
 
-  const pendingTotal = danhSachCho.length + dungLeList.length + suaXoaList.length
+  const pendingTotal = danhSachCho.length + dungLeList.length + suaXoaList.length + suaDonList.length
 
   // ─────────────────────────────────────
   return (
@@ -382,6 +385,44 @@ export default function TabXetDuyet({ onUpdate }) {
                           </tr>
                         )
                       })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ── 1d. Sửa Đơn Hàng (Lễ tân đề xuất) ── */}
+            {suaDonList.length > 0 && (
+              <div>
+                <div style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                  🧾 Yêu Cầu Sửa Đơn Hàng ({suaDonList.length})
+                </div>
+                <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        <TH>Mã Đơn</TH>
+                        <TH>Lý Do</TH>
+                        <TH w={120} align="center">Người YC</TH>
+                        <TH w={120} align="center">Nộp lúc</TH>
+                        <TH w={160} align="center">Hành Động</TH>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {suaDonList.map((yc, i) => (
+                        <tr key={yc.id} style={{ borderTop: i > 0 ? `1px solid ${LUX.line}` : 'none', background: i % 2 === 0 ? 'white' : LUX.bg }}>
+                          <TD><span style={{ fontWeight: 700, color: LUX.espresso, fontFamily: LUX.fontMono }}>{yc.du_lieu_cu?.ma_don || '—'}</span></TD>
+                          <TD><span style={{ color: LUX.ink3, fontStyle: 'italic', fontSize: 12 }}>{yc.ly_do}</span></TD>
+                          <TD align="center" muted><span style={{ fontSize: 12 }}>{yc.nguoi_yeu_cau || '—'}</span></TD>
+                          <TD align="center" muted><span style={{ fontSize: 11 }}>{fmtTime(yc.created_at)}</span></TD>
+                          <TD align="center">
+                            <button onClick={() => { window.location.href = `/pos?resume=${yc.ban_ghi_id}&yc=${yc.id}` }}
+                              style={{ padding: '6px 14px', borderRadius: 8, background: LUX.goldGrad, color: 'white', border: 'none', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                              Xem &amp; Duyệt →
+                            </button>
+                          </TD>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

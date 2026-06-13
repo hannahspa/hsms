@@ -22,15 +22,23 @@ import { C, FONT } from '../../constants/colors'
 const PTTT_OPTS = HINH_THUC_THU
 
 // ── PosCreateOrder ────────────────────────────────────────────────────────────
-function PosCreateOrder({ resumeOrderId, editMode = false }) {
+function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   const { user } = useAuth()
+  const isLeTan = user?.vai_tro === 'le_tan'   // Lễ tân: sửa đơn = ĐỀ XUẤT (chờ Admin duyệt)
 
   // Order — local khi chưa lưu, DB mode khi đã lưu/resume
   const [lineItems, setLineItems]       = useState([])
   const [savedOrderId, setSavedOrderId] = useState(null)  // null = local, uuid = đã lưu DB
-  // SỬA ĐƠN (editMode): id đơn gốc đang sửa. Giữ dòng hàng LOCAL, CHỈ áp khi bấm Cập Nhật
+  // SỬA ĐƠN (editMode): id đơn gốc đang sửa. Giữ dòng hàng LOCAL, CHỉ áp khi bấm Cập Nhật
   // → bỏ dở giữa chừng KHÔNG đụng đơn gốc (an toàn, không mất thẻ).
   const [editOrderId, setEditOrderId]   = useState(null)
+  const [maDonEdit, setMaDonEdit]       = useState('')      // mã đơn đang sửa (cho yêu cầu duyệt)
+  // Đề xuất sửa (Lễ tân) + duyệt đề xuất (Admin mở từ ?yc=)
+  const [showProposeModal, setShowProposeModal] = useState(false)
+  const [proposeReason, setProposeReason]       = useState('')
+  const [reviewYc, setReviewYc]                 = useState(null)   // yeu_cau_chinh_sua admin đang xem/duyệt
+  const [showRejectModal, setShowRejectModal]   = useState(false)
+  const [rejectReason, setRejectReason]         = useState('')
 
   // Ngày + giờ tạo đơn (sửa được) — mặc định hiện tại, load từ đơn khi resume
   const [orderNgay, setOrderNgay] = useState(() => todayISO())
@@ -101,6 +109,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
   // Resume đơn nháp từ danh sách
   useEffect(() => {
     if (!resumeOrderId) return
+    if (ycId) return   // có ?yc= → luồng admin duyệt đề xuất xử lý riêng (useEffect bên dưới)
     // SỬA ĐƠN: giữ dòng hàng LOCAL (không set savedOrderId → không ghi DB khi mở).
     // Resume nháp bình thường: dùng savedOrderId như cũ (ghi thẳng DB).
     if (editMode) setEditOrderId(resumeOrderId)
@@ -109,6 +118,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
       posService.getOrder(resumeOrderId),
       posService.getLineItems(resumeOrderId),
     ]).then(async ([order, items]) => {
+      if (order?.ma_don) setMaDonEdit(order.ma_don)
       // Restore customer
       if (order.khach_hang) {
         setSelectedCustomer({ id: order.khach_hang_id, ho_ten: order.khach_hang.ho_ten, so_dien_thoai: order.khach_hang.so_dien_thoai })
@@ -167,7 +177,37 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
         } catch (_) {}
       }
     }).catch(err => { alert('Lỗi tải đơn: ' + err.message) })
-  }, [resumeOrderId, editMode])
+  }, [resumeOrderId, editMode, ycId])
+
+  // ── Admin mở yêu cầu sửa đơn (?yc=) → nạp snapshot Lễ tân đề xuất để xem trước ──
+  useEffect(() => {
+    if (!ycId || !resumeOrderId) return
+    setEditOrderId(resumeOrderId)  // áp vào đơn gốc khi Admin bấm Duyệt & Cập Nhật
+    Promise.all([
+      supabase.from('yeu_cau_chinh_sua').select('*').eq('id', ycId).single(),
+      posService.getOrder(resumeOrderId),
+    ]).then(([{ data: yc }, order]) => {
+      if (!yc) { alert('Không tìm thấy yêu cầu sửa đơn'); return }
+      setReviewYc(yc)
+      if (order?.ma_don) setMaDonEdit(order.ma_don)
+      const dm = yc.du_lieu_moi || {}
+      if (Array.isArray(dm.lineItems)) setLineItems(dm.lineItems)
+      if (dm.giamMode) setGiamMode(dm.giamMode)
+      if (dm.giamDVPct != null) setGiamDVPct(dm.giamDVPct)
+      if (dm.giamDVVnd != null) setGiamDVVnd(dm.giamDVVnd)
+      if (dm.vatPct != null) setVatPct(dm.vatPct)
+      if (Array.isArray(dm.payLines) && dm.payLines.length) setPayLines(dm.payLines)
+      if (Array.isArray(dm.orderStaff)) setOrderStaff(dm.orderStaff)
+      if (dm.ghiChuDon != null) setGhiChuDon(dm.ghiChuDon)
+      if (dm.orderNgay) setOrderNgay(dm.orderNgay)
+      if (dm.orderGio) setOrderGio(dm.orderGio)
+      if (dm.khachHangId) {
+        setSelectedCustomer({ id: dm.khachHangId, ho_ten: dm.khachHangTen || '', so_dien_thoai: dm.khachHangSdt || '' })
+        setCustSearch(dm.khachHangTen || '')
+        setIsGuest(false)
+      }
+    }).catch(err => { alert('Lỗi tải yêu cầu: ' + err.message) })
+  }, [ycId, resumeOrderId])
 
   useEffect(() => {
     if (!selectedCustomer?.id) {
@@ -857,6 +897,19 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
         }
       } catch (e) { console.warn('Đồng tư vấn thẻ:', e) }
 
+      // Admin duyệt yêu cầu sửa đơn của Lễ tân → đánh dấu đã duyệt + về danh sách
+      if (reviewYc) {
+        try {
+          await supabase.from('yeu_cau_chinh_sua')
+            .update({ trang_thai: 'da_duyet', nguoi_duyet: user?.ho_ten || 'Admin' })
+            .eq('id', reviewYc.id)
+        } catch (_) {}
+        setLoading(false)
+        alert('Đã duyệt & cập nhật đơn ' + maDonEdit + ' theo đề xuất của Lễ tân.')
+        window.location.href = '/pos/danh-sach'
+        return
+      }
+
       // 5. Reset
       paymentsInserted.current = false
       setSavedOrderId(null)
@@ -872,6 +925,50 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
       }
       alert('Lỗi thanh toán: ' + err.message)
     }
+    finally { setLoading(false) }
+  }
+
+  // ── Đề xuất sửa đơn (Lễ tân) / Từ chối (Admin) ──────────────────────────────
+  const buildEditSnapshot = () => ({
+    lineItems, giamMode, giamDVPct, giamDVVnd, vatPct, payLines, orderStaff,
+    ghiChuDon, orderNgay, orderGio,
+    khachHangId:  selectedCustomer?.id || null,
+    khachHangTen: selectedCustomer?.ho_ten || null,
+    khachHangSdt: selectedCustomer?.so_dien_thoai || null,
+  })
+
+  const submitEditRequest = async () => {
+    if (!proposeReason.trim()) { alert('Vui lòng nhập LÝ DO chỉnh sửa đơn.'); return }
+    if (lineItems.length === 0) { alert('Đơn phải có ít nhất 1 dịch vụ.'); return }
+    setLoading(true)
+    try {
+      const { error } = await supabase.from('yeu_cau_chinh_sua').insert({
+        loai_yeu_cau: 'sua', loai_bang: 'don_hang', ban_ghi_id: editOrderId,
+        du_lieu_cu:  { ma_don: maDonEdit },
+        du_lieu_moi: buildEditSnapshot(),
+        ly_do:       proposeReason.trim(),
+        nguoi_yeu_cau: user?.ho_ten || 'Lễ Tân',
+        trang_thai:  'cho_duyet',
+      })
+      if (error) throw error
+      setShowProposeModal(false)
+      alert(`Đã gửi yêu cầu sửa đơn ${maDonEdit}. Chờ Admin duyệt.`)
+      window.location.href = '/pos/danh-sach'
+    } catch (e) { alert('Lỗi gửi yêu cầu: ' + e.message) }
+    finally { setLoading(false) }
+  }
+
+  const rejectEditRequest = async () => {
+    if (!reviewYc) return
+    setLoading(true)
+    try {
+      await supabase.from('yeu_cau_chinh_sua')
+        .update({ trang_thai: 'tu_choi', nguoi_duyet: user?.ho_ten || 'Admin', ghi_chu_duyet: rejectReason.trim() || 'Không duyệt' })
+        .eq('id', reviewYc.id)
+      setShowRejectModal(false)
+      alert('Đã từ chối yêu cầu sửa đơn. Đơn gốc giữ nguyên.')
+      window.location.href = '/pos/danh-sach'
+    } catch (e) { alert('Lỗi: ' + e.message) }
     finally { setLoading(false) }
   }
 
@@ -1048,12 +1145,32 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
           </div>
         </div>
 
-        {/* Banner chế độ sửa đơn — nhắc Admin chốt lại để lưu */}
-        {editMode && (
+        {/* Banner: Admin xem đề xuất sửa từ Lễ tân (?yc=) */}
+        {reviewYc && (
+          <div style={{ padding: '9px 16px', background: 'rgba(108,52,131,.10)', borderBottom: '1px solid rgba(108,52,131,.28)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span style={{ fontSize: 15 }}>📝</span>
+            <span style={{ fontSize: 11.5, color: '#6C3483', fontWeight: 600, lineHeight: 1.35 }}>
+              Đề xuất sửa từ <b>{reviewYc.nguoi_yeu_cau || 'Lễ Tân'}</b> · Lý do: <b>{reviewYc.ly_do}</b> — xem rồi bấm <b>"Duyệt & Cập Nhật"</b> hoặc <b>"Từ chối"</b>.
+            </span>
+          </div>
+        )}
+
+        {/* Banner: Lễ tân đề xuất sửa (chưa áp, gửi duyệt) */}
+        {!reviewYc && isLeTan && editOrderId && (
+          <div style={{ padding: '9px 16px', background: 'rgba(160,113,79,.10)', borderBottom: '1px solid rgba(160,113,79,.25)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span style={{ fontSize: 15 }}>✏️</span>
+            <span style={{ fontSize: 11.5, color: '#8a6335', fontWeight: 600, lineHeight: 1.35 }}>
+              Đang đề xuất sửa đơn — chỉnh xong bấm <b>"Gửi Yêu Cầu Duyệt"</b> (nhập lý do). Đơn gốc <b>giữ nguyên</b> tới khi Admin duyệt.
+            </span>
+          </div>
+        )}
+
+        {/* Banner chế độ sửa đơn (Admin) — nhắc chốt lại để lưu */}
+        {editMode && !reviewYc && !isLeTan && (
           <div style={{ padding: '9px 16px', background: 'rgba(160,113,79,.10)', borderBottom: '1px solid rgba(160,113,79,.25)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <span style={{ fontSize: 15 }}>✎</span>
             <span style={{ fontSize: 11.5, color: '#8a6335', fontWeight: 600, lineHeight: 1.35 }}>
-              Đang sửa đơn — chỉnh xong bấm <b>"Cập Nhật Đơn"</b> để lưu. Nếu thoát mà chưa cập nhật, <b>đơn gốc vẫn giữ nguyên</b> (an toàn).
+              Đang sửa đơn — chỉnh xong bấm <b>"Lưu Thay Đổi"</b> để lưu. Nếu thoát mà chưa lưu, <b>đơn gốc vẫn giữ nguyên</b> (an toàn).
             </span>
           </div>
         )}
@@ -1481,11 +1598,27 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
                   }}>Lưu</button>
               )}
 
-              {/* Nút chính: SỬA ĐƠN → 'Lưu Thay Đổi' (không thanh toán lại) · NHÁP → Thanh Toán */}
+              {/* Lễ tân sửa đơn → Từ chối ẩn; Admin xem đề xuất (reviewYc) → nút Từ Chối */}
+              {reviewYc && (
+                <button onClick={() => { setRejectReason(''); setShowRejectModal(true) }} disabled={loading}
+                  style={{
+                    padding: '0 14px', height: 40, border: '1.5px solid rgba(192,57,43,.4)', borderRadius: 999,
+                    background: 'rgba(192,57,43,.06)', color: '#C0392B', fontWeight: 700, fontSize: 12.5, fontFamily: FONT.sans,
+                    cursor: 'pointer', flexShrink: 0,
+                  }}>✕ Từ chối</button>
+              )}
+
+              {/* Nút chính: Lễ tân→Gửi duyệt · Admin xem đề xuất→Duyệt&Cập nhật · Sửa→Lưu · Nháp→Thanh toán */}
               <button
-                disabled={!canConfirm || loading}
-                onClick={() => handleConfirmOrder(true)}
-                title={editOrderId ? 'Lưu thay đổi vào đơn (không thanh toán lại)' : 'Thanh toán và in hoá đơn'}
+                disabled={loading || ((isLeTan && editOrderId && !reviewYc) ? lineItems.length === 0 : !canConfirm)}
+                onClick={() => {
+                  if (isLeTan && editOrderId && !reviewYc) {
+                    if (lineItems.length === 0) { alert('Đơn phải có ít nhất 1 dịch vụ'); return }
+                    setProposeReason(''); setShowProposeModal(true); return
+                  }
+                  handleConfirmOrder(true)
+                }}
+                title={reviewYc ? 'Duyệt đề xuất & cập nhật đơn' : (isLeTan && editOrderId) ? 'Gửi yêu cầu sửa cho Admin duyệt' : editOrderId ? 'Lưu thay đổi vào đơn (không thanh toán lại)' : 'Thanh toán và in hoá đơn'}
                 style={{
                   flex: 1, height: 40, border: 'none', borderRadius: 999, fontFamily: 'var(--sans)',
                   background: !canConfirm
@@ -1504,7 +1637,11 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 }}>
                 {loading ? 'Đang xử lý…' : (
-                  editMode
+                  reviewYc
+                    ? '✓ Duyệt & Cập Nhật'
+                  : (isLeTan && editOrderId)
+                    ? '📤 Gửi Yêu Cầu Duyệt'
+                  : editMode
                     ? '💾 Lưu Thay Đổi'
                     : tongCuoi === 0
                       ? 'Thanh Toán & In'
@@ -1580,6 +1717,45 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
       onClose={() => { setNapModalOpen(false); setNapSoTien(''); setNapGhiChu(''); setNapHinhThuc('tien_mat') }}
     />
 
+    {/* Modal: Lễ tân nhập LÝ DO chỉnh sửa (bắt buộc) trước khi gửi duyệt */}
+    {showProposeModal && (
+      <div onClick={() => setShowProposeModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: 'min(460px,94vw)', background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 20px 60px rgba(0,0,0,.3)' }}>
+          <div style={{ fontSize: 16, fontWeight: 800, fontFamily: FONT.serif, color: C.ink, marginBottom: 4 }}>Gửi Yêu Cầu Sửa Đơn</div>
+          <div style={{ fontSize: 12.5, color: C.ink3, marginBottom: 14 }}>Đơn <b style={{ color: C.champagne }}>{maDonEdit}</b> — Admin sẽ xem & duyệt thay đổi của bạn.</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.ink2, marginBottom: 6 }}>Lý do chỉnh sửa <span style={{ color: '#C0392B' }}>*</span></div>
+          <textarea autoFocus value={proposeReason} onChange={e => setProposeReason(e.target.value)} rows={3}
+            placeholder="VD: Khách đổi dịch vụ, ghi nhầm KTV, sai số tiền..."
+            style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--bord)', borderRadius: 9, padding: '9px 11px', fontSize: 13, outline: 'none', resize: 'none', fontFamily: FONT.sans, color: C.ink }} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button onClick={() => setShowProposeModal(false)} style={{ flex: 1, height: 42, borderRadius: 10, border: `1px solid ${C.line2}`, background: '#fff', color: C.ink2, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: FONT.sans }}>Huỷ</button>
+            <button onClick={submitEditRequest} disabled={loading || !proposeReason.trim()} style={{ flex: 2, height: 42, borderRadius: 10, border: 'none', background: proposeReason.trim() ? 'linear-gradient(135deg,#C9A96E,#A0714F)' : 'rgba(0,0,0,.1)', color: proposeReason.trim() ? '#fff' : C.ink3, fontWeight: 800, fontSize: 13, cursor: loading || !proposeReason.trim() ? 'not-allowed' : 'pointer', fontFamily: FONT.sans }}>
+              {loading ? 'Đang gửi…' : '📤 Gửi Yêu Cầu'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Modal: Admin nhập lý do TỪ CHỐI đề xuất sửa đơn */}
+    {showRejectModal && (
+      <div onClick={() => setShowRejectModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: 'min(460px,94vw)', background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 20px 60px rgba(0,0,0,.3)' }}>
+          <div style={{ fontSize: 16, fontWeight: 800, fontFamily: FONT.serif, color: C.ink, marginBottom: 4 }}>Từ Chối Yêu Cầu Sửa</div>
+          <div style={{ fontSize: 12.5, color: C.ink3, marginBottom: 14 }}>Đơn <b>{maDonEdit}</b> giữ nguyên, không áp thay đổi.</div>
+          <textarea autoFocus value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3}
+            placeholder="Lý do từ chối (tuỳ chọn)..."
+            style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--bord)', borderRadius: 9, padding: '9px 11px', fontSize: 13, outline: 'none', resize: 'none', fontFamily: FONT.sans, color: C.ink }} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button onClick={() => setShowRejectModal(false)} style={{ flex: 1, height: 42, borderRadius: 10, border: `1px solid ${C.line2}`, background: '#fff', color: C.ink2, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: FONT.sans }}>Quay lại</button>
+            <button onClick={rejectEditRequest} disabled={loading} style={{ flex: 2, height: 42, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#C0392B,#8e2218)', color: '#fff', fontWeight: 800, fontSize: 13, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: FONT.sans }}>
+              {loading ? 'Đang xử lý…' : '✕ Từ Chối'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     </>
   )
 }
@@ -1589,9 +1765,10 @@ export default function PosApp() {
   const path   = window.location.pathname
   const params = new URLSearchParams(window.location.search)
   const resumeId = params.get('resume')
-  const editMode = params.get('mode') === 'edit'
+  const ycId     = params.get('yc')   // admin mở yêu cầu sửa đơn của Lễ tân
+  const editMode = params.get('mode') === 'edit' || !!ycId
   if (path === '/pos/danh-sach') {
     return <PosOrderHistory onResumeOrder={(o) => { window.location.href = '/pos?resume=' + o.id }} />
   }
-  return <PosCreateOrder resumeOrderId={resumeId} editMode={editMode} />
+  return <PosCreateOrder resumeOrderId={resumeId} editMode={editMode} ycId={ycId} />
 }

@@ -535,9 +535,15 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
               🗑 Xóa vĩnh viễn
             </button>
           )}
-          {!isAdmin && (
+          {/* Lễ tân: đề xuất sửa đơn → gửi Admin duyệt (không tự áp). Đơn đã hủy thì không sửa. */}
+          {!isAdmin && order.trang_thai !== 'huy' && (
+            <button onClick={handleReopen} disabled={busy} style={{ padding: '0 14px', height: 40, border: '1px solid var(--bord)', borderRadius: 8, background: 'rgba(160,113,79,.08)', color: '#8a6335', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--sans)' }}>
+              ✏️ Đề Xuất Sửa Đơn
+            </button>
+          )}
+          {!isAdmin && order.trang_thai === 'huy' && (
             <span style={{ padding: '0 12px', height: 40, display: 'inline-flex', alignItems: 'center', fontSize: 11, color: 'var(--ink3)', fontStyle: 'italic' }}>
-              Chỉ Admin được hủy / sửa / xóa đơn
+              Đơn đã hủy — không sửa được
             </span>
           )}
           <div style={{ flex: 1 }} />
