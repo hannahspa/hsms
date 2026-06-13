@@ -30,15 +30,13 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
   const [dGio, setDGio] = useState('')
   const [savingDT, setSavingDT] = useState(false)
 
-  // Admin: mở lại đơn đã chốt để sửa (đảo ngược tác động → draft → resume)
+  // Admin: mở đơn để SỬA — KHÔNG đảo ngược ngay (giữ nguyên đơn gốc).
+  // Việc hoàn thẻ/kho/doanh thu + ghi lại CHỈ chạy khi admin bấm "Cập Nhật Đơn".
+  // → Thoát giữa chừng = đơn gốc nguyên trạng; không còn chồng chéo / nhân đôi.
   const handleReopen = async () => {
-    if (!window.confirm('Mở lại đơn này để sửa?\nDoanh thu, thẻ, hoa hồng, kho của đơn sẽ được hoàn lại; đơn về trạng thái nháp để chỉnh rồi chốt lại.')) return
-    setBusy(true)
-    try {
-      await posService.reopenOrder(order.id)
-      onClose()
-      onEdit?.(order)   // → /pos?resume=order.id
-    } catch (e) { alert('Lỗi mở lại đơn: ' + e.message); setBusy(false) }
+    if (!window.confirm('Mở đơn này để sửa?\nĐơn gốc được GIỮ NGUYÊN cho tới khi bấm "Cập Nhật Đơn". Nếu thoát mà chưa cập nhật, đơn không thay đổi.')) return
+    onClose()
+    onEdit?.(order)   // → /pos?resume=order.id&mode=edit (sửa local, an toàn)
   }
 
   // Admin: xóa vĩnh viễn đơn đã hủy

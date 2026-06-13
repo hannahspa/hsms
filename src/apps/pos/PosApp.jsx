@@ -728,9 +728,13 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
       // → bỏ dở trước đó KHÔNG đụng đơn gốc. Đảo tác động cũ + dọn dòng/thanh toán cũ,
       //   rồi ghi lại từ dòng hàng local như tạo mới (vào chính đơn đó).
       if (!oid && editOrderId) {
-        await posService.reopenOrder(editOrderId)   // hoàn thẻ/kho/doanh thu cũ → draft (giữ chi_tiet/thanh_toan cũ)
-        await supabase.from('don_hang_chi_tiet').delete().eq('don_hang_id', editOrderId)
-        await supabase.from('thanh_toan').delete().eq('don_hang_id', editOrderId)
+        await posService.reopenOrder(editOrderId)   // hoàn thẻ/kho/doanh thu cũ + xoá ledger → draft (giữ chi_tiet/thanh_toan cũ)
+        // PHẢI xoá sạch dòng cũ TRƯỚC khi ghi lại. Nếu xoá lỗi → THROW (KHÔNG insert)
+        // → tránh bug nhân đôi: dòng cũ còn nguyên + insert mới = x2.
+        const { error: eDelCt } = await supabase.from('don_hang_chi_tiet').delete().eq('don_hang_id', editOrderId)
+        if (eDelCt) throw new Error('Không xoá được dòng hàng cũ, huỷ cập nhật để tránh nhân đôi: ' + eDelCt.message)
+        const { error: eDelPay } = await supabase.from('thanh_toan').delete().eq('don_hang_id', editOrderId)
+        if (eDelPay) throw new Error('Không xoá được thanh toán cũ: ' + eDelPay.message)
         oid = editOrderId
       }
 
