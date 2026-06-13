@@ -121,38 +121,21 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
         const vn = new Date(new Date(order.created_at).toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
         setOrderGio(`${String(vn.getHours()).padStart(2, '0')}:${String(vn.getMinutes()).padStart(2, '0')}`)
       }
+      // ── Dùng chung cho RESUME (draft) và EDIT (sửa đơn đã chốt) ──
+      const allItems = items || []
+      // Dòng phụ "đồng tư vấn thẻ" (KTV thứ 2): san_pham giá 0, chỉ để ghi hoa hồng.
+      // KHÔNG hiển thị như dòng hàng → khôi phục vào panel Hoa Hồng NV bán thay vì.
+      const isDongTuVan = i => i.loai_item === 'san_pham'
+        && (i.meta?.dongTuVanThe || (!i.san_pham_id && (i.thanh_tien || 0) === 0 && i.nhan_vien_id))
+      const phuLines = allItems.filter(isDongTuVan)
+      const visibleItems = allItems.filter(i => !isDongTuVan(i))
+
       if (editMode) {
-        const allItems = items || []
-        // Dòng phụ "đồng tư vấn thẻ" (KTV thứ 2): san_pham giá 0, chỉ để ghi hoa hồng.
-        // KHÔNG hiển thị như dòng hàng → khôi phục vào panel Hoa Hồng NV bán thay vì.
-        const isDongTuVan = i => i.loai_item === 'san_pham'
-          && (i.meta?.dongTuVanThe || (!i.san_pham_id && (i.thanh_tien || 0) === 0 && i.nhan_vien_id))
-        const phuLines = allItems.filter(isDongTuVan)
-        const visibleItems = allItems.filter(i => !isDongTuVan(i))
         // Local: bỏ id DB để được xử lý như dòng mới khi ghi lại lúc Cập Nhật
         setLineItems(visibleItems.map(i => {
           const { id, don_hang_id, created_at, ...rest } = i
           return { ...rest, _lid: crypto.randomUUID() }
         }))
-        // Khôi phục panel "Hoa Hồng NV bán" (orderStaff) cho đơn bán thẻ:
-        // KTV bán (dòng the_moi) + Lễ tân tư vấn (meta) + KTV thứ 2 (dòng phụ).
-        const theMoi = allItems.filter(i => i.loai_item === 'the_moi')
-        if (theMoi.length > 0) {
-          try {
-            const kl = ktvList.length ? ktvList : (await posService.getKTVs() || [])
-            const staff = []
-            const addStaff = (nvId, pct, role) => {
-              if (!nvId || staff.find(s => s.nv.id === nvId)) return
-              const nv = kl.find(k => k.id === nvId)
-              if (nv) staff.push({ nv, role, pct: Number(pct || 0) })
-            }
-            const first = theMoi[0]
-            addStaff(first.meta?.nhanVienBanId || first.nhan_vien_id, first.meta?.tiLeCommKtv || first.ti_le_hoa_hong, 'ban')
-            addStaff(first.meta?.nhanVienTuVanLtId, first.meta?.tiLeCommLt, 'tu_van')
-            phuLines.forEach(p => addStaff(p.nhan_vien_id, p.ti_le_hoa_hong, 'tu_van'))
-            if (staff.length) setOrderStaff(staff)
-          } catch (_) {}
-        }
         // Khôi phục thanh toán cũ vào payLines để admin thấy/sửa
         posService.getPayments(resumeOrderId).then(pays => {
           if (pays && pays.length) {
@@ -160,8 +143,28 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
           }
         }).catch(() => {})
       } else {
-        // items từ DB dùng id làm _lid để handlers nhất quán
-        setLineItems((items || []).map(i => ({ ...i, _lid: i.id })))
+        // Resume nháp: giữ id DB làm _lid để handlers ghi thẳng DB
+        setLineItems(visibleItems.map(i => ({ ...i, _lid: i.id })))
+      }
+
+      // Khôi phục panel "Hoa Hồng NV bán" (orderStaff) cho đơn bán thẻ — CẢ resume + edit:
+      // KTV bán (dòng the_moi) + Lễ tân tư vấn (meta) + KTV thứ 2 (dòng phụ đồng tư vấn).
+      const theMoi = allItems.filter(i => i.loai_item === 'the_moi')
+      if (theMoi.length > 0) {
+        try {
+          const kl = ktvList.length ? ktvList : (await posService.getKTVs() || [])
+          const staff = []
+          const addStaff = (nvId, pct) => {
+            if (!nvId || staff.find(s => s.nv.id === nvId)) return
+            const nv = kl.find(k => k.id === nvId)
+            if (nv) staff.push({ nv, role: 'tu_van', pct: Number(pct || 0) })
+          }
+          const first = theMoi[0]
+          addStaff(first.meta?.nhanVienBanId || first.nhan_vien_id, first.meta?.tiLeCommKtv || first.ti_le_hoa_hong)
+          addStaff(first.meta?.nhanVienTuVanLtId, first.meta?.tiLeCommLt)
+          phuLines.forEach(p => addStaff(p.nhan_vien_id, p.ti_le_hoa_hong))
+          if (staff.length) setOrderStaff(staff)
+        } catch (_) {}
       }
     }).catch(err => { alert('Lỗi tải đơn: ' + err.message) })
   }, [resumeOrderId, editMode])
