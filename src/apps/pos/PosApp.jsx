@@ -793,6 +793,14 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
           .eq('id', oid)
       } catch (_) {}
 
+      // Xoá dòng phụ "đồng tư vấn thẻ" cũ TRƯỚC finalize: nó là san_pham giá 0 (san_pham_id=null)
+      // → RPC finalize tưởng là bán sản phẩm và báo "không đủ tồn kho". Sẽ được tạo lại từ
+      //   orderStaff (2 KTV) sau finalize. Tránh lỗi chốt đơn bán thẻ có 2 KTV.
+      try {
+        await supabase.from('don_hang_chi_tiet').delete()
+          .eq('don_hang_id', oid).contains('meta', { dongTuVanThe: true })
+      } catch (_) {}
+
       // 4. Finalize — RPC xử lý kho, thẻ LT dùng, thẻ mới, công nợ, doanh_thu
       const result = await posService.finalizeOrder(oid, { giamGia: giamDVAmt, vat: vatAmt, conNo, ghiChu: ghiChuDon })
 
@@ -1463,19 +1471,21 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
                   }}>←</button>
               )}
 
-              {/* Lưu nháp */}
-              <button onClick={handleSaveDraft} title="Lưu đơn nháp để khách thanh toán sau"
-                style={{
-                  width: 60, height: 40, border: `1.5px solid ${C.line2}`, borderRadius: 999,
-                  background: C.surface2, color: C.ink,
-                  cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: FONT.sans,
-                }}>Lưu</button>
+              {/* Lưu nháp — chỉ khi tạo/nháp, KHÔNG hiện khi sửa đơn */}
+              {!editOrderId && (
+                <button onClick={handleSaveDraft} title="Lưu đơn nháp để khách thanh toán sau"
+                  style={{
+                    width: 60, height: 40, border: `1.5px solid ${C.line2}`, borderRadius: 999,
+                    background: C.surface2, color: C.ink,
+                    cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: FONT.sans,
+                  }}>Lưu</button>
+              )}
 
-              {/* Thanh Toán & In — nút chính */}
+              {/* Nút chính: SỬA ĐƠN → 'Lưu Thay Đổi' (không thanh toán lại) · NHÁP → Thanh Toán */}
               <button
                 disabled={!canConfirm || loading}
                 onClick={() => handleConfirmOrder(true)}
-                title="Thanh toán và in hoá đơn"
+                title={editOrderId ? 'Lưu thay đổi vào đơn (không thanh toán lại)' : 'Thanh toán và in hoá đơn'}
                 style={{
                   flex: 1, height: 40, border: 'none', borderRadius: 999, fontFamily: 'var(--sans)',
                   background: !canConfirm
@@ -1495,7 +1505,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
                 }}>
                 {loading ? 'Đang xử lý…' : (
                   editMode
-                    ? '✓ Cập Nhật Đơn & In'
+                    ? '💾 Lưu Thay Đổi'
                     : tongCuoi === 0
                       ? 'Thanh Toán & In'
                       : conNo > 0 && selectedCustomer
@@ -1504,22 +1514,24 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
                 )}
               </button>
 
-              {/* Thanh Toán — nút phụ */}
-              <button
-                disabled={!canConfirm || loading}
-                onClick={() => handleConfirmOrder(false)}
-                title="Thanh toán không in hoá đơn"
-                style={{
-                  width: 100, height: 40, borderRadius: 999, fontFamily: FONT.sans, flexShrink: 0,
-                  border: `1.5px solid ${canConfirm ? C.champagne : C.line2}`,
-                  background: canConfirm ? C.surface2 : C.bg,
-                  color: canConfirm ? C.ink : C.ink3,
-                  cursor: !canConfirm || loading ? 'not-allowed' : 'pointer',
-                  fontSize: 12, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                Thanh Toán
-              </button>
+              {/* Thanh Toán — nút phụ (KHÔNG hiện khi sửa đơn: sửa chỉ Lưu/Thoát) */}
+              {!editOrderId && (
+                <button
+                  disabled={!canConfirm || loading}
+                  onClick={() => handleConfirmOrder(false)}
+                  title="Thanh toán không in hoá đơn"
+                  style={{
+                    width: 100, height: 40, borderRadius: 999, fontFamily: FONT.sans, flexShrink: 0,
+                    border: `1.5px solid ${canConfirm ? C.champagne : C.line2}`,
+                    background: canConfirm ? C.surface2 : C.bg,
+                    color: canConfirm ? C.ink : C.ink3,
+                    cursor: !canConfirm || loading ? 'not-allowed' : 'pointer',
+                    fontSize: 12, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  Thanh Toán
+                </button>
+              )}
 
             </div>
           </div>
