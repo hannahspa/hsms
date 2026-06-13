@@ -910,9 +910,15 @@ function PosCreateOrder({ resumeOrderId, editMode = false }) {
     const hasPanelSeller = !!primary
     // Có NV bán ở panel → tính lại theo quy tắc. Không có (gán per-line qua KtvPopup) → giữ giá trị đã gán.
     const staffPct = hasPanelSeller ? sellerPct : Number(item.ti_le_hoa_hong || 0)
+    // BASE hoa hồng = SỐ TIỀN KHÁCH THỰC TRẢ cho dòng này (sau giảm giá toàn đơn),
+    // KHÔNG dùng giá gốc (thanh_tien dòng). Phân bổ giảm giá đơn theo trọng số thành tiền dòng.
+    // VAT không tính hoa hồng → base = thành tiền hàng sau giảm (chưa cộng VAT).
+    const lineNet = tongHang > 0
+      ? Math.round((item.thanh_tien || 0) * Math.max(0, tongHang - giamDVAmt) / tongHang)
+      : (item.thanh_tien || 0)
     const tienComm = hasPanelSeller
-      ? Math.round((item.thanh_tien || 0) * sellerPct / 100)
-      : (item.tien_hoa_hong || Math.round((item.thanh_tien || 0) * staffPct / 100))
+      ? Math.round(lineNet * sellerPct / 100)
+      : (item.tien_hoa_hong || Math.round(lineNet * staffPct / 100))
     const nextMeta = {
       ...currentMeta,
       nhanVienBanId: staffId,
