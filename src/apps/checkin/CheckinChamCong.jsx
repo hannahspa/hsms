@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { LUX } from '../../constants/lux'
 import { todayISO, getNowVN } from '../../lib/utils'
@@ -92,6 +92,44 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
   const [lyDoVeSom, setLyDoVeSom] = useState('')
   const [pendingRa, setPendingRa] = useState(null)
   const [showResult, setShowResult] = useState(null)
+  // ── Quên check-out: các ngày đã qua có giờ vào nhưng thiếu giờ ra ──
+  const [quenList, setQuenList] = useState([])
+  const [suaItem, setSuaItem] = useState(null)   // bản ghi đang bổ sung giờ ra
+  const [gioRaInput, setGioRaInput] = useState('')
+  const [suaLoading, setSuaLoading] = useState(false)
+
+  const loadQuenCheckout = useCallback(async () => {
+    const today = todayISO()
+    const d14 = new Date(getNowVN()); d14.setDate(d14.getDate() - 14)
+    const from = d14.toISOString().slice(0, 10)
+    const { data } = await supabase.from('cham_cong')
+      .select('id, ngay, gio_vao, gio_ra, loai')
+      .eq('nhan_vien_id', nhanVien.id).eq('loai', 'di_lam')
+      .gte('ngay', from).lt('ngay', today)
+      .is('gio_ra', null).order('ngay', { ascending: false })
+    setQuenList(data || [])
+  }, [nhanVien.id])
+
+  useEffect(() => { loadQuenCheckout() }, [loadQuenCheckout])
+
+  const handleBoSungGioRa = async () => {
+    if (!suaItem || !gioRaInput) return
+    setSuaLoading(true)
+    try {
+      const gioRa = gioRaInput.length === 5 ? gioRaInput + ':00' : gioRaInput
+      const heSo = tinhHeSo(suaItem.gio_vao, gioRa)
+      const tangCa = tinhTangCa(gioRa)
+      const { error } = await supabase.from('cham_cong')
+        .update({ gio_ra: gioRa, he_so: heSo, he_so_tam: heSo, tang_ca_gio: tangCa, trang_thai_tang_ca: tangCa > 0 ? 'cho_duyet' : 'khong_co' })
+        .eq('id', suaItem.id)
+      if (error) throw error
+      setShowResult({ type: 'checkout', icon: '✅', title: 'Đã bổ sung giờ ra!', color: LUX.sage, bg: '#eef2e7',
+        rows: [{ label: 'Ngày', value: suaItem.ngay.split('-').reverse().join('/') }, { label: 'Giờ ra', value: gioRa.slice(0, 5) }, { label: 'Ngày công', value: heSo.toFixed(2) }],
+        note: 'Cảm ơn bạn đã bổ sung. Ngày công đã được cập nhật chính xác.' })
+      setSuaItem(null); setGioRaInput(''); loadQuenCheckout(); onUpdated?.()
+    } catch (e) { alert('Lỗi: ' + e.message) }
+    finally { setSuaLoading(false) }
+  }
 
   function toTimeStrVN(d) {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
@@ -288,6 +326,24 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
         </div>
       )}
 
+      {/* ── Modal Bổ Sung Giờ Ra (quên check-out) ── */}
+      {suaItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.5)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 1000 }} onClick={() => setSuaItem(null)}>
+          <div style={{ background: LUX.surface, borderRadius: 20, width: '100%', maxWidth: 360, padding: '24px 20px', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily: LUX.fontSerif, fontSize: 19, fontWeight: 700, color: LUX.espresso, marginBottom: 4 }}>⏰ Bổ Sung Giờ Ra</div>
+            <div style={{ fontSize: 12, color: LUX.ink3, marginBottom: 16 }}>Ngày {suaItem.ngay.split('-').reverse().join('/')} — vào lúc {String(suaItem.gio_vao).slice(0, 5)}</div>
+            <div style={{ fontSize: 12, color: LUX.ink3, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>Giờ ra thực tế <span style={{ color: LUX.danger }}>*</span></div>
+            <input type="time" value={gioRaInput} onChange={e => setGioRaInput(e.target.value)}
+              style={{ width: '100%', padding: 14, borderRadius: 12, border: `1px solid ${LUX.champagne}`, fontSize: 17, fontFamily: LUX.fontMono, color: LUX.ink, boxSizing: 'border-box', outline: 'none', marginBottom: 16, textAlign: 'center' }} />
+            <button onClick={handleBoSungGioRa} disabled={suaLoading || !gioRaInput}
+              style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', cursor: gioRaInput ? 'pointer' : 'not-allowed', background: gioRaInput ? LUX.goldGrad : '#E5E7EB', color: gioRaInput ? '#fff' : LUX.ink3, fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: 15, marginBottom: 8 }}>
+              {suaLoading ? 'Đang lưu...' : 'Lưu giờ ra'}
+            </button>
+            <button onClick={() => setSuaItem(null)} style={{ width: '100%', padding: 12, borderRadius: 14, background: LUX.surface2, border: `1px solid ${LUX.line}`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: LUX.ink }}>Đóng</button>
+          </div>
+        </div>
+      )}
+
       {/* ── HEADER ── */}
       <header style={{ ...HERO, padding: '20px 22px 28px', display: 'flex', alignItems: 'center', gap: 14 }}>
         <button onClick={onBack} style={{
@@ -308,6 +364,35 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
       </header>
 
       <div style={{ padding: '0 16px 40px' }} className="stagger">
+
+        {/* ── Cảnh báo quên check-out ── */}
+        {quenList.length > 0 && (
+          <div style={{ marginTop: 14, background: '#FEF9E7', border: '1px solid #F0D98C', borderRadius: LUX.radius, padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 18 }}>⏰</span>
+              <div style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 700, color: '#8B6914' }}>
+                Bạn quên check-out {quenList.length} ngày
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: '#8B6914', opacity: 0.85, marginBottom: 10, lineHeight: 1.5 }}>
+              Những ngày này vẫn được tính đủ công, nhưng hãy bổ sung giờ ra để chính xác (tính tăng ca nếu có).
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {quenList.map(item => (
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', borderRadius: 12, padding: '10px 14px', border: '1px solid #F0D98C' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: LUX.espresso }}>{item.ngay.split('-').reverse().join('/')}</div>
+                    <div style={{ fontSize: 11, color: LUX.ink3 }}>Vào lúc {String(item.gio_vao).slice(0, 5)} · chưa có giờ ra</div>
+                  </div>
+                  <button onClick={() => { setSuaItem(item); setGioRaInput('') }}
+                    style={{ padding: '8px 14px', borderRadius: 10, background: LUX.goldGrad, color: '#fff', border: 'none', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Bổ sung giờ ra
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Info Card ── */}
         <div />
