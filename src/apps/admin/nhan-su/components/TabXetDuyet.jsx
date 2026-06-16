@@ -350,7 +350,9 @@ export default function TabXetDuyet({ onUpdate }) {
                     <tbody>
                       {suaXoaList.map((yc, i) => {
                         const isSua = yc.loai_yeu_cau === 'sua'
-                        const bangLabel = yc.loai_bang === 'doanh_thu' ? 'Doanh Thu' : yc.loai_bang === 'chi_phi' ? 'Chi Phí' : 'Chuyển Khoản'
+                        const isOff = yc.loai_bang === 'dang_ky_off'
+                        const fmtNgay = (d) => d ? String(d).split('-').reverse().join('/') : '—'
+                        const bangLabel = yc.loai_bang === 'doanh_thu' ? 'Doanh Thu' : yc.loai_bang === 'chi_phi' ? 'Chi Phí' : isOff ? '🔄 Đổi Ngày OFF' : 'Chuyển Khoản'
                         return (
                           <tr key={yc.id} style={{ borderTop: i > 0 ? `1px solid ${LUX.line}` : 'none', background: i % 2 === 0 ? 'white' : LUX.bg }}>
                             <TD>
@@ -359,12 +361,12 @@ export default function TabXetDuyet({ onUpdate }) {
                             <TD muted>{bangLabel}</TD>
                             <TD align="right">
                               <span style={{ fontFamily: LUX.fontMono, color: '#C0392B' }}>
-                                {yc.du_lieu_cu?.so_tien ? Number(yc.du_lieu_cu.so_tien).toLocaleString('vi-VN') + 'đ' : '—'}
+                                {isOff ? fmtNgay(yc.du_lieu_cu?.ngay_off) : (yc.du_lieu_cu?.so_tien ? Number(yc.du_lieu_cu.so_tien).toLocaleString('vi-VN') + 'đ' : '—')}
                               </span>
                             </TD>
                             <TD align="right">
                               {isSua
-                                ? <span style={{ fontFamily: LUX.fontMono, color: '#2D7A4F' }}>{yc.du_lieu_moi?.so_tien ? Number(yc.du_lieu_moi.so_tien).toLocaleString('vi-VN') + 'đ' : '—'}</span>
+                                ? <span style={{ fontFamily: LUX.fontMono, color: '#2D7A4F' }}>{isOff ? fmtNgay(yc.du_lieu_moi?.ngay_off) : (yc.du_lieu_moi?.so_tien ? Number(yc.du_lieu_moi.so_tien).toLocaleString('vi-VN') + 'đ' : '—')}</span>
                                 : <span style={{ color: LUX.ink3, fontSize: 12 }}>Xóa bản ghi</span>
                               }
                             </TD>

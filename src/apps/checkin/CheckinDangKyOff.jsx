@@ -36,6 +36,9 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
   const [nvMap, setNvMap] = useState({})
   const [showInfo, setShowInfo] = useState(null)
   const [soNgayDaOff, setSoNgayDaOff] = useState(0)
+  const [doiItem, setDoiItem] = useState(null)   // off đang xin đổi ngày
+  const [ngayMoi, setNgayMoi] = useState('')
+  const [doiLoading, setDoiLoading] = useState(false)
 
   useEffect(() => { loadDanhSach() }, [])
   useEffect(() => { loadOffCungBoPhan() }, [calThang, calNam])
@@ -134,6 +137,31 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
     if (!iso) return ''
     const [y, m, d] = iso.split('-')
     return `${d}/${m}/${y}`
+  }
+
+  // ── Gửi yêu cầu ĐỔI NGÀY OFF (dạng 'sua' bảng dang_ky_off → Admin duyệt tự đổi) ──
+  const handleDoiNgay = async () => {
+    if (!doiItem || !ngayMoi) { showToast('Vui lòng chọn ngày mới', 'error'); return }
+    if (ngayMoi === doiItem.ngay_off) { showToast('Ngày mới trùng ngày cũ', 'error'); return }
+    if (ngayMoi < todayISO()) { showToast('Không đổi sang ngày quá khứ', 'error'); return }
+    setDoiLoading(true)
+    try {
+      const { error } = await supabase.from('yeu_cau_chinh_sua').insert({
+        loai_bang: 'dang_ky_off',
+        ban_ghi_id: doiItem.id,
+        loai_yeu_cau: 'sua',
+        trang_thai: 'cho_duyet',
+        du_lieu_cu: { ngay_off: doiItem.ngay_off, loai_off: doiItem.loai_off, nhan_vien_ten: nhanVien.ho_ten },
+        du_lieu_moi: { ngay_off: ngayMoi },
+        ly_do: `${nhanVien.ho_ten} xin đổi ngày OFF ${fmt(doiItem.ngay_off)} → ${fmt(ngayMoi)}`,
+        nguoi_yeu_cau: nhanVien.ho_ten,
+      })
+      if (error) throw error
+      showToast('Đã gửi yêu cầu đổi ngày — chờ Cao Quốc Nam duyệt!')
+      setDoiItem(null); setNgayMoi('')
+      loadDanhSach()
+    } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
+    finally { setDoiLoading(false) }
   }
 
   const getTrangThaiStyle = (tt) => {
@@ -245,6 +273,31 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
                 </>
               )
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Đổi Ngày OFF */}
+      {doiItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.5)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 999 }} onClick={() => setDoiItem(null)}>
+          <div style={{ background: LUX.surface, borderRadius: 20, width: '100%', maxWidth: 380, padding: '24px 20px', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily: LUX.fontSerif, fontSize: 19, fontWeight: 700, color: LUX.espresso, marginBottom: 4 }}>🔄 Xin Đổi Ngày OFF</div>
+            <div style={{ fontSize: 12, color: LUX.ink3, marginBottom: 18 }}>Yêu cầu sẽ gửi Cao Quốc Nam duyệt</div>
+
+            <div style={{ background: LUX.surface2, border: `1px solid ${LUX.line}`, borderRadius: 12, padding: '12px 14px', marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: LUX.ink3, fontWeight: 600 }}>Ngày OFF hiện tại</span>
+              <span style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 700, color: LUX.taupe }}>{fmt(doiItem.ngay_off)}</span>
+            </div>
+
+            <div style={{ fontSize: 12, color: LUX.ink3, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>Đổi sang ngày mới <span style={{ color: LUX.danger }}>*</span></div>
+            <input type="date" min={today} value={ngayMoi} onChange={e => setNgayMoi(e.target.value)}
+              style={{ width: '100%', padding: 14, borderRadius: 12, border: `1px solid ${LUX.champagne}`, fontSize: 15, fontFamily: 'inherit', color: LUX.ink, boxSizing: 'border-box', outline: 'none', marginBottom: 16 }} />
+
+            <button onClick={handleDoiNgay} disabled={doiLoading || !ngayMoi}
+              style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', cursor: ngayMoi ? 'pointer' : 'not-allowed', background: ngayMoi ? LUX.goldGrad : '#E5E7EB', color: ngayMoi ? '#fff' : LUX.ink3, fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: 15, marginBottom: 8 }}>
+              {doiLoading ? 'Đang gửi...' : ngayMoi ? `Gửi yêu cầu đổi → ${fmt(ngayMoi)}` : 'Chọn ngày mới'}
+            </button>
+            <button onClick={() => setDoiItem(null)} style={{ width: '100%', padding: 12, borderRadius: 14, background: LUX.surface2, border: `1px solid ${LUX.line}`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: LUX.ink }}>Đóng</button>
           </div>
         </div>
       )}
@@ -460,6 +513,12 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
                       {ts.label}
                     </div>
                   </div>
+                  {item.trang_thai === 'duoc_duyet' && item.ngay_off >= today && (
+                    <button onClick={() => { setDoiItem(item); setNgayMoi('') }}
+                      style={{ marginTop: 8, padding: '7px 14px', borderRadius: 10, border: `1px solid ${LUX.taupe}`, background: LUX.surface, color: LUX.taupe, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      🔄 Xin đổi ngày này
+                    </button>
+                  )}
                   {item.ghi_chu_duyet && (
                     <div style={{ fontSize: 11, color: LUX.danger, marginTop: 6, background: '#FEF2F2', padding: '6px 10px', borderRadius: 8 }}>
                       Cao Quốc Nam: {item.ghi_chu_duyet}
