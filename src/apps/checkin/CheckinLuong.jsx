@@ -34,7 +34,8 @@ export default function CheckinLuong({ nhanVien, onBack }) {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(getDaysInMonth(year, month)).padStart(2, '0')}`
 
-    const [ccRes, blRes, quyRes, thuNhapRes, detailRes] = await Promise.all([
+    const isLeTanNv = nhanVien.vi_tri === 'le_tan'
+    const [ccRes, blRes, quyRes, thuNhapRes, detailRes, kdSumRes, leTanRes] = await Promise.all([
       supabase.from('cham_cong').select('ngay,loai,tang_ca_gio,he_so,gio_vao,gio_ra').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate),
       supabase.from('bang_luong').select('*').eq('nhan_vien_id', nhanVien.id).eq('thang', month).eq('nam', year).maybeSingle(),
       supabase.from('quy_ngay_off').select('*').eq('nhan_vien_id', nhanVien.id).eq('nam', year).maybeSingle(),
@@ -48,6 +49,11 @@ export default function CheckinLuong({ nhanVien, onBack }) {
         .eq('nhan_vien_id', nhanVien.id)
         .gte('don_hang.ngay', startDate).lte('don_hang.ngay', endDate)
         .eq('don_hang.is_test', false).neq('don_hang.trang_thai', 'huy'),
+      // Lễ Tân: tổng hợp lương KD (RPC) + danh sách lễ tân để tính công thức doanh số
+      isLeTanNv ? supabase.rpc('luong_kd_summary', { p_thang: month, p_nam: year })
+                : Promise.resolve({ data: null }),
+      isLeTanNv ? supabase.from('nhan_vien').select('id').eq('vi_tri', 'le_tan').eq('trang_thai', 'dang_lam')
+                : Promise.resolve({ data: [] }),
     ])
     const kdDetail = (detailRes.data || [])
       .filter(r => (r.tien_tour || 0) > 0 || (r.tien_hoa_hong || 0) > 0)
@@ -61,9 +67,21 @@ export default function CheckinLuong({ nhanVien, onBack }) {
     const posTour    = posRows.filter(r => r.loai === 'tour').reduce((s, r) => s + (r.so_tien || 0), 0)
     const posHoaHong = posRows.filter(r => r.loai === 'hoa_hong').reduce((s, r) => s + (r.so_tien || 0), 0)
 
-    // Nếu Kỳ 2 đã chốt → dùng snapshot bang_luong, chưa chốt → real-time POS
+    // ── Lễ Tân: Lương KD theo CÔNG THỨC doanh số (không phải tour thật) ──
+    let luongKDLeTan = 0
+    if (isLeTanNv) {
+      const kd = kdSumRes.data || { tong_dt: 0, dt_my_pham: 0, doanh_so: [] }
+      const leTanIds = new Set((leTanRes.data || []).map(r => r.id))
+      const dsMap = {}; (kd.doanh_so || []).forEach(x => { if (x?.nv) dsMap[x.nv] = x.ds || 0 })
+      const dsLeTanTong = [...leTanIds].reduce((s, id) => s + (dsMap[id] || 0), 0)
+      const coSo1 = Math.max(0, 150000000 - dsLeTanTong - (kd.dt_my_pham || 0))
+      luongKDLeTan = Math.round(coSo1 * 0.01) + Math.round(Math.max(0, (kd.tong_dt || 0) - 150000000) * 0.015)
+    }
+
+    // Nếu Kỳ 2 đã chốt → dùng snapshot bang_luong, chưa chốt → real-time.
+    // Lễ Tân: tien_tour = LƯƠNG KD công thức; KTV: tien_tour = tour thật từ POS.
     const isLKDChot = ['da_chot', 'da_phat_luong'].includes(bl?.trang_thai_lkd || '')
-    const tienTourEff  = isLKDChot ? (bl?.tien_tour   || 0) : posTour
+    const tienTourEff  = isLKDChot ? (bl?.tien_tour || 0) : (isLeTanNv ? luongKDLeTan : posTour)
     const hoaHongDVEff = isLKDChot ? (bl?.hoa_hong_dv || 0) : posHoaHong
 
     // Truyền POS data vào tinhLuong qua bangLuongRow
@@ -82,6 +100,17 @@ export default function CheckinLuong({ nhanVien, onBack }) {
       lich_su_dung: quy?.lich_su_dung || [],
     }, todayRef)
 
+    // ── Hỗ trợ làm tròn — CHỈ Khánh Duy (T5/2026 lên 8tr, từ T6/2026 lên 9tr) ──
+    let hoTro = 0
+    if (isLKDChot) {
+      hoTro = bl?.ho_tro || 0
+    } else if (nhanVien.ho_ten.includes('Khánh Duy')) {
+      const nguongBu = (year > 2026 || (year === 2026 && month >= 6)) ? 9000000 : 8000000
+      const tongLC = calc.luongCoBan + calc.tienTangCa - calc.tienPhat - calc.truKyQuy - calc.truUngLuong
+      const tongKD = hoaHongDVEff + tienTourEff + (calc.thuongDatDoanhSo || 0)
+      hoTro = (tongLC + tongKD) < nguongBu ? nguongBu - (tongLC + tongKD) : 0
+    }
+
     setData({
       calc,
       official: bl || null,
@@ -89,6 +118,7 @@ export default function CheckinLuong({ nhanVien, onBack }) {
       trangThaiLKD: bl?.trang_thai_lkd || 'chua_tinh',
       quyNgayOff: quy || null,
       kdDetail,
+      hoTro,
     })
     setLoading(false)
   }, [year, month, nhanVien.id])
@@ -145,7 +175,8 @@ export default function CheckinLuong({ nhanVien, onBack }) {
     : { hoaHongDV: c.hoaHongDV || 0, tienTour: c.tienTour || 0, thuongDS: c.thuongDatDoanhSo || 0 })
     : { hoaHongDV: 0, tienTour: 0, thuongDS: 0 }
 
-  const tongKy2 = showLKD.hoaHongDV + showLKD.tienTour + showLKD.thuongDS
+  const hoTro = data?.hoTro || 0
+  const tongKy2 = showLKD.hoaHongDV + showLKD.tienTour + showLKD.thuongDS + hoTro
   const tongLinh = tongKy1 + tongKy2
 
   return (
@@ -340,9 +371,10 @@ export default function CheckinLuong({ nhanVien, onBack }) {
                   const isLeTan = nhanVien.vi_tri === 'le_tan'
                   const items = isLeTan
                     ? [
-                        { icon: '📐', label: 'Lương Kinh Doanh (công thức)', note: 'Tính theo doanh thu POS', value: showLKD.tienTour, plus: true, hide: !showLKD.tienTour },
-                        { icon: '💆', label: 'Hoa Hồng (từ Excel POS)', note: 'Import từ myspa.vn', value: showLKD.hoaHongDV, plus: true, hide: !showLKD.hoaHongDV },
+                        { icon: '📐', label: 'Lương Kinh Doanh (công thức)', note: 'Tự động theo doanh thu POS', value: showLKD.tienTour, plus: true, hide: !showLKD.tienTour },
+                        { icon: '💆', label: 'Hoa Hồng (bán SP/thẻ)', note: '⚡ Real-time từ HSMS POS', value: showLKD.hoaHongDV, plus: true, hide: !showLKD.hoaHongDV },
                         { icon: '🎯', label: 'Thưởng Đạt Doanh Số', note: 'Admin nhập tay', value: showLKD.thuongDS, plus: true, hide: !showLKD.thuongDS },
+                        { icon: '⭐', label: 'Hỗ trợ làm tròn', note: 'Bù lên mức tối thiểu tháng', value: hoTro, plus: true, hide: !hoTro },
                       ]
                     : [
                         { icon: '💆', label: 'Hoa Hồng DV', note: '⚡ Real-time từ HSMS POS', value: showLKD.hoaHongDV, plus: true, hide: !showLKD.hoaHongDV },
