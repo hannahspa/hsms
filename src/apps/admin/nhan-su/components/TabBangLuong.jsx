@@ -87,9 +87,9 @@ export default function TabBangLuong({ fixedKy = null }) {
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)  // hỏi lưu trước khi đóng
   const [kdDetail, setKdDetail] = useState([])              // chi tiết tour/hoa hồng từng đơn (Kỳ 2)
   const [kdDetailLoading, setKdDetailLoading] = useState(false)
+  const [warnings, setWarnings] = useState([])             // cảnh báo đối soát hoa hồng/tour (Kỳ 2)
   const [saving,    setSaving]    = useState(false)
-  const [leTanInput,  setLeTanInput]  = useState({ tongDT: 0, dtMyPham: 0, dsKD: 0, dsNP: 0 })
-  const [calcLeTan,   setCalcLeTan]   = useState(null) // preview result Lễ Tân
+  const [leTanCalc,   setLeTanCalc]   = useState(null) // kết quả công thức lương KD lễ tân (tự động từ POS)
   const [toast,       setToast]       = useState(null)
   const [confirm,     setConfirm]     = useState(null)
 
@@ -108,7 +108,7 @@ export default function TabBangLuong({ fixedKy = null }) {
       const startDate = `${nam}-${String(thang).padStart(2,'0')}-01`
       const endDate   = `${nam}-${String(thang).padStart(2,'0')}-${String(soNgay).padStart(2,'0')}`
 
-      const [resNv, resChamCong, resOff, resBangLuong, resQuyOff, resThuNhap] = await Promise.all([
+      const [resNv, resChamCong, resOff, resBangLuong, resQuyOff, resThuNhap, resKD] = await Promise.all([
         supabase.from('nhan_vien')
           .select('id, ho_ten, vi_tri, luong_cung, avatar_url, trang_thai, gioi_han_off_thang, ky_quy_trang_thai, ky_quy_so_thang')
           .eq('trang_thai', 'dang_lam').order('vi_tri').order('ho_ten'),
@@ -125,7 +125,9 @@ export default function TabBangLuong({ fixedKy = null }) {
         supabase.from('v_nhan_vien_thu_nhap')
           .select('nhan_vien_id, loai, so_tien')
           .gte('ngay', startDate).lte('ngay', endDate)
-          .eq('is_test', false),
+          .eq('is_test', false).limit(100000),
+        // ── Tổng hợp Lương KD (RPC server-side, tránh giới hạn dòng): tong_dt, dt_my_pham, doanh_so/NV ──
+        supabase.rpc('luong_kd_summary', { p_thang: thang, p_nam: nam }),
       ])
 
       const nvData = resNv.data || []
@@ -143,6 +145,34 @@ export default function TabBangLuong({ fixedKy = null }) {
         if (r.loai === 'tour')     posDataByNv[r.nhan_vien_id].tour    += r.so_tien || 0
         if (r.loai === 'hoa_hong') posDataByNv[r.nhan_vien_id].hoaHong += r.so_tien || 0
       })
+
+      // ── TỪ RPC luong_kd_summary (server-side, ổn định, không lo giới hạn dòng) ──
+      // tongDT = Σ thực thu đơn tháng; dtMyPham = Σ bán SP; doanhSoByNv = Σ thực thu đơn DISTINCT mỗi NV.
+      const kdSum = resKD.data || { tong_dt: 0, dt_my_pham: 0, doanh_so: [] }
+      const tongDTPos = kdSum.tong_dt || 0
+      const dtMyPhamAuto = kdSum.dt_my_pham || 0
+      const doanhSoByNv = {}
+      ;(kdSum.doanh_so || []).forEach(x => { if (x?.nv) doanhSoByNv[x.nv] = x.ds || 0 })
+      // DS sau giảm của TỪNG lễ tân (trừ khỏi cơ sở 1%) = doanh số đơn lễ tân tham gia
+      const leTanNVs = nvData.filter(nv => nv.vi_tri === 'le_tan')
+      const dsTheLeTanTong = leTanNVs.reduce((s, nv) => s + (doanhSoByNv[nv.id] || 0), 0)
+
+      // CÔNG THỨC lương KD lễ tân (anh chốt GIỮ NGUYÊN):
+      //   Bậc 1 = max(0, 150tr − DS thẻ lễ tân − DT mỹ phẩm) × 1%
+      //   Bậc 2 = max(0, Tổng DT − 150tr) × 1.5%
+      const lt_coSo1 = Math.max(0, 150000000 - dsTheLeTanTong - dtMyPhamAuto)
+      const lt_hh1   = Math.round(lt_coSo1 * 0.01)
+      const lt_vuot  = Math.max(0, tongDTPos - 150000000)
+      const lt_hh2   = Math.round(lt_vuot * 0.015)
+      const luongKDLeTan = lt_hh1 + lt_hh2   // mỗi lễ tân nhận như nhau
+      setLeTanCalc({ coSo1: lt_coSo1, hh1: lt_hh1, vuot: lt_vuot, hh2: lt_hh2, luongKD: luongKDLeTan, tongDT: tongDTPos, dtMyPham: dtMyPhamAuto, dsTheLeTan: dsTheLeTanTong })
+
+      // ĐỀ XUẤT THƯỞNG KTV (chỉ GỢI Ý — KHÔNG tự cộng vào lương, anh nhập tay):
+      //   tổng DT spa ≥200tr → đề xuất 2 bạn top; ≥150tr → 1 bạn top; <150tr → 0
+      const ktvNVs = nvData.filter(nv => nv.vi_tri === 'ktv')
+      const soBanThuong = tongDTPos >= 200000000 ? 2 : (tongDTPos >= 150000000 ? 1 : 0)
+      const ktvRanked = [...ktvNVs].sort((a, b) => (doanhSoByNv[b.id] || 0) - (doanhSoByNv[a.id] || 0))
+      const thuongKtvIds = new Set(ktvRanked.slice(0, soBanThuong).map(nv => nv.id))
 
       // For current month: cap at today's date for real-time data
       const nowRef = getNowVN()
@@ -171,15 +201,44 @@ export default function TabBangLuong({ fixedKy = null }) {
           lich_su_dung: quy?.lich_su_dung || [],
         }, todayRef)
 
-        result[nv.id].kyQuyTrangThai   = nv.ky_quy_trang_thai || 'hoan_tat'
-        result[nv.id].trangThaiLC      = bl?.trang_thai_lc || bl?.trang_thai || 'chua_tinh'
-        result[nv.id].trangThaiLKD     = bl?.trang_thai_lkd || 'chua_tinh'
-        result[nv.id].bangLuongId      = bl?.id || null
-        // KD values — real-time POS (hoặc snapshot nếu đã chốt)
-        result[nv.id].hoaHongDV        = hoaHongDVEff
-        result[nv.id].tienTour         = tienTourEff
-        result[nv.id].thuongDatDoanhSo = bl?.hoa_hong_the || 0
-        result[nv.id].truUngLuong      = bl?.tru_ung_luong || 0
+        const R = result[nv.id]
+        R.kyQuyTrangThai   = nv.ky_quy_trang_thai || 'hoan_tat'
+        R.trangThaiLC      = bl?.trang_thai_lc || bl?.trang_thai || 'chua_tinh'
+        R.trangThaiLKD     = bl?.trang_thai_lkd || 'chua_tinh'
+        R.bangLuongId      = bl?.id || null
+        R.truUngLuong      = bl?.tru_ung_luong || 0
+        R.doanhSo          = doanhSoByNv[nv.id] || 0   // năng suất (tổng doanh số)
+        R.duocThuongDoanhSo = thuongKtvIds.has(nv.id)
+
+        // ── KD values ──
+        const isLeTanNv = nv.vi_tri === 'le_tan'
+        R.hoaHongDV = hoaHongDVEff   // Hoa Hồng (bán SP + thẻ mới) — cả KTV & lễ tân
+        if (isLeTanNv) {
+          // Lễ Tân: tien_tour = LƯƠNG KD theo công thức doanh số (tự động). Không có tour thật.
+          R.tienTour = isLKDChot ? (bl?.tien_tour || 0) : luongKDLeTan
+          R.thuongDatDoanhSo = bl?.hoa_hong_the || 0
+        } else {
+          // KTV: tien_tour = tour thực hiện.
+          // THƯỞNG doanh số: KHÔNG tự cộng — chỉ lấy số anh đã nhập tay (hoa_hong_the).
+          R.tienTour = tienTourEff
+          R.thuongDatDoanhSo = bl?.hoa_hong_the || 0
+        }
+
+        // ── BÙ Khánh Duy (chỉ Khánh Duy) — T5/2026 lên 8tr, từ T6/2026 lên 9tr ──
+        if (nv.ho_ten.includes('Khánh Duy')) {
+          if (isLKDChot) { R.hoTro = bl?.ho_tro || 0 }
+          else {
+            const nguongBu = (nam > 2026 || (nam === 2026 && thang >= 6)) ? 9000000 : 8000000
+            const tongLC = (R.luongCoBan || 0) + (R.tienTangCa || 0) - (R.tienPhat || 0) - (R.truKyQuy || 0) - (R.truUngLuong || 0)
+            const tongKD = R.hoaHongDV + R.tienTour + R.thuongDatDoanhSo
+            R.hoTro = (tongLC + tongKD) < nguongBu ? nguongBu - (tongLC + tongKD) : 0
+          }
+        } else {
+          R.hoTro = bl?.ho_tro || 0
+        }
+        // Cập nhật lại tổng kinh doanh + tổng lĩnh cho khớp giá trị KD mới gán
+        R.tongKinhDoanh = R.hoaHongDV + R.tienTour + R.thuongDatDoanhSo + (R.hoTro || 0)
+        R.tongLinh = Math.max(0, (R.luongCoBan || 0) + (R.tienTangCa || 0) + (R.hoaHong || 0) + R.tongKinhDoanh - (R.tienPhat || 0) - (R.truKyQuy || 0) - (R.truUngLuong || 0))
 
         // ── NV ĐẶC BIỆT (vd Phạm Thị Nhỏ): không check-in, lương cố định ──
         // Kỳ 1 = 4/7 lương cứng (7tr → 4tr), Kỳ 2 = phần còn lại (3tr). Không tính ngày công.
@@ -225,7 +284,7 @@ export default function TabBangLuong({ fixedKy = null }) {
         don_hang:don_hang_id!inner(ngay, ma_don, trang_thai, is_test, khach_hang:khach_hang_id(ho_ten))`)
       .eq('nhan_vien_id', selected.id)
       .gte('don_hang.ngay', sd).lte('don_hang.ngay', ed)
-      .eq('don_hang.is_test', false).neq('don_hang.trang_thai', 'huy')
+      .eq('don_hang.is_test', false).neq('don_hang.trang_thai', 'huy').limit(100000)
       .then(({ data, error }) => {
         if (!alive) return
         if (error) { console.error('kdDetail:', error); setKdDetail([]) }
@@ -239,6 +298,41 @@ export default function TabBangLuong({ fixedKy = null }) {
       })
     return () => { alive = false }
   }, [selected, ky, thang, nam])
+
+  // ── CẢNH BÁO ĐỐI SOÁT hoa hồng / tour (Kỳ 2) ──
+  // Quét đơn trong tháng, phát hiện: tỉ lệ hoa hồng ngoài chuẩn (3/5/7/10 hoặc chia đôi),
+  // và tiền tour gán cho Lễ Tân (thường chỉ KTV làm dịch vụ mới có tour).
+  useEffect(() => {
+    if (ky !== 2) { setWarnings([]); return undefined }
+    let alive = true
+    const sd = `${nam}-${String(thang).padStart(2, '0')}-01`
+    const lastDay = new Date(nam, thang, 0).getDate()
+    const ed = `${nam}-${String(thang).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    supabase.from('don_hang_chi_tiet')
+      .select(`ti_le_hoa_hong, tien_commission, tien_hoa_hong, tien_tour, loai_item,
+        nhan_vien:nhan_vien_id(ho_ten, vi_tri),
+        don_hang:don_hang_id!inner(ma_don, ngay, is_test, trang_thai)`)
+      .gte('don_hang.ngay', sd).lte('don_hang.ngay', ed)
+      .eq('don_hang.is_test', false).neq('don_hang.trang_thai', 'huy').limit(100000)
+      .then(({ data, error }) => {
+        if (!alive) return
+        if (error) { console.error('warnings:', error); setWarnings([]); return }
+        const RATE_OK = new Set([0, 1.5, 2.5, 3, 3.5, 5, 7, 10])  // chuẩn + chia đôi (2 KTV)
+        const w = []
+        ;(data || []).forEach(r => {
+          const hh = r.tien_commission || r.tien_hoa_hong || 0
+          const rate = Number(r.ti_le_hoa_hong || 0)
+          const nv = r.nhan_vien
+          if (hh > 0 && !RATE_OK.has(rate)) {
+            w.push({ ma: r.don_hang?.ma_don, nv: nv?.ho_ten || '(không NV)', detail: `Tỉ lệ hoa hồng ${rate}% ngoài chuẩn (3/5/7/10% hoặc chia đôi)` })
+          }
+          // (Bỏ cảnh báo "Lễ Tân có tiền tour" — tại Hannah, lễ tân Khánh Duy/Ngọc Phương
+          //  thực tế có làm dịch vụ như KTV nên có tiền tour là hợp lệ.)
+        })
+        setWarnings(w)
+      })
+    return () => { alive = false }
+  }, [ky, thang, nam])
 
   const openDetail = (nv) => {
     const ld = luongData[nv.id]
@@ -284,7 +378,8 @@ export default function TabBangLuong({ fixedKy = null }) {
         }
       } else {
         // Kỳ 2 — Lương Kinh Doanh
-        const tongKinhDoanh = editState.hoaHongDV + editState.tienTour + (editState.thuongDS || 0)
+        const hoTro = ld.hoTro || 0  // giữ khoản hỗ trợ (vd bù Khánh Duy) đã lưu
+        const tongKinhDoanh = editState.hoaHongDV + editState.tienTour + (editState.thuongDS || 0) + hoTro
         const tongLC = ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - (ld.truUngLuong || 0)
         const tongLinh = tongLC + tongKinhDoanh
         payload = {
@@ -292,6 +387,7 @@ export default function TabBangLuong({ fixedKy = null }) {
           hoa_hong_dv: editState.hoaHongDV,
           hoa_hong_the: editState.thuongDS || 0,
           tien_tour: editState.tienTour,
+          ho_tro: hoTro,
           tong_linh: tongLinh,
           trang_thai_lkd: chot ? 'da_chot' : 'da_tinh',
         }
@@ -379,14 +475,14 @@ export default function TabBangLuong({ fixedKy = null }) {
             // Ghi chi phí theo SỐ ĐÃ CHỐT (snapshot trong bang_luong), KHÔNG dùng realtime
             // → chốt xong số cố định, không lệch nếu logic thay đổi giữa lúc chốt và phát.
             const { data: blSnap } = await supabase.from('bang_luong')
-              .select('luong_co_ban,tien_tang_ca,tien_phat,tru_ung_luong,hoa_hong_dv,tien_tour,hoa_hong_the')
+              .select('luong_co_ban,tien_tang_ca,tien_phat,tru_ung_luong,hoa_hong_dv,tien_tour,hoa_hong_the,ho_tro')
               .eq('thang', thang).eq('nam', nam)
             let soTien = 0
             for (const b of (blSnap || [])) {
               // Kỳ 1: thực lĩnh + ký quỹ (= lương cơ bản + tăng ca − phạt − ứng).
-              // Kỳ 2: tour + hoa hồng + thưởng.
+              // Kỳ 2: tour + hoa hồng + thưởng + hỗ trợ (vd bù Khánh Duy).
               if (ky === 1) soTien += (b.luong_co_ban || 0) + (b.tien_tang_ca || 0) - (b.tien_phat || 0) - (b.tru_ung_luong || 0)
-              else soTien += (b.hoa_hong_dv || 0) + (b.tien_tour || 0) + (b.hoa_hong_the || 0)
+              else soTien += (b.hoa_hong_dv || 0) + (b.tien_tour || 0) + (b.hoa_hong_the || 0) + (b.ho_tro || 0)
             }
             soTien = Math.round(soTien)
             if (soTien > 0) {
@@ -440,13 +536,15 @@ export default function TabBangLuong({ fixedKy = null }) {
                 trang_thai_lc: 'da_tinh',
               }
             } else {
-              const tongKD = (ld.hoaHongDV || 0) + (ld.tienTour || 0) + (ld.thuongDatDoanhSo || 0)
+              const hoTro = ld.hoTro || 0  // giữ khoản hỗ trợ (vd bù Khánh Duy) đã lưu
+              const tongKD = (ld.hoaHongDV || 0) + (ld.tienTour || 0) + (ld.thuongDatDoanhSo || 0) + hoTro
               const tongLC = ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - (ld.truUngLuong || 0)
               payload = {
                 nhan_vien_id: nv.id, thang, nam,
                 hoa_hong_dv: ld.hoaHongDV || 0,
                 hoa_hong_the: ld.thuongDatDoanhSo || 0,
                 tien_tour: ld.tienTour || 0,
+                ho_tro: hoTro,
                 tong_linh: tongLC + tongKD,
                 trang_thai_lkd: 'da_tinh',
               }
@@ -538,69 +636,13 @@ export default function TabBangLuong({ fixedKy = null }) {
     })
   }
 
-  // ── Tính Lễ Tân ──
-  const tinhLeTan = () => {
-    const tongDT = leTanInput.tongDT || 0
-    const dtMP   = leTanInput.dtMyPham || 0
-    const dsKD   = leTanInput.dsKD || 0
-    const dsNP   = leTanInput.dsNP || 0
-
-    // Bậc 1: 150tr - DS_KD - DS_NP - DT_Mỹ_Phẩm, tối thiểu 0
-    const coSo1 = Math.max(0, 150000000 - dsKD - dsNP - dtMP)
-    const hh1 = Math.round(coSo1 * 0.01)
-
-    // Bậc 2: phần vượt >150tr
-    const vuot = Math.max(0, tongDT - 150000000)
-    const hh2 = Math.round(vuot * 0.015)
-
-    const moiNguoi = hh1 + hh2
-    setCalcLeTan({ dsKD, dsNP, coSo1, hh1, vuot, hh2, moiNguoi })
-  }
-
-  const handleSaveLeTan = async () => {
-    if (!calcLeTan) return
-    setSaving(true)
-    try {
-      // Áp dụng cho tất cả Lễ Tân trong danh sách
-      const leTanNVs = nvList.filter(nv => nv.vi_tri === 'le_tan')
-
-      for (const nv of leTanNVs) {
-        const ld = luongData[nv.id]
-        const thuongDS = ld?.thuongDatDoanhSo || 0
-        // tien_tour = lương KD theo công thức doanh số
-        // hoa_hong_dv = hoa hồng bán SP (từ POS real-time, đã có trong ld.hoaHongDV)
-        const tongKinhDoanh = (ld?.hoaHongDV || 0) + calcLeTan.moiNguoi + thuongDS
-        const tongLC = ld ? (ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - (ld.truUngLuong || 0)) : 0
-        const tongLinh = tongLC + tongKinhDoanh
-
-        const payload = {
-          nhan_vien_id: nv.id, thang, nam,
-          hoa_hong_the: thuongDS,
-          tien_tour: calcLeTan.moiNguoi,  // Lương KD (công thức DS)
-          tong_linh: tongLinh,
-        }
-
-        const { data: existing } = await supabase.from('bang_luong')
-          .select('id').eq('nhan_vien_id', nv.id).eq('thang', thang).eq('nam', nam).maybeSingle()
-
-        if (existing) {
-          await supabase.from('bang_luong').update(payload).eq('id', existing.id)
-        } else {
-          await supabase.from('bang_luong').insert(payload)
-        }
-      }
-
-      showToast(`Đã lưu Lương KD Lễ Tân: ${formatCurrency(calcLeTan.moiNguoi)}/người`)
-      setCalcLeTan(null)
-      await fetchAll()
-    } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
-    finally { setSaving(false) }
-  }
+  // Lương KD Lễ Tân nay được TÍNH TỰ ĐỘNG trong fetchAll (leTanCalc) + lưu qua "Tính Hàng Loạt".
+  // Đã bỏ bảng nhập tay + nút "Áp Dụng" thủ công.
 
   // Tổng chi theo kỳ đang chọn
   const tongTheoKy = ky === 1
     ? Object.values(luongData).reduce((s, ld) => s + (ld?.luongCoBan || 0) + (ld?.tienTangCa || 0) - (ld?.tienPhat || 0) - (ld?.truKyQuy || 0) - (ld?.truUngLuong || 0), 0)
-    : Object.values(luongData).reduce((s, ld) => s + (ld?.hoaHongDV || 0) + (ld?.tienTour || 0) + (ld?.thuongDatDoanhSo || 0), 0)
+    : Object.values(luongData).reduce((s, ld) => s + (ld?.hoaHongDV || 0) + (ld?.tienTour || 0) + (ld?.thuongDatDoanhSo || 0) + (ld?.hoTro || 0), 0)
 
   const tongLinhTatCa = Object.values(luongData).reduce((s, ld) => s + (ld?.tongLinh || 0), 0)
 
@@ -793,6 +835,30 @@ export default function TabBangLuong({ fixedKy = null }) {
         </div>
       )}
 
+      {/* ── CẢNH BÁO ĐỐI SOÁT hoa hồng / tour (Kỳ 2) ── */}
+      {ky === 2 && warnings.length > 0 && (
+        <div style={{ marginBottom: 16, background: '#fdecea', borderRadius: LUX.radius, padding: 16, border: '1px solid #f5b7b1' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 18 }}>⚠️</span>
+            <div style={{ fontFamily: LUX.fontSerif, fontSize: 15, fontWeight: 700, color: '#C0392B' }}>
+              {warnings.length} cảnh báo cần đối soát hoa hồng / tour
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+            {warnings.map((w, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2, background: 'white', borderRadius: 8, padding: '8px 10px' }}>
+                <span style={{ fontFamily: LUX.fontMono, fontWeight: 700, color: '#C0392B', minWidth: 130 }}>{w.ma}</span>
+                <span style={{ fontWeight: 600, minWidth: 90 }}>{w.nv}</span>
+                <span style={{ opacity: 0.85 }}>{w.detail}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontFamily: LUX.fontSans, fontSize: 10.5, color: '#C0392B', opacity: 0.7, marginTop: 8 }}>
+            Mở "Danh Sách Bán Hàng" để kiểm tra & sửa từng đơn. Tỉ lệ chia đôi (2 KTV) đã được loại trừ.
+          </div>
+        </div>
+      )}
+
       {/* ── Tính Lương Kinh Doanh Lễ Tân (luôn hiển thị trong Kỳ 2) ── */}
       {ky === 2 && (
         <div style={{ marginBottom: 16, background: 'linear-gradient(135deg,#e8f0fe,#d4e4fc)', borderRadius: LUX.radius, padding: 18, border: '1px solid #a8c8f0' }}>
@@ -801,135 +867,80 @@ export default function TabBangLuong({ fixedKy = null }) {
             <div>
               <div style={{ fontFamily: LUX.fontSerif, fontSize: 17, fontWeight: 600, color: '#1A5276' }}>Lương Kinh Doanh Lễ Tân</div>
               <div style={{ fontFamily: LUX.fontSans, fontSize: 11, color: '#1A5276', opacity: 0.7 }}>
-                Khánh Duy & Ngọc Phương — nhập số liệu từ POS
+                Tự động từ POS tháng {thang} — kiểm tra & chỉnh tay nếu cần
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-            <div>
-              <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 600, color: '#1A5276', marginBottom: 4, textTransform: 'uppercase' }}>Tổng Doanh Thu POS</div>
-              <input type="text" placeholder="0"
-                value={leTanInput.tongDT === 0 ? '' : new Intl.NumberFormat('vi-VN').format(leTanInput.tongDT)}
-                onChange={e => { const v = parseInt(e.target.value.replace(/\D/g, '')) || 0; setLeTanInput(s => ({ ...s, tongDT: v })) }}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #a8c8f0', fontFamily: LUX.fontMono, fontSize: 14, fontWeight: 600, color: LUX.ink, boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-            <div>
-              <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 600, color: '#1A5276', marginBottom: 4, textTransform: 'uppercase' }}>Doanh Thu Mỹ Phẩm</div>
-              <input type="text" placeholder="0"
-                value={leTanInput.dtMyPham === 0 ? '' : new Intl.NumberFormat('vi-VN').format(leTanInput.dtMyPham)}
-                onChange={e => { const v = parseInt(e.target.value.replace(/\D/g, '')) || 0; setLeTanInput(s => ({ ...s, dtMyPham: v })) }}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #a8c8f0', fontFamily: LUX.fontMono, fontSize: 14, fontWeight: 600, color: LUX.ink, boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-          </div>
-
-          {/* DS sau giảm — auto từ Excel hoặc nhập tay */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-            <div>
-              <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 600, color: '#1A5276', marginBottom: 4, textTransform: 'uppercase' }}>
-                DS sau giảm Khánh Duy
+          {/* Công thức tự động (read-only) */}
+          {leTanCalc && (
+            <div style={{ background: 'white', borderRadius: 12, padding: 14, border: '1px solid #a8c8f0', marginBottom: 4 }}>
+              <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 700, color: '#1A5276', textTransform: 'uppercase', marginBottom: 10 }}>
+                Công thức (tự động từ POS tháng {thang})
               </div>
-              <input type="text" placeholder="0"
-                value={leTanInput.dsKD === 0 ? '' : new Intl.NumberFormat('vi-VN').format(leTanInput.dsKD)}
-                onChange={e => { const v = parseInt(e.target.value.replace(/\D/g, '')) || 0; setLeTanInput(s => ({ ...s, dsKD: v })) }}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #a8c8f0', fontFamily: LUX.fontMono, fontSize: 14, fontWeight: 600, color: LUX.ink, boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-            <div>
-              <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 600, color: '#1A5276', marginBottom: 4, textTransform: 'uppercase' }}>
-                DS sau giảm Ngọc Phương
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 14px', fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2 }}>
+                <span>Tổng Doanh Thu POS:</span>     <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: LUX.fontMono }}>{formatCurrency(leTanCalc.tongDT)}</span>
+                <span>− Doanh số lễ tân (theo đơn KD+NP):</span> <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: LUX.fontMono }}>{formatCurrency(leTanCalc.dsTheLeTan)}</span>
+                <span>− DT mỹ phẩm:</span>            <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: LUX.fontMono }}>{formatCurrency(leTanCalc.dtMyPham)}</span>
+                <span style={{ color: '#1A5276', fontWeight: 700 }}>Cơ sở bậc 1 (≤150tr):</span> <span style={{ textAlign: 'right', fontWeight: 700, color: '#1A5276', fontFamily: LUX.fontMono }}>{formatCurrency(leTanCalc.coSo1)}</span>
+                <span>Hoa hồng bậc 1 (1%):</span>    <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: LUX.fontMono }}>+{formatCurrency(leTanCalc.hh1)}</span>
+                <span>Vượt &gt;150tr:</span>          <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: LUX.fontMono }}>{formatCurrency(leTanCalc.vuot)}</span>
+                <span>Hoa hồng bậc 2 (1.5%):</span>  <span style={{ textAlign: 'right', fontWeight: 600, fontFamily: LUX.fontMono }}>+{formatCurrency(leTanCalc.hh2)}</span>
+                <span style={{ color: '#1A5276', fontWeight: 700, fontSize: 13 }}>Lương KD mỗi lễ tân:</span> <span style={{ textAlign: 'right', fontWeight: 800, color: '#1A5276', fontFamily: LUX.fontMono, fontSize: 14 }}>{formatCurrency(leTanCalc.luongKD)}</span>
               </div>
-              <input type="text" placeholder="0"
-                value={leTanInput.dsNP === 0 ? '' : new Intl.NumberFormat('vi-VN').format(leTanInput.dsNP)}
-                onChange={e => { const v = parseInt(e.target.value.replace(/\D/g, '')) || 0; setLeTanInput(s => ({ ...s, dsNP: v })) }}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #a8c8f0', fontFamily: LUX.fontMono, fontSize: 14, fontWeight: 600, color: LUX.ink, boxSizing: 'border-box', outline: 'none' }} />
-            </div>
-          </div>
-
-          <button onClick={tinhLeTan}
-            style={{ width: '100%', padding: '10px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#1A5276,#154360)', color: 'white', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginBottom: calcLeTan ? 14 : 0 }}>
-            Tính Lương Kinh Doanh
-          </button>
-
-          {/* Kết quả tính Lễ Tân */}
-          {calcLeTan && (() => {
-            const ltNVs = nvList.filter(nv => nv.vi_tri === 'le_tan')
-            const kd = ltNVs.find(nv => nv.ho_ten.includes('Khánh Duy'))
-            const np = ltNVs.find(nv => nv.ho_ten.includes('Ngọc Phương'))
-            const hhKdExcel = kd ? (luongData[kd.id]?.hoaHongDV || 0) : 0
-            const hhNpExcel = np ? (luongData[np.id]?.hoaHongDV || 0) : 0
-            const thuongKD = kd ? (luongData[kd.id]?.thuongDatDoanhSo || 0) : 0
-            const thuongNP = np ? (luongData[np.id]?.thuongDatDoanhSo || 0) : 0
-            const tongKD = calcLeTan.moiNguoi + hhKdExcel + thuongKD
-            const tongNP = calcLeTan.moiNguoi + hhNpExcel + thuongNP
-            return (
-              <div style={{ background: 'white', borderRadius: 12, padding: 14, border: '1px solid #a8c8f0' }}>
-                <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 700, color: '#1A5276', textTransform: 'uppercase', marginBottom: 10 }}>
-                  Chi tiết công thức
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 14px', fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2 }}>
-                  <span>DS Khánh Duy:</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.dsKD)}</span>
-                  <span>DS Ngọc Phương:</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.dsNP)}</span>
-                  <span>DT Mỹ Phẩm:</span>       <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(leTanInput.dtMyPham)}</span>
-                  <span style={{ color: '#1A5276', fontWeight: 700 }}>Cơ sở bậc 1:</span> <span style={{ textAlign: 'right', fontWeight: 700, color: '#1A5276' }}>{formatCurrency(calcLeTan.coSo1)}</span>
-                  <span>Hoa Hồng bậc 1 (1%):</span>    <span style={{ textAlign: 'right', fontWeight: 600 }}>+{formatCurrency(calcLeTan.hh1)}</span>
-                  <span>Vượt &gt;150tr:</span>        <span style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(calcLeTan.vuot)}</span>
-                  <span>Hoa Hồng bậc 2 (1.5%):</span>  <span style={{ textAlign: 'right', fontWeight: 600 }}>+{formatCurrency(calcLeTan.hh2)}</span>
-                </div>
-
-                {/* ── Thông tin Chấm Công Tham Khảo ── */}
-                <div style={{ borderTop: '1.5px solid #a8c8f0', marginTop: 12, paddingTop: 12 }}>
-                  <div style={{ fontFamily: LUX.fontSans, fontSize: 10, fontWeight: 700, color: '#1A5276', textTransform: 'uppercase', marginBottom: 10 }}>
-                    Thông tin Chấm Công Tham Khảo
-                  </div>
-
-                  {/* Khánh Duy */}
-                  <div style={{ background: '#f8fafc', borderRadius: 10, padding: 12, marginBottom: 8 }}>
-                    <div style={{ fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700, color: '#1A5276', marginBottom: 8 }}>Khánh Duy</div>
-                    {[
-                      { label: 'Lương Kinh Doanh', value: calcLeTan.moiNguoi },
-                      { label: 'Hoa Hồng (Excel)', value: hhKdExcel },
-                      { label: 'Thưởng Đạt Doanh Số', value: thuongKD },
-                    ].map(item => (
-                      <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2 }}>
-                        <span>{item.label}</span>
-                        <span style={{ fontFamily: LUX.fontMono, fontWeight: 600 }}>{formatCurrency(item.value)}</span>
-                      </div>
-                    ))}
-                    <div style={{ borderTop: '1px solid #d4e4fc', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: '#1A5276' }}>Tổng</span>
-                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 700, color: '#1A5276' }}>{formatCurrency(tongKD)}</span>
-                    </div>
-                  </div>
-
-                  {/* Ngọc Phương */}
-                  <div style={{ background: '#f8fafc', borderRadius: 10, padding: 12 }}>
-                    <div style={{ fontFamily: LUX.fontSans, fontSize: 11, fontWeight: 700, color: '#1A5276', marginBottom: 8 }}>Ngọc Phương</div>
-                    {[
-                      { label: 'Lương Kinh Doanh', value: calcLeTan.moiNguoi },
-                      { label: 'Hoa Hồng (Excel)', value: hhNpExcel },
-                      { label: 'Thưởng Đạt Doanh Số', value: thuongNP },
-                    ].map(item => (
-                      <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink2 }}>
-                        <span>{item.label}</span>
-                        <span style={{ fontFamily: LUX.fontMono, fontWeight: 600 }}>{formatCurrency(item.value)}</span>
-                      </div>
-                    ))}
-                    <div style={{ borderTop: '1px solid #d4e4fc', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 14, fontWeight: 700, color: '#1A5276' }}>Tổng</span>
-                      <span style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 700, color: '#1A5276' }}>{formatCurrency(tongNP)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button onClick={handleSaveLeTan} disabled={saving}
-                  style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 10, border: 'none', background: LUX.goldGrad, color: 'white', fontFamily: LUX.fontSans, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: `0 4px 14px ${LUX.gold}50`, opacity: saving ? 0.7 : 1 }}>
-                  {saving ? 'Đang lưu...' : `Áp Dụng Lương Kinh Doanh Cho Lễ Tân`}
-                </button>
+              <div style={{ fontFamily: LUX.fontSans, fontSize: 10.5, color: '#1A5276', opacity: 0.7, marginTop: 10 }}>
+                Số liệu tự động từ POS. Bấm "Tính Hàng Loạt Kỳ 2" để lưu vào bảng lương.
               </div>
-            )
-          })()}
+            </div>
+          )}
+
         </div>
       )}
+
+      {/* ── BẢNG XẾP HẠNG NĂNG SUẤT & THƯỞNG KTV (Kỳ 2) ── */}
+      {ky === 2 && leTanCalc && (() => {
+        const ktvList = nvList.filter(nv => nv.vi_tri === 'ktv')
+          .map(nv => ({ nv, ds: luongData[nv.id]?.doanhSo || 0, thuong: luongData[nv.id]?.duocThuongDoanhSo }))
+          .sort((a, b) => b.ds - a.ds)
+        if (ktvList.length === 0) return null
+        const tongDT = leTanCalc.tongDT
+        const soThuong = tongDT >= 200000000 ? 2 : (tongDT >= 150000000 ? 1 : 0)
+        const dsMax = ktvList[0]?.ds || 1
+        return (
+          <div style={{ marginBottom: 16, background: 'linear-gradient(135deg,#fff8ec,#fdf0d8)', borderRadius: LUX.radius, padding: 18, border: '1px solid #e8d5b0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 20 }}>🏆</span>
+                <div style={{ fontFamily: LUX.fontSerif, fontSize: 17, fontWeight: 600, color: LUX.espresso }}>Năng Suất & Thưởng KTV</div>
+              </div>
+              <div style={{ fontFamily: LUX.fontSans, fontSize: 11.5, color: LUX.taupe, fontWeight: 600 }}>
+                Tổng DT spa: <span style={{ fontFamily: LUX.fontMono, color: '#1A5276', fontWeight: 800 }}>{formatCurrency(tongDT)}</span>
+                {' · '}{soThuong > 0 ? `Đề xuất thưởng ${soThuong} bạn top × 500.000đ (nhập tay)` : 'Chưa đạt mốc 150tr — không đề xuất thưởng'}
+              </div>
+            </div>
+            <div style={{ fontFamily: LUX.fontSans, fontSize: 10.5, color: LUX.ink3, marginBottom: 12 }}>
+              Mốc: ≥150tr → thưởng 1 bạn doanh số cao nhất · ≥200tr → thưởng 2 bạn.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {ktvList.map((k, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
+                const pct = Math.round((k.ds / dsMax) * 100)
+                return (
+                  <div key={k.nv.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: k.thuong ? '#fff3d6' : 'white', borderRadius: 10, padding: '8px 12px', border: k.thuong ? '1px solid #e0b860' : `1px solid ${LUX.line}` }}>
+                    <span style={{ fontSize: 15, minWidth: 26, textAlign: 'center' }}>{medal}</span>
+                    <span style={{ fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: 14, color: LUX.espresso, minWidth: 110 }}>{k.nv.ho_ten.trim().split(' ').slice(-2).join(' ')}</span>
+                    <div style={{ flex: 1, height: 8, background: LUX.bg, borderRadius: 5, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: k.thuong ? 'linear-gradient(90deg,#e0b860,#c9a96e)' : 'linear-gradient(90deg,#a8c8f0,#1A5276)' }} />
+                    </div>
+                    <span style={{ fontFamily: LUX.fontMono, fontWeight: 700, fontSize: 13, color: '#1A5276', minWidth: 95, textAlign: 'right' }}>{formatCurrency(k.ds)}</span>
+                    {k.thuong && <span style={{ fontFamily: LUX.fontSans, fontSize: 10.5, fontWeight: 800, color: '#C0392B', minWidth: 100, textAlign: 'right' }}>nên thưởng 500k</span>}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '48px', color: LUX.ink3, fontFamily: LUX.fontSans }}>Đang tính lương...</div>
@@ -1015,7 +1026,7 @@ export default function TabBangLuong({ fixedKy = null }) {
             const kyTT = ky === 1 ? ld.trangThaiLC : ld.trangThaiLKD
             const kyTong = ky === 1
               ? ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - ld.truUngLuong
-              : ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0)
+              : ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0) + (ld.hoTro || 0)
             const isLeTan = nv.vi_tri === 'le_tan'
 
             return (
@@ -1035,11 +1046,18 @@ export default function TabBangLuong({ fixedKy = null }) {
                   </div>
                 </div>
                 {/* Tiền kỳ này */}
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontFamily: LUX.fontMono, fontSize: '15px', fontWeight: 700, color: ky === 1 ? LUX.taupe : '#1A5276' }}>{formatCurrency(kyTong)}</div>
+                <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 140 }}>
+                  <div style={{ fontFamily: LUX.fontMono, fontSize: '16px', fontWeight: 800, color: ky === 1 ? LUX.taupe : '#1A5276' }}>{formatCurrency(kyTong)}</div>
                   {ky === 1 && ld.tienTangCa > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#6a4a8a', fontWeight: 600 }}>+TC {formatCurrency(ld.tienTangCa)}</div>}
-                  {ky === 2 && !isLeTan && (ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0)) > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#1A5276', fontWeight: 600 }}>{[ld.hoaHongDV > 0 && 'Hoa Hồng', ld.tienTour > 0 && 'Tour', (ld.thuongDatDoanhSo || 0) > 0 && 'Thưởng'].filter(Boolean).join(' + ')}</div>}
-                  {ky === 2 && isLeTan && (ld.hoaHongDV + ld.tienTour + (ld.thuongDatDoanhSo || 0)) > 0 && <div style={{ fontFamily: LUX.fontMono, fontSize: '10px', color: '#1A5276', fontWeight: 600 }}>{[ld.hoaHongDV > 0 && 'Hoa Hồng', ld.tienTour > 0 && 'LgKD', (ld.thuongDatDoanhSo || 0) > 0 && 'Thưởng'].filter(Boolean).join(' + ')}</div>}
+                  {ky === 2 && (
+                    <div style={{ fontFamily: LUX.fontSans, fontSize: '10.5px', color: LUX.ink3, fontWeight: 600, marginTop: 3, lineHeight: 1.55 }}>
+                      {!isLeTan && ld.tienTour > 0 && <div>Tour: <span style={{ fontFamily: LUX.fontMono, color: '#1A5276' }}>{formatCurrency(ld.tienTour)}</span></div>}
+                      {isLeTan && ld.tienTour > 0 && <div>Lương KD: <span style={{ fontFamily: LUX.fontMono, color: '#1A5276' }}>{formatCurrency(ld.tienTour)}</span></div>}
+                      {ld.hoaHongDV > 0 && <div>Hoa hồng: <span style={{ fontFamily: LUX.fontMono, color: '#1A5276' }}>{formatCurrency(ld.hoaHongDV)}</span></div>}
+                      {(ld.thuongDatDoanhSo || 0) > 0 && <div>🏆 Thưởng: <span style={{ fontFamily: LUX.fontMono, color: '#C0392B' }}>{formatCurrency(ld.thuongDatDoanhSo)}</span></div>}
+                      {(ld.hoTro || 0) > 0 && <div>⭐ Hỗ trợ: <span style={{ fontFamily: LUX.fontMono, color: '#C0392B' }}>{formatCurrency(ld.hoTro)}</span></div>}
+                    </div>
+                  )}
                 </div>
                 <div style={{ color: LUX.line2, fontSize: '18px', flexShrink: 0 }}>›</div>
               </button>

@@ -265,7 +265,8 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   const hoaHongDV       = bangLuongRow?.hoa_hong_dv ?? 0
   const tienTour        = bangLuongRow?.tien_tour ?? 0
   const thuongDatDoanhSo = bangLuongRow?.hoa_hong_the ?? 0  // dung cot hoa_hong_the
-  const tongKinhDoanh   = hoaHongDV + tienTour + thuongDatDoanhSo
+  const hoTro           = bangLuongRow?.ho_tro ?? 0          // hỗ trợ làm tròn (vd bù Khánh Duy lên 9tr)
+  const tongKinhDoanh   = hoaHongDV + tienTour + thuongDatDoanhSo + hoTro
   const tongLinh    = Math.max(0, luongCoBan + tienTangCa + hoaHong + tongKinhDoanh - tienPhat - truKyQuy - truUngLuong)
 
   // Tổng ngày le tich luy
@@ -319,6 +320,7 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
     hoaHongDV,
     tienTour,
     thuongDatDoanhSo,
+    hoTro,
     tongKinhDoanh,
 
     // Tổng

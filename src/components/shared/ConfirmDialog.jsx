@@ -1,12 +1,14 @@
+import { createPortal } from 'react-dom'
 import { LUX } from '../../constants/lux'
 
 export default function ConfirmDialog({ open, title, message, note, confirmLabel, cancelLabel, onConfirm, onCancel, danger }) {
   if (!open) return null
 
-  return (
+  return createPortal(
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.6)',
-      zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      position: 'fixed', inset: 0, background: 'rgba(42,32,26,0.42)',
+      backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
+      zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '20px', animation: 'confirm-fade-in 0.2s ease',
     }} onClick={onCancel}>
       <style>{`@keyframes confirm-fade-in{from{opacity:0}to{opacity:1}}@keyframes confirm-scale-in{from{transform:scale(0.92);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
@@ -44,15 +46,16 @@ export default function ConfirmDialog({ open, title, message, note, confirmLabel
           {message}
         </div>
 
-        {/* Note */}
+        {/* Note — dạng ghi chú nhẹ (không viền giống ô nhập) */}
         {note && (
           <div style={{
-            fontFamily: LUX.fontSans, fontSize: '10px', color: LUX.ink3,
-            background: LUX.surface2, borderRadius: LUX.radiusSm,
-            padding: '8px 12px', marginBottom: '22px',
-            border: `1px solid ${LUX.line}`,
+            display: 'flex', alignItems: 'flex-start', gap: '6px',
+            fontFamily: LUX.fontSans, fontSize: '11px', color: LUX.ink3,
+            fontStyle: 'italic', lineHeight: 1.5,
+            marginBottom: '22px', padding: '0 4px', justifyContent: 'center',
           }}>
-            {note}
+            <span style={{ fontStyle: 'normal' }}>💡</span>
+            <span>{note}</span>
           </div>
         )}
 
@@ -86,6 +89,7 @@ export default function ConfirmDialog({ open, title, message, note, confirmLabel
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
