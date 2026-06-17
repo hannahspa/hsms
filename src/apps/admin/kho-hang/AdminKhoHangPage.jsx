@@ -1445,6 +1445,11 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
   })
   const sorted = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
+  // KPI tổng (theo bộ lọc hiện tại) — như danh sách đơn hàng
+  const kpiNhapTien = filtered.filter(t => t.loai === 'nhap_kho').reduce((s, t) => s + (Number(t.so_luong) * Number(t.gia_don_vi) || 0), 0)
+  const kpiSoNhap = filtered.filter(t => t.loai === 'nhap_kho').length
+  const kpiSoXuat = filtered.filter(t => ['xuat_su_dung', 'xuat_ban', 'tra_nha_cc'].includes(t.loai)).length
+
   const handleDelete = async (gd) => {
     const sp = spMap[gd.san_pham_id]
     if (['dieu_chinh'].includes(gd.loai)) {
@@ -1523,6 +1528,20 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
         </select>
       </div>
 
+      {/* KPI tổng theo bộ lọc */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px', marginBottom: '14px' }}>
+        {[
+          { label: 'Tổng giao dịch', value: String(filtered.length), color: COLORS.taiSan },
+          { label: `Tiền nhập kho (${kpiSoNhap})`, value: fmt(kpiNhapTien), color: '#2D7A4F' },
+          { label: 'Lượt xuất kho', value: String(kpiSoXuat), color: '#C0392B' },
+        ].map(k => (
+          <div key={k.label} style={{ background: 'white', borderRadius: '12px', padding: '12px 14px', border: `1px solid ${COLORS.border}`, boxShadow: COLORS.shadowSm }}>
+            <div style={{ fontSize: '10.5px', color: COLORS.textMute, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>{k.label}</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: k.color, marginTop: '4px', fontFamily: 'var(--sans)' }}>{k.value}</div>
+          </div>
+        ))}
+      </div>
+
       {/* List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {sorted.length === 0 ? (
@@ -1584,6 +1603,7 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
           onClose={() => setShowForm(false)}
         />
       )}
+
     </div>
   )
 }

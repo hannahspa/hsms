@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { posService } from '../../services/posService'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, getNowVN, todayISO } from '../../lib/utils'
@@ -39,6 +40,14 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   const [reviewYc, setReviewYc]                 = useState(null)   // yeu_cau_chinh_sua admin đang xem/duyệt
   const [showRejectModal, setShowRejectModal]   = useState(false)
   const [rejectReason, setRejectReason]         = useState('')
+  // Toast đẹp thay notify() — theo ngôn ngữ thiết kế HSMS
+  const [posToast, setPosToast] = useState(null)
+  const notify = (msg, type) => {
+    const t = type || (/Lỗi|⚠|Vui lòng|Vui long|phải|KHÔNG|không|chưa|chon|Số tiền/.test(String(msg)) ? 'error' : 'success')
+    setPosToast({ msg: String(msg), type: t })
+    window.clearTimeout(notify._t)
+    notify._t = window.setTimeout(() => setPosToast(null), 4000)
+  }
 
   // Ngày + giờ tạo đơn (sửa được) — mặc định hiện tại, load từ đơn khi resume
   const [orderNgay, setOrderNgay] = useState(() => todayISO())
@@ -176,7 +185,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
           if (staff.length) setOrderStaff(staff)
         } catch (_) {}
       }
-    }).catch(err => { alert('Lỗi tải đơn: ' + err.message) })
+    }).catch(err => { notify('Lỗi tải đơn: ' + err.message) })
   }, [resumeOrderId, editMode, ycId])
 
   // ── Admin mở yêu cầu sửa đơn (?yc=) → nạp snapshot Lễ tân đề xuất để xem trước ──
@@ -187,7 +196,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       supabase.from('yeu_cau_chinh_sua').select('*').eq('id', ycId).single(),
       posService.getOrder(resumeOrderId),
     ]).then(([{ data: yc }, order]) => {
-      if (!yc) { alert('Không tìm thấy yêu cầu sửa đơn'); return }
+      if (!yc) { notify('Không tìm thấy yêu cầu sửa đơn'); return }
       setReviewYc(yc)
       if (order?.ma_don) setMaDonEdit(order.ma_don)
       const dm = yc.du_lieu_moi || {}
@@ -206,7 +215,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         setCustSearch(dm.khachHangTen || '')
         setIsGuest(false)
       }
-    }).catch(err => { alert('Lỗi tải yêu cầu: ' + err.message) })
+    }).catch(err => { notify('Lỗi tải yêu cầu: ' + err.message) })
   }, [ycId, resumeOrderId])
 
   useEffect(() => {
@@ -330,7 +339,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       try {
         const inserted = await posService.addLineItem(savedOrderId, { so_luong: 1, ...itemData })
         setLineItems(prev => [...prev, { ...inserted, _lid: inserted.id, ...itemData }])
-      } catch (err) { alert('Lỗi thêm dịch vụ: ' + err.message) }
+      } catch (err) { notify('Lỗi thêm dịch vụ: ' + err.message) }
     } else {
       const _lid = crypto.randomUUID()
       setLineItems(prev => [...prev, { _lid, so_luong: 1, ...itemData }])
@@ -354,7 +363,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         await posService.removeLineItem(item.id)
       } catch (err) {
         // KHÔNG nuốt lỗi: nếu xoá DB thất bại thì giữ nguyên dòng + báo để nhân viên biết
-        alert('Lỗi xoá dịch vụ: ' + err.message)
+        notify('Lỗi xoá dịch vụ: ' + err.message)
         return
       }
     }
@@ -523,7 +532,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       setIsGuest(false)
       setCustSearch(data.ho_ten)
       setGuestName(''); setGuestPhone('')
-    } catch (err) { alert('Lỗi tạo KH: ' + err.message) }
+    } catch (err) { notify('Lỗi tạo KH: ' + err.message) }
   }
 
   const resetCreateForm = () => {
@@ -591,7 +600,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         setTimeout(() => handleConfirmOrder(), 200)
       }
     } catch (err) {
-      alert('Lỗi thu nợ: ' + err.message)
+      notify('Lỗi thu nợ: ' + err.message)
     } finally {
       setDebtLoading(false)
     }
@@ -617,7 +626,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       setNapGhiChu('')
       setNapHinhThuc('tien_mat')
     } catch (err) {
-      alert('Lỗi nạp ví: ' + err.message)
+      notify('Lỗi nạp ví: ' + err.message)
     } finally {
       setNapLoading(false)
     }
@@ -629,7 +638,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     const hasCardSale = lineItems.some(i => i.loai_item === 'the_moi')
     const hasService  = lineItems.some(i => i.loai_item === 'dich_vu' || i.loai_item === 'the_lieu_trinh')
     if (hasCardSale && hasService) {
-      alert('⚠ KHÔNG gộp BÁN THẺ và LÀM DỊCH VỤ trong cùng 1 đơn hàng.\n\nVui lòng tách thành 2 đơn riêng:\n  • 1 đơn BÁN THẺ liệu trình\n  • 1 đơn LÀM DỊCH VỤ / dùng thẻ\n\n→ để tiền tour & hoa hồng không bị tính chồng chéo.')
+      notify('⚠ KHÔNG gộp BÁN THẺ và LÀM DỊCH VỤ trong cùng 1 đơn hàng.\n\nVui lòng tách thành 2 đơn riêng:\n  • 1 đơn BÁN THẺ liệu trình\n  • 1 đơn LÀM DỊCH VỤ / dùng thẻ\n\n→ để tiền tour & hoa hồng không bị tính chồng chéo.')
       return false
     }
     return true
@@ -637,7 +646,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
 
   const handleSaveDraft = async () => {
     if (lineItems.length === 0) {
-      alert('Thêm ít nhất 1 dịch vụ trước khi lưu đơn')
+      notify('Thêm ít nhất 1 dịch vụ trước khi lưu đơn')
       return
     }
     if (!checkKhongGopBanTheVaDichVu()) return
@@ -647,7 +656,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         await supabase.from('don_hang')
           .update({ khach_hang_id: selectedCustomer?.id || null })
           .eq('id', savedOrderId)
-      } catch (err) { alert('Lỗi cập nhật khách hàng: ' + err.message); return }
+      } catch (err) { notify('Lỗi cập nhật khách hàng: ' + err.message); return }
       window.location.href = '/pos/danh-sach'
       return
     }
@@ -675,7 +684,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       // Gán DB id cho mỗi item (dùng làm _lid từ đây trở đi)
       setLineItems(preparedItems.map((item, i) => ({ ...item, ...inserted[i], _lid: inserted[i].id })))
       window.location.href = '/pos/danh-sach'
-    } catch (err) { alert('Lỗi lưu đơn: ' + err.message) }
+    } catch (err) { notify('Lỗi lưu đơn: ' + err.message) }
     finally { setLoading(false) }
   }
 
@@ -695,7 +704,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     kmRefPct: kmRef,
   }) => {
     if (toCard && !selectedCustomer?.id) {
-      alert('Vui lòng chọn khách hàng trước khi tạo thẻ liệu trình')
+      notify('Vui lòng chọn khách hàng trước khi tạo thẻ liệu trình')
       return
     }
     const item = lineItems.find(i => i._lid === _lid)
@@ -740,25 +749,25 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     // ── QUY TẮC: KHÔNG gộp BÁN THẺ MỚI và LÀM DỊCH VỤ/DÙNG THẺ trong cùng 1 đơn ──
     if (!checkKhongGopBanTheVaDichVu()) return
     if (!selectedCustomer?.id) {
-      alert('Vui long chon khach hang truoc khi chot don de CRM va doi soat du lieu duoc ghi nhan day du.')
+      notify('Vui long chon khach hang truoc khi chot don de CRM va doi soat du lieu duoc ghi nhan day du.')
       return
     }
     const validPayments = payLines.filter(l => l.soTien > 0 && l.hinhThuc)
     if (isOverPaid) {
-      alert('Số tiền nhận đang lớn hơn tổng đơn. Vui lòng chỉnh lại số tiền thanh toán trước khi chốt.')
+      notify('Số tiền nhận đang lớn hơn tổng đơn. Vui lòng chỉnh lại số tiền thanh toán trước khi chốt.')
       return
     }
     if (tongCuoi > 0 && validPayments.length === 0) {
-      alert('Vui lòng nhập số tiền và chọn hình thức thanh toán')
+      notify('Vui lòng nhập số tiền và chọn hình thức thanh toán')
       return
     }
     if (conNo > 0 && !selectedCustomer) {
-      alert('Khách lẻ phải thanh toán đủ. Vui lòng chọn khách hàng để ghi nợ.')
+      notify('Khách lẻ phải thanh toán đủ. Vui lòng chọn khách hàng để ghi nợ.')
       return
     }
     const theMoiItems = lineItems.filter(i => i.loai_item === 'the_moi')
     if (theMoiItems.length > 0 && !selectedCustomer?.id) {
-      alert('Đơn có mua thẻ liệu trình — vui lòng chọn khách hàng để lưu thẻ.')
+      notify('Đơn có mua thẻ liệu trình — vui lòng chọn khách hàng để lưu thẻ.')
       return
     }
     let insertedPaymentIds = []
@@ -905,7 +914,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
             .eq('id', reviewYc.id)
         } catch (_) {}
         setLoading(false)
-        alert('Đã duyệt & cập nhật đơn ' + maDonEdit + ' theo đề xuất của Lễ tân.')
+        notify('Đã duyệt & cập nhật đơn ' + maDonEdit + ' theo đề xuất của Lễ tân.')
         window.location.href = '/pos/danh-sach'
         return
       }
@@ -923,7 +932,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
           paymentsInserted.current = false
         } catch (_) {}
       }
-      alert('Lỗi thanh toán: ' + err.message)
+      notify('Lỗi thanh toán: ' + err.message)
     }
     finally { setLoading(false) }
   }
@@ -938,8 +947,8 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   })
 
   const submitEditRequest = async () => {
-    if (!proposeReason.trim()) { alert('Vui lòng nhập LÝ DO chỉnh sửa đơn.'); return }
-    if (lineItems.length === 0) { alert('Đơn phải có ít nhất 1 dịch vụ.'); return }
+    if (!proposeReason.trim()) { notify('Vui lòng nhập LÝ DO chỉnh sửa đơn.'); return }
+    if (lineItems.length === 0) { notify('Đơn phải có ít nhất 1 dịch vụ.'); return }
     setLoading(true)
     try {
       const { error } = await supabase.from('yeu_cau_chinh_sua').insert({
@@ -952,9 +961,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       })
       if (error) throw error
       setShowProposeModal(false)
-      alert(`Đã gửi yêu cầu sửa đơn ${maDonEdit}. Chờ Admin duyệt.`)
+      notify(`Đã gửi yêu cầu sửa đơn ${maDonEdit}. Chờ Admin duyệt.`)
       window.location.href = '/pos/danh-sach'
-    } catch (e) { alert('Lỗi gửi yêu cầu: ' + e.message) }
+    } catch (e) { notify('Lỗi gửi yêu cầu: ' + e.message) }
     finally { setLoading(false) }
   }
 
@@ -966,9 +975,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         .update({ trang_thai: 'tu_choi', nguoi_duyet: user?.ho_ten || 'Admin', ghi_chu_duyet: rejectReason.trim() || 'Không duyệt' })
         .eq('id', reviewYc.id)
       setShowRejectModal(false)
-      alert('Đã từ chối yêu cầu sửa đơn. Đơn gốc giữ nguyên.')
+      notify('Đã từ chối yêu cầu sửa đơn. Đơn gốc giữ nguyên.')
       window.location.href = '/pos/danh-sach'
-    } catch (e) { alert('Lỗi: ' + e.message) }
+    } catch (e) { notify('Lỗi: ' + e.message) }
     finally { setLoading(false) }
   }
 
@@ -1131,8 +1140,20 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       .main { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
       .topbar { display: none !important; }
       .page { flex: 1 !important; min-height: 0; padding: 0 !important; gap: 0 !important; overflow: hidden !important; }
+      @keyframes posToastIn { from { opacity: 0 } to { opacity: 1 } }
     `}</style>
-    <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', background: 'var(--bg)' }}>
+    {posToast && createPortal(
+      <div style={{
+        position: 'fixed', top: 22, left: '50%', transform: 'translateX(-50%)', zIndex: 100002,
+        display: 'flex', alignItems: 'center', gap: 10, padding: '13px 22px', borderRadius: 14,
+        background: posToast.type === 'error' ? 'linear-gradient(135deg,#C0392B,#9e2818)' : 'linear-gradient(135deg,#2D7A4F,#1f5c3a)',
+        color: '#fff', fontFamily: FONT.sans, fontWeight: 600, fontSize: 13.5, maxWidth: '88vw',
+        boxShadow: '0 12px 34px rgba(0,0,0,.28)', whiteSpace: 'pre-line', lineHeight: 1.5, animation: 'posToastIn .25s ease',
+      }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>{posToast.type === 'error' ? '⚠️' : '✓'}</span>
+        <span>{posToast.msg}</span>
+      </div>, document.body)}
+    <div style={{ display: 'flex', flex: 1, minHeight: 0, height: '100dvh', maxHeight: '100dvh', overflow: 'hidden', background: 'var(--bg)' }}>
 
       {/* ═══ LEFT PANEL (60%) ═══ */}
       <div style={{ flex: 3, minWidth: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', borderRight: '1px solid var(--line)' }}>
@@ -1544,10 +1565,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
             </div>
             )}
 
-          </div>{/* end scrollable */}
 
-          {/* ── Bottom action bar — cố định ── */}
-          <div style={{ borderTop: `1px solid ${C.line2}`, padding: '10px 12px 14px', flexShrink: 0, background: C.bg }}>
+          {/* ── Bottom action bar — ĐÓNG BĂNG đáy khung hình (sticky) ── */}
+          <div style={{ borderTop: `1px solid ${C.line2}`, padding: '10px 12px 14px', position: 'sticky', bottom: 0, zIndex: 50, background: C.bg, boxShadow: '0 -6px 16px rgba(0,0,0,.10)' }}>
             <style>{`
               @keyframes goldPulse {
                 0%,100% { box-shadow: 0 4px 16px rgba(160,113,79,.35); }
@@ -1613,7 +1633,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                 disabled={loading || ((isLeTan && editOrderId && !reviewYc) ? lineItems.length === 0 : !canConfirm)}
                 onClick={() => {
                   if (isLeTan && editOrderId && !reviewYc) {
-                    if (lineItems.length === 0) { alert('Đơn phải có ít nhất 1 dịch vụ'); return }
+                    if (lineItems.length === 0) { notify('Đơn phải có ít nhất 1 dịch vụ'); return }
                     setProposeReason(''); setShowProposeModal(true); return
                   }
                   handleConfirmOrder(true)
@@ -1672,6 +1692,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
 
             </div>
           </div>
+          </div>{/* end scrollable */}
         </>)}
 
         {rightTab === 'vat_tu' && (

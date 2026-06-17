@@ -45,6 +45,12 @@ export default function NhapLieuPage({ user }) {
   const [nhomId, setNhomId] = useState(null)
   const [hangMucId, setHangMucId] = useState(null)
   const [nguonChi, setNguonChi] = useState('tien_mat')
+  // Nhập kho tích hợp: khi chọn hạng mục kho → nhập sản phẩm ngay
+  const [products, setProducts] = useState([])
+  const [khoLines, setKhoLines] = useState([])
+  const rawN = s => parseInt(String(s).replace(/\D/g, ''), 10) || 0
+  const fmtN = n => n ? new Intl.NumberFormat('vi-VN').format(n) : ''
+  const newKhoLine = () => ({ key: Math.random().toString(36).slice(2), sp_id: '', so_luong: '', gia_don_vi: '' })
 
   // CK
   const [ckTu, setCkTu] = useState('tien_mat')
@@ -75,6 +81,8 @@ export default function NhapLieuPage({ user }) {
       setNhomList(all.filter(d => !d.parent_id))
       setHangMucList(all.filter(d => d.parent_id))
     })
+    supabase.from('kho_san_pham').select('id, ten, don_vi, ton_kho, gia_nhap, loai, ton_dinh_muc').eq('is_active', true).order('ten')
+      .then(r => setProducts(r.data || []))
   }, [])
   useEffect(() => { loadTodayTx() }, [ngay])
   useEffect(() => { if (tab === 'noptm') loadNopTm() }, [tab, ngay])
@@ -87,7 +95,7 @@ export default function NhapLieuPage({ user }) {
   }, [ngay])
 
   const showMsg = (text, type = 'success') => { setMsg({ text, type }); setTimeout(() => setMsg(null), 3000) }
-  const resetForm = () => { setSoTien(''); setDienGiai(''); setNhomId(null); setHangMucId(null) }
+  const resetForm = () => { setSoTien(''); setDienGiai(''); setNhomId(null); setHangMucId(null); setKhoLines([]) }
 
   const loadTodayTx = async () => {
     setLoadingTx(true)
@@ -113,14 +121,45 @@ export default function NhapLieuPage({ user }) {
 
   const handleSaveChi = async () => {
     if (!isAdmin && dailyClose && ['submitted', 'approved'].includes(dailyClose.trang_thai)) return showMsg('Ngày này đã chốt. Muốn nhập thêm chi phí cần báo Admin mở điều chỉnh.', 'error')
+    if (isKho) {
+      if (validKhoLines.length === 0) return showMsg('Chọn ít nhất 1 sản phẩm (đủ số lượng + đơn giá) để nhập kho!', 'error')
+      const ids = validKhoLines.map(l => l.sp_id)
+      if (new Set(ids).size !== ids.length) return showMsg('Có sản phẩm bị chọn trùng dòng — gộp lại giúp em!', 'error')
+    }
     const amt = parseInt(soTien.replace(/\D/g, '')); if (!amt || amt <= 0) return showMsg('Nhập số tiền!', 'error')
     if (!hangMucId) return showMsg('Chọn hạng mục chi!', 'error')
     if (!dienGiai?.trim()) return showMsg('Nhập diễn giải!', 'error')
     setSaving(true)
     try {
-      const { error } = await supabase.from('chi_phi').insert({ ngay, danh_muc_id: hangMucId, so_tien: amt, hinh_thuc_thanh_toan: nguonChi, dien_giai: dienGiai, nguoi_nhap: user?.ho_ten || null })
+      const { data: cp, error } = await supabase.from('chi_phi')
+        .insert({ ngay, danh_muc_id: hangMucId, so_tien: amt, hinh_thuc_thanh_toan: nguonChi, dien_giai: dienGiai, nguoi_nhap: user?.ho_ten || null })
+        .select('id').single()
       if (error) throw error
-      showMsg(`✓ Đã chi ${formatCurrency(amt)}`); resetForm(); loadTodayTx()
+
+      // Hạng mục KHO → nhập kho từng sản phẩm + tăng tồn (link phiếu chi)
+      if (isKho && validKhoLines.length > 0) {
+        for (const l of validKhoLines) {
+          const sp = products.find(p => p.id === l.sp_id)
+          const sl = rawN(l.so_luong); const gia = rawN(l.gia_don_vi)
+          const { error: e2 } = await supabase.from('kho_giao_dich').insert({
+            san_pham_id: l.sp_id, loai: 'nhap_kho', so_luong: sl, gia_don_vi: gia,
+            ghi_chu: `Nhập kho từ Sổ Thu Chi ${formatDateInput(ngay)}`, ngay,
+            nguoi_thuc_hien: user?.id || null, lien_quan_id: cp?.id || null,
+          })
+          if (e2) throw e2
+          const tonMoi = Number(sp?.ton_kho || 0) + sl
+          await supabase.from('kho_san_pham').update({
+            ton_kho: tonMoi, gia_nhap: gia,
+            ton_dinh_muc: Math.max(Number(sp?.ton_dinh_muc) || 0, tonMoi),
+          }).eq('id', l.sp_id)
+        }
+        // refresh tồn kho local
+        const { data: fresh } = await supabase.from('kho_san_pham').select('id, ten, don_vi, ton_kho, gia_nhap, loai, ton_dinh_muc').eq('is_active', true).order('ten')
+        setProducts(fresh || [])
+        showMsg(`✓ Đã chi ${formatCurrency(amt)} + nhập ${validKhoLines.length} SP vào kho`); resetForm(); loadTodayTx()
+      } else {
+        showMsg(`✓ Đã chi ${formatCurrency(amt)}`); resetForm(); loadTodayTx()
+      }
     } catch (e) { showMsg('Lỗi: ' + e.message, 'error') } finally { setSaving(false) }
   }
 
@@ -197,6 +236,25 @@ export default function NhapLieuPage({ user }) {
   const nhomChon = nhomList.find(n => n.id === nhomId)
   const hangMucChon = hangMucList.find(h => h.id === hangMucId)
   const hmCuaNhom = hangMucList.filter(h => h.parent_id === nhomId)
+
+  // ── Hạng mục liên quan KHO → bật nhập kho ngay trong form chi phí ──
+  const KHO_KW = ['tiêu hao', 'bán khách', 'nhập kho', 'dầu gội', 'vật tư', 'mỹ phẩm', 'dụng cụ']
+  const isKho = !!hangMucChon && KHO_KW.some(k => (hangMucChon.ten || '').toLowerCase().includes(k))
+  const tongKho = khoLines.reduce((s, l) => s + rawN(l.so_luong) * rawN(l.gia_don_vi), 0)
+  const validKhoLines = khoLines.filter(l => l.sp_id && rawN(l.so_luong) > 0 && rawN(l.gia_don_vi) > 0)
+  useEffect(() => {
+    if (isKho) {
+      setKhoLines(ls => (ls.length === 0 ? [newKhoLine()] : ls))
+      setSoTien(tongKho ? String(tongKho) : '')
+    }
+  }, [isKho, tongKho])
+  const setKhoLine = (key, patch) => setKhoLines(ls => ls.map(l => l.key === key ? { ...l, ...patch } : l))
+  const addKhoLine = () => setKhoLines(ls => [...ls, newKhoLine()])
+  const removeKhoLine = (key) => setKhoLines(ls => ls.length > 1 ? ls.filter(l => l.key !== key) : ls)
+  const onPickKhoSP = (key, spId) => {
+    const sp = products.find(p => p.id === spId)
+    setKhoLine(key, { sp_id: spId, gia_don_vi: sp?.gia_nhap ? fmtN(sp.gia_nhap) : '' })
+  }
 
   return (
     <div style={{ padding: '22px 24px' }}>
@@ -310,6 +368,14 @@ export default function NhapLieuPage({ user }) {
               saving={saving}
               onOpenDate={() => setShowLich(true)}
               onSave={handleSaveChi}
+              isKho={isKho}
+              products={products}
+              khoLines={khoLines}
+              tongKho={tongKho}
+              onPickKhoSP={onPickKhoSP}
+              setKhoLine={setKhoLine}
+              addKhoLine={addKhoLine}
+              removeKhoLine={removeKhoLine}
             />
           )}
 

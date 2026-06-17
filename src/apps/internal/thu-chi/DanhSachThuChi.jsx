@@ -3,6 +3,9 @@ import { supabase } from '../../../lib/supabase'
 import { formatCurrency, todayISO, getNowVN } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
 import I from '../../../components/shared/Icons'
+import Modal from '../../../components/ui/Modal'
+import Button from '../../../components/ui/Button'
+import { Field, Input, Select } from '../../../components/ui/Field'
 
 // ── Meta hình thức / loại ──────────────────────────────
 const methodMeta = {
@@ -334,63 +337,50 @@ function EditModal({ row, danhMucList, viMap, onClose, onSaved }) {
   const fmtNgay = d => { const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}` }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(42,29,20,0.4)', backdropFilter: 'blur(3px)', zIndex: 2000 }}>
-      <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'var(--surface2)', overflowY: 'auto', boxShadow: '-6px 0 40px rgba(42,29,20,0.3)', animation: 'rpSlideIn .22s ease' }}>
-        <DatePicker open={showLich} selectedDate={ngay} onClose={() => setShowLich(false)} onConfirm={d => { setNgay(d); setShowLich(false) }} />
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontFamily: 'var(--serif)', fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>
-            Sửa {loaiMeta[row.loai].label}
-          </div>
-          <button onClick={onClose} className="icon-btn" style={{ width: 30, height: 30 }}>✕</button>
-        </div>
-        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="Ngày">
-            <button onClick={() => setShowLich(true)} className="btn" style={{ width: '100%', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <I.Calendar style={{ width: 13, height: 13 }} /> {fmtNgay(ngay)}
-            </button>
+    <>
+      <DatePicker open={showLich} selectedDate={ngay} onClose={() => setShowLich(false)} onConfirm={d => { setNgay(d); setShowLich(false) }} />
+      <Modal
+        open
+        onClose={onClose}
+        size="sm"
+        title={`Sửa ${loaiMeta[row.loai].label}`}
+        footer={(
+          <>
+            <Button variant="secondary" onClick={onClose}>Hủy</Button>
+            <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</Button>
+          </>
+        )}
+      >
+        <Field label="Ngày">
+          <Button variant="secondary" block onClick={() => setShowLich(true)} icon={<I.Calendar style={{ width: 13, height: 13 }} />} style={{ justifyContent: 'flex-start' }}>
+            {fmtNgay(ngay)}
+          </Button>
+        </Field>
+        <Field label="Số tiền">
+          <Input value={soTien} onChange={e => setSoTien(fmtInput(parseVND(e.target.value)))} placeholder="0" />
+        </Field>
+        <Field label="Diễn giải">
+          <Input value={dienGiai} onChange={e => setDienGiai(e.target.value)} placeholder="Nội dung giao dịch" />
+        </Field>
+        {(isThu || isChi) && (
+          <Field label={isThu ? 'Hình thức nhận tiền' : 'Nguồn tiền chi'}>
+            <Select value={hinhThuc} onChange={e => setHinhThuc(e.target.value)}>
+              <option value="tien_mat">Tiền Mặt</option>
+              <option value="chuyen_khoan">MB Bank (Chuyển khoản)</option>
+              <option value="quet_the">TP Bank (Quẹt thẻ)</option>
+              {isThu && <option value="the_tra_truoc">Thẻ Trả Trước</option>}
+            </Select>
           </Field>
-          <Field label="Số tiền">
-            <input value={soTien} onChange={e => setSoTien(fmtInput(parseVND(e.target.value)))} style={inputStyle} placeholder="0" />
+        )}
+        {isChi && (
+          <Field label="Danh mục chi">
+            <Select value={danhMucId} onChange={e => setDanhMucId(e.target.value)}>
+              <option value="">— Chọn danh mục —</option>
+              {dmOptions.map(o => <option key={o.id} value={o.id}>{o.ten}</option>)}
+            </Select>
           </Field>
-          <Field label="Diễn giải">
-            <input value={dienGiai} onChange={e => setDienGiai(e.target.value)} style={inputStyle} placeholder="Nội dung giao dịch" />
-          </Field>
-          {(isThu || isChi) && (
-            <Field label={isThu ? 'Hình thức nhận tiền' : 'Nguồn tiền chi'}>
-              <select value={hinhThuc} onChange={e => setHinhThuc(e.target.value)} style={inputStyle}>
-                <option value="tien_mat">Tiền Mặt</option>
-                <option value="chuyen_khoan">MB Bank (Chuyển khoản)</option>
-                <option value="quet_the">TP Bank (Quẹt thẻ)</option>
-                {isThu && <option value="the_tra_truoc">Thẻ Trả Trước</option>}
-              </select>
-            </Field>
-          )}
-          {isChi && (
-            <Field label="Danh mục chi">
-              <select value={danhMucId} onChange={e => setDanhMucId(e.target.value)} style={inputStyle}>
-                <option value="">— Chọn danh mục —</option>
-                {dmOptions.map(o => <option key={o.id} value={o.id}>{o.ten}</option>)}
-              </select>
-            </Field>
-          )}
-        </div>
-        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--line)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} className="btn">Hủy</button>
-          <button onClick={handleSave} disabled={saving} className="btn gold" style={{ opacity: saving ? .6 : 1 }}>
-            {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-          </button>
-        </div>
-      </div>
-    </div>
+        )}
+      </Modal>
+    </>
   )
 }
-
-function Field({ label, children }) {
-  return (
-    <div>
-      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink2)', marginBottom: 5, display: 'block' }}>{label}</label>
-      {children}
-    </div>
-  )
-}
-const inputStyle = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--line2)', background: 'var(--surface2)', fontSize: 13.5, color: 'var(--ink)', outline: 'none', fontFamily: 'var(--sans)' }

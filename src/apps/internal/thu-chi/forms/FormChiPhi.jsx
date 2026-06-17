@@ -64,7 +64,14 @@ export default function FormChiPhi({ viList, user, onClose, onSaved, initialData
   const [chungTuUrl, setChungTuUrl] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showLich, setShowLich] = useState(false)
+  // ── Nhập kho tích hợp: khi chọn danh mục kho → hiện chi tiết sản phẩm ──
+  const [products, setProducts] = useState([])
+  const [khoLines, setKhoLines] = useState([])   // [{key, sp_id, so_luong, gia_don_vi}]
   const isEdit = !!initialData
+
+  const rawN = s => parseInt(String(s).replace(/\D/g, ''), 10) || 0
+  const fmtN = n => n ? new Intl.NumberFormat('vi-VN').format(n) : ''
+  const newKhoLine = () => ({ key: Math.random().toString(36).slice(2), sp_id: '', so_luong: '', gia_don_vi: '' })
 
   const getHinhThucFromVi = (vi) => {
     if (!vi) return 'tien_mat'
@@ -75,15 +82,17 @@ export default function FormChiPhi({ viList, user, onClose, onSaved, initialData
 
   useEffect(() => {
     async function loadData() {
-      const [rDM, rNV] = await Promise.all([
+      const [rDM, rNV, rSP] = await Promise.all([
         supabase.from('danh_muc_chi_phi').select('*').eq('is_active', true).order('thu_tu'),
         supabase.from('nhan_vien').select('id, ho_ten, vi_tri').eq('trang_thai', 'dang_lam').order('ho_ten'),
+        supabase.from('kho_san_pham').select('id, ten, don_vi, ton_kho, gia_nhap, loai, ton_dinh_muc').eq('is_active', true).order('ten'),
       ])
       if (!rDM.error && rDM.data) {
         setNhomList(rDM.data.filter(d => d.parent_id === null))
         setHangMucList(rDM.data.filter(d => d.parent_id !== null))
       }
       if (rNV.data) setNhanVienList(rNV.data)
+      if (rSP.data) setProducts(rSP.data)
       setLoading(false)
     }
     loadData()
@@ -114,13 +123,42 @@ export default function FormChiPhi({ viList, user, onClose, onSaved, initialData
   const viSelected = viList.find(v => v.id === viId)
   const hangMucCuaNhom = hangMucList.filter(h => h.parent_id === nhomId)
 
+  // ── Danh mục liên quan KHO → bật chế độ nhập kho ──
+  const KHO_KW = ['tiêu hao', 'bán khách', 'nhập kho', 'dầu gội', 'vật tư', 'mỹ phẩm', 'dụng cụ']
+  const isKho = !!hangMucSelected && KHO_KW.some(k => (hangMucSelected.ten || '').toLowerCase().includes(k))
+  const tongKho = khoLines.reduce((s, l) => s + rawN(l.so_luong) * rawN(l.gia_don_vi), 0)
+
+  // Khi ở chế độ kho: số tiền = tổng các dòng (tự tính), khởi tạo sẵn 1 dòng
+  useEffect(() => {
+    if (isKho) {
+      setKhoLines(ls => (ls.length === 0 ? [newKhoLine()] : ls))
+      setSoTien(tongKho ? String(tongKho) : '')
+    }
+  }, [isKho, tongKho])
+
+  const setKhoLine = (key, patch) => setKhoLines(ls => ls.map(l => l.key === key ? { ...l, ...patch } : l))
+  const addKhoLine = () => setKhoLines(ls => [...ls, newKhoLine()])
+  const removeKhoLine = (key) => setKhoLines(ls => ls.length > 1 ? ls.filter(l => l.key !== key) : ls)
+  const onPickKhoSP = (key, spId) => {
+    const sp = products.find(p => p.id === spId)
+    setKhoLine(key, { sp_id: spId, gia_don_vi: sp?.gia_nhap ? fmtN(sp.gia_nhap) : '' })
+  }
+
   const chonNhom = (nhom) => {
     setNhomId(nhom.id)
     setHangMucId(null)
     setStep('chon_hang_muc')
   }
 
+  // Các dòng kho hợp lệ (đủ SP + SL + đơn giá)
+  const validKhoLines = khoLines.filter(l => l.sp_id && rawN(l.so_luong) > 0 && rawN(l.gia_don_vi) > 0)
+
   const handleSave = async () => {
+    if (isKho && !isEdit) {
+      if (validKhoLines.length === 0) return onSaved('error', 'Chọn ít nhất 1 sản phẩm (đủ số lượng + đơn giá) để nhập kho!')
+      const ids = validKhoLines.map(l => l.sp_id)
+      if (new Set(ids).size !== ids.length) return onSaved('error', 'Có sản phẩm bị chọn trùng dòng — gộp lại giúp em!')
+    }
     if (!soTien || parseInt(soTien) <= 0) return onSaved('error', 'Vui lòng nhập số tiền!')
     if (!hangMucId) return onSaved('error', 'Vui lòng chọn hạng mục chi!')
     if (!viId) return onSaved('error', 'Vui lòng chọn nguồn tiền chi (Tiền Mặt/MB Bank/TP Bank)!')
@@ -156,9 +194,31 @@ export default function FormChiPhi({ viList, user, onClose, onSaved, initialData
         onSaved('success', `Đã cập nhật chi phí ${formatCurrency(parseInt(soTien))}!`)
       } else {
         payload.nguoi_nhap = nguoiChiSelected?.ho_ten || user?.ho_ten || null
-        const { error } = await supabase.from('chi_phi').insert(payload)
+        const { data: cp, error } = await supabase.from('chi_phi').insert(payload).select('id').single()
         if (error) throw error
-        onSaved('success', `Đã chi ${formatCurrency(parseInt(soTien))} thành công!`)
+
+        // ── Nếu là danh mục KHO → đồng thời nhập kho từng sản phẩm (link phiếu chi) ──
+        if (isKho && validKhoLines.length > 0) {
+          for (const l of validKhoLines) {
+            const sp = products.find(p => p.id === l.sp_id)
+            const sl = rawN(l.so_luong)
+            const gia = rawN(l.gia_don_vi)
+            const { error: e2 } = await supabase.from('kho_giao_dich').insert({
+              san_pham_id: l.sp_id, loai: 'nhap_kho', so_luong: sl, gia_don_vi: gia,
+              ghi_chu: `Nhập kho từ Sổ Thu Chi ${formatDateInput(ngay)}`, ngay,
+              nguoi_thuc_hien: user?.id || null, lien_quan_id: cp?.id || null,
+            })
+            if (e2) throw e2
+            const tonMoi = Number(sp?.ton_kho || 0) + sl
+            await supabase.from('kho_san_pham').update({
+              ton_kho: tonMoi, gia_nhap: gia,
+              ton_dinh_muc: Math.max(Number(sp?.ton_dinh_muc) || 0, tonMoi),
+            }).eq('id', l.sp_id)
+          }
+          onSaved('success', `Đã chi ${formatCurrency(parseInt(soTien))} + nhập ${validKhoLines.length} SP vào kho!`)
+        } else {
+          onSaved('success', `Đã chi ${formatCurrency(parseInt(soTien))} thành công!`)
+        }
       }
       onClose()
     } catch (err) {
@@ -323,8 +383,10 @@ export default function FormChiPhi({ viList, user, onClose, onSaved, initialData
 
         <div style={S.body}>
           <div style={S.amountCard}>
-            <div style={S.amountLabel}>Số Tiền</div>
-            <input type="number" placeholder="0" value={soTien} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={S.amountInput(!!soTien)} />
+            <div style={S.amountLabel}>{isKho ? 'Tổng Tiền (tự tính từ sản phẩm)' : 'Số Tiền'}</div>
+            <input type="number" placeholder="0" value={soTien} readOnly={isKho}
+              onChange={isKho ? undefined : e => setSoTien(e.target.value.replace(/\D/g, ''))}
+              style={{ ...S.amountInput(!!soTien), cursor: isKho ? 'default' : 'text' }} />
             {soTien ? <div style={S.amountDisplay}>{new Intl.NumberFormat('vi-VN').format(parseInt(soTien))} đ</div> : null}
           </div>
 
@@ -354,6 +416,44 @@ export default function FormChiPhi({ viList, user, onClose, onSaved, initialData
               </button>
             )}
           </div>
+
+          {/* ── Chi tiết NHẬP KHO (tự hiện khi chọn danh mục kho) ── */}
+          {isKho && (
+            <div style={S.section}>
+              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 17 }}>📦</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', fontFamily: 'var(--serif)' }}>Chi Tiết Nhập Kho</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--ink3)' }}>Chọn sản phẩm + số lượng + đơn giá — tồn kho tự cập nhật, số tiền tự tính</div>
+                </div>
+              </div>
+              <div style={{ padding: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 96px 90px 28px', gap: 6, fontSize: 10, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', padding: '0 2px 6px' }}>
+                  <span>Sản phẩm</span><span style={{ textAlign: 'center' }}>SL</span><span style={{ textAlign: 'right' }}>Đơn giá</span><span style={{ textAlign: 'right' }}>Thành tiền</span><span />
+                </div>
+                {khoLines.map(l => {
+                  const sp = products.find(p => p.id === l.sp_id)
+                  const thanh = rawN(l.so_luong) * rawN(l.gia_don_vi)
+                  return (
+                    <div key={l.key} style={{ marginBottom: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 96px 90px 28px', gap: 6, alignItems: 'center' }}>
+                        <select value={l.sp_id} onChange={e => onPickKhoSP(l.key, e.target.value)} style={{ padding: '8px 8px', borderRadius: 8, border: '1px solid var(--line2)', fontSize: 12.5, background: 'var(--surface2)', color: 'var(--ink)', outline: 'none', fontFamily: 'var(--sans)' }}>
+                          <option value="">— Chọn —</option>
+                          {products.map(p => <option key={p.id} value={p.id}>{p.ten}</option>)}
+                        </select>
+                        <input value={l.so_luong} onChange={e => setKhoLine(l.key, { so_luong: rawN(e.target.value) || '' })} placeholder="0" style={{ padding: '8px 6px', borderRadius: 8, border: '1px solid var(--line2)', fontSize: 12.5, textAlign: 'center', background: 'var(--surface2)', color: 'var(--ink)', outline: 'none', fontFamily: 'var(--sans)' }} />
+                        <input value={fmtN(rawN(l.gia_don_vi))} onChange={e => setKhoLine(l.key, { gia_don_vi: rawN(e.target.value) || '' })} placeholder="0đ" style={{ padding: '8px 8px', borderRadius: 8, border: '1px solid var(--line2)', fontSize: 12.5, textAlign: 'right', background: 'var(--surface2)', color: 'var(--ink)', outline: 'none', fontFamily: 'var(--sans)' }} />
+                        <div style={{ textAlign: 'right', fontWeight: 700, fontSize: 12.5, color: thanh > 0 ? 'var(--ink)' : 'var(--ink3)', fontFamily: 'var(--sans)' }}>{thanh > 0 ? new Intl.NumberFormat('vi-VN').format(thanh) + 'đ' : '—'}</div>
+                        <button onClick={() => removeKhoLine(l.key)} title="Xoá" style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line2)', background: 'var(--surface)', color: '#C0392B', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                      </div>
+                      {sp && <div style={{ fontSize: 10, color: 'var(--ink3)', paddingLeft: 2, marginTop: 3 }}>Tồn hiện tại: {sp.ton_kho} {sp.don_vi}</div>}
+                    </div>
+                  )
+                })}
+                <button onClick={addKhoLine} style={{ marginTop: 4, padding: '7px 14px', borderRadius: 9, border: '1.5px dashed var(--champagne)', background: '#fdf9f2', color: 'var(--espresso)', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--sans)' }}>+ Thêm sản phẩm</button>
+              </div>
+            </div>
+          )}
 
           {/* Nguồn tiền chi */}
           <button onClick={() => setStep('chon_vi')} style={S.rowWarn(!!viId)}>
