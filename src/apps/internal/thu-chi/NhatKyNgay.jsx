@@ -27,14 +27,29 @@ export default function NhatKyNgay({ user }) {
         supabase.from('doanh_thu').select('hinh_thuc, so_tien, nguon').eq('ngay', ngay),
         supabase.from('chi_phi').select('so_tien, danh_muc_id, dien_giai, hinh_thuc_thanh_toan').eq('ngay', ngay),
         supabase.from('danh_muc_chi_phi').select('id, ten'),
-        supabase.from('don_hang').select('id, thuc_thu, khach_hang_id').eq('ngay', ngay).eq('is_test', false).neq('trang_thai', 'huy'),
-        supabase.from('kho_giao_dich').select('loai, so_luong, gia_don_vi, san_pham_id').eq('ngay', ngay),
+        supabase.from('don_hang').select('id, ma_don, thuc_thu, khach_hang_id, created_at').eq('ngay', ngay).eq('is_test', false).neq('trang_thai', 'huy'),
+        supabase.from('kho_giao_dich').select('loai, so_luong, gia_don_vi, san_pham_id, khach_hang_id').eq('ngay', ngay),
         supabase.from('so_thu_chi_chot_ngay').select('trang_thai, nguoi_chot, chot_luc').eq('ngay', ngay).maybeSingle(),
         supabase.from('kho_san_pham').select('id, ten, don_vi'),
       ])
       const dt = rDT.data || [], cp = rCP.data || [], dh = rDH.data || [], kho = rKho.data || []
       const dmMap = {}; (rDM.data || []).forEach(d => { dmMap[d.id] = d.ten })
       const spMap = {}; (rSP.data || []).forEach(s => { spMap[s.id] = s })
+
+      // ── Query phụ thuộc đơn trong ngày: thẻ liệu trình bán + tên khách ──
+      const dhIds = dh.map(d => d.id)
+      const khachIds = [...new Set(dh.map(d => d.khach_hang_id).filter(Boolean))]
+      let theBan = [], khachMap = {}
+      if (dhIds.length) {
+        const rThe = await supabase.from('the_lieu_trinh')
+          .select('id, ten_dich_vu, gia_tri_the, so_buoi_tong, khach_hang_id, don_hang_id')
+          .in('don_hang_id', dhIds)
+        theBan = rThe.data || []
+      }
+      if (khachIds.length) {
+        const rKh = await supabase.from('khach_hang').select('id, ho_ten, so_dien_thoai').in('id', khachIds)
+        ;(rKh.data || []).forEach(k => { khachMap[k.id] = k })
+      }
 
       const dtByPttt = {}
       PTTT.forEach(p => { dtByPttt[p.id] = dt.filter(r => r.hinh_thuc === p.id).reduce((s, r) => s + (r.so_tien || 0), 0) })
@@ -48,16 +63,37 @@ export default function NhatKyNgay({ user }) {
 
       // Kho
       const nhapKho = kho.filter(k => k.loai === 'nhap_kho')
-      const xuatKho = kho.filter(k => ['xuat_su_dung', 'xuat_ban', 'tra_nha_cc'].includes(k.loai))
+      const xuatBan = kho.filter(k => k.loai === 'xuat_ban')               // bán cho khách
+      const xuatDung = kho.filter(k => ['xuat_su_dung', 'tra_nha_cc'].includes(k.loai))  // dùng nội bộ / trả NCC
+      const xuatKho = [...xuatBan, ...xuatDung]
       const tienNhapKho = nhapKho.reduce((s, k) => s + (Number(k.so_luong) * Number(k.gia_don_vi) || 0), 0)
+      const tienBanSP = xuatBan.reduce((s, k) => s + (Number(k.so_luong) * Number(k.gia_don_vi) || 0), 0)
+
+      // Thẻ liệu trình bán
+      const theBanList = theBan.map(t => ({
+        ...t, khach: khachMap[t.khach_hang_id]?.ho_ten || 'Khách lẻ',
+      }))
+      const tongGiaTriThe = theBan.reduce((s, t) => s + (Number(t.gia_tri_the) || 0), 0)
+
+      // Khách hàng trong ngày (gom theo khách + chi tiêu)
+      const khachByDh = {}
+      dh.forEach(d => {
+        const key = d.khach_hang_id || '__le'
+        if (!khachByDh[key]) khachByDh[key] = { ten: d.khach_hang_id ? (khachMap[d.khach_hang_id]?.ho_ten || 'Khách') : 'Khách lẻ', soDon: 0, chiTieu: 0 }
+        khachByDh[key].soDon++
+        khachByDh[key].chiTieu += Number(d.thuc_thu) || 0
+      })
+      const khachList = Object.values(khachByDh).sort((a, b) => b.chiTieu - a.chiTieu)
 
       setData({
         dtByPttt, tongDoanhThu, tongChi,
         loiNhuan: tongDoanhThu - tongChi,
         soDon: dh.length,
-        soKhach: new Set(dh.map(d => d.khach_hang_id).filter(Boolean)).size,
+        soKhach: khachIds.length,
         topChi, soKhoanChi: cp.length,
-        nhapKho, xuatKho, tienNhapKho, spMap,
+        nhapKho, xuatKho, xuatBan, tienNhapKho, tienBanSP, spMap,
+        theBanList, tongGiaTriThe,
+        khachList,
         chot: rChot.data || null,
       })
     } catch (e) { console.error('NhatKyNgay:', e) }
@@ -116,22 +152,51 @@ export default function NhatKyNgay({ user }) {
             {data.dtByPttt.the_tra_truoc > 0 && <div style={{ fontSize: 11, color: C.textMute, marginTop: 8, fontStyle: 'italic' }}>* Thẻ trả trước không tính vào thực thu.</div>}
           </Card>
 
-          {/* Đơn hàng + Khách */}
+          {/* Đơn hàng + Kho */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <Card title="Bán Hàng" icon="🛒">
-              <div style={{ display: 'flex', gap: 20 }}>
+              <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
                 <MiniStat label="Số đơn" value={data.soDon} />
                 <MiniStat label="Lượt khách" value={data.soKhach} />
+                <MiniStat label="Thẻ LT bán" value={data.theBanList.length} />
+                <MiniStat label="SP bán" value={data.xuatBan.length} />
               </div>
             </Card>
             <Card title="Kho" icon="📦">
-              <div style={{ display: 'flex', gap: 20 }}>
+              <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
                 <MiniStat label="Lần nhập" value={data.nhapKho.length} />
                 <MiniStat label="Tiền nhập" value={formatCurrency(data.tienNhapKho)} small />
                 <MiniStat label="Lần xuất" value={data.xuatKho.length} />
               </div>
             </Card>
           </div>
+
+          {/* Thẻ liệu trình bán trong ngày */}
+          {data.theBanList.length > 0 && (
+            <Card title={`Thẻ Liệu Trình Bán (${data.theBanList.length} thẻ · ${formatCurrency(data.tongGiaTriThe)})`} icon="🎫">
+              {data.theBanList.map((t, i) => (
+                <div key={t.id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: `1px solid ${C.borderLight}` }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: C.text, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.ten_dich_vu || 'Liệu trình'}</div>
+                    <div style={{ fontSize: 11.5, color: C.textSub, marginTop: 1 }}>👤 {t.khach}{t.so_buoi_tong ? ` · ${t.so_buoi_tong} buổi` : ''}</div>
+                  </div>
+                  <span style={{ fontFamily: FONT.mono, fontWeight: 700, color: '#6C3483', flexShrink: 0, marginLeft: 12 }}>{formatCurrency(t.gia_tri_the || 0)}</span>
+                </div>
+              ))}
+            </Card>
+          )}
+
+          {/* Khách hàng trong ngày */}
+          {data.khachList.length > 0 && (
+            <Card title={`Khách Hàng Trong Ngày (${data.khachList.length})`} icon="💝">
+              {data.khachList.map((k, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: `1px solid ${C.borderLight}` }}>
+                  <span style={{ fontSize: 13, color: C.text }}>👤 {k.ten} <span style={{ color: C.textMute, fontSize: 11.5 }}>· {k.soDon} đơn</span></span>
+                  <span style={{ fontFamily: FONT.mono, fontWeight: 700, color: '#2D7A4F', flexShrink: 0 }}>{formatCurrency(k.chiTieu)}</span>
+                </div>
+              ))}
+            </Card>
+          )}
 
           {/* Chi phí chi tiết */}
           <Card title={`Chi Phí (${data.soKhoanChi} khoản)`} icon="🧾">
