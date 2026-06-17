@@ -111,7 +111,7 @@ export default function TabBangLuong({ fixedKy = null }) {
       const [resNv, resChamCong, resOff, resBangLuong, resQuyOff, resThuNhap, resKD] = await Promise.all([
         supabase.from('nhan_vien')
           .select('id, ho_ten, vi_tri, luong_cung, avatar_url, trang_thai, gioi_han_off_thang, ky_quy_trang_thai, ky_quy_so_thang')
-          .eq('trang_thai', 'dang_lam').order('vi_tri').order('ho_ten'),
+          .in('trang_thai', ['dang_lam', 'dac_biet']).order('vi_tri').order('ho_ten'),
         supabase.from('cham_cong')
           .select('nhan_vien_id, ngay, loai, gio_vao, gio_ra, he_so, tang_ca_gio, trang_thai_tang_ca')
           .gte('ngay', startDate).lte('ngay', endDate),
@@ -240,16 +240,16 @@ export default function TabBangLuong({ fixedKy = null }) {
         R.tongKinhDoanh = R.hoaHongDV + R.tienTour + R.thuongDatDoanhSo + (R.hoTro || 0)
         R.tongLinh = Math.max(0, (R.luongCoBan || 0) + (R.tienTangCa || 0) + (R.hoaHong || 0) + R.tongKinhDoanh - (R.tienPhat || 0) - (R.truKyQuy || 0) - (R.truUngLuong || 0))
 
-        // ── NV ĐẶC BIỆT (vd Phạm Thị Nhỏ): không check-in, lương cố định ──
-        // Kỳ 1 = 4/7 lương cứng (7tr → 4tr), Kỳ 2 = phần còn lại (3tr). Không tính ngày công.
+        // ── NV ĐẶC BIỆT (Phạm Thị Nhỏ): không check-in/chấm công, lương CỐ ĐỊNH ──
+        // Kỳ 1 (Lương Cứng) = 4.000.000đ, Kỳ 2 (Lương KD) = 3.000.000đ — cố định, không tính ngày công.
         if (nv.trang_thai === 'dac_biet') {
           const r = result[nv.id]
-          const k1 = Math.round((nv.luong_cung || 0) * 4 / 7)
-          const k2 = (nv.luong_cung || 0) - k1
+          const k1 = 4000000  // Lương Cứng cố định
+          const k2 = 3000000  // Lương Kinh Doanh cố định
           r.ngayCong = r.soNgayThang
           r.luongCoBan = k1; r.tienTangCa = 0; r.tongTangCa = 0; r.tienPhat = 0; r.truKyQuy = 0; r.truUngLuong = 0
           r.soOffCoLuong = 0; r.soOffPhepVuot = 0; r.soOffOV = 0; r.soOffT7CN = 0; r.soPhamT7X = 0; r.soNgayLeBuOV = 0
-          r.hoaHongDV = 0; r.thuongDatDoanhSo = 0; r.tienTour = k2  // Kỳ 2 = lương cố định 3tr
+          r.hoaHongDV = 0; r.thuongDatDoanhSo = 0; r.hoTro = 0; r.tienTour = k2  // Kỳ 2 = lương cố định 3tr
           r.tongLinh = k1
           result[nv.id] = r
         }
