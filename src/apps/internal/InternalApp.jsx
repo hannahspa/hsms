@@ -12,6 +12,7 @@ import DoiSoatPage from './thu-chi/DoiSoatPage'
 import ChotNgayPage from './thu-chi/ChotNgayPage'
 import DanhSachThuChi from './thu-chi/DanhSachThuChi'
 import KiemSoatChiPhi from './thu-chi/KiemSoatChiPhi'
+import NhatKyNgay from './thu-chi/NhatKyNgay'
 import FormDoanhThu from './thu-chi/forms/FormDoanhThu'
 import FormChiPhi from './thu-chi/forms/FormChiPhi'
 import FormChuyenKhoan from './thu-chi/forms/FormChuyenKhoan'
@@ -26,6 +27,7 @@ const PATH_TO_TAB = {
   '/SoThuChi/doi-soat': 'doi-soat',
   '/SoThuChi/chot-ngay': 'chot-ngay',
   '/SoThuChi/kiem-soat-chi': 'kiem-soat-chi',
+  '/SoThuChi/nhat-ky-ngay': 'nhat-ky-ngay',
   '/SoThuChi/bao-cao': 'bao-cao',
   '/SoThuChi/nhap-lieu': 'nhap-lieu',
   '/SoThuChi/cai-dat': 'cai-dat',
@@ -37,6 +39,7 @@ const TAB_TO_PATH = {
   'doi-soat': '/SoThuChi/doi-soat',
   'chot-ngay': '/SoThuChi/chot-ngay',
   'kiem-soat-chi': '/SoThuChi/kiem-soat-chi',
+  'nhat-ky-ngay': '/SoThuChi/nhat-ky-ngay',
   'bao-cao': '/SoThuChi/bao-cao',
   'nhap-lieu': '/SoThuChi/nhap-lieu',
   'cai-dat': '/SoThuChi/cai-dat',
@@ -99,7 +102,7 @@ export default function InternalApp() {
 
   // Lễ Tân bị giới hạn tab — admin xem được tất cả
   const isLeTan = user?.vai_tro === 'le_tan'
-  const leTanAllowed = ['danh-sach', 'doi-soat', 'chot-ngay', 'nhap-lieu', 'cai-dat', 'lich-hen']
+  const leTanAllowed = ['danh-sach', 'doi-soat', 'chot-ngay', 'nhap-lieu', 'cai-dat', 'lich-hen', 'nhat-ky-ngay']
   const effectiveTab = isLeTan && !leTanAllowed.includes(tab) ? 'doi-soat' : tab
 
   const handleOpenForm = (type) => {
@@ -165,6 +168,7 @@ export default function InternalApp() {
               {effectiveTab === 'tong-quan' && <TongQuanPage viList={viList} user={user} onOpenForm={handleOpenForm} isDesktop={isDesktop} onOpenPheDuyet={() => setPheDuyetOpen(true)} />}
               {effectiveTab === 'danh-sach' && <DanhSachThuChi user={user} />}
               {effectiveTab === 'kiem-soat-chi' && <KiemSoatChiPhi />}
+              {effectiveTab === 'nhat-ky-ngay' && <NhatKyNgay user={user} />}
               {effectiveTab === 'doi-soat'  && <DoiSoatPage user={user} onOpenForm={handleOpenForm} onSettings={() => setTabAndUrl('cai-dat')} refreshKey={refreshKey} />}
               {effectiveTab === 'chot-ngay' && <ChotNgayPage user={user} refreshKey={refreshKey} />}
               {effectiveTab === 'nhap-lieu' && <NhapLieuPage onOpenForm={handleOpenForm} isDesktop={isDesktop} user={user} />}

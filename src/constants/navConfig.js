@@ -16,6 +16,7 @@ export const ADMIN_NAV = [
     { id: 'chotngay', label: 'Chốt Ngày', path: '/SoThuChi/chot-ngay' },
     { id: 'nhap lieu', label: 'Nhập Thu Chi', path: '/SoThuChi/nhap-lieu' },
     { id: 'kiemsoatchi', label: 'Kiểm Soát Chi Phí', path: '/SoThuChi/kiem-soat-chi' },
+    { id: 'nhatkyngay', label: 'Nhật Ký Ngày', path: '/SoThuChi/nhat-ky-ngay' },
     { id: 'baocao', label: 'Báo Cáo', path: '/SoThuChi/bao-cao' },
     { id: 'settings', label: 'Cài Đặt', path: '/SoThuChi/cai-dat' },
   ]},
@@ -78,6 +79,7 @@ export const LETAN_NAV = [
     { id: 'doisoat',    label: 'Đối Soát Ngày',   path: '/SoThuChi/doi-soat' },
     { id: 'chotngay',   label: 'Chốt Ngày',        path: '/SoThuChi/chot-ngay' },
     { id: 'nhap lieu',  label: 'Nhập Thu Chi',     path: '/SoThuChi/nhap-lieu' },
+    { id: 'nhatkyngay', label: 'Nhật Ký Ngày',     path: '/SoThuChi/nhat-ky-ngay' },
     { id: 'settings',   label: 'Cài Đặt',          path: '/SoThuChi/cai-dat' },
   ]},
 

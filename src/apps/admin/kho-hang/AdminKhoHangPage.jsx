@@ -1472,12 +1472,28 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
     }
 
     // Xoá chi_phi tự động tạo khi nhập kho (nếu có)
-    if (gd.loai === 'nhap_kho' && sp) {
-      const { error: cpErr } = await supabase.from('chi_phi')
-        .delete()
-        .eq('ngay', gd.ngay)
-        .ilike('dien_giai', `Nhập kho: ${sp.ten}%`)
-      if (cpErr) console.error('Xoá chi_phi nhập kho thất bại:', cpErr)
+    if (gd.loai === 'nhap_kho') {
+      if (gd.lien_quan_id) {
+        // Phiếu nhập từ form Sổ Thu Chi mới (1 chi_phi có thể gồm nhiều dòng kho)
+        // → chỉ xoá chi_phi khi KHÔNG còn dòng kho nào khác link tới nó
+        const { count } = await supabase.from('kho_giao_dich')
+          .select('id', { count: 'exact', head: true })
+          .eq('lien_quan_id', gd.lien_quan_id)
+        if ((count || 0) === 0) {
+          const { error: cpErr } = await supabase.from('chi_phi').delete().eq('id', gd.lien_quan_id)
+          if (cpErr) console.error('Xoá chi_phi nhập kho thất bại:', cpErr)
+        } else {
+          showToast('⚠️ Đã xoá dòng kho. Phiếu chi gồm nhiều mặt hàng — sửa số tiền tại Sổ Thu Chi.')
+          onReload(); return
+        }
+      } else if (sp) {
+        // Phiếu nhập kiểu cũ — match theo diễn giải "Nhập kho: <tên SP>"
+        const { error: cpErr } = await supabase.from('chi_phi')
+          .delete()
+          .eq('ngay', gd.ngay)
+          .ilike('dien_giai', `Nhập kho: ${sp.ten}%`)
+        if (cpErr) console.error('Xoá chi_phi nhập kho thất bại:', cpErr)
+      }
     }
 
     showToast('🗑 Đã xóa giao dịch')
