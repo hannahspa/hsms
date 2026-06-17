@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { LUX } from '../../constants/lux'
 import { todayISO, getNowVN } from '../../lib/utils'
+import { notify } from '../../components/ui/notify'
 import { getPushState, enablePush } from '../../lib/push'
 import CheckinChamCong from './CheckinChamCong'
 import CheckinDangKyOff from './CheckinDangKyOff'
@@ -68,7 +69,7 @@ export default function CheckinHome({ nhanVien, onLogout }) {
   const handleEnablePush = async () => {
     setPushBusy(true)
     try { await enablePush(nhanVien.id); setPushState('granted-on') }
-    catch (e) { alert(e.message || 'Không bật được thông báo') }
+    catch (e) { notify(e.message || 'Không bật được thông báo', 'error') }
     finally { setPushBusy(false) }
   }
 

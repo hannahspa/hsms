@@ -5,6 +5,7 @@ import { formatCurrency, todayISO, getNowVN, addDays, fmtCompact } from '../../.
 import I from '../../../components/shared/Icons'
 import FormDoanhThu from '../thu-chi/forms/FormDoanhThu'
 import FormChiPhi from '../thu-chi/forms/FormChiPhi'
+import { notify } from '../../../components/ui/notify'
 
 const TABS = [
   { k: 'ngay', l: 'Hôm nay' },
@@ -109,7 +110,7 @@ export default function TongQuanPage({ onOpenForm }) {
       setDeletingTx(null)
       setRefreshKey(k => k + 1)
     } catch (err) {
-      alert('Lỗi xoá: ' + err.message)
+      notify('Lỗi xoá: ' + err.message, 'error')
     } finally {
       setDeleting(false)
     }

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { formatCurrency } from '../../lib/utils'
 import { HINH_THUC_THU } from '../../constants/enums'
+import { notify } from '../../components/ui/notify'
 
 function parseVND(s) { return parseInt(String(s).replace(/\D/g, ''), 10) || 0 }
 function fmtInput(n) { return n > 0 ? new Intl.NumberFormat('vi-VN').format(n) : '' }
@@ -39,16 +40,16 @@ export default function PosPaymentModal({ tongHang, selectedCustomer, onConfirm,
       .map(l => ({ hinhThuc: l.hinhThuc, soTien: l.soTien }))
 
     if (!selectedCustomer) {
-      alert('Vui long chon khach hang truoc khi chot don de CRM va doi soat du lieu duoc ghi nhan day du.')
+      notify('Vui lòng chọn khách hàng trước khi chốt đơn để CRM và đối soát dữ liệu được ghi nhận đầy đủ.', 'warn')
       return
     }
     if (payments.length === 0) {
-      alert('Vui lòng nhập ít nhất 1 khoản thanh toán và chọn hình thức')
+      notify('Vui lòng nhập ít nhất 1 khoản thanh toán và chọn hình thức', 'warn')
       return
     }
     // Nếu còn nợ mà không có KH → chặn
     if (conNo > 0 && !selectedCustomer) {
-      alert('Khách lẻ phải thanh toán đủ. Vui lòng chọn khách hàng để ghi nợ.')
+      notify('Khách lẻ phải thanh toán đủ. Vui lòng chọn khách hàng để ghi nợ.', 'warn')
       return
     }
     onConfirm({ giamGia, payments, ghiChu })

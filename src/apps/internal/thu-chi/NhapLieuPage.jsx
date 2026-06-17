@@ -9,6 +9,7 @@ import CashDepositPanel from './components/CashDepositPanel'
 import InternalTransferForm from './components/InternalTransferForm'
 import ExpenseEntryForm from './components/ExpenseEntryForm'
 import { thuChiService } from '../../../services/thuChiService'
+import { confirmDialog } from '../../../components/ui/notify'
 
 const HINH_THUC = [
   { id: 'tien_mat', label: 'Tiền Mặt', icon: '💵', color: '#3e5a32', bg: '#e8f1de' },
@@ -215,7 +216,7 @@ export default function NhapLieuPage({ user }) {
   }
 
   const handleDelete = async (item) => {
-    if (isAdmin) { if (!confirm('Xóa giao dịch này?')) return }
+    if (isAdmin) { if (!(await confirmDialog({ title: 'Xoá giao dịch', message: 'Xóa giao dịch này?', danger: true, confirmLabel: 'Xoá' }))) return }
     else if (!lyDo.trim()) return showMsg('Nhập lý do xóa!', 'error')
     try {
       if (isAdmin) {

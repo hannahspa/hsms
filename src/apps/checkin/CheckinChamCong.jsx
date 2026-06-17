@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { LUX } from '../../constants/lux'
 import { todayISO, getNowVN } from '../../lib/utils'
+import { notify } from '../../components/ui/notify'
 import './styles.css'
 
 const CA_VAO_CHUAN = { h: 9, m: 15 }
@@ -127,7 +128,7 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
         rows: [{ label: 'Ngày', value: suaItem.ngay.split('-').reverse().join('/') }, { label: 'Giờ ra', value: gioRa.slice(0, 5) }, { label: 'Ngày công', value: heSo.toFixed(2) }],
         note: 'Cảm ơn bạn đã bổ sung. Ngày công đã được cập nhật chính xác.' })
       setSuaItem(null); setGioRaInput(''); loadQuenCheckout(); onUpdated?.()
-    } catch (e) { alert('Lỗi: ' + e.message) }
+    } catch (e) { notify('Lỗi: ' + e.message, 'error') }
     finally { setSuaLoading(false) }
   }
 
@@ -137,14 +138,14 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
 
   const handleCheckin = async () => {
     if (!navigator.geolocation) {
-      alert('Thiết bị của bạn không hỗ trợ định vị GPS!')
+      notify('Thiết bị của bạn không hỗ trợ định vị GPS!', 'error')
       return
     }
     setLoading(true)
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const dist = getDistance(pos.coords.latitude, pos.coords.longitude, SPA_COORD.lat, SPA_COORD.lng)
       if (dist > MAX_DISTANCE_M) {
-        alert(`Vị trí của bạn đang cách Spa ${Math.round(dist)}m (tối đa ${MAX_DISTANCE_M}m).\n\nNếu bạn đang ở Spa, hãy:\n• Ra gần cửa sổ hoặc ra ngoài\n• Bật WiFi và kết nối mạng Spa\n• Thử lại sau 30 giây`)
+        notify(`Vị trí cách Spa ${Math.round(dist)}m (tối đa ${MAX_DISTANCE_M}m). Hãy ra gần cửa sổ/ngoài, bật WiFi mạng Spa rồi thử lại.`, 'warn')
         setLoading(false)
         return
       }
@@ -171,24 +172,24 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
           note: info.cap !== 'dung_gio' ? 'Bạn vào trễ so với quy định. Ngày công sẽ được tính khi check-out.' : 'Chúc bạn làm việc hiệu quả!',
         })
         onUpdated()
-      } catch (e) { alert('Lỗi: ' + e.message) }
+      } catch (e) { notify('Lỗi: ' + e.message, 'error') }
       finally { setLoading(false) }
     }, (err) => {
-      alert('Không thể lấy vị trí GPS: ' + err.message + '\nVui lòng bật Vị trí (Location) và cấp quyền cho trình duyệt.')
+      notify('Không thể lấy vị trí GPS: ' + err.message + '. Vui lòng bật Vị trí (Location) và cấp quyền cho trình duyệt.', 'error')
       setLoading(false)
     }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 })
   }
 
   const handleCheckoutRequest = () => {
     if (!navigator.geolocation) {
-      alert('Thiết bị của bạn không hỗ trợ định vị GPS!')
+      notify('Thiết bị của bạn không hỗ trợ định vị GPS!', 'error')
       return
     }
     setLoading(true)
     navigator.geolocation.getCurrentPosition((pos) => {
       const dist = getDistance(pos.coords.latitude, pos.coords.longitude, SPA_COORD.lat, SPA_COORD.lng)
       if (dist > MAX_DISTANCE_M) {
-        alert(`Vị trí của bạn đang cách Spa ${Math.round(dist)}m (tối đa ${MAX_DISTANCE_M}m).\n\nNếu bạn đang ở Spa, hãy:\n• Ra gần cửa sổ hoặc ra ngoài\n• Bật WiFi và kết nối mạng Spa\n• Thử lại sau 30 giây`)
+        notify(`Vị trí cách Spa ${Math.round(dist)}m (tối đa ${MAX_DISTANCE_M}m). Hãy ra gần cửa sổ/ngoài, bật WiFi mạng Spa rồi thử lại.`, 'warn')
         setLoading(false)
         return
       }
@@ -203,7 +204,7 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
       }
       confirmCheckout(gioRa, '')
     }, (err) => {
-      alert('Không thể lấy vị trí GPS: ' + err.message + '\nVui lòng bật Vị trí (Location) và cấp quyền cho trình duyệt.')
+      notify('Không thể lấy vị trí GPS: ' + err.message + '. Vui lòng bật Vị trí (Location) và cấp quyền cho trình duyệt.', 'error')
       setLoading(false)
     }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 })
   }
@@ -257,7 +258,7 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
           : `Ngày công ${Math.round(heSo * 100)}% — vui lòng liên hệ quản lý nếu cần.`,
       })
       onUpdated()
-    } catch (e) { alert('Lỗi: ' + e.message) }
+    } catch (e) { notify('Lỗi: ' + e.message, 'error') }
     finally { setLoading(false) }
   }
 
@@ -315,7 +316,7 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
                 Hủy
               </button>
               <button onClick={() => {
-                if (!lyDoVeSom.trim()) { alert('Vui lòng nhập lý do!'); return }
+                if (!lyDoVeSom.trim()) { notify('Vui lòng nhập lý do!', 'warn'); return }
                 confirmCheckout(pendingRa, lyDoVeSom)
               }} disabled={loading}
                 style={{ flex: 1, padding: 14, borderRadius: 14, background: `linear-gradient(135deg, ${LUX.champagne}, ${LUX.taupe})`, color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.7 : 1 }}>

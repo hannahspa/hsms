@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { LUX } from '../../../constants/lux'
 import { formatCurrency, todayISO } from '../../../lib/utils'
+import { notify, confirmDialog } from '../../../components/ui/notify'
 
 export default function NopTienMat({ ngay, user, onDone }) {
   ngay = ngay || todayISO()
@@ -73,7 +74,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
       setSoDuTienMat(yesterdayBalance + dtToday - cpToday)
       setDone(todayDeposited > 0)
       if (cpNullToday > 0 && !todayDeposited) {
-        alert('Cảnh báo: Có ' + cpNullToday.toLocaleString('vi-VN') + 'đ chi phí chưa phân loại nguồn tiền. Vui lòng vào Chi Phí để sửa lại.')
+        notify('Có ' + cpNullToday.toLocaleString('vi-VN') + 'đ chi phí chưa phân loại nguồn tiền. Vui lòng vào Chi Phí để sửa lại.', 'warn')
       }
     } catch (e) {
       console.error('NopTienMat load error:', e)
@@ -86,8 +87,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
 
   const handleSubmit = async () => {
     if (soDuTienMat <= 0) return
-    const confirmMsg = `Xác nhận nộp ${formatCurrency(soDuTienMat)} vào MB Bank?`
-    if (!window.confirm(confirmMsg)) return
+    if (!(await confirmDialog({ title: 'Nộp tiền mặt', message: `Xác nhận nộp ${formatCurrency(soDuTienMat)} vào MB Bank?` }))) return
 
     setSubmitting(true)
     try {
@@ -104,7 +104,7 @@ export default function NopTienMat({ ngay, user, onDone }) {
       setDone(true)
       onDone?.()
     } catch (e) {
-      alert('Lỗi: ' + e.message)
+      notify('Lỗi: ' + e.message, 'error')
     } finally {
       setSubmitting(false)
     }

@@ -5,6 +5,7 @@ import { posService } from '../../../services/posService'
 import { todayISO, getNowVN } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
 import { C, fmtDate, dayOfWeek, shortName, GIO_LIST_15, normalizePhone, dedupeHints, removeAccent } from './lichHenShared'
+import { notify } from '../../../components/ui/notify'
 
 const safeSearchTerm = (value) => String(value || '')
   .replace(/[,%()]/g, ' ')
@@ -161,11 +162,11 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
   }
 
   const handleSave = async () => {
-    if (!form.ten_khach.trim()) return alert('Vui lòng nhập tên khách')
+    if (!form.ten_khach.trim()) return notify('Vui lòng nhập tên khách', 'error')
     // Bắt buộc ít nhất 1 dịch vụ (tránh để trống)
     const coDichVu = (form.ten_dich_vu || '').trim() || form.dich_vu_id || form.the_lieu_trinh_id
       || dvThem.some(r => r.dich_vu_id || (r.ten_dich_vu || '').trim())
-    if (!chuaChonDV && !coDichVu) return alert('⚠️ Vui lòng chọn ít nhất 1 DỊCH VỤ — hoặc tích "Khách chọn dịch vụ sau"')
+    if (!chuaChonDV && !coDichVu) return notify('Vui lòng chọn ít nhất 1 DỊCH VỤ — hoặc tích "Khách chọn dịch vụ sau"', 'warn')
     setSaving(true)
     try {
       const dvThemSaved = dvThem.filter(r => r.dich_vu_id || (r.ten_dich_vu || '').trim())
@@ -197,12 +198,12 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
         }).catch(() => {})
       }
       onSave()
-    } catch (e) { alert('Lỗi lưu lịch hẹn: ' + e.message) } finally { setSaving(false) }
+    } catch (e) { notify('Lỗi lưu lịch hẹn: ' + e.message, 'error') } finally { setSaving(false) }
   }
 
   const handleCreatePosOrder = async () => {
     if (!initial?.id) return
-    if (!form.ten_khach.trim()) return alert('Vui lòng nhập tên khách trước khi tạo đơn POS')
+    if (!form.ten_khach.trim()) return notify('Vui lòng nhập tên khách trước khi tạo đơn POS', 'error')
     setCreatingOrder(true)
     try {
       const result = await posService.createDraftOrderFromAppointment(
@@ -211,7 +212,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
       )
       window.location.href = `/pos?resume=${result.orderId}`
     } catch (e) {
-      alert('Lỗi tạo đơn POS từ lịch hẹn: ' + e.message)
+      notify('Lỗi tạo đơn POS từ lịch hẹn: ' + e.message, 'error')
     } finally {
       setCreatingOrder(false)
     }

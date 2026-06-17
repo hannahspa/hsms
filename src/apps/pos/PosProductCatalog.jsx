@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { posService } from '../../services/posService'
 import { formatCurrency, todayISO } from '../../lib/utils'
+import { notify } from '../../components/ui/notify'
 import { addDurationISO } from '../../lib/dateMath'
 import { calcServiceCommission, getCommissionPercent, getMyspaCommissionRule, serviceSalePrice } from '../../lib/serviceCommission'
 import { getCardComboService, getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
@@ -161,7 +162,7 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
 
   const handleAddCombo = (combo) => {
     if (!selectedCustomer?.id) {
-      alert('Vui lòng chọn khách hàng trước khi bán combo liệu trình')
+      notify('Vui lòng chọn khách hàng trước khi bán combo liệu trình', 'warn')
       return
     }
     const primary = combo.dich_vu?.[0] || {}

@@ -6,6 +6,7 @@ import I from '../../../components/shared/Icons'
 import Modal from '../../../components/ui/Modal'
 import Button from '../../../components/ui/Button'
 import { Field, Input, Select } from '../../../components/ui/Field'
+import { notify, confirmDialog } from '../../../components/ui/notify'
 
 // ── Meta hình thức / loại ──────────────────────────────
 const methodMeta = {
@@ -148,12 +149,12 @@ export default function DanhSachThuChi({ user }) {
   const handleDelete = async (row) => {
     if (!isAdmin) return
     if (row.loai === 'thu' && row.nguon === 'pos') {
-      alert('Đây là doanh thu tự động từ POS (đơn hàng). Không nên xóa trực tiếp — hãy hủy đơn hàng tương ứng trong POS.')
+      notify('Đây là doanh thu tự động từ POS (đơn hàng). Không nên xóa trực tiếp — hãy hủy đơn hàng tương ứng trong POS.', 'warn')
       return
     }
-    if (!window.confirm(`Xóa giao dịch "${row.dien_giai}" (${formatCurrency(row.so_tien)})?\nThao tác KHÔNG thể hoàn tác.`)) return
+    if (!(await confirmDialog({ title: 'Xoá giao dịch', message: `Xóa "${row.dien_giai}" (${formatCurrency(row.so_tien)})?`, note: 'Thao tác KHÔNG thể hoàn tác.', danger: true, confirmLabel: 'Xoá' }))) return
     const { error } = await supabase.from(row._table).delete().eq('id', row.id)
-    if (error) { alert('Lỗi xóa: ' + error.message); return }
+    if (error) { notify('Lỗi xóa: ' + error.message, 'error'); return }
     setRefresh(k => k + 1)
   }
 
@@ -323,14 +324,14 @@ function EditModal({ row, danhMucList, viMap, onClose, onSaved }) {
 
   const handleSave = async () => {
     const tien = parseVND(soTien)
-    if (tien <= 0) { alert('Số tiền phải lớn hơn 0'); return }
+    if (tien <= 0) { notify('Số tiền phải lớn hơn 0', 'error'); return }
     setSaving(true)
     const payload = { so_tien: tien, dien_giai: dienGiai, ngay }
     if (isThu) payload.hinh_thuc = hinhThuc
     if (isChi) { payload.hinh_thuc_thanh_toan = hinhThuc; if (danhMucId) payload.danh_muc_id = danhMucId }
     const { error } = await supabase.from(row._table).update(payload).eq('id', row.id)
     setSaving(false)
-    if (error) { alert('Lỗi lưu: ' + error.message); return }
+    if (error) { notify('Lỗi lưu: ' + error.message, 'error'); return }
     onSaved()
   }
 

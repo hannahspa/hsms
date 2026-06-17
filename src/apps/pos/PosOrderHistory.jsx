@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { posService } from '../../services/posService'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, todayISO } from '../../lib/utils'
+import { notify, confirmDialog } from '../../components/ui/notify'
 import DatePicker from '../../components/shared/DatePicker'
 import I from '../../components/shared/Icons'
 import { useAuth } from '../../context/AuthContext'
@@ -62,7 +63,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
         thuNgan: o.nguoi_tao_ten || '',
       })
     } catch (err) {
-      alert('Lỗi khi in hóa đơn: ' + (err?.message || err))
+      notify('Lỗi khi in hóa đơn: ' + (err?.message || err), 'error')
     } finally {
       setPrintingId(null)
     }
@@ -185,15 +186,15 @@ export default function PosOrderHistory({ onResumeOrder }) {
     if (!detailOrder) return
     // Chỉ Admin được hủy/sửa/xóa đơn. Lễ Tân không có quyền (tránh mất dữ liệu).
     if (!isAdmin) {
-      alert('Chỉ Admin được hủy đơn hàng.\nVui lòng liên hệ Admin để xử lý.')
+      notify('Chỉ Admin được hủy đơn hàng. Vui lòng liên hệ Admin để xử lý.', 'warn')
       return
     }
-    if (!confirm(`Hủy đơn ${detailOrder.ma_don}?`)) return
+    if (!(await confirmDialog({ title: 'Huỷ đơn', message: `Hủy đơn ${detailOrder.ma_don}?`, danger: true, confirmLabel: 'Huỷ đơn' }))) return
     try {
       await posService.voidOrder(detailOrder.id)
       setDetailOrder(null)
       load(currentPage)
-    } catch (err) { alert('Lỗi: ' + err.message) }
+    } catch (err) { notify('Lỗi: ' + err.message, 'error') }
   }
 
   const filteredOrders = orders.filter(o => {

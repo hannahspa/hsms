@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../context/AuthContext'
 import { COLORS } from '../../../constants/colors'
+import { confirmDialog } from '../../../components/ui/notify'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const DON_VI_LIST = ['cái', 'chai', 'lọ', 'hộp', 'gói', 'thùng', 'túi', 'cuộn',
@@ -1458,7 +1459,7 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
     if (['chiet_ra', 'chiet_vao'].includes(gd.loai)) {
       return showToast('⚠️ Dùng tab Chiết Rót để xóa cặp chiết rót.')
     }
-    if (!window.confirm(`Xóa giao dịch này?\nTồn kho sẽ được hoàn lại.`)) return
+    if (!(await confirmDialog({ title: 'Xoá giao dịch', message: 'Xóa giao dịch này?', note: 'Tồn kho sẽ được hoàn lại.', danger: true, confirmLabel: 'Xoá' }))) return
 
     const loaiGD = LOAI_GD[gd.loai]
     const tonHoanLai = Number(sp?.ton_kho || 0) - loaiGD.sign * gd.so_luong
@@ -1680,7 +1681,7 @@ function TabChietRot({ products, transactions, userId, onReload, showToast }) {
   }
 
   const handleDeletePair = async (gd) => {
-    if (!window.confirm('Xóa cặp chiết rót này? Tồn kho cả 2 sản phẩm sẽ được hoàn lại.')) return
+    if (!(await confirmDialog({ title: 'Xoá cặp chiết rót', message: 'Xóa cặp chiết rót này? Tồn kho cả 2 sản phẩm sẽ được hoàn lại.', danger: true, confirmLabel: 'Xoá' }))) return
 
     // Query trực tiếp Supabase thay vì tìm trong mảng transactions đã limit 500
     const { data: linkedData } = await supabase

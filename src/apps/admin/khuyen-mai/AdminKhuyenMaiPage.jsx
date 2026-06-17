@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { COLORS } from '../../../constants/colors'
+import { confirmDialog } from '../../../components/ui/notify'
 import ROITab from './ROITab'
 
 const STATUS_LABEL = { active: 'Đang chạy', draft: 'Nháp', expired: 'Hết hạn' }
@@ -490,7 +491,7 @@ export default function AdminKhuyenMaiPage() {
   const handleSave   = ()   => { setShowForm(false); load(); showToast('✅ Lưu thành công!') }
 
   const handleDelete = async (km) => {
-    if (!window.confirm(`Xóa khuyến mãi "${km.ten}"?`)) return
+    if (!(await confirmDialog({ title: 'Xoá khuyến mãi', message: `Xóa khuyến mãi "${km.ten}"?`, danger: true, confirmLabel: 'Xoá' }))) return
     const { error } = await supabase.from('khuyen_mai').delete().eq('id', km.id)
     if (error) return showToast('❌ Lỗi: ' + error.message)
     showToast('🗑 Đã xóa!')

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { posService } from '../../services/posService'
 import { formatCurrency } from '../../lib/utils'
+import { notify, confirmDialog } from '../../components/ui/notify'
 import { printReceipt } from '../../lib/printReceipt'
 import DatePicker from '../../components/shared/DatePicker'
 import {
@@ -34,31 +35,31 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
   // Việc hoàn thẻ/kho/doanh thu + ghi lại CHỈ chạy khi admin bấm "Cập Nhật Đơn".
   // → Thoát giữa chừng = đơn gốc nguyên trạng; không còn chồng chéo / nhân đôi.
   const handleReopen = async () => {
-    if (!window.confirm('Mở đơn này để sửa?\nĐơn gốc được GIỮ NGUYÊN cho tới khi bấm "Cập Nhật Đơn". Nếu thoát mà chưa cập nhật, đơn không thay đổi.')) return
+    if (!(await confirmDialog({ title: 'Mở đơn để sửa', message: 'Mở đơn này để sửa?', note: 'Đơn gốc được GIỮ NGUYÊN cho tới khi bấm "Cập Nhật Đơn". Thoát mà chưa cập nhật thì đơn không thay đổi.', confirmLabel: 'Mở sửa' }))) return
     onClose()
     onEdit?.(order)   // → /pos?resume=order.id&mode=edit (sửa local, an toàn)
   }
 
   // Admin: xóa vĩnh viễn đơn đã hủy
   const handleHardDelete = async () => {
-    if (!window.confirm('Xóa VĨNH VIỄN đơn đã hủy này?\nThao tác KHÔNG thể hoàn tác.')) return
+    if (!(await confirmDialog({ title: 'Xoá vĩnh viễn đơn', message: 'Xóa VĨNH VIỄN đơn đã hủy này?', note: 'Thao tác KHÔNG thể hoàn tác.', danger: true, confirmLabel: 'Xoá vĩnh viễn' }))) return
     setBusy(true)
     try {
       await posService.hardDeleteOrder(order.id)
       onClose()
       onDeleted?.()
-    } catch (e) { alert('Lỗi xóa đơn: ' + e.message); setBusy(false) }
+    } catch (e) { notify('Lỗi xóa đơn: ' + e.message, 'error'); setBusy(false) }
   }
 
   // Admin: khôi phục đơn đã hủy (dựng lại thẻ/kho/doanh thu)
   const handleRestore = async () => {
-    if (!window.confirm('Khôi phục đơn này?\nThẻ liệu trình, kho, doanh thu, hoa hồng của đơn sẽ được dựng lại như lúc chốt.')) return
+    if (!(await confirmDialog({ title: 'Khôi phục đơn', message: 'Khôi phục đơn này?', note: 'Thẻ liệu trình, kho, doanh thu, hoa hồng của đơn sẽ được dựng lại như lúc chốt.', confirmLabel: 'Khôi phục' }))) return
     setBusy(true)
     try {
       await posService.restoreOrder(order.id)
       onClose()
       onDeleted?.()   // reload danh sách
-    } catch (e) { alert('Lỗi khôi phục đơn: ' + e.message); setBusy(false) }
+    } catch (e) { notify('Lỗi khôi phục đơn: ' + e.message, 'error'); setBusy(false) }
   }
 
   const handleSaveDateTime = async () => {
@@ -72,7 +73,7 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
       order.created_at = createdAtISO
       setEditingDT(false)
       onDeleted?.()   // làm mới danh sách để hiện ngày mới
-    } catch (e) { alert('Lỗi đổi ngày giờ: ' + e.message) }
+    } catch (e) { notify('Lỗi đổi ngày giờ: ' + e.message, 'error') }
     finally { setSavingDT(false) }
   }
 
@@ -97,7 +98,7 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
       await posService.updatePaymentMethod(payment.id, newHinhThuc)
       await reloadDetail()
     } catch (e) {
-      alert('Lỗi đổi hình thức thanh toán: ' + e.message)
+      notify('Lỗi đổi hình thức thanh toán: ' + e.message, 'error')
     } finally {
       setSavingPttt(null)
     }

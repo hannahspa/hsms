@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase'
 import { formatCurrency } from '../../../lib/utils'
 import { getMyspaCommissionRule } from '../../../lib/serviceCommission'
 import I from '../../../components/shared/Icons'
+import { notify } from '../../../components/ui/notify'
 
 const PAGE_SIZE = 20
 
@@ -279,7 +280,7 @@ export default function AdminDichVuPage() {
       setNewName('')
       await loadServices()
     } else {
-      alert(error.message)
+      notify(error.message, 'error')
     }
   }
 
@@ -297,7 +298,7 @@ export default function AdminDichVuPage() {
       .update({ hien_tren_menu: !row.isVisible })
       .eq('danh_muc', row.name)
     if (!error) await loadServices()
-    else alert(error.message)
+    else notify(error.message, 'error')
   }
 
   const tourLabel = (service) => {

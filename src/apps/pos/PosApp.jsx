@@ -6,6 +6,7 @@ import { formatCurrency, getNowVN, todayISO } from '../../lib/utils'
 import { calcCommissionRates } from '../../lib/serviceCommission'
 import { getCardComboService, getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
 import { useAuth } from '../../context/AuthContext'
+import { confirmDialog } from '../../components/ui/notify'
 import I from '../../components/shared/Icons'
 import PosOrderHistory from './PosOrderHistory'
 import PosProductCatalog from './PosProductCatalog'
@@ -554,14 +555,14 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   const handleVoidOrder = async () => {
     // Đang SỬA đơn: thoát KHÔNG đụng đơn gốc (chỉ rời chế độ sửa)
     if (editOrderId && !savedOrderId) {
-      if (!confirm('Thoát sửa đơn? Đơn gốc giữ nguyên, thay đổi chưa lưu sẽ bỏ qua.')) return
+      if (!(await confirmDialog({ title: 'Thoát sửa đơn', message: 'Thoát sửa đơn? Đơn gốc giữ nguyên, thay đổi chưa lưu sẽ bỏ qua.', confirmLabel: 'Thoát' }))) return
       setEditOrderId(null)
       resetCreateForm()
       window.location.href = '/pos/danh-sach'
       return
     }
     if (lineItems.length === 0 && !savedOrderId) return
-    if (!confirm('Hủy đơn hiện tại?')) return
+    if (!(await confirmDialog({ title: 'Huỷ đơn', message: 'Hủy đơn hiện tại?', danger: true, confirmLabel: 'Huỷ đơn' }))) return
     if (savedOrderId) {
       try { await posService.voidOrder(savedOrderId) } catch (_) {}
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
+import { notify } from '../../../../components/ui/notify'
 
 export default function QuanLyDanhMuc({ onClose }) {
   const [danhMuc, setDanhMuc] = useState([])
@@ -28,7 +29,7 @@ export default function QuanLyDanhMuc({ onClose }) {
 
   // 2. XỬ LÝ LƯU (THÊM HOẶC SỬA)
   const handleSave = async () => {
-    if (!formData.ten) return alert('Vui lòng nhập tên hạng mục!');
+    if (!formData.ten) return notify('Vui lòng nhập tên hạng mục!', 'error');
     setSaving(true)
     try {
       if (formData.id) {
@@ -44,7 +45,7 @@ export default function QuanLyDanhMuc({ onClose }) {
       }
       await loadData(); // Tải lại dữ liệu mới nhất
       setEditItem(null); // Đóng form
-    } catch (err) { alert('Lỗi: ' + err.message) }
+    } catch (err) { notify('Lỗi: ' + err.message, 'error') }
     finally { setSaving(false) }
   }
 

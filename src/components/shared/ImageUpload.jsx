@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { LUX } from '../../constants/lux'
+import { notify } from '../ui/notify'
 
 export default function ImageUpload({ onUploaded, onRemove }) {
   const [preview, setPreview] = useState(null)
@@ -45,7 +46,7 @@ export default function ImageUpload({ onUploaded, onRemove }) {
     } catch (err) {
       console.error('Upload failed:', err)
       setPreview(null)
-      alert('Không thể upload chứng từ. Kiểm tra kết nối hoặc bucket chưa được tạo.')
+      notify('Không thể upload chứng từ. Kiểm tra kết nối hoặc bucket chưa được tạo.', 'error')
     } finally {
       setUploading(false)
     }

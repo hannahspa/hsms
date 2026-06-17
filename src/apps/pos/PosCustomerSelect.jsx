@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { posService } from '../../services/posService'
 import { LUX } from '../../constants/lux'
 import { COLORS } from '../../constants/colors'
+import { notify } from '../../components/ui/notify'
 
 const S = {
   container: {
@@ -102,7 +103,7 @@ export default function PosCustomerSelect({ selected, onChange }) {
 
   const handleQuickAdd = async () => {
     if (!newName.trim() || !newPhone.trim()) {
-      alert('Vui lòng nhập tên và số điện thoại')
+      notify('Vui lòng nhập tên và số điện thoại', 'warn')
       return
     }
     try {
@@ -115,7 +116,7 @@ export default function PosCustomerSelect({ selected, onChange }) {
       setNewName('')
       setNewPhone('')
     } catch (err) {
-      alert('Lỗi tạo KH: ' + err.message)
+      notify('Lỗi tạo KH: ' + err.message, 'error')
     }
   }
 

@@ -10,6 +10,7 @@ import {
   Avatar, navBtn, miniBtn,
 } from './lichHenShared'
 import ModalDatHen from './ModalDatHen'
+import { confirmDialog } from '../../../components/ui/notify'
 import { WeekView, MonthView } from './LichHenViews'
 
 // ══════════════════════════════════════════════════════════
@@ -500,7 +501,7 @@ export default function LichHenPage({ user }) {
                       <div style={{ display: 'flex', gap: 3, marginTop: 'auto', flexWrap: 'wrap' }}>
                         <button onClick={e => { e.stopPropagation(); handleCreateOrder(h) }} disabled={busy} style={{ ...miniBtn('#2D7A4F'), opacity: busy ? 0.6 : 1 }}>{busy ? '...' : '✓ Khách đến'}</button>
                         <button onClick={e => { e.stopPropagation(); setModal(h) }} style={miniBtn('#8a6a35')}>Đổi lịch</button>
-                        <button onClick={e => { e.stopPropagation(); if (confirm('Khách huỷ lịch hẹn này?')) handleStatus(h.id, 'huy') }} style={miniBtn('#d8654f')}>Huỷ</button>
+                        <button onClick={async e => { e.stopPropagation(); if (await confirmDialog({ title: 'Huỷ lịch hẹn', message: 'Khách huỷ lịch hẹn này?', danger: true, confirmLabel: 'Huỷ lịch' })) handleStatus(h.id, 'huy') }} style={miniBtn('#d8654f')}>Huỷ</button>
                       </div>
                     )}
                   </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { posService } from '../../../services/posService'
 import { formatCurrency } from '../../../lib/utils'
 import { getCardComboService } from '../../../lib/treatmentCardPolicy'
+import { notify } from '../../../components/ui/notify'
 import { C } from '../../../constants/colors'
 import { fmtInput, NvAvatar, parseVND, shortName } from '../posShared'
 
@@ -77,7 +78,7 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose }) {
 
   const handleSave = async () => {
     if (restrictWarrantyStaff && selectedKtv?.id && !allowedStaffIds.includes(selectedKtv.id)) {
-      alert('Gói bảo hành này chỉ được chọn nhân viên đã nhận tiền tour trong 10 buổi đầu.')
+      notify('Gói bảo hành này chỉ được chọn nhân viên đã nhận tiền tour trong 10 buổi đầu.', 'warn')
       return
     }
     setSaving(true)
