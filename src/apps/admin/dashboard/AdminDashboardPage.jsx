@@ -358,19 +358,53 @@ function WalletCards({ viList }) {
 }
 
 // ════════════════ ALERTS ════════════════
-function AlertsCard({ kpiData, khoAlerts }) {
+function AlertsCard({ kpiData, khoAlerts, pending, chartData }) {
   const alerts = []
 
-  // Chi vượt thu
+  // ── CẦN ANH DUYỆT (việc tồn đọng — điều hành từ xa) ──
+  const choDuyet = (pending?.yccs || 0) + (pending?.off || 0) + (pending?.tangCa || 0)
+  if (choDuyet > 0) {
+    const parts = []
+    if (pending.yccs) parts.push(`${pending.yccs} yêu cầu sửa/xoá`)
+    if (pending.off) parts.push(`${pending.off} đơn OFF`)
+    if (pending.tangCa) parts.push(`${pending.tangCa} tăng ca`)
+    alerts.push({ type: 'warn', icon: I.Bell, msg: <><b>{choDuyet} việc chờ anh duyệt</b> — {parts.join(' · ')}</>, time: 'Duyệt', href: '/admin/nhan-su/xet-duyet' })
+  }
+
+  // ── Chi vượt thu ──
   if (kpiData?.chiPhi?.value > kpiData?.doanhThu?.value && kpiData?.doanhThu?.value > 0) {
     alerts.push({ type: 'danger', icon: I.TrendDown, msg: <><b>Chi phí vượt doanh thu</b> — Chi ({formatCurrency(kpiData.chiPhi.value)}) &gt; Thu ({formatCurrency(kpiData.doanhThu.value)})</>, time: 'Hôm nay' })
   }
 
-  // Kho sắp hết
+  // ── Hôm qua chưa chốt sổ ──
+  if (pending?.chuaChotHomQua) {
+    alerts.push({ type: 'danger', icon: I.Receipt, msg: <><b>Hôm qua chưa chốt sổ</b> — Lễ tân chưa đối soát &amp; chốt ngày hôm qua</>, time: 'Sổ', href: '/SoThuChi/chot-ngay' })
+  }
+
+  // ── Doanh thu hôm nay thấp bất thường (đã qua trưa, < 40% TB 6 ngày trước) ──
+  if (chartData && chartData.length >= 4) {
+    const prev = chartData.slice(0, -1).map(d => d.value).filter(v => v > 0)
+    const tb = prev.length ? prev.reduce((s, v) => s + v, 0) / prev.length : 0
+    const today = kpiData?.doanhThu?.value || 0
+    const hour = getNowVN().getHours()
+    if (tb > 0 && hour >= 14 && today < tb * 0.4) {
+      alerts.push({ type: 'warn', icon: I.TrendDown, msg: <><b>Doanh thu hôm nay thấp</b> — {fmtCompact(today)} (TB 6 ngày {fmtCompact(Math.round(tb))})</>, time: 'DT' })
+    }
+  }
+
+  // ── Chi phí chưa phân loại nguồn tiền ──
+  if (pending?.chiChuaPhanLoai > 0) {
+    alerts.push({ type: 'warn', icon: I.Receipt, msg: <><b>Chi phí chưa rõ nguồn tiền</b> — {formatCurrency(pending.chiChuaPhanLoai)} cần phân loại</>, time: 'Chi', href: '/SoThuChi/danh-sach' })
+  }
+
+  // ── Kho sắp hết ──
   if (khoAlerts?.length > 0) {
     khoAlerts.slice(0, 2).forEach(k => {
-      alerts.push({ type: 'warn', icon: I.Box, msg: <><b>{k.ten}</b> — tồn {k.ton_kho} (định mức {k.canh_bao_ton})</>, time: 'Kho' })
+      alerts.push({ type: 'warn', icon: I.Box, msg: <><b>{k.ten}</b> — tồn {k.ton_kho} (định mức {k.canh_bao_ton})</>, time: 'Kho', href: '/admin/kho-hang' })
     })
+    if (khoAlerts.length > 2) {
+      alerts.push({ type: 'warn', icon: I.Box, msg: <>+{khoAlerts.length - 2} sản phẩm khác sắp hết hàng</>, time: 'Kho', href: '/admin/kho-hang' })
+    }
   }
 
   if (alerts.length === 0) {
@@ -385,17 +419,19 @@ function AlertsCard({ kpiData, khoAlerts }) {
           <h3>Cảnh Báo</h3>
           <span className="sub">{alerts.length} mục</span>
         </div>
-        <button className="chip">Tất cả</button>
       </div>
       <div className="card-b">
         <div className="alerts">
           {alerts.map((a, i) => {
             const Icon = a.icon
             return (
-              <div className={`alert ${a.type}`} key={i}>
+              <div className={`alert ${a.type}`} key={i}
+                onClick={a.href ? () => { window.location.href = a.href } : undefined}
+                style={a.href ? { cursor: 'pointer' } : undefined}
+                title={a.href ? 'Bấm để xử lý' : undefined}>
                 <div className="ai"><Icon style={{ width: 15, height: 15 }} /></div>
                 <div style={{ flex: 1 }}>{a.msg}</div>
-                <span className="alert-time">{a.time}</span>
+                <span className="alert-time">{a.href ? '→' : a.time}</span>
               </div>
             )
           })}
@@ -417,6 +453,7 @@ export default function AdminDashboardPage() {
   const [viList, setViList] = useState([])
   const [staffCheckins, setStaffCheckins] = useState([])
   const [khoAlerts, setKhoAlerts] = useState([])
+  const [pending, setPending] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { loadDashboard() }, [])
@@ -427,17 +464,20 @@ export default function AdminDashboardPage() {
     const yesterday = addDays(today, -1)
 
     try {
-      const [rDT, rDTYest, rCP, rCPYest, rDH, rCC, rNV, rVi, rRecent, rKho] = await Promise.all([
+      const [rDT, rDTYest, rCP, rCPYest, rDH, rCC, rNV, rVi, rRecent, rKho, rChot, rYCCS, rOff] = await Promise.all([
         supabase.from('doanh_thu').select('so_tien, hinh_thuc').eq('ngay', today),
         supabase.from('doanh_thu').select('so_tien').eq('ngay', yesterday),
-        supabase.from('chi_phi').select('so_tien').eq('ngay', today),
+        supabase.from('chi_phi').select('so_tien, hinh_thuc_thanh_toan').eq('ngay', today),
         supabase.from('chi_phi').select('so_tien').eq('ngay', yesterday),
         supabase.from('don_hang').select('id').eq('ngay', today),
-        supabase.from('cham_cong').select('nhan_vien_id, gio_vao, gio_ra').eq('ngay', today),
+        supabase.from('cham_cong').select('nhan_vien_id, gio_vao, gio_ra, trang_thai_tang_ca').eq('ngay', today),
         supabase.from('nhan_vien').select('id, ho_ten, vi_tri').eq('trang_thai', 'dang_lam').order('ho_ten'),
         supabase.from('so_du_vi_thuc_te').select('*').order('thu_tu'),
         supabase.from('lich_su_giao_dich_tong_hop').select('*').order('created_at', { ascending: false }).limit(5),
         supabase.from('kho_san_pham').select('id, ten, ton_kho, canh_bao_ton').eq('is_active', true).order('ton_kho', { ascending: true }).limit(20),
+        supabase.from('so_thu_chi_chot_ngay').select('trang_thai').eq('ngay', yesterday).maybeSingle(),
+        supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact', head: true }).eq('trang_thai', 'cho_duyet'),
+        supabase.from('dang_ky_off').select('id', { count: 'exact', head: true }).eq('trang_thai', 'cho_duyet'),
       ])
 
       const doanhThuHomNay = (rDT.data || [])
@@ -487,6 +527,19 @@ export default function AdminDashboardPage() {
       setViList(rVi.data || [])
       setStaffCheckins(staffWithCC)
       setKhoAlerts((rKho.data || []).filter(k => k.ton_kho <= (k.canh_bao_ton || 0)))
+
+      // ── Dữ liệu cảnh báo điều hành từ xa ──
+      const chiChuaPhanLoai = (rCP.data || []).filter(r => !r.hinh_thuc_thanh_toan).reduce((s, r) => s + (r.so_tien || 0), 0)
+      const tangCaChoDuyet = (rCC.data || []).filter(c => c.trang_thai_tang_ca === 'cho_duyet').length
+      const chuaChotHomQua = !rChot?.data || !['submitted', 'approved'].includes(rChot.data.trang_thai)
+      setPending({
+        yccs: rYCCS.count || 0,
+        off: rOff.count || 0,
+        tangCa: tangCaChoDuyet,
+        chiChuaPhanLoai,
+        chuaChotHomQua,
+        khoCanCount: (rKho.data || []).filter(k => k.ton_kho <= (k.canh_bao_ton || 0)).length,
+      })
     } catch (err) {
       console.error('Lỗi tải dashboard:', err)
     } finally {
@@ -521,7 +574,7 @@ export default function AdminDashboardPage() {
 
       <div className="grid-2">
         <StaffToday staffCheckins={staffCheckins} />
-        <AlertsCard kpiData={kpiData} khoAlerts={khoAlerts} />
+        <AlertsCard kpiData={kpiData} khoAlerts={khoAlerts} pending={pending} chartData={chartData} />
       </div>
     </>
   )
