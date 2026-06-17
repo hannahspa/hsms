@@ -81,9 +81,15 @@ export default function NhapLieuPage({ user }) {
       setNhomList(all.filter(d => !d.parent_id))
       setHangMucList(all.filter(d => d.parent_id))
     })
-    supabase.from('kho_san_pham').select('id, ten, don_vi, ton_kho, gia_nhap, loai, ton_dinh_muc').eq('is_active', true).order('ten')
-      .then(r => setProducts(r.data || []))
+    loadProducts()
   }, [])
+  const KHO_SELECT = 'id, ten, don_vi, ton_kho, gia_nhap, loai, ton_dinh_muc, don_vi_nhap, quy_doi, gia_ban, danh_muc, canh_bao_ton'
+  const loadProducts = async () => {
+    // Bản DB cũ có thể thiếu cột mở rộng (don_vi_nhap/quy_doi…) → fallback select gọn
+    let r = await supabase.from('kho_san_pham').select(KHO_SELECT).eq('is_active', true).order('ten')
+    if (r.error) r = await supabase.from('kho_san_pham').select('id, ten, don_vi, ton_kho, gia_nhap, loai, ton_dinh_muc').eq('is_active', true).order('ten')
+    setProducts(r.data || [])
+  }
   useEffect(() => { loadTodayTx() }, [ngay])
   useEffect(() => { if (tab === 'noptm') loadNopTm() }, [tab, ngay])
   // Lễ Tân được nhập đầy đủ 4 loại (Doanh Thu / Chi Phí / Chuyển Khoản / Nộp TM)
@@ -137,25 +143,29 @@ export default function NhapLieuPage({ user }) {
       if (error) throw error
 
       // Hạng mục KHO → nhập kho từng sản phẩm + tăng tồn (link phiếu chi)
+      // NV nhập theo ĐƠN VỊ NHẬP (chai/hộp) + giá/1 đơn vị nhập → quy về ĐƠN VỊ CƠ SỞ (ml/gram)
       if (isKho && validKhoLines.length > 0) {
         for (const l of validKhoLines) {
           const sp = products.find(p => p.id === l.sp_id)
-          const sl = rawN(l.so_luong); const gia = rawN(l.gia_don_vi)
+          const qd = Number(sp?.quy_doi) || 1            // 1 đơn vị nhập = qd đơn vị cơ sở
+          const slNhap = rawN(l.so_luong)                // số đơn vị nhập (vd 2 chai)
+          const giaNhap = rawN(l.gia_don_vi)             // giá / 1 đơn vị nhập (giá/chai)
+          const slCoSo = slNhap * qd                     // tồn theo đơn vị cơ sở (vd 600 ml)
+          const giaCoSo = Math.round(giaNhap / qd)       // giá / 1 đơn vị cơ sở (đồng nhất ProductForm)
           const { error: e2 } = await supabase.from('kho_giao_dich').insert({
-            san_pham_id: l.sp_id, loai: 'nhap_kho', so_luong: sl, gia_don_vi: gia,
+            san_pham_id: l.sp_id, loai: 'nhap_kho', so_luong: slCoSo, gia_don_vi: giaCoSo,
             ghi_chu: `Nhập kho từ Sổ Thu Chi ${formatDateInput(ngay)}`, ngay,
             nguoi_thuc_hien: user?.id || null, lien_quan_id: cp?.id || null,
           })
           if (e2) throw e2
-          const tonMoi = Number(sp?.ton_kho || 0) + sl
+          const tonMoi = Number(sp?.ton_kho || 0) + slCoSo
           await supabase.from('kho_san_pham').update({
-            ton_kho: tonMoi, gia_nhap: gia,
+            ton_kho: tonMoi, gia_nhap: giaCoSo,
             ton_dinh_muc: Math.max(Number(sp?.ton_dinh_muc) || 0, tonMoi),
           }).eq('id', l.sp_id)
         }
         // refresh tồn kho local
-        const { data: fresh } = await supabase.from('kho_san_pham').select('id, ten, don_vi, ton_kho, gia_nhap, loai, ton_dinh_muc').eq('is_active', true).order('ten')
-        setProducts(fresh || [])
+        await loadProducts()
         showMsg(`✓ Đã chi ${formatCurrency(amt)} + nhập ${validKhoLines.length} SP vào kho`); resetForm(); loadTodayTx()
       } else {
         showMsg(`✓ Đã chi ${formatCurrency(amt)}`); resetForm(); loadTodayTx()
@@ -253,7 +263,35 @@ export default function NhapLieuPage({ user }) {
   const removeKhoLine = (key) => setKhoLines(ls => ls.length > 1 ? ls.filter(l => l.key !== key) : ls)
   const onPickKhoSP = (key, spId) => {
     const sp = products.find(p => p.id === spId)
-    setKhoLine(key, { sp_id: spId, gia_don_vi: sp?.gia_nhap ? fmtN(sp.gia_nhap) : '' })
+    const qd = Number(sp?.quy_doi) || 1
+    // gia_nhap lưu theo đơn vị cơ sở → hiển thị giá / 1 đơn vị nhập (giá/chai)
+    const giaNhap = sp?.gia_nhap ? Math.round(Number(sp.gia_nhap) * qd) : ''
+    setKhoLine(key, { sp_id: spId, gia_don_vi: giaNhap ? fmtN(giaNhap) : '' })
+  }
+
+  // Tạo nhanh sản phẩm mới ngay trong form Sổ Thu Chi → chọn luôn vào dòng kho
+  const taoNhanhSP = async (p) => {
+    const qd = Number(p.quy_doi) || 1
+    const giaCoSo = Math.round((Number(p.giaNhap) || 0) / qd)
+    const base = {
+      ten: (p.ten || '').trim(), loai: p.loai || 'tieu_hao', don_vi: p.don_vi || 'cái',
+      gia_nhap: giaCoSo, gia_ban: Number(p.gia_ban) || 0,
+      canh_bao_ton: Number(p.canh_bao_ton) || 0, ton_kho: 0, is_active: true,
+    }
+    const ext = { ...base, don_vi_nhap: (p.don_vi_nhap || '').trim() || null, quy_doi: qd, danh_muc: (p.danh_muc || '').trim() || null }
+    let res = await supabase.from('kho_san_pham').insert(ext).select(KHO_SELECT).single()
+    if (res.error) res = await supabase.from('kho_san_pham').insert(base).select('id, ten, don_vi, ton_kho, gia_nhap, loai, ton_dinh_muc').single()
+    if (res.error) throw res.error
+    const sp = res.data
+    setProducts(ps => [...ps, sp].sort((a, b) => (a.ten || '').localeCompare(b.ten || '')))
+    // gán vào dòng trống đầu tiên, nếu không có thì thêm dòng mới
+    const giaHienThi = sp.gia_nhap ? fmtN(Math.round(Number(sp.gia_nhap) * (Number(sp.quy_doi) || 1))) : ''
+    setKhoLines(ls => {
+      const empty = ls.find(l => !l.sp_id)
+      if (empty) return ls.map(l => l.key === empty.key ? { ...l, sp_id: sp.id, gia_don_vi: giaHienThi } : l)
+      return [...ls, { ...newKhoLine(), sp_id: sp.id, gia_don_vi: giaHienThi }]
+    })
+    return sp
   }
 
   return (
@@ -376,6 +414,7 @@ export default function NhapLieuPage({ user }) {
               setKhoLine={setKhoLine}
               addKhoLine={addKhoLine}
               removeKhoLine={removeKhoLine}
+              onCreateSP={taoNhanhSP}
             />
           )}
 
