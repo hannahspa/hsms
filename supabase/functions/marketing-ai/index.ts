@@ -179,11 +179,42 @@ async function getPlaybook(): Promise<string> {
   if (_playbookCache && Date.now() - _playbookCache.at < 5 * 60 * 1000) return _playbookCache.text
   let text = DEFAULT_PLAYBOOK
   try {
-    const { data } = await supabase.from('cau_hinh').select('value').eq('key', 'marketing_sales_playbook').maybeSingle()
+    const { data } = await supabase.from('marketing_ai_config').select('value').eq('key', 'sales_playbook').maybeSingle()
     if (data?.value && String(data.value).trim().length > 50) text = String(data.value)
-  } catch { /* bảng chưa expose → dùng default */ }
+  } catch { /* bảng chưa sẵn → dùng default */ }
   _playbookCache = { text, at: Date.now() }
   return text
+}
+
+// Gán chủ đề tư vấn theo từ khóa (rẻ, không tốn AI) — dùng cho mining + retrieval mẫu vàng.
+function detectTopic(t: string): string {
+  const s = (t || '').toLowerCase()
+  if (/triệt|triet|lông|long nach|wax/.test(s)) return 'triet_long'
+  if (/mụn|mun|nám|nam|da mặt|da mat|tàn nhang|peel|collagen|thâm|tham/.test(s)) return 'da_mat'
+  if (/massage|cổ vai gáy|co vai gay|body|bấm huyệt|foot|chân|chan/.test(s)) return 'massage'
+  if (/gội|goi|gàu|gau|dưỡng sinh|duong sinh/.test(s)) return 'goi'
+  if (/tắm trắng|tam trang|trắng da|trang da/.test(s)) return 'tam_trang'
+  if (/phun|xăm|xam|môi|moi|mày|may|chân mày/.test(s)) return 'phun_xam'
+  if (/giá|gia|bao nhiêu|bao nhieu|nhiêu|combo|khuyến mãi|khuyen mai|km/.test(s)) return 'gia'
+  if (/đặt|dat lich|lịch|lich hen|hẹn|hen|book|khung giờ|gio nao/.test(s)) return 'dat_lich'
+  return 'khac'
+}
+
+// Lấy mẫu vàng (cách lễ tân thật trả lời tốt) cùng chủ đề → nạp few-shot vào prompt gợi ý.
+async function getGoldExamples(topic: string, limit = 3): Promise<string> {
+  try {
+    let q = supabase.from('marketing_ai_examples')
+      .select('khach_hoi, le_tan_tra_loi, chu_de, diem, da_duyet')
+      .order('da_duyet', { ascending: false })
+      .order('diem', { ascending: false })
+      .limit(limit)
+    if (topic && topic !== 'khac') q = q.eq('chu_de', topic)
+    const { data } = await q
+    if (!data || !data.length) return ''
+    return data
+      .map((e: any) => `Khách: ${String(e.khach_hoi).slice(0, 200)}\nLễ tân: ${String(e.le_tan_tra_loi).slice(0, 400)}`)
+      .join('\n---\n')
+  } catch { return '' }
 }
 
 // ── KHUYẾN MÃI ĐANG CHẠY ── đọc động từ bảng khuyen_mai (anh Nam nhập ở /admin/khuyen-mai) → AI báo đúng giá KM.
@@ -2000,6 +2031,8 @@ async function handleSuggestReply(body: Record<string, unknown>) {
 
   const playbook = await getPlaybook()
   const promos = await getActivePromotions()
+  const topic = detectTopic(lastInbound ? String(lastInbound.noi_dung || '') : thread)
+  const golds = await getGoldExamples(topic)
   const ai = await callAI(
     [
       'Bạn là lễ tân Hannah Beauty & Spa (Cần Thơ) — thân thiện, chuyên nghiệp, xưng "em", gọi khách "chị/anh".',
@@ -2007,6 +2040,7 @@ async function handleSuggestReply(body: Record<string, unknown>) {
       playbook,
       '── HẾT HIẾN PHÁP ──',
       promoBlock(promos),
+      golds ? `VÍ DỤ CÁCH LỄ TÂN HANNAH ĐÃ TƯ VẤN TỐT TÌNH HUỐNG TƯƠNG TỰ (học PHONG CÁCH & cách dẫn dắt, KHÔNG copy nguyên văn, KHÔNG bịa thông tin từ đây):\n${golds}\n──` : '',
       'Đọc TOÀN BỘ đoạn hội thoại bên dưới (thứ tự thời gian) rồi soạn DUY NHẤT câu trả lời tiếp theo mà lễ tân nên gửi, BÁM SÁT tin cuối của khách và mạch hội thoại.',
       'Nguyên tắc: nếu khách đang chốt đến/đặt lịch → xác nhận + hỏi/đề xuất khung giờ + nhắc địa chỉ 39 Nam Kỳ Khởi Nghĩa. Nếu hỏi giá → hỏi rõ nhu cầu rồi xin SĐT/Zalo (KHÔNG bịa số tiền). Nếu cảm ơn/đồng ý ngắn ("ok", "dạ") → chốt bước tiếp theo cụ thể, đừng hỏi lại điều đã rõ.',
       'Khách cũ (khach_context.is_returning=true): chào theo tên, nhắc ĐÚNG thẻ/buổi còn lại (the_dang_co, tong_buoi_con) và gợi ý dùng tiếp/gia hạn; có thể upsell theo goi_y_upsell/muc_tieu_tu_van. TUYỆT ĐỐI không bịa số buổi/dịch vụ ngoài context.',
@@ -2032,6 +2066,83 @@ async function handleSuggestReply(body: Record<string, unknown>) {
   }
 }
 
+// ── HỌC TỪ LỄ TÂN GIỎI (RAG) ── quét hội thoại thật, trích cặp (khách hỏi → lễ tân trả lời tốt) làm mẫu vàng.
+async function handleMineExamples(body: Record<string, unknown>) {
+  const days = Math.min(Math.max(Number(body.days || 120), 7), 400)
+  const since = new Date(Date.now() - days * 864e5).toISOString()
+  // Lấy ~3000 tin GẦN NHẤT (3 trang × 1000 do PostgREST giới hạn) rồi sắp xếp tăng dần trong từng hội thoại.
+  const all: any[] = []
+  for (let page = 0; page < 3; page++) {
+    const { data } = await supabase.from('marketing_messages')
+      .select('conversation_id, from_platform_user_id, direction, sender_type, noi_dung, created_at')
+      .eq('kenh', 'facebook')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .range(page * 1000, page * 1000 + 999)
+    if (!data || !data.length) break
+    all.push(...data)
+    if (data.length < 1000) break
+  }
+  const msgs = all
+
+  const conv = new Map<string, any[]>()
+  for (const m of msgs) {
+    const cid = m.conversation_id || m.from_platform_user_id
+    if (!cid) continue
+    if (!conv.has(cid)) conv.set(cid, [])
+    conv.get(cid)!.push(m)
+  }
+  for (const arr of conv.values()) arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+  const junk = (t: string) => /unexpected error|meta sync|graph api|invalid oauth|token.*expired/i.test(t || '')
+  const rows: any[] = []
+  const seen = new Set<string>()
+  for (const arr of conv.values()) {
+    for (let i = 1; i < arr.length; i++) {
+      const cur = arr[i], prev = arr[i - 1]
+      if (!(cur.direction === 'outbound' && cur.sender_type === 'staff' && prev.direction === 'inbound')) continue
+      const ans = String(cur.noi_dung || '').trim()
+      const ask = String(prev.noi_dung || '').trim()
+      if (ans.length < 40 || ask.length < 4 || junk(ans) || junk(ask)) continue
+      const a = ans.toLowerCase()
+      let diem = 0
+      if (ans.length >= 80) diem += 2
+      if (/\?/.test(ans)) diem += 2                                     // có hỏi lại nhu cầu
+      if (/(dạ|nha|nhé|ạ)/.test(a)) diem += 1                            // giọng lễ tân
+      if (/(giá|gói|combo|ưu đãi|liệu trình|đặt lịch|khung giờ|tư vấn)/.test(a)) diem += 2
+      const next = arr[i + 1]
+      if (next && next.direction === 'inbound') diem += 3               // khách phản hồi tiếp = hiệu quả
+      if (diem < 4) continue
+      const pair_hash = (ask.slice(0, 80) + '|' + ans.slice(0, 80)).slice(0, 180)
+      if (seen.has(pair_hash)) continue
+      seen.add(pair_hash)
+      rows.push({
+        chu_de: detectTopic(ask + ' ' + ans),
+        khach_hoi: ask.slice(0, 500),
+        le_tan_tra_loi: ans.slice(0, 800),
+        nguon_conversation_id: String(cur.conversation_id || cur.from_platform_user_id || ''),
+        diem,
+        da_duyet: diem >= 7,
+        pair_hash,
+      })
+    }
+  }
+
+  let saved = 0
+  for (let i = 0; i < rows.length; i += 200) {
+    const chunk = rows.slice(i, i + 200)
+    const { error, data } = await supabase.from('marketing_ai_examples')
+      .upsert(chunk, { onConflict: 'pair_hash', ignoreDuplicates: true })
+      .select('id')
+    if (!error && data) saved += data.length
+  }
+
+  // thống kê theo chủ đề
+  const byTopic: Record<string, number> = {}
+  for (const r of rows) byTopic[r.chu_de] = (byTopic[r.chu_de] || 0) + 1
+  return { scanned_messages: msgs?.length || 0, candidates: rows.length, saved_new: saved, by_topic: byTopic }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   let mode = 'analyze'
@@ -2044,6 +2155,7 @@ serve(async (req) => {
 
     if (mode === 'inbox_webhook') result = await handleInbox((body.message || body) as IncomingMessage)
     else if (mode === 'suggest_reply') result = await handleSuggestReply(body)
+    else if (mode === 'mine_examples') result = await handleMineExamples(body)
     else if (mode === 'analyze') result = await handleAnalyze()
     else if (mode === 'triage_fanpage') result = await handleFanpageTriage(body)
     else if (mode === 'cleanup_fanpage_leads') result = await handleFanpageLeadCleanup(body)
@@ -2061,6 +2173,7 @@ serve(async (req) => {
       modes: [
         'inbox_webhook',
         'suggest_reply',
+        'mine_examples',
         'analyze',
         'triage_fanpage',
         'cleanup_fanpage_leads',
