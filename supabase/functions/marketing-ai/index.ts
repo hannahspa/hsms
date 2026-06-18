@@ -160,7 +160,19 @@ NHÓM DỊCH VỤ & KHOẢNG GIÁ (tham khảo, đừng đọc nguyên văn)
 - Triệt Lông: 180.000–3.500.000đ (nách, tay, chân, mặt).
 - Tắm Trắng Toàn Thân: 120.000–1.300.000đ.
 - Tẩy Tế Bào Chết / Phụ Thu: 10.000–180.000đ.
-- Nhiều dịch vụ bán theo THẺ LIỆU TRÌNH nhiều buổi — ưu đãi hơn lẻ; gợi ý khi khách quan tâm gói dài.`
+- Nhiều dịch vụ bán theo THẺ LIỆU TRÌNH nhiều buổi — ưu đãi hơn lẻ; gợi ý khi khách quan tâm gói dài.
+
+KỊCH BẢN BÁN THEO NHÓM (mạch khéo léo — KHÔNG bổ nhào hỏi SĐT ngay khi khách mới hỏi)
+Bước 1: Chào + công nhận nhu cầu của khách.
+Bước 2: Hỏi 1–2 câu khơi gợi tình trạng/mong muốn cụ thể.
+Bước 3: Tư vấn lợi ích + gói phù hợp + nêu KHUYẾN MÃI đang chạy nếu trùng dịch vụ khách hỏi.
+Bước 4: Mời trải nghiệm / gợi chốt khung giờ ghé.
+Bước 5: CHỈ khi khách đã thể hiện quan tâm rõ → xin SĐT/Zalo một cách TỰ NHIÊN để giữ ưu đãi & đặt lịch.
+- Triệt lông: khơi "mình muốn triệt vùng nào, đã từng triệt chưa ạ" → nhấn công nghệ êm dịu, triệt tận gốc + gói nhiều buổi tiết kiệm hơn.
+- Da mặt/mụn/nám: hỏi tình trạng da hiện tại → tư vấn liệu trình theo buổi + cách chăm tại nhà.
+- Massage/gội dưỡng sinh: khơi "dạo này mình hay mỏi vai gáy/căng thẳng không ạ" → mời trải nghiệm thư giãn + combo.
+- Tắm trắng/phun xăm: hỏi mong muốn cụ thể → tư vấn gói + lưu ý trước/sau khi làm.
+Nếu khách hỏi trống ("bảng giá", "tư vấn") → giới thiệu giá trị + hỏi nhu cầu trước, rồi mới mời để lại liên hệ.`
 
 let _playbookCache: { text: string; at: number } | null = null
 async function getPlaybook(): Promise<string> {
@@ -172,6 +184,38 @@ async function getPlaybook(): Promise<string> {
   } catch { /* bảng chưa expose → dùng default */ }
   _playbookCache = { text, at: Date.now() }
   return text
+}
+
+// ── KHUYẾN MÃI ĐANG CHẠY ── đọc động từ bảng khuyen_mai (anh Nam nhập ở /admin/khuyen-mai) → AI báo đúng giá KM.
+let _promoCache: { text: string; at: number } | null = null
+async function getActivePromotions(): Promise<string> {
+  if (_promoCache && Date.now() - _promoCache.at < 5 * 60 * 1000) return _promoCache.text
+  let text = ''
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const { data } = await supabase.from('khuyen_mai')
+      .select('ten, mo_ta, gia_goc, gia_km, ngay_ket_thuc, dich_vu:dich_vu_id(ten)')
+      .eq('trang_thai', 'active')
+      .gte('ngay_ket_thuc', today)
+      .order('ngay_ket_thuc', { ascending: true })
+      .limit(30)
+    const fmt = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + 'đ'
+    const lines = (data || []).map((k: any) => {
+      const dv = k.dich_vu?.ten ? ` [${k.dich_vu.ten}]` : ''
+      const pct = k.gia_goc > 0 ? Math.round((k.gia_goc - k.gia_km) / k.gia_goc * 100) : 0
+      return `- ${k.ten}${dv}: chỉ còn ${fmt(k.gia_km)} (giá gốc ${fmt(k.gia_goc)}, giảm ${pct}%) — đến hết ${k.ngay_ket_thuc}`
+    })
+    text = lines.join('\n')
+  } catch { /* khuyen_mai chưa sẵn → bỏ qua */ }
+  _promoCache = { text, at: Date.now() }
+  return text
+}
+
+// Gộp block khuyến mãi để nạp vào prompt (báo đúng giá KM, cấm bịa chương trình).
+function promoBlock(promos: string): string {
+  return promos
+    ? `KHUYẾN MÃI ĐANG CHẠY HÔM NAY (khi khách hỏi dịch vụ trùng tên, BÁO ĐÚNG giá KM này; KHÔNG bịa chương trình khác):\n${promos}`
+    : 'HÔM NAY KHÔNG CÓ KHUYẾN MÃI ĐANG CHẠY — không tự bịa chương trình giảm giá; chỉ nêu khoảng giá tham khảo.'
 }
 
 function fallbackInboxAnalysis(noiDung: string) {
@@ -335,12 +379,14 @@ async function analyzeMarketingText(payload: Record<string, unknown>) {
   const phone = (payload.so_dien_thoai as string) || extractPhone(noiDung) || null
   const context = await buildCustomerContext(phone, (payload.platform_user_id as string) || null)
   const playbook = await getPlaybook()
+  const promos = await getActivePromotions()
   const ai = await callAI(
     [
       'Bạn là lễ tân tư vấn của Hannah Beauty & Spa (Cần Thơ) — thân thiện, chuyên nghiệp, xưng "em", gọi khách "chị/anh".',
       '── HIẾN PHÁP TƯ VẤN (bám sát tuyệt đối) ──',
       playbook,
       '── HẾT HIẾN PHÁP ──',
+      promoBlock(promos),
       'Nhiệm vụ: phân loại tin nhắn/bình luận Fanpage và soạn gợi ý trả lời cho lễ tân copy gửi khách.',
       'intent ∈ {dat_lich, hoi_gia, tu_van_da, hoi_the_lieu_trinh, khieu_nai, spam, remarketing, hoi_thong_tin}.',
       'lead_status ∈ {moi, dang_tu_van, da_dat_hen, da_den, da_mua, mat_co_hoi, spam}. safety_level ∈ {normal, needs_review, blocked}. lead_score 0-100.',
@@ -1953,12 +1999,14 @@ async function handleSuggestReply(body: Record<string, unknown>) {
   if (!thread) return { reply: '', note: 'Chưa có nội dung hội thoại để gợi ý.', has_ai: false }
 
   const playbook = await getPlaybook()
+  const promos = await getActivePromotions()
   const ai = await callAI(
     [
       'Bạn là lễ tân Hannah Beauty & Spa (Cần Thơ) — thân thiện, chuyên nghiệp, xưng "em", gọi khách "chị/anh".',
       '── HIẾN PHÁP TƯ VẤN (bám sát tuyệt đối) ──',
       playbook,
       '── HẾT HIẾN PHÁP ──',
+      promoBlock(promos),
       'Đọc TOÀN BỘ đoạn hội thoại bên dưới (thứ tự thời gian) rồi soạn DUY NHẤT câu trả lời tiếp theo mà lễ tân nên gửi, BÁM SÁT tin cuối của khách và mạch hội thoại.',
       'Nguyên tắc: nếu khách đang chốt đến/đặt lịch → xác nhận + hỏi/đề xuất khung giờ + nhắc địa chỉ 39 Nam Kỳ Khởi Nghĩa. Nếu hỏi giá → hỏi rõ nhu cầu rồi xin SĐT/Zalo (KHÔNG bịa số tiền). Nếu cảm ơn/đồng ý ngắn ("ok", "dạ") → chốt bước tiếp theo cụ thể, đừng hỏi lại điều đã rõ.',
       'Khách cũ (khach_context.is_returning=true): chào theo tên, nhắc ĐÚNG thẻ/buổi còn lại (the_dang_co, tong_buoi_con) và gợi ý dùng tiếp/gia hạn; có thể upsell theo goi_y_upsell/muc_tieu_tu_van. TUYỆT ĐỐI không bịa số buổi/dịch vụ ngoài context.',
