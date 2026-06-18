@@ -2119,6 +2119,92 @@ async function handleCareMessage(body: Record<string, unknown>) {
   return { reply: String(parsed.reply || '').trim(), note: String(parsed.note || '').trim(), has_ai: ai.ok, error: ai.ok ? null : (ai as any).error || null }
 }
 
+// ── PHÂN TÍCH KHÁCH TIỀM NĂNG (đọc tin THẬT, không gán nhãn bừa) ── dùng cho làm sạch 123k tin → CRM.
+const VALID_LEAD_TT = ['moi', 'dang_tu_van', 'da_dat_hen', 'da_den', 'da_mua', 'mat_co_hoi', 'spam']
+async function analyzeOneLead(seg: any) {
+  const psid = seg.platform_user_id
+  // Lấy tối đa 30 tin THẬT của khách (cả 2 chiều) để AI đọc đúng ngữ cảnh
+  const { data: msgs } = await supabase.from('marketing_messages')
+    .select('direction, sender_type, noi_dung, created_at')
+    .eq('from_platform_user_id', psid)
+    .order('created_at', { ascending: false }).limit(30)
+  let thread = (msgs || [])
+    .filter((m: any) => String(m.noi_dung || '').trim())
+    .reverse()
+    .map((m: any) => `${m.direction === 'inbound' ? 'KHÁCH' : 'SPA'}: ${String(m.noi_dung).trim().slice(0, 200)}`)
+    .join('\n').slice(0, 4000)
+  if (!thread && seg.raw_summary) thread = String(seg.raw_summary).slice(0, 2000)
+  if (!thread) return null
+
+  const context = await buildCustomerContext(seg.phone_norm || null, psid)
+  const playbook = await getPlaybook()
+  const promos = await getActivePromotions()
+  const ai = await callAI(
+    [
+      'Bạn là trưởng nhóm CSKH của Hannah Beauty & Spa (Cần Thơ). Phân tích hội thoại Fanpage của MỘT khách để giao việc cho lễ tân.',
+      '── HIẾN PHÁP ──', playbook, '── HẾT ──', promoBlock(promos),
+      'ĐỌC KỸ hội thoại thật bên dưới. Tuyệt đối KHÔNG gán bừa — chỉ kết luận từ điều khách THỰC SỰ nhắn.',
+      'khach_context.is_returning=true nghĩa khách ĐÃ là khách HSMS (đã từng đến/mua).',
+      'Trả về JSON: {',
+      '  "dich_vu_quan_tam": [tối đa 3 dịch vụ khách THẬT SỰ hỏi/quan tâm, [] nếu không rõ],',
+      '  "diem_tiem_nang": 0-100 (cao = nóng/sắp chốt; thấp = hỏi vu vơ/spam/đã nguội),',
+      '  "trang_thai": một trong [moi, dang_tu_van, da_dat_hen, da_den, da_mua, mat_co_hoi, spam],',
+      '  "ly_do": "1 câu vì sao chấm điểm vậy",',
+      '  "hanh_dong": "việc CỤ THỂ lễ tân nên làm tiếp (vd: gọi chốt lịch triệt lông, gửi bảng giá da mặt...)",',
+      '  "script": "tin nhắn mẫu cá nhân hóa để lễ tân gửi lại khách này, bám hội thoại + KM nếu hợp, 2-4 câu",',
+      '  "tom_tat": "1-2 câu tóm tắt khách này là ai, đã trao đổi gì"',
+      '}. Nếu chỉ là spam/không có nhu cầu → diem_tiem_nang thấp, trang_thai spam/mat_co_hoi.',
+    ].join('\n'),
+    { hoi_thoai: thread, ten_khach: seg.display_name, khach_context: context },
+    'fast',
+  )
+  if (!ai.ok) return null
+  const p = safeJSON(ai.text, {})
+  const tt = VALID_LEAD_TT.includes(String(p.trang_thai)) ? p.trang_thai : 'moi'
+  let diem = Math.round(Number(p.diem_tiem_nang)); if (!Number.isFinite(diem)) diem = 0
+  diem = Math.max(0, Math.min(100, diem))
+  const dichVu = Array.isArray(p.dich_vu_quan_tam) ? p.dich_vu_quan_tam.slice(0, 3) : []
+  return {
+    services_interest: dichVu,
+    priority_score: diem,
+    care_status: diem >= 60 ? 'can_uu_tien' : 'chua_cham_soc',
+    suggested_action: String(p.hanh_dong || '').slice(0, 300),
+    suggested_script: String(p.script || '').slice(0, 600),
+    ai_tom_tat: String(p.tom_tat || '').slice(0, 400),
+    _trang_thai: tt,
+  }
+}
+
+async function handleReclassifyLeads(body: Record<string, unknown>) {
+  const limit = Math.min(Math.max(Number(body.limit || 10), 1), 40)
+  const since = String(body.since || '2026-01-01')
+  const onlyPhone = body.only_phone !== false   // mặc định chỉ khách có SĐT (liên hệ được)
+  let q = supabase.from('marketing_fanpage_customer_segments')
+    .select('id, platform_user_id, display_name, phone_norm, raw_summary')
+    .gte('last_message_at', since)
+    .is('ai_reanalyzed_at', null)
+    .order('last_message_at', { ascending: false })
+    .limit(limit)
+  if (onlyPhone) q = q.eq('has_phone', true)
+  const { data: segs } = await q
+  let done = 0; const sample: any[] = []
+  for (const seg of segs || []) {
+    const r = await analyzeOneLead(seg)
+    const patch: any = { ai_reanalyzed_at: new Date().toISOString() }
+    if (r) {
+      Object.assign(patch, {
+        services_interest: r.services_interest, priority_score: r.priority_score,
+        care_status: r.care_status, suggested_action: r.suggested_action,
+        suggested_script: r.suggested_script, ai_tom_tat: r.ai_tom_tat,
+      })
+      done++
+      if (sample.length < 3) sample.push({ ten: seg.display_name, diem: r.priority_score, dv: r.services_interest, hanh_dong: r.suggested_action })
+    }
+    await supabase.from('marketing_fanpage_customer_segments').update(patch).eq('id', seg.id)
+  }
+  return { analyzed: done, scanned: (segs || []).length, sample }
+}
+
 // ── HỌC TỪ LỄ TÂN GIỎI (RAG) ── quét hội thoại thật, trích cặp (khách hỏi → lễ tân trả lời tốt) làm mẫu vàng.
 async function handleMineExamples(body: Record<string, unknown>) {
   const days = Math.min(Math.max(Number(body.days || 120), 7), 400)
@@ -2209,6 +2295,7 @@ serve(async (req) => {
     if (mode === 'inbox_webhook') result = await handleInbox((body.message || body) as IncomingMessage)
     else if (mode === 'suggest_reply') result = await handleSuggestReply(body)
     else if (mode === 'care_message') result = await handleCareMessage(body)
+    else if (mode === 'reclassify_leads') result = await handleReclassifyLeads(body)
     else if (mode === 'mine_examples') result = await handleMineExamples(body)
     else if (mode === 'analyze') result = await handleAnalyze()
     else if (mode === 'triage_fanpage') result = await handleFanpageTriage(body)
@@ -2228,6 +2315,7 @@ serve(async (req) => {
         'inbox_webhook',
         'suggest_reply',
         'care_message',
+        'reclassify_leads',
         'mine_examples',
         'analyze',
         'triage_fanpage',
