@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import AdminChamSocKhachPage from '../cham-soc-khach/AdminChamSocKhachPage'
 import ModalDatHen from '../../internal/lich-hen/ModalDatHen'
 import { C, FONT } from '../../../constants/colors'
 import { supabase } from '../../../lib/supabase'
@@ -1854,6 +1853,124 @@ function InboxPage() {
   )
 }
 
+// ── KHÁCH & REMARKETING ── danh sách khách tiềm năng (AI đọc tin thật), ưu tiên 2026, lọc rác, mời quay lại.
+function RemarketingPage() {
+  const [nam, setNam] = useState('2026')
+  const [nhom, setNhom] = useState('tat_ca')   // tat_ca | tiem_nang | da_den
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [progress, setProgress] = useState({ analyzed: 0, total: 0 })
+  const [mining, setMining] = useState(false)
+  const [nonce, setNonce] = useState(0)
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      setLoading(true)
+      try {
+        const applyNam = (q) => nam === 'tat_ca' ? q : (nam === 'older' ? q.lt('nam_tin_cuoi', 2025) : q.eq('nam_tin_cuoi', Number(nam)))
+        let q = supabase.from('marketing_fanpage_customer_segments')
+          .select('id, display_name, phone_norm, priority_score, services_interest, suggested_action, suggested_script, ai_tom_tat, da_den_spa, care_status, last_message_at')
+          .not('ai_reanalyzed_at', 'is', null).neq('care_status', 'loai_bo')
+          .order('priority_score', { ascending: false }).order('last_message_at', { ascending: false }).limit(150)
+        q = applyNam(q)
+        if (nhom === 'da_den') q = q.eq('da_den_spa', true)
+        else if (nhom === 'tiem_nang') q = q.eq('care_status', 'can_uu_tien')
+        const { data } = await q
+        // tiến độ: đã phân tích vs tổng có SĐT theo năm đang lọc
+        let ct = supabase.from('marketing_fanpage_customer_segments').select('id', { count: 'exact', head: true }).eq('has_phone', true)
+        ct = applyNam(ct)
+        const { count: total } = await ct
+        let ca = supabase.from('marketing_fanpage_customer_segments').select('id', { count: 'exact', head: true }).eq('has_phone', true).not('ai_reanalyzed_at', 'is', null)
+        ca = applyNam(ca)
+        const { count: analyzed } = await ca
+        if (alive) { setRows(data || []); setProgress({ analyzed: analyzed || 0, total: total || 0 }); setLoading(false) }
+      } catch (e) { if (alive) { setLoading(false); notify(`Lỗi tải: ${e.message || e}`, 'error') } }
+    })()
+    return () => { alive = false }
+  }, [nam, nhom, nonce])
+
+  async function phanTichThem() {
+    setMining(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('marketing-ai', { body: { mode: 'reclassify_leads', limit: 3, since: nam === 'tat_ca' ? '2019-01-01' : (nam === 'older' ? '2019-01-01' : `${nam}-01-01`) } })
+      if (error) throw error
+      notify(`Đã phân tích thêm ${data?.analyzed || 0} khách`, 'success')
+      setNonce(n => n + 1)
+    } catch (e) { notify(`Lỗi: ${e.message || e}`, 'error') } finally { setMining(false) }
+  }
+
+  async function loaiBo(r) {
+    try {
+      await supabase.from('marketing_fanpage_customer_segments').update({ care_status: 'loai_bo' }).eq('id', r.id)
+      setRows(rs => rs.filter(x => x.id !== r.id))
+      notify('Đã loại khỏi danh sách', 'success')
+    } catch (e) { notify(`Lỗi: ${e.message || e}`, 'error') }
+  }
+
+  const namTabs = [['2026', '2026'], ['2025', '2025'], ['Cũ hơn', 'older'], ['Tất cả', 'tat_ca']]
+  const nhomTabs = [['Tất cả', 'tat_ca'], ['Tiềm năng cao', 'tiem_nang'], ['Đã đến Hannah', 'da_den']]
+  return (
+    <Shell>
+      <Header route={MARKETING_ROUTES.find(r => r.key === 'remarketing')} />
+      <div className="mkt-soft" style={{ border: `1px solid ${C.border}`, background: 'rgba(255,255,255,.6)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 12.5, color: C.textSub, lineHeight: 1.5 }}>
+        💎 AI đọc tin thật của từng khách để chấm điểm tiềm năng + soạn sẵn tin mời quay lại. Ưu tiên 2026 (khách gần đây = nóng nhất). Khách rác/không nhu cầu đã tự lọc bỏ. Bấm <b>Chép</b> để gửi qua Zalo/SĐT.
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: 12, fontWeight: 800, color: C.textMute }}>Thời gian:</span>
+        {namTabs.map(([label, v]) => (
+          <button key={v} onClick={() => setNam(v)} style={{ border: `1px solid ${nam === v ? C.primary : C.border}`, background: nam === v ? C.primary : '#fff', color: nam === v ? '#fff' : C.text, borderRadius: 8, padding: '6px 13px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{label}</button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: 12, fontWeight: 800, color: C.textMute }}>Nhóm:</span>
+        {nhomTabs.map(([label, v]) => (
+          <button key={v} onClick={() => setNhom(v)} style={{ border: `1px solid ${nhom === v ? '#8A6A6E' : C.border}`, background: nhom === v ? '#8A6A6E' : '#fff', color: nhom === v ? '#fff' : C.text, borderRadius: 99, padding: '6px 13px', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{label}</button>
+        ))}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: C.textSub }}>Đã phân tích {progress.analyzed}/{progress.total} khách (tự chạy nền)</span>
+          <button onClick={phanTichThem} disabled={mining} style={{ border: `1px solid ${C.border}`, background: '#fff', borderRadius: 8, padding: '7px 12px', fontWeight: 800, fontSize: 12.5, cursor: mining ? 'wait' : 'pointer' }}>{mining ? 'Đang phân tích…' : '⚡ Phân tích thêm'}</button>
+        </div>
+      </div>
+
+      {loading ? <EmptyBox text="Đang tải danh sách…" />
+        : rows.length === 0 ? <EmptyBox text={progress.analyzed === 0 ? 'Chưa có khách nào được phân tích cho bộ lọc này. Bấm "Phân tích thêm" hoặc chờ hệ thống tự chạy.' : 'Không có khách tiềm năng trong bộ lọc này (rác đã bị loại).'} />
+          : <div style={{ display: 'grid', gap: 12 }}>
+              {rows.map(r => {
+                const dv = Array.isArray(r.services_interest) ? r.services_interest.join(', ') : ''
+                const diem = Number(r.priority_score || 0)
+                const mau = diem >= 60 ? C.thu : diem >= 40 ? C.gold : C.textMute
+                return (
+                  <div key={r.id} style={{ border: `1px solid ${C.border}`, borderRadius: 12, background: '#fff', padding: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 220 }}>
+                        <div style={{ fontWeight: 900, fontSize: 15, color: C.text, fontFamily: FONT.serif }}>
+                          {r.display_name || 'Khách'}
+                          {r.phone_norm && <span style={{ fontWeight: 600, fontSize: 12.5, color: C.textSub }}> · {r.phone_norm}</span>}
+                          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 800, color: '#fff', background: mau, borderRadius: 99, padding: '2px 9px' }}>điểm {diem}</span>
+                          {r.da_den_spa && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 800, color: '#fff', background: '#1A5276', borderRadius: 99, padding: '2px 9px' }}>Đã đến Hannah</span>}
+                        </div>
+                        {dv && <div style={{ fontSize: 12.5, color: C.primary, marginTop: 3, fontWeight: 700 }}>Quan tâm: {dv}</div>}
+                        {r.ai_tom_tat && <div style={{ fontSize: 12.5, color: C.textSub, marginTop: 3, lineHeight: 1.5 }}>{r.ai_tom_tat}</div>}
+                      </div>
+                      <button onClick={() => loaiBo(r)} title="Loại khỏi danh sách (rác/không nhu cầu)" style={{ border: `1px solid ${C.chi}40`, background: '#fff', color: C.chi, borderRadius: 7, padding: '5px 10px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Loại bỏ</button>
+                    </div>
+                    {r.suggested_action && <div style={{ marginTop: 8, fontSize: 12.5, color: C.text }}><b style={{ color: C.textMute }}>Việc cần làm:</b> {r.suggested_action}</div>}
+                    {r.suggested_script && (
+                      <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
+                        <div style={{ fontSize: 13, color: C.text, lineHeight: 1.55, background: '#FFFDF8', border: `1px solid ${C.border}`, borderRadius: 8, padding: 11 }}>{r.suggested_script}</div>
+                        <button onClick={() => { navigator.clipboard?.writeText(r.suggested_script); notify('Đã chép tin mời — dán vào Zalo/SMS gửi khách', 'success') }} style={{ justifySelf: 'start', border: 'none', background: C.grad, color: '#fff', borderRadius: 8, padding: '7px 14px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>📋 Chép tin mời quay lại</button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>}
+    </Shell>
+  )
+}
+
 // ── VIỆC B: CHĂM SÓC SAU DỊCH VỤ (giai đoạn 1) ── khách đến hôm qua → AI soạn tin → lễ tân gửi tay.
 const LIEU_TRINH_DM = ['Triệt Lông', 'Chăm Sóc Da Mặt', 'PEEL DA SINH HỌC', 'Tắm Trắng Toàn Thân', 'Công Nghệ Cao - Laser', 'Phun Xăm']
 
@@ -2174,17 +2291,7 @@ export default function MarketingModulePage() {
 
   if (route.key === 'overview') return <Overview />
   if (route.key === 'inbox') return <InboxPage />
-  if (route.key === 'remarketing') {
-    return (
-      <AdminChamSocKhachPage
-        embeddedInMarketing
-        fixedTab="fanpage"
-        initialFanpageFilter="all"
-        title="Khách & Remarketing"
-        subtitle="Kho khách từ dữ liệu đã quét, đã gán vào hồ sơ HSMS theo mã KH — phân nhóm để mời quay lại."
-      />
-    )
-  }
+  if (route.key === 'remarketing') return <RemarketingPage />
   if (route.key === 'aftercare') return <AfterCarePage />
   if (route.key === 'fanpage') return <FanpageContentPage route={route} />
   if (route.key === 'training') return <TrainingPage />

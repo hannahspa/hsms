@@ -2164,10 +2164,14 @@ async function analyzeOneLead(seg: any) {
   let diem = Math.round(Number(p.diem_tiem_nang)); if (!Number.isFinite(diem)) diem = 0
   diem = Math.max(0, Math.min(100, diem))
   const dichVu = Array.isArray(p.dich_vu_quan_tam) ? p.dich_vu_quan_tam.slice(0, 3) : []
+  // Phân loại để LỌC RÁC: spam / không nhu cầu / điểm quá thấp → loai_bo (ẩn khỏi danh sách remarketing)
+  const isRac = tt === 'spam' || diem < 25
+  const care = isRac ? 'loai_bo' : (diem >= 60 ? 'can_uu_tien' : 'chua_cham_soc')
   return {
     services_interest: dichVu,
     priority_score: diem,
-    care_status: diem >= 60 ? 'can_uu_tien' : 'chua_cham_soc',
+    care_status: care,
+    da_den_spa: !!context.is_returning,
     suggested_action: String(p.hanh_dong || '').slice(0, 300),
     suggested_script: String(p.script || '').slice(0, 600),
     ai_tom_tat: String(p.tom_tat || '').slice(0, 400),
@@ -2194,7 +2198,7 @@ async function handleReclassifyLeads(body: Record<string, unknown>) {
     if (r) {
       Object.assign(patch, {
         services_interest: r.services_interest, priority_score: r.priority_score,
-        care_status: r.care_status, suggested_action: r.suggested_action,
+        care_status: r.care_status, da_den_spa: r.da_den_spa, suggested_action: r.suggested_action,
         suggested_script: r.suggested_script, ai_tom_tat: r.ai_tom_tat,
       })
       done++
