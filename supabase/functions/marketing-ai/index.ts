@@ -2164,9 +2164,10 @@ async function analyzeOneLead(seg: any) {
   let diem = Math.round(Number(p.diem_tiem_nang)); if (!Number.isFinite(diem)) diem = 0
   diem = Math.max(0, Math.min(100, diem))
   const dichVu = Array.isArray(p.dich_vu_quan_tam) ? p.dich_vu_quan_tam.slice(0, 3) : []
-  // Phân loại để LỌC RÁC: spam / không nhu cầu / điểm quá thấp → loai_bo (ẩn khỏi danh sách remarketing)
+  // Phân loại để LỌC RÁC: spam / không nhu cầu / điểm quá thấp → 'tam_ngung' (ẩn khỏi danh sách remarketing).
+  // care_status có CHECK constraint cố định → chỉ dùng giá trị hợp lệ; mức ưu tiên lọc bằng priority_score.
   const isRac = tt === 'spam' || diem < 25
-  const care = isRac ? 'loai_bo' : (diem >= 60 ? 'can_uu_tien' : 'chua_cham_soc')
+  const care = isRac ? 'tam_ngung' : 'chua_cham_soc'
   return {
     services_interest: dichVu,
     priority_score: diem,

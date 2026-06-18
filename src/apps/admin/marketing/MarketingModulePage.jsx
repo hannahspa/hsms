@@ -1871,11 +1871,11 @@ function RemarketingPage() {
         const applyNam = (q) => nam === 'tat_ca' ? q : (nam === 'older' ? q.lt('nam_tin_cuoi', 2025) : q.eq('nam_tin_cuoi', Number(nam)))
         let q = supabase.from('marketing_fanpage_customer_segments')
           .select('id, display_name, phone_norm, priority_score, services_interest, suggested_action, suggested_script, ai_tom_tat, da_den_spa, care_status, last_message_at')
-          .not('ai_reanalyzed_at', 'is', null).neq('care_status', 'loai_bo')
+          .not('ai_reanalyzed_at', 'is', null).neq('care_status', 'tam_ngung')
           .order('priority_score', { ascending: false }).order('last_message_at', { ascending: false }).limit(150)
         q = applyNam(q)
         if (nhom === 'da_den') q = q.eq('da_den_spa', true)
-        else if (nhom === 'tiem_nang') q = q.eq('care_status', 'can_uu_tien')
+        else if (nhom === 'tiem_nang') q = q.gte('priority_score', 60)
         const { data } = await q
         // tiến độ: đã phân tích vs tổng có SĐT theo năm đang lọc
         let ct = supabase.from('marketing_fanpage_customer_segments').select('id', { count: 'exact', head: true }).eq('has_phone', true)
@@ -1902,7 +1902,7 @@ function RemarketingPage() {
 
   async function loaiBo(r) {
     try {
-      await supabase.from('marketing_fanpage_customer_segments').update({ care_status: 'loai_bo' }).eq('id', r.id)
+      await supabase.from('marketing_fanpage_customer_segments').update({ care_status: 'tam_ngung' }).eq('id', r.id)
       setRows(rs => rs.filter(x => x.id !== r.id))
       notify('Đã loại khỏi danh sách', 'success')
     } catch (e) { notify(`Lỗi: ${e.message || e}`, 'error') }
