@@ -16,7 +16,7 @@ function fmtShort(n) {
 }
 function fmtDate(iso) {
   if (!iso) return '—'
-  const [y, m, d] = iso.split('-')
+  const [y, m, d] = String(iso).slice(0, 10).split('-')
   return `${d}/${m}/${y}`
 }
 function todayISO() {
@@ -1335,6 +1335,19 @@ function segmentLabel(segment) {
   return map[segment] || segment || 'Khác'
 }
 
+function fanpageSegmentLabel(segment) {
+  const map = {
+    can_xu_ly_rieng: 'Cần xử lý riêng',
+    khach_dat_hen_co_sdt: 'Đã/chuẩn bị đặt hẹn',
+    khach_nong_co_sdt: 'Khách nóng có SĐT',
+    khach_cu_co_sdt_can_goi_lai: 'Khách cũ cần gọi lại',
+    co_sdt_can_cham_soc: 'Có SĐT cần chăm sóc',
+    tiem_nang_chua_co_sdt: 'Có nhu cầu chưa có SĐT',
+    tuong_tac_thap: 'Tương tác thấp',
+  }
+  return map[segment] || segment || 'Khác'
+}
+
 function intentLabel(intent) {
   const map = {
     dat_lich: 'Đặt lịch',
@@ -1354,7 +1367,7 @@ function isActiveLead(lead) {
   return lead?.trang_thai !== 'spam' && lead?.ai_intent !== 'page_owned_content'
 }
 
-function TabLeads({ leads, campaigns, dichVuList, ktvList, attributionPipeline = [], unmatchedLeads = [], reactivationCustomers = [], fanpageHealth = [], audienceStats = null, customer360 = [], sourceQuality = [], onRunPipeline, onRunAttribution, onReload, showToast }) {
+function TabLeads({ leads, campaigns, dichVuList, ktvList, attributionPipeline = [], unmatchedLeads = [], reactivationCustomers = [], fanpageHealth = [], audienceStats = null, customer360 = [], sourceQuality = [], fanpageSegments = [], fanpageSegmentSummary = [], onRunPipeline, onRunAttribution, onRunFanpageClassification, onReload, showToast }) {
   const [showForm, setShowForm] = useState(false)
   const [bookingLead, setBookingLead] = useState(null)
   const [editingLead, setEditingLead] = useState(null)
@@ -1395,11 +1408,30 @@ function TabLeads({ leads, campaigns, dichVuList, ktvList, attributionPipeline =
     .filter(c => ['sap_het_the', 'khach_moi_can_cham', 'nhac_quay_lai', 'winback_90', 'winback_180', 'winback_365'].includes(c.marketing_segment))
     .sort((a, b) => Number(b.total_revenue || 0) - Number(a.total_revenue || 0))
     .slice(0, 10)
+  const fanpageTotalCustomers = fanpageSegmentSummary.reduce((s, x) => s + Number(x.customers || 0), 0)
+  const fanpageCustomersWithPhone = fanpageSegmentSummary.reduce((s, x) => s + Number(x.customers_with_phone || 0), 0)
+  const fanpagePendingCustomers = fanpageSegmentSummary.reduce((s, x) => s + Number(x.pending_customers || 0), 0)
+  const fanpageInterestCustomers = fanpageSegmentSummary
+    .filter(x => x.segment !== 'tuong_tac_thap')
+    .reduce((s, x) => s + Number(x.customers || 0), 0)
+  const fanpageLowSignalCustomers = fanpageSegmentSummary
+    .find(x => x.segment === 'tuong_tac_thap')?.customers || 0
+  const highPriorityFanpage = fanpageSegmentSummary
+    .filter(x => ['can_xu_ly_rieng', 'khach_dat_hen_co_sdt', 'khach_nong_co_sdt', 'khach_cu_co_sdt_can_goi_lai', 'co_sdt_can_cham_soc'].includes(x.segment))
+    .reduce((s, x) => s + Number(x.customers || 0), 0)
+  const topFanpageSegments = [...fanpageSegmentSummary]
+    .sort((a, b) => Number(b.customers || 0) - Number(a.customers || 0))
+    .slice(0, 7)
+  const priorityFanpageCustomers = [...fanpageSegments]
+    .filter(x => x.segment !== 'tuong_tac_thap')
+    .sort((a, b) => Number(b.priority_score || 0) - Number(a.priority_score || 0))
+    .slice(0, 14)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div style={{ fontWeight: 800, color: COLORS.text }}>Khách hàng tiềm năng đang đo chuyển đổi</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button className="btn" onClick={onRunFanpageClassification}>Làm mới phân nhóm Fanpage</button>
           <button className="btn gold" onClick={onRunPipeline}>Quét Facebook</button>
           <button className="btn" onClick={onRunAttribution}>Chỉ nối dữ liệu</button>
           <button className="btn gold" onClick={() => setShowForm(true)}>+ KH tiềm năng</button>
@@ -1408,28 +1440,28 @@ function TabLeads({ leads, campaigns, dichVuList, ktvList, attributionPipeline =
       <div className="strip" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
         <div className="it">
           <div className="l">Tất cả khách từng inbox</div>
-          <div className="v">{audience.all_inbox_conversations ?? '...'}</div>
-          <div className="d">từ 25/11/2025</div>
+          <div className="v">{fanpageTotalCustomers || audience.all_inbox_conversations || '...'}</div>
+          <div className="d">từ 26/11/2022</div>
         </div>
         <div className="it">
           <div className="l">Có số điện thoại</div>
-          <div className="v" style={{ color: COLORS.thu }}>{audience.conversations_with_phone ?? '...'}</div>
+          <div className="v" style={{ color: COLORS.thu }}>{fanpageCustomersWithPhone || audience.conversations_with_phone || '...'}</div>
           <div className="d">ưu tiên chốt lịch</div>
         </div>
         <div className="it">
           <div className="l">Có nhu cầu dịch vụ</div>
-          <div className="v">{audience.conversations_with_buying_signal ?? '...'}</div>
+          <div className="v">{fanpageInterestCustomers || audience.conversations_with_buying_signal || '...'}</div>
           <div className="d">hỏi giá/đặt lịch/tư vấn</div>
         </div>
         <div className="it">
-          <div className="l">Từng inbox</div>
-          <div className="v">{audience.previous_inbox_only ?? '...'}</div>
+          <div className="l">Tương tác thấp</div>
+          <div className="v">{fanpageLowSignalCustomers || audience.previous_inbox_only || '...'}</div>
           <div className="d">chưa rõ nhu cầu</div>
         </div>
         <div className="it">
-          <div className="l">Tin nhắn đã lưu</div>
+          <div className="l">Tin nhắn gần đây</div>
           <div className="v">{audience.scanned_messages ?? '...'}</div>
-          <div className="d">{audience.inbound_messages || 0} khách gửi · {audience.outbound_messages || 0} page trả</div>
+          <div className="d">đang đo chiến dịch hiện tại</div>
         </div>
       </div>
       <div className="strip" style={{ gridTemplateColumns: 'repeat(6,1fr)' }}>
@@ -1440,6 +1472,82 @@ function TabLeads({ leads, campaigns, dichVuList, ktvList, attributionPipeline =
         <div className="it"><div className="l">Đơn từ KH tiềm năng</div><div className="v">{totalLeadOrders}</div></div>
         <div className="it"><div className="l">Doanh thu KH tiềm năng</div><div className="v">{fmtShort(totalAttributedRevenue)}</div></div>
       </div>
+      <div className="strip" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
+        <div className="it">
+          <div className="l">Đã phân nhóm chăm sóc</div>
+          <div className="v">{fanpageTotalCustomers || '...'}</div>
+          <div className="d">khách/định danh Fanpage</div>
+        </div>
+        <div className="it">
+          <div className="l">Có SĐT để gọi/Zalo</div>
+          <div className="v" style={{ color: COLORS.thu }}>{fanpageCustomersWithPhone || '...'}</div>
+          <div className="d">ưu tiên chăm sóc lại</div>
+        </div>
+        <div className="it">
+          <div className="l">Cần xử lý</div>
+          <div className="v">{fanpagePendingCustomers || '...'}</div>
+          <div className="d">chưa chăm sóc</div>
+        </div>
+        <div className="it">
+          <div className="l">Nhóm ưu tiên</div>
+          <div className="v" style={{ color: COLORS.chi }}>{highPriorityFanpage || 0}</div>
+          <div className="d">điểm ưu tiên từ 75</div>
+        </div>
+        <div className="it">
+          <div className="l">Tệp khách cũ</div>
+          <div className="v">{topFanpageSegments.find(x => x.segment === 'khach_cu_co_sdt_can_goi_lai')?.customers || 0}</div>
+          <div className="d">có SĐT cần mời quay lại</div>
+        </div>
+      </div>
+      {topFanpageSegments.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 10 }}>
+          {topFanpageSegments.map(seg => (
+            <div key={seg.segment} style={{ background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 12, boxShadow: COLORS.shadow }}>
+              <div style={{ fontSize: 10, color: COLORS.textMute, fontWeight: 900, textTransform: 'uppercase', minHeight: 28 }}>
+                {fanpageSegmentLabel(seg.segment)}
+              </div>
+              <div style={{ fontSize: 22, color: COLORS.text, fontWeight: 900, marginTop: 4 }}>{seg.customers || 0}</div>
+              <div style={{ fontSize: 11, color: COLORS.textSub, marginTop: 4 }}>
+                {seg.customers_with_phone || 0} có SĐT
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {priorityFanpageCustomers.length > 0 && (
+        <TableWrap>
+          <div style={{ padding: 12, fontWeight: 800, color: COLORS.text }}>Danh sách chăm sóc lại từ Fanpage</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: COLORS.bg, color: COLORS.textSub, textAlign: 'left' }}>
+                {['Khách', 'Nhóm chăm sóc', 'Điểm', 'Dịch vụ quan tâm', 'Việc cần làm', 'Kịch bản gợi ý'].map(h => (
+                  <th key={h} style={{ padding: '11px 12px', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {priorityFanpageCustomers.map(c => (
+                <tr key={c.id} style={{ borderTop: `1px solid ${COLORS.border}` }}>
+                  <td style={{ padding: 12, fontWeight: 800, color: COLORS.text }}>
+                    {c.display_name || 'Khách Fanpage'}
+                    <div style={{ fontSize: 11, fontWeight: 500, color: COLORS.textMute }}>
+                      {c.phone_norm || c.platform_user_id || 'chưa có SĐT'}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: COLORS.textMute }}>
+                      {c.inbound_messages || 0} tin khach · {fmtDate(c.last_message_at)}
+                    </div>
+                  </td>
+                  <td style={{ padding: 12 }}>{fanpageSegmentLabel(c.segment)}</td>
+                  <td style={{ padding: 12, fontWeight: 900, color: COLORS.text }}>{c.priority_score || 0}</td>
+                  <td style={{ padding: 12, color: COLORS.textSub }}>{(c.services_interest || []).join(', ') || 'chưa rõ'}</td>
+                  <td style={{ padding: 12, color: COLORS.textSub }}>{c.suggested_action || c.care_goal || 'Chăm sóc lại'}</td>
+                  <td style={{ padding: 12, color: COLORS.textSub, maxWidth: 360 }}>{c.suggested_script || 'Liên hệ lại khách theo ngữ cảnh hội thoại cũ.'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableWrap>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div style={{ background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 14, boxShadow: COLORS.shadow }}>
           <div style={{ fontWeight: 800, color: COLORS.text, marginBottom: 8 }}>Khoảng trống attribution</div>
@@ -2121,6 +2229,8 @@ export default function AdminMarketingPage() {
   const [audienceStats, setAudienceStats] = useState(null)
   const [customer360, setCustomer360] = useState([])
   const [sourceQuality, setSourceQuality] = useState([])
+  const [fanpageSegments, setFanpageSegments] = useState([])
+  const [fanpageSegmentSummary, setFanpageSegmentSummary] = useState([])
   const [dichVuList, setDichVuList]        = useState([])
   const [ktvList, setKtvList]              = useState([])
   const [loading, setLoading]             = useState(true)
@@ -2138,7 +2248,7 @@ export default function AdminMarketingPage() {
     const marketingParent = allDM?.find(d => d.ten.toLowerCase().includes('marketing') && !d.parent_id)
     const mktDMIds = allDM?.filter(d => d.parent_id === marketingParent?.id).map(d => d.id) || []
 
-    const [{ data: cd }, { data: km }, { data: cp }, leadRes, msgRes, pageRes, postRes, commentRes, contentRes, actionRes, perfRes, runRes, attrRes, unmatchedRes, reactRes, healthRes, customer360Res, sourceQualityRes, dvRes, ktvRes] = await Promise.all([
+    const [{ data: cd }, { data: km }, { data: cp }, leadRes, msgRes, pageRes, postRes, commentRes, contentRes, actionRes, perfRes, runRes, attrRes, unmatchedRes, reactRes, healthRes, customer360Res, sourceQualityRes, fanpageSegmentsRes, fanpageSegmentSummaryRes, dvRes, ktvRes] = await Promise.all([
       supabase.from('chien_dich_marketing').select('*').order('created_at', { ascending: false }),
       supabase.from('khuyen_mai').select('id,ten').order('created_at', { ascending: false }),
       mktDMIds.length > 0
@@ -2160,6 +2270,8 @@ export default function AdminMarketingPage() {
       supabase.from('v_marketing_fanpage_health').select('*'),
       supabase.from('v_marketing_customer_360').select('*').order('total_revenue', { ascending: false }).limit(300),
       supabase.from('v_marketing_source_quality').select('*').order('revenue', { ascending: false }).limit(50),
+      supabase.from('marketing_fanpage_customer_segments').select('*').order('priority_score', { ascending: false }).order('last_message_at', { ascending: false }).limit(200),
+      supabase.from('v_marketing_fanpage_segment_summary').select('*').order('customers', { ascending: false }),
       supabase.from('dich_vu').select('id,ten').eq('is_active', true).order('ten').limit(500),
       supabase.from('nhan_vien').select('id,ho_ten').eq('trang_thai', 'dang_lam').in('vi_tri', ['ktv', 'le_tan']).order('ho_ten'),
     ])
@@ -2183,6 +2295,8 @@ export default function AdminMarketingPage() {
     setFanpageHealth(healthRes.data || [])
     setCustomer360(customer360Res.data || [])
     setSourceQuality(sourceQualityRes.data || [])
+    setFanpageSegments(fanpageSegmentsRes.data || [])
+    setFanpageSegmentSummary(fanpageSegmentSummaryRes.data || [])
     setDichVuList(dvRes.data || [])
     setKtvList(ktvRes.data || [])
     setLoading(false)
@@ -2206,6 +2320,11 @@ export default function AdminMarketingPage() {
     if (error) return showToast(`Lỗi nối dữ liệu: ${error.message || error}`)
     await load()
     showToast(`Đã nối: ${data?.linked_customers || 0} khách, ${data?.linked_orders || 0} đơn`)
+  }
+
+  const runFanpageClassification = async () => {
+    await load()
+    showToast('Đã làm mới danh sách phân nhóm khách Fanpage')
   }
 
   const runFacebookPipeline = async () => {
@@ -2343,7 +2462,9 @@ export default function AdminMarketingPage() {
               attributionPipeline={attributionPipeline} unmatchedLeads={unmatchedLeads}
               reactivationCustomers={reactivationCustomers} fanpageHealth={fanpageHealth}
               audienceStats={audienceStats} customer360={customer360} sourceQuality={sourceQuality}
+              fanpageSegments={fanpageSegments} fanpageSegmentSummary={fanpageSegmentSummary}
               onRunPipeline={runFacebookPipeline} onRunAttribution={runAttributionBridge}
+              onRunFanpageClassification={runFanpageClassification}
               onReload={load} showToast={showToast} />
           )}
           {tab === 'fanpage' && (

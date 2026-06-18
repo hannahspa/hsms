@@ -3,8 +3,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || ''
-const OPENAI_MODEL = Deno.env.get('OPENAI_MODEL') || ''
+// AI provider: DeepSeek (OpenAI-compatible). Key/model đặt trong env trên VPS, KHÔNG hardcode.
+// Uyển chuyển 2 model:
+//  - FAST (deepseek-v4-flash): việc lặp/realtime (triage, trả lời inbox, tìm SĐT) — nhanh, rẻ, tránh Edge timeout.
+//  - PRO  (deepseek-v4-pro):   việc suy luận sâu gọi 1 lần (kế hoạch nội dung, soạn bài, phân tích điều hành).
+const DEEPSEEK_API_KEY = Deno.env.get('DEEPSEEK_API_KEY') || ''
+const DEEPSEEK_MODEL_FAST = Deno.env.get('DEEPSEEK_MODEL') || Deno.env.get('DEEPSEEK_MODEL_FAST') || 'deepseek-v4-flash'
+const DEEPSEEK_MODEL_PRO = Deno.env.get('DEEPSEEK_MODEL_PRO') || 'deepseek-v4-pro'
+const DEEPSEEK_BASE_URL = Deno.env.get('DEEPSEEK_BASE_URL') || 'https://api.deepseek.com'
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
 
@@ -20,11 +26,17 @@ type MarketingChannel = 'facebook' | 'zalo' | 'tiktok' | 'google' | 'website' | 
 
 type IncomingMessage = {
   kenh?: MarketingChannel
+  direction?: 'inbound' | 'outbound' | 'internal'
   platform_user_id?: string
   platform_message_id?: string
   ho_ten?: string
   so_dien_thoai?: string
   noi_dung?: string
+  attachments?: unknown[]
+  conversation_id?: string
+  from_platform_user_id?: string
+  recipient_id?: string
+  created_at?: string
   chien_dich_id?: string
   metadata?: Record<string, unknown>
 }
@@ -42,38 +54,40 @@ function money(n: number) {
 }
 
 function extractTextFromResponse(data: Record<string, unknown>) {
-  if (typeof data.output_text === 'string') return data.output_text
-  const output = Array.isArray(data.output) ? data.output : []
+  // DeepSeek/OpenAI Chat Completions: { choices: [{ message: { content: '...' } }] }
+  const choices = Array.isArray((data as any)?.choices) ? (data as any).choices : []
   const parts: string[] = []
-  for (const item of output as any[]) {
-    const content = Array.isArray(item?.content) ? item.content : []
-    for (const c of content) {
-      if (typeof c?.text === 'string') parts.push(c.text)
-    }
+  for (const c of choices) {
+    const content = c?.message?.content
+    if (typeof content === 'string') parts.push(content)
   }
   return parts.join('\n').trim()
 }
 
-async function callAI(system: string, input: unknown) {
-  if (!OPENAI_API_KEY || !OPENAI_MODEL) {
+async function callAI(system: string, input: unknown, tier: 'fast' | 'pro' = 'fast') {
+  if (!DEEPSEEK_API_KEY) {
     return {
       ok: false,
       text: '',
-      note: 'missing_openai_config',
+      note: 'missing_deepseek_config',
     }
   }
 
-  const res = await fetch('https://api.openai.com/v1/responses', {
+  const model = tier === 'pro' ? DEEPSEEK_MODEL_PRO : DEEPSEEK_MODEL_FAST
+  const res = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: OPENAI_MODEL,
-      input: [
+      // deepseek-v4-pro/flash là model suy luận: tốn ~256-360 token reasoning trước khi trả lời.
+      // Để trần cao tránh câu trả lời bị cắt cụt (finish_reason=length); token thừa không tính phí.
+      model,
+      max_tokens: 4096,
+      messages: [
         { role: 'system', content: system },
-        { role: 'user', content: JSON.stringify(input) },
+        { role: 'user', content: typeof input === 'string' ? input : JSON.stringify(input) },
       ],
     }),
   })
@@ -102,6 +116,14 @@ function safeJSON(text: string, fallback: Record<string, unknown>) {
   } catch {
     return fallback
   }
+}
+
+// Lọc enum mức an toàn về giá trị DB hợp lệ (AI có thể trả 'safe'/'high'/...).
+function safeLevel(v: unknown): 'normal' | 'needs_review' | 'blocked' {
+  const s = String(v || '').trim().toLowerCase()
+  if (['blocked', 'block', 'spam', 'danger', 'high', 'cao'].includes(s)) return 'blocked'
+  if (['needs_review', 'review', 'warning', 'medium', 'caution', 'can_xem'].includes(s)) return 'needs_review'
+  return 'normal'
 }
 
 function fallbackInboxAnalysis(noiDung: string) {
@@ -189,20 +211,76 @@ async function getConnectedPageIds() {
   return new Set((data || []).map((page: any) => String(page.page_id)))
 }
 
+// ── Context Layer (GĐ1): nạp hồ sơ khách 360 cho AI ──────────────────────────
+// Tra khách cũ theo SĐT (hoặc lấy SĐT từ segment theo platform_user_id), kèm thẻ còn buổi.
+// Chỉ lấy dữ liệu tối thiểu cần để AI tư vấn; KHÔNG đẩy số tiền chi tiết/SĐT ra prompt ngoài cần thiết.
+async function buildCustomerContext(phone?: string | null, platformUserId?: string | null) {
+  let resolvedPhone = phone ? (extractPhone(phone) || phone) : null
+
+  if (!resolvedPhone && platformUserId) {
+    const { data: seg } = await supabase.from('marketing_fanpage_customer_segments')
+      .select('phone_norm')
+      .eq('platform_user_id', platformUserId)
+      .not('phone_norm', 'is', null)
+      .limit(1)
+      .maybeSingle()
+    if (seg?.phone_norm) resolvedPhone = seg.phone_norm
+  }
+
+  if (!resolvedPhone) return { is_returning: false }
+
+  const { data: kh } = await supabase.from('khach_hang')
+    .select('id, ho_ten, lan_cuoi_den, tong_chi_tieu')
+    .eq('so_dien_thoai', resolvedPhone)
+    .limit(1)
+    .maybeSingle()
+  if (!kh) return { is_returning: false }
+
+  const { data: cards } = await supabase.from('the_lieu_trinh')
+    .select('ten_dich_vu, so_buoi_con_lai, ngay_het_han')
+    .eq('khach_hang_id', kh.id)
+    .gt('so_buoi_con_lai', 0)
+    .order('ngay_het_han', { ascending: true })
+    .limit(10)
+
+  return {
+    is_returning: true,
+    khach_hang_id: kh.id,
+    ho_ten: kh.ho_ten || null,
+    lan_cuoi_den: kh.lan_cuoi_den || null,
+    da_chi_tieu: Number(kh.tong_chi_tieu || 0) > 0,
+    the_con_buoi: (cards || []).map((c: any) => ({
+      dich_vu: c.ten_dich_vu,
+      con_lai: c.so_buoi_con_lai,
+      het_han: c.ngay_het_han,
+    })),
+  }
+}
+
 async function analyzeMarketingText(payload: Record<string, unknown>) {
   const noiDung = String(payload.noi_dung || '')
   const fallback = fallbackInboxAnalysis(noiDung)
+  // GĐ2: nạp ngữ cảnh khách trước khi gọi AI → nhận định cũ/mới + tư vấn bám lịch sử thật.
+  const phone = (payload.so_dien_thoai as string) || extractPhone(noiDung) || null
+  const context = await buildCustomerContext(phone, (payload.platform_user_id as string) || null)
   const ai = await callAI(
     [
       'Ban la AI Marketing CRM cho Hannah Beauty & Spa tai Can Tho.',
       'Hay phan loai tin nhan/comment fanpage thanh intent, lead_status, lead_score, safety_level, suggested_reply, next_best_action, requires_human, summary.',
       'Uu tien nhan dien: dat_lich, hoi_gia, tu_van_da, hoi_the_lieu_trinh, khieu_nai, spam, remarketing.',
+      'Dua vao truong "khach_context": neu is_returning=true thi day la KHACH CU — chao than mat, nhac dich vu/the con buoi cu the trong context, goi y tu van/gia han phu hop; neu is_returning=false thi la khach moi — chao moi, xin SDT hoac moi Quan Tam Zalo.',
+      'Tra them 2 truong: khach_cu (true/false theo khach_context.is_returning) va goi_y_tu_van (tieng Viet, lich su, BAM SAT du lieu that trong context, TUYET DOI khong bia so buoi/dich vu khong co trong context).',
       'Khong cam ket dieu tri khoi benh. Khong tu y giam gia. Cac ca y khoa/khieu nai/hoan tien can requires_human=true.',
       'Chi tra ve JSON dung schema.',
     ].join('\n'),
-    payload,
+    { ...payload, khach_context: context },
   )
-  return ai.ok ? safeJSON(ai.text, fallback) : fallback
+  const parsed = ai.ok ? safeJSON(ai.text, fallback) : fallback
+  // Đính kèm cờ khách cũ để các bước sau (UI/lead) dùng được kể cả khi AI quên trả.
+  if (parsed && typeof parsed === 'object' && parsed.khach_cu == null) {
+    parsed.khach_cu = !!context.is_returning
+  }
+  return parsed
 }
 
 async function findOrCreateLead(msg: IncomingMessage, analysis: Record<string, any>) {
@@ -228,6 +306,14 @@ async function findOrCreateLead(msg: IncomingMessage, analysis: Record<string, a
     lead = data
   }
 
+  // Lọc enum: AI (DeepSeek/khác) có thể trả lead_status tự do ('new_lead'...) → ép về giá trị DB hợp lệ.
+  const VALID_LEAD_STATUS = new Set(['moi', 'dang_tu_van', 'da_dat_hen', 'da_den', 'da_mua', 'mat_co_hoi', 'spam'])
+  const rawStatus = String(analysis.lead_status || '').trim()
+  const trangThai = VALID_LEAD_STATUS.has(rawStatus) ? rawStatus : 'moi'
+  // Ép điểm về số nguyên >= 0 (AI có thể trả chữ/null → NaN → vi phạm NOT NULL).
+  const scoreNum = Number(analysis.lead_score)
+  const diemTiemNang = Number.isFinite(scoreNum) ? Math.min(100, Math.max(0, Math.round(scoreNum))) : 0
+
   const payload = {
     kenh,
     chien_dich_id: msg.chien_dich_id || null,
@@ -235,8 +321,8 @@ async function findOrCreateLead(msg: IncomingMessage, analysis: Record<string, a
     ho_ten: msg.ho_ten || null,
     so_dien_thoai: msg.so_dien_thoai || extractPhone(String(msg.noi_dung || '')),
     nhu_cau: String(msg.noi_dung || '').slice(0, 500),
-    trang_thai: analysis.lead_status || 'moi',
-    diem_tiem_nang: Number(analysis.lead_score || 0),
+    trang_thai: trangThai,
+    diem_tiem_nang: diemTiemNang,
     first_message_at: lead?.first_message_at || new Date().toISOString(),
     last_message_at: new Date().toISOString(),
     ngay_tao: lead?.ngay_tao || todayISO(),
@@ -283,48 +369,78 @@ async function handleInbox(payload: IncomingMessage) {
 
   const lead = await findOrCreateLead(payload, analysis)
 
-  const { data: message, error: msgError } = await supabase.from('marketing_messages')
-    .insert({
-      lead_id: lead.id,
-      kenh: payload.kenh || 'facebook',
-      direction: 'inbound',
-      platform_message_id: payload.platform_message_id || null,
-      sender_type: 'customer',
-      sender_name: payload.ho_ten || null,
-      noi_dung: payload.noi_dung,
-      ai_intent: analysis.intent || null,
-      ai_confidence: analysis.lead_score ? Number(analysis.lead_score) / 100 : null,
-      ai_suggested_reply: analysis.suggested_reply || null,
-      ai_safety_level: analysis.safety_level || 'normal',
-      trang_thai: 'received',
-      metadata: payload.metadata || {},
-    })
-    .select('*')
-    .single()
-  if (msgError) throw msgError
+  const messagePayload = {
+    lead_id: lead.id,
+    kenh: payload.kenh || 'facebook',
+    direction: payload.direction || 'inbound',
+    platform_message_id: payload.platform_message_id || null,
+    sender_type: 'customer',
+    sender_name: payload.ho_ten || null,
+    noi_dung: payload.noi_dung,
+    attachments: payload.attachments || [],
+    ai_intent: analysis.intent || null,
+    ai_confidence: analysis.lead_score ? Number(analysis.lead_score) / 100 : null,
+    ai_suggested_reply: analysis.suggested_reply || null,
+    ai_safety_level: safeLevel(analysis.safety_level),
+    trang_thai: 'received',
+    metadata: payload.metadata || {},
+    created_at: payload.created_at || new Date().toISOString(),
+    conversation_id: payload.conversation_id || null,
+    from_platform_user_id: payload.from_platform_user_id || null,
+    recipient_id: payload.recipient_id || null,
+  }
+
+  let message: any = null
+  if (payload.platform_message_id) {
+    const { data: existing, error: findMessageError } = await supabase.from('marketing_messages')
+      .select('*')
+      .eq('kenh', payload.kenh || 'facebook')
+      .eq('platform_message_id', payload.platform_message_id)
+      .maybeSingle()
+    if (findMessageError) throw findMessageError
+
+    if (existing?.id) {
+      const { data: updated, error: updateMessageError } = await supabase.from('marketing_messages')
+        .update({
+          lead_id: lead.id,
+          ai_intent: analysis.intent || null,
+          ai_confidence: analysis.lead_score ? Number(analysis.lead_score) / 100 : null,
+          ai_suggested_reply: analysis.suggested_reply || null,
+          ai_safety_level: safeLevel(analysis.safety_level),
+        })
+        .eq('id', existing.id)
+        .select('*')
+        .single()
+      if (updateMessageError) throw updateMessageError
+      message = updated
+    }
+  }
+
+  if (!message) {
+    const { data: inserted, error: insertMessageError } = await supabase.from('marketing_messages')
+      .insert(messagePayload)
+      .select('*')
+      .single()
+    if (insertMessageError) throw insertMessageError
+    message = inserted
+  }
 
   const requiresApproval = analysis.requires_human || analysis.safety_level !== 'normal'
-  const actionStatus = requiresApproval ? 'cho_duyet' : 'de_xuat'
-  const { data: action } = await supabase.from('marketing_ai_actions')
-    .insert({
-      action_type: 'reply_message',
-      scope: 'inbox',
-      title: requiresApproval ? 'Duyệt câu trả lời cho khách' : 'Gợi ý trả lời khách',
-      recommendation: analysis.suggested_reply || '',
-      ly_do: analysis.next_best_action || '',
-      risk_level: requiresApproval ? 'medium' : 'low',
-      requires_approval: requiresApproval,
-      trang_thai: actionStatus,
-      lead_id: lead.id,
-      message_id: message.id,
-      proposed_payload: {
-        reply: analysis.suggested_reply,
-        platform_user_id: payload.platform_user_id,
-        kenh: payload.kenh || 'facebook',
-      },
-    })
-    .select('*')
-    .single()
+  const action = await createReplyActionOnce({
+    action_type: 'reply_message',
+    title: requiresApproval ? 'Duyệt câu trả lời cho khách' : 'Gợi ý trả lời khách',
+    recommendation: analysis.suggested_reply || '',
+    ly_do: analysis.next_best_action || '',
+    risk_level: requiresApproval ? 'medium' : 'low',
+    requires_approval: requiresApproval,
+    lead_id: lead.id,
+    message_id: message.id,
+    proposed_payload: {
+      reply: analysis.suggested_reply,
+      platform_user_id: payload.platform_user_id,
+      kenh: payload.kenh || 'facebook',
+    },
+  })
 
   if (requiresApproval && action?.id) {
     await supabase.from('marketing_approval_queue').insert({
@@ -411,8 +527,13 @@ async function handleFanpageTriage(body: Record<string, unknown> = {}) {
   const ignoredMessages: any[] = []
   for (const message of messages || []) {
     const rawFrom = message.metadata?.raw_message?.from || {}
-    const platformUserId = rawFrom.id || message.metadata?.conversation_id || message.platform_message_id
+    const conversationId = message.conversation_id || message.metadata?.conversation_id || null
+    const platformUserId = message.from_platform_user_id
+      || rawFrom.id
+      || message.metadata?.from_platform_user_id
+      || message.platform_message_id
     if (
+      isPageOwnedSource(platformUserId, pageIds) ||
       isPageOwnedSource(rawFrom.id, pageIds) ||
       message.sender_type === 'staff' ||
       isLikelyPagePromo(message.noi_dung || '') ||
@@ -422,7 +543,7 @@ async function handleFanpageTriage(body: Record<string, unknown> = {}) {
         .update({
           ai_intent: 'page_owned_content',
           ai_confidence: 1,
-          ai_safety_level: 'spam',
+          ai_safety_level: 'blocked',
           metadata: {
             ...(message.metadata || {}),
             ignored_by_triage: {
@@ -443,12 +564,14 @@ async function handleFanpageTriage(body: Record<string, unknown> = {}) {
       type: 'inbox',
       noi_dung: message.noi_dung,
       sender_name: message.sender_name,
+      so_dien_thoai: extractPhone(message.noi_dung || '') || undefined,
+      platform_user_id: String(platformUserId || ''),
       created_at: message.created_at,
       metadata: message.metadata || {},
     })
     const lead = await findOrCreateLead({
       kenh: 'facebook',
-      platform_user_id: String(platformUserId || ''),
+      platform_user_id: String(platformUserId || conversationId || ''),
       platform_message_id: message.platform_message_id || undefined,
       ho_ten: message.sender_name || rawFrom.name || undefined,
       so_dien_thoai: extractPhone(message.noi_dung || '') || undefined,
@@ -457,6 +580,7 @@ async function handleFanpageTriage(body: Record<string, unknown> = {}) {
         ...(message.metadata || {}),
         source: 'fanpage_inbox_triage',
         message_id: message.id,
+        conversation_id: conversationId,
       },
     }, analysis)
 
@@ -466,7 +590,7 @@ async function handleFanpageTriage(body: Record<string, unknown> = {}) {
         ai_intent: analysis.intent || null,
         ai_confidence: analysis.lead_score ? Number(analysis.lead_score) / 100 : null,
         ai_suggested_reply: analysis.suggested_reply || null,
-        ai_safety_level: analysis.safety_level || 'normal',
+        ai_safety_level: safeLevel(analysis.safety_level),
         metadata: {
           ...(message.metadata || {}),
           ai_triage: {
@@ -495,7 +619,7 @@ async function handleFanpageTriage(body: Record<string, unknown> = {}) {
           reply: analysis.suggested_reply,
           source: 'fanpage_inbox',
           platform_message_id: message.platform_message_id,
-          conversation_id: message.metadata?.conversation_id || null,
+          conversation_id: conversationId,
         },
       })
     }
@@ -1202,6 +1326,16 @@ async function handleResolveIdentities() {
   return data || {}
 }
 
+async function handleClassifyFanpageCustomers(body: Record<string, unknown> = {}) {
+  const sinceDate = String(body.since_date || '2022-11-26')
+  const { data, error } = await supabase.rpc('refresh_marketing_fanpage_customer_segments', {
+    p_since: sinceDate,
+  })
+  if (error) throw error
+  await logRun('classify_fanpage_customers', 'success', body, data || {})
+  return data || {}
+}
+
 async function handleAnalyze() {
   const { data: performance, error } = await supabase
     .from('v_marketing_campaign_performance')
@@ -1444,6 +1578,7 @@ async function handleContentPlan() {
       'Chỉ trả về JSON array: [{tieu_de, kenh, loai_noi_dung, chu_de, noi_dung, ai_prompt, chien_dich_id}].',
     ].join('\n'),
     { campaigns: campaigns || [], today: todayISO() },
+    'pro',
   )
 
   const fallback = (campaigns || []).slice(0, 5).map((c: any) => ({
@@ -1509,6 +1644,7 @@ async function handleDraftContent() {
         'Chi tra ve JSON: caption, hashtags, image_prompt, review_notes.',
       ].join('\n'),
       item,
+      'pro',
     )
 
     const draft = ai.ok ? safeJSON(ai.text, fallbackContentDraft(item)) : fallbackContentDraft(item)
@@ -1738,6 +1874,7 @@ serve(async (req) => {
     else if (mode === 'sync_fanpage_audience') result = await handleFanpageAudienceSync(body)
     else if (mode === 'resolve_conversation_phones') result = await handleResolveConversationPhones(body)
     else if (mode === 'resolve_identities') result = await handleResolveIdentities()
+    else if (mode === 'classify_fanpage_customers') result = await handleClassifyFanpageCustomers(body)
     else if (mode === 'attribution_bridge') result = await handleAttributionBridge(body)
     else if (mode === 'content_plan') result = await handleContentPlan()
     else if (mode === 'draft_content') result = await handleDraftContent()
@@ -1753,6 +1890,7 @@ serve(async (req) => {
         'sync_fanpage_audience',
         'resolve_conversation_phones',
         'resolve_identities',
+        'classify_fanpage_customers',
         'attribution_bridge',
         'content_plan',
         'draft_content',
@@ -1762,8 +1900,15 @@ serve(async (req) => {
 
     await logRun(mode, 'success', body, result)
     return json(result)
-  } catch (e) {
-    await logRun(mode, 'error', body, {}, String(e)).catch(() => {})
-    return json({ error: String(e) }, 500)
+  } catch (e: any) {
+    // Lỗi Supabase là object (message/details/hint/code) — đừng để String() biến thành "[object Object]".
+    const detail = e instanceof Error
+      ? e.message
+      : (e && typeof e === 'object')
+        ? (e.message || e.details || e.hint || e.code || JSON.stringify(e))
+        : String(e)
+    console.error('marketing-ai error:', mode, detail, e?.code || '', e?.details || '')
+    await logRun(mode, 'error', body, {}, String(detail)).catch(() => {})
+    return json({ error: String(detail), code: e?.code || null, details: e?.details || null, hint: e?.hint || null }, 500)
   }
 })

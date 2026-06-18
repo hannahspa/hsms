@@ -2,9 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 
-const SUPABASE_URL = 'https://aqyemkfbjqxpegingoil.supabase.co'
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeWVta2ZianF4cGVnaW5nb2lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzUxNTYwMCwiZXhwIjoyMDkzMDkxNjAwfQ.L2yo4Osu6XNhPaOTEMz1Z2GI-SVtzR6AnODirhUR4zI'
-
 const VAI_TRO_OPTS = [
   { value: 'admin',  label: 'Admin',       color: '#C9A96E', bg: '#FFF8F0' },
   { value: 'le_tan', label: 'Lễ Tân',      color: '#5a6a4a', bg: '#eef2e7' },
@@ -15,6 +12,15 @@ const VAI_TRO_OPTS = [
 function getInitials(name) {
   const parts = (name || '').trim().split(' ')
   return parts[parts.length - 1]?.charAt(0)?.toUpperCase() || '?'
+}
+
+async function callAdminUsers(action, payload = {}) {
+  const { data, error } = await supabase.functions.invoke('admin-users', {
+    body: { action, ...payload },
+  })
+  if (error) throw new Error(data?.error || error.message || 'Khong goi duoc admin-users')
+  if (!data?.ok) throw new Error(data?.error || 'Thao tac quan ly user that bai')
+  return data
 }
 
 export default function QuanLyUser({ onClose }) {
@@ -55,50 +61,20 @@ export default function QuanLyUser({ onClose }) {
     setSaving(true)
     try {
       if (mode === 'add') {
-        // Create auth user via Edge Function or direct API
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${SERVICE_KEY}`,
-            'apikey': SERVICE_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: user.email.trim(),
-            password: user.password,
-            email_confirm: true,
-            user_metadata: { ho_ten: user.ho_ten.trim() },
-          }),
+        await callAdminUsers('create', {
+          email: user.email.trim(),
+          password: user.password,
+          ho_ten: user.ho_ten.trim(),
+          vai_tro: user.vai_tro,
         })
-        const result = await res.json()
-        if (result.error) throw new Error(result.msg || result.error)
-
-        // Insert profile
-        const { error: pErr } = await supabase.from('profiles').insert({
-          id: result.id, ho_ten: user.ho_ten.trim(), email: user.email.trim(),
-          vai_tro: user.vai_tro, trang_thai: true,
-        })
-        if (pErr) throw pErr
         showToast('✓ Đã tạo user mới')
       } else {
-        // Update profile
-        const { error } = await supabase.from('profiles').update({
-          ho_ten: user.ho_ten.trim(), vai_tro: user.vai_tro,
-        }).eq('id', user.id)
-        if (error) throw error
-
-        // Update password if provided
-        if (user.password && user.password.length >= 6) {
-          await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user.id}`, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${SERVICE_KEY}`,
-              'apikey': SERVICE_KEY,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ password: user.password }),
-          })
-        }
+        await callAdminUsers('update', {
+          id: user.id,
+          ho_ten: user.ho_ten.trim(),
+          vai_tro: user.vai_tro,
+          password: user.password || undefined,
+        })
         showToast('✓ Đã cập nhật user')
       }
       setEditSheet(null)
@@ -114,14 +90,7 @@ export default function QuanLyUser({ onClose }) {
     if (!confirmDelete) return
     setSaving(true)
     try {
-      await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${confirmDelete.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${SERVICE_KEY}`,
-          'apikey': SERVICE_KEY,
-        },
-      })
-      await supabase.from('profiles').delete().eq('id', confirmDelete.id)
+      await callAdminUsers('delete', { id: confirmDelete.id })
       showToast('✓ Đã xoá user')
       setConfirmDelete(null)
       fetchUsers()

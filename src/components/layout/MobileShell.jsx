@@ -28,9 +28,16 @@ const PAGE_TITLES = {
   '/admin/kho-hang/bao-cao':         'Báo Cáo Kho',
   '/admin/khuyen-mai':               'Khuyến Mãi',
   '/admin/khuyen-mai/roi':           'Phân Tích ROI',
-  '/admin/marketing':                'Marketing',
+  '/admin/marketing':                'Tổng Quan Marketing',
+  '/admin/marketing/hop-thu':        'Hộp Thư Khách',
+  '/admin/marketing/fanpage-noi-dung': 'Fanpage & Nội Dung',
+  '/admin/marketing/khach-tiem-nang': 'Khách Tiềm Năng',
+  '/admin/marketing/cham-soc-sau-dich-vu': 'Chăm Sóc Sau DV',
+  '/admin/marketing/nhac-lich-lieu-trinh': 'Nhắc Lịch Liệu Trình',
   '/admin/marketing/chien-dich':     'Chiến Dịch',
-  '/admin/marketing/chi-phi':        'Chi Phí MKT',
+  '/admin/marketing/bao-cao-nhan-vien': 'Báo Cáo Nhân Viên',
+  '/admin/marketing/cau-hinh-kenh':  'Cấu Hình Kênh',
+  '/admin/cham-soc-khach':           'Hộp Thư Khách',
   '/admin/trang-chu':                'Nội Dung Web',
   '/SoThuChi':                       'Sổ Thu Chi',
   '/SoThuChi/nhap-lieu':             'Nhập Thu Chi',
@@ -54,6 +61,7 @@ const NHANSU_ITEMS = [
 const MORE_ADMIN = [
   { label: 'Kho Hàng',       path: '/admin/kho-hang',        icon: '📦' },
   { label: 'CRM',             path: '/admin/crm',             icon: '💝' },
+  { label: 'Hộp Thư',         path: '/admin/marketing/hop-thu', icon: '💬' },
   { label: 'Thẻ LT',         path: '/admin/the-lieu-trinh',  icon: '🎫' },
   { label: 'Khuyến Mãi',     path: '/admin/khuyen-mai',      icon: '🏷️' },
   { label: 'Marketing',       path: '/admin/marketing',       icon: '📣' },
@@ -62,7 +70,11 @@ const MORE_ADMIN = [
 ]
 
 const MORE_LETAN = [
-  { label: 'Cài Đặt',  path: '/SoThuChi/cai-dat', icon: '⚙️' },
+  { label: 'Hộp Thư',   path: '/admin/marketing/hop-thu', icon: '💬' },
+  { label: 'Chăm Sau DV', path: '/admin/marketing/cham-soc-sau-dich-vu', icon: '💗' },
+  { label: 'Nhắc Lịch', path: '/admin/marketing/nhac-lich-lieu-trinh', icon: '📅' },
+  { label: 'CRM',       path: '/admin/crm', icon: '💝' },
+  { label: 'Cài Đặt',   path: '/SoThuChi/cai-dat', icon: '⚙️' },
 ]
 
 const BOTTOM_ADMIN = [

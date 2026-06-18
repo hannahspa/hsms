@@ -57,6 +57,18 @@ async function graphGet(path: string, params: Record<string, string | number | u
   return data
 }
 
+async function graphPost(path: string, body: Record<string, unknown>, token: string) {
+  const url = graphUrl(path, {}, token)
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data?.error?.message || JSON.stringify(data))
+  return data
+}
+
 async function graphUrlGet(url: string) {
   const res = await fetch(url)
   const data = await res.json().catch(() => ({}))
@@ -836,6 +848,54 @@ async function connectPage(body: Record<string, unknown>) {
   }
 }
 
+async function sendMessageFromPage(page: ConnectedPage, body: Record<string, unknown>) {
+  const token = await getSecret(page.page_access_token_secret)
+  if (!token) throw new Error(`Thieu Page Access Token cho ${page.page_name || page.page_id}`)
+
+  const recipientId = String(body.recipient_id || body.platform_user_id || '').trim()
+  const text = String(body.text || '').trim()
+  const segmentId = String(body.segment_id || '').trim()
+  if (!recipientId) throw new Error('Thieu nguoi nhan Fanpage')
+  if (!text) throw new Error('Thieu noi dung tin nhan')
+
+  const sent = await graphPost(`${page.page_id}/messages`, {
+    recipient: { id: recipientId },
+    messaging_type: 'RESPONSE',
+    message: { text },
+  }, token)
+
+  await supabase.from('marketing_messages').insert({
+    kenh: 'facebook',
+    direction: 'outbound',
+    platform_message_id: sent?.message_id || null,
+    sender_type: 'staff',
+    sender_name: page.page_name || 'Hannah Spa',
+    noi_dung: text,
+    trang_thai: 'sent',
+    sent_at: new Date().toISOString(),
+    metadata: {
+      source: 'hsms_care_center',
+      page_id: page.page_id,
+      page_name: page.page_name,
+      recipient_id: recipientId,
+      segment_id: segmentId || null,
+      raw_send_result: sent,
+    },
+  })
+
+  if (segmentId) {
+    await supabase.from('marketing_fanpage_customer_segments')
+      .update({ care_status: 'dang_cham_soc' })
+      .eq('id', segmentId)
+  }
+
+  return {
+    ok: true,
+    recipient_id: recipientId,
+    message_id: sent?.message_id || null,
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
@@ -870,6 +930,8 @@ serve(async (req) => {
       try {
         if (mode === 'sync_conversations_batch') {
           results.push(await syncConversationBatchForPage(page, body))
+        } else if (mode === 'send_message') {
+          results.push(await sendMessageFromPage(page, body))
         } else {
           results.push(await syncOnePage(page, body))
         }

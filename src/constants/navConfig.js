@@ -58,9 +58,15 @@ export const ADMIN_NAV = [
   ]},
 
   { id: 'marketing', icon: '📣', label: 'Marketing', children: [
-    { id: 'mkt-dashboard', label: 'Dashboard', path: '/admin/marketing' },
-    { id: 'mkt-chiendich', label: 'Chiến Dịch', path: '/admin/marketing/chien-dich' },
-    { id: 'mkt-chiphi', label: 'Chi Phí', path: '/admin/marketing/chi-phi' },
+    { id: 'mkt-dashboard', label: 'Tổng Quan', path: '/admin/marketing' },
+    { id: 'mkt-inbox', label: 'Hộp Thư Khách Hàng', path: '/admin/marketing/hop-thu' },
+    { id: 'mkt-fanpage', label: 'Fanpage & Nội Dung', path: '/admin/marketing/fanpage-noi-dung' },
+    { id: 'mkt-khachtiemnang', label: 'Khách Hàng Tiềm Năng', path: '/admin/marketing/khach-tiem-nang' },
+    { id: 'mkt-chamsoc', label: 'Chăm Sóc Sau DV', path: '/admin/marketing/cham-soc-sau-dich-vu' },
+    { id: 'mkt-nhaclich', label: 'Nhắc Lịch Liệu Trình', path: '/admin/marketing/nhac-lich-lieu-trinh' },
+    { id: 'mkt-chiendich', label: 'Chiến Dịch & Remarketing', path: '/admin/marketing/chien-dich' },
+    { id: 'mkt-baocaonv', label: 'Báo Cáo Nhân Viên', path: '/admin/marketing/bao-cao-nhan-vien' },
+    { id: 'mkt-cauhinh', label: 'Cấu Hình Kênh', path: '/admin/marketing/cau-hinh-kenh' },
   ]},
 
   { id: 'web', icon: '🌐', label: 'Nội Dung Web', path: '/admin/trang-chu' },
@@ -93,6 +99,9 @@ export const LETAN_NAV = [
 
   { sec: 'Khách Hàng' },
   { id: 'crm',          icon: '💝', label: 'CRM Khách Hàng',  path: '/admin/crm' },
+  { id: 'mkt-inbox',    icon: '💬', label: 'Hộp Thư Khách', path: '/admin/marketing/hop-thu' },
+  { id: 'mkt-chamsoc',  icon: '💗', label: 'Chăm Sóc Sau DV', path: '/admin/marketing/cham-soc-sau-dich-vu' },
+  { id: 'mkt-nhaclich', icon: '📅', label: 'Nhắc Lịch Liệu Trình', path: '/admin/marketing/nhac-lich-lieu-trinh' },
   { id: 'the-lieu-trinh', icon: '🎫', label: 'Thẻ Liệu Trình', path: '/admin/the-lieu-trinh' },
 ]
 

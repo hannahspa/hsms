@@ -1,5 +1,146 @@
 # HSMS AI Marketing Memory
 
+## Cap nhat 16/06/2026 - Hop Thu Thong Minh va Bao Cao con sot
+
+- Backend hien dung VPS Supabase self-host `https://api.hannahspa.vn`; kho Fanpage da co 123.329 tin Facebook tren VPS.
+- Da them/cap nhat migration `109_marketing_message_thread_columns.sql` de doc hoi thoai nhanh:
+  - `marketing_messages.conversation_id`.
+  - `marketing_messages.from_platform_user_id`.
+  - view `v_marketing_fanpage_message_thread_light`.
+- Hop Thu Khach Hang `/admin/marketing/hop-thu` da ro hon cho nhan vien:
+  - Danh sach trai: khach can xu ly theo uu tien.
+  - Giua: tom tat hoi thoai + dong chat da tai + tin nhan de xuat.
+  - Phai: ho so HSMS, viec can lam, goi y upsell, nut ghi ket qua.
+  - Khi tai hoi thoai se lay tin moi nhat truoc, gioi han 160 tin, tranh keo toan bo lich su dai lam cham.
+- Form "Ghi ket qua cham soc" cho khach Fanpage da du thao tac van hanh:
+  - Tu dien ten, SDT neu co, dich vu quan tam, co hoi upsell, phan hoi va ghi chu.
+  - Co nut nhanh: Hai long, Tam duoc, Chua hai long, Da mua them, Can cham lai.
+  - Luu xong cap nhat trang thai Fanpage; khach can cham lai/chua hai long se duoc hen ngay cham tiep.
+- Bao Cao Nhan Vien `/admin/marketing/bao-cao-nhan-vien` da them bang "Khach con sot can xu ly":
+  - Hien khach nao dang tre, thieu SDT, khach nong, da noi HSMS.
+  - Hien so tin dung tu `inbound_messages`.
+  - Sap xep uu tien theo tre han, thieu SDT, can quan ly xem, khach co nhieu tin.
+- Da verify bang Chrome:
+  - Yoon Min co 12 tin trong hop thu va bao cao.
+  - Nhi Nguyen co 50 tin trong bao cao.
+  - Khach da noi HSMS nhu Chi Anh Thao hien duoc goi y "Moi khach dat lich dung the con buoi".
+- `npm run build` pass.
+- Viec tiep theo dung huong:
+  - Lam Meta Webhook nhan tin moi realtime vao VPS de HSMS nhan ngay khi khach inbox.
+  - Sau webhook, moi lam tiep gui/nhan chat that trong HSMS va automation phan cong nhan vien.
+
+## Cap nhat 17/06/2026 - Nen realtime Fanpage da len VPS
+
+- Da trien khai nen Webhook realtime cho Fanpage tren VPS:
+  - Function: `supabase/functions/marketing-webhook/index.ts`.
+  - URL production: `https://api.hannahspa.vn/functions/v1/marketing-webhook`.
+  - Migration: `supabase/migrations/110_marketing_webhook_realtime_segments.sql`.
+- Luong moi:
+  - Meta Messenger webhook -> `marketing-webhook`.
+  - Webhook normalize message -> ghi `marketing_messages`.
+  - Trigger DB cap nhat `marketing_fanpage_customer_segments`.
+  - Frontend Hop Thu da subscribe realtime `marketing_messages`/`marketing_fanpage_customer_segments`, nen co nen de nhan tin moi.
+- Ket qua test production:
+  - Payload Messenger gia lap tra `200` trong ~939ms.
+  - Da ghi duoc message raw va segment realtime.
+  - Da xoa sach data test sau test.
+- Da cai verify token Webhook tren VPS:
+  - Token duoc luu trong `/root/supabase/docker/.env`, khong dua vao frontend/code repo.
+  - Service `supabase-edge-functions` da co bien `MARKETING_WEBHOOK_VERIFY_TOKEN`.
+  - GET verify production tra `200` voi challenge `HSMS_VERIFY_OK`.
+- Quyet dinh kien truc quan trong:
+  - Khong goi AI dong bo trong request Webhook, vi request co the bi Supabase Edge supervisor huy khi vuot ~30s.
+  - AI/tom tat se lam bang worker rieng sau khi message da duoc luu, nhu vay Meta Webhook luon nhanh va khong mat tin.
+- Da cap nhat AI nen:
+  - `triage_fanpage` uu tien `from_platform_user_id` va `conversation_id` moi cua webhook.
+  - Da deploy `marketing-ai/index.ts` len VPS va restart Edge Functions.
+  - Da chay thu production gioi han nho: xu ly 3 tin nhan, bo qua 1 comment nhieu, HTTP `200`.
+- Viec can lam tiep:
+  - Khai bao callback URL `https://api.hannahspa.vn/functions/v1/marketing-webhook` va verify token trong Meta Developer App.
+  - Subscribe truong Messenger cua Page trong Meta.
+  - Gui 1 tin that vao Fanpage de xac nhan HSMS nhan realtime vao `marketing_messages`.
+  - Sau khi co tin that chay ve, lam worker nen `marketing-ai` de tom tat hoi thoai, tao goi y tra loi va phan cong nhan vien.
+
+## Cap nhat 17/06/2026 - Worker AI Marketing nen da chay tren VPS
+
+- Da cai worker nen tren VPS de xu ly sau webhook:
+  - `/root/hsms/bin/marketing-ai-worker.sh`.
+  - Log: `/var/log/hsms/marketing-ai-worker.log`.
+  - Cac lich cron:
+    - Moi 2 phut: `triage_fanpage` voi `message_limit=8`, `comment_limit=2`.
+    - Moi 15 phut: `resolve_conversation_phones` voi `limit=300`.
+    - Moi gio phut 17: `resolve_identities`.
+- Da chay thu va cron tu chay thanh cong:
+  - `triage`: 8 messages, 2 ignored comments.
+  - `phones`: scanned 300 messages, 37 conversations, 4 conversations with phone, 4 leads updated, 1129 identities upserted.
+- Edge Functions tren VPS hien dang thieu `OPENAI_API_KEY` va `OPENAI_MODEL`.
+  - Khi chua co key, `marketing-ai` van chay fallback rules de phan loai co ban.
+  - Khi them key/model, worker nay se tu chay AI that cho tom tat/goi y tra loi.
+
+## Cap nhat 13/06/2026 - Marketing Master Plan
+
+- Da tao `docs/MARKETING_MODULE_MASTER_PLAN.md` lam tai lieu quy hoach module Marketing tong the.
+- Ket luan san pham: khong tiep tuc xem Marketing la bang lead/Fanpage roi rac; phai xem la he thong van hanh khach hang da kenh.
+- Menu cha Marketing de xuat gom:
+  - Tong Quan Marketing
+  - Hop Thu Khach Hang
+  - Fanpage & Noi Dung
+  - Khach Hang Tiem Nang
+  - Cham Soc Sau Dich Vu
+  - Nhac Lich Lieu Trinh
+  - Chien Dich & Remarketing
+  - Bao Cao Nhan Vien Tu Van
+  - Cau Hinh Kenh
+- Uu tien trien khai: Hop Thu Khach Hang realtime cho Facebook truoc, sau do noi HSMS/POS, bao cao nhan vien, cham soc chu ky, Fanpage/noi dung, roi Zalo/hotline.
+- Huong ky thuat: Meta Webhook nhan tin moi realtime; UI chi doc hoi thoai/tom tat nhe, khong quet `marketing_messages` tho moi lan.
+
+## Cap nhat 12/06/2026 - Trung tam cham soc khach Fanpage/CRM/POS
+
+- Da trien khai trang `src/apps/admin/cham-soc-khach/AdminChamSocKhachPage.jsx` thanh "Trung Tam Cham Soc Khach".
+- Trang nay gom 4 luong lam viec:
+  - Fanpage can cham: lay tu `marketing_fanpage_customer_segments`, noi voi ho so HSMS/POS/the lieu trinh khi co SDT.
+  - Khach den hom nay: thay form bao cao roi rac cua nhan vien bang bang `nhat_ky_khach_den`.
+  - Khach cu/POS: danh sach khach co gia tri cao, con the/buoi, vang lau can goi lai.
+  - Hieu qua cham soc: dem so nhat ky hom nay/7 ngay, so Fanpage da cham/da hen, so viec con phai cham, va bang ket qua theo nhan vien.
+- Da chay production cac migration:
+  - `101_smart_customer_care_center.sql`: tao `nhat_ky_khach_den`, `v_customer_pos_intelligence`, `v_cham_soc_fanpage_smart`, `v_nhat_ky_khach_den_smart`.
+  - `102_smart_customer_care_perf_fix.sql`: them view `v_cham_soc_khach`, index va toi uu view Fanpage.
+  - `103_fast_fanpage_care_queue.sql`: cat nhánh `lich_su_dich_vu_kh` khoi hang doi Fanpage de tranh timeout REST.
+- Trang local da test thanh cong tai `/admin/cham-soc-khach`:
+  - Fanpage can cham hien 400 dong uu tien dau.
+  - Trong 400 dong dau co 390 khach dat hen/co SDT, 373 khach noi duoc HSMS.
+  - Khach cu/POS hien 285 khach can cham.
+  - Form "Nhap khach den" mo dung va co du truong ngay, ket qua, ten, SDT, dich vu, KTV, phan hoi, co hoi ban them.
+- Da them loi vao menu desktop/mobile:
+  - Admin va Le tan deu co muc "Cham Soc Khach" trong navigation.
+  - MobileShell da co title `/admin/cham-soc-khach` va muc nhanh trong menu them.
+- Nut "Ghi cham" tren tung dong Fanpage da test OK: tu dong mo form nhat ky khach den va dien ten khach, SDT, dich vu quan tam, co hoi upsell, phan hoi, ghi chu goi y. Da test voi khach "Chi Quy" SDT `0969888969`, khong bam luu du lieu gia.
+- Da chay production migration `104_link_visit_log_to_fanpage_segment.sql`:
+  - Them `nhat_ky_khach_den.fanpage_segment_id` va `platform_user_id`.
+  - Them trang thai `da_cham_soc` cho `marketing_fanpage_customer_segments.care_status`.
+  - Sau khi nhan vien luu nhat ky tu nut "Ghi cham", HSMS se tu doi trang thai Fanpage sang `da_cham_soc`; neu ket qua la `da_mua_them` thi doi sang `da_hen_lai`.
+- Da nang cap hang doi Fanpage ngay 12/06/2026:
+  - Mac dinh mo tab "Fanpage can cham" se loc "Hom nay phai cham", khong con bat nhan vien nhin toan bo 400 dong.
+  - Bo loc moi: hom nay phai cham, qua han, can xu ly, dat hen co SDT, chua co SDT, da noi HSMS, da cham/da hen, tat ca.
+  - KPI dau trang doi thanh so viec Fanpage hom nay, so viec qua han, so khach chua co SDT, so da cham/da hen.
+  - Moi dong hien ngay "Cham:" tu `next_contact_at`; co them nut "Da cham".
+  - Bam "Khong nghe" se tu hen lai ngay hom sau; bam "Da cham"/"Da hen" se xoa han cham de dong do roi khoi danh sach viec hom nay.
+- Da them tab "Hieu qua cham soc" ngay 12/06/2026:
+  - App tu gan ten nhan vien bang cach query `profiles`, khong phu thuoc migration 105.
+  - Form nhat ky luu `created_by` tu user dang dang nhap de bao cao dung tung nhan vien.
+  - Da test tren Chrome: tab report mo duoc, request Supabase 200, khong co console error do.
+  - Migration `105_customer_care_report_staff_name.sql` co file local nhung chua can chay production vi app da ghep ten nhan vien o frontend.
+- Edge Function `marketing-meta-page-sync` da deploy production ngay 12/06/2026 voi mode `send_message`.
+  - UI "Gui/chep tin" co the goi function nay de gui Messenger truc tiep tu HSMS.
+  - Chua gui tin test that cho khach de tranh lam phien khach; neu function/Meta tu choi gui, UI van fallback chep kich ban de nhan vien dan thu cong.
+- Da doi UI `/admin/cham-soc-khach` thanh "Hop Thu Thong Minh":
+  - Tab Fanpage khong con la bang 5 cot kho hieu; da chia 3 khu: danh sach khach can xu ly, khung tra loi/de xuat tin nhan, ho so HSMS + goi y tu van/upsell.
+  - Man hinh noi ro: kho goc co 123.320 tin nhan va 6.021 khach/dinh danh; UI chi nap nhom uu tien de nhanh va de lam.
+  - Tam thoi khong truy van truc tiep `marketing_messages` theo JSON trong UI vi da thay Supabase timeout 500; tranh hao tai nguyen.
+  - Da them migration local `107_marketing_message_thread_light_index.sql` de tao index/view nhe cho hop chat sau nay. Chua apply production vi `supabase db push` can DB password/SQL Editor.
+  - Huong dung dai han: dung Meta Webhook de nhan tin moi realtime, chi luu delta + tom tat, khong keo lai toan bo du lieu tho moi lan.
+- `npm run build` da pass sau thay doi.
+
 ## Cap nhat 10/06/2026 - Fanpage inbox backfill theo lo
 
 - Da them cursor rieng cho lich su 3 nam: `conversation_cursor_history_2022_2025`.
@@ -10,16 +151,49 @@
   - Lo 2: 25 hoi thoai, 1.077 tin.
   - Lo 3: 25 hoi thoai, 887 tin.
   - Lo 4-8: 125 hoi thoai, 3.381 tin.
+- Da chay them cac vong lich su tiep theo ngay 11/06/2026:
+  - 3 lo dau: 75 hoi thoai, 1.432 tin duoc upsert.
+  - Vong 8 lo tiep: 200 hoi thoai, 4.334 tin duoc upsert.
+  - Vong 8 lo tiep: 200 hoi thoai, 3.906 tin duoc upsert.
+  - Vong 8 lo tiep: 200 hoi thoai, 4.134 tin duoc upsert.
+  - Vong 8 lo tiep: 200 hoi thoai, 3.784 tin duoc upsert.
+  - Vong 8 lo tiep: 200 hoi thoai, 4.306 tin duoc upsert.
+  - Vong 8 lo tiep: 200 hoi thoai, 2.957 tin duoc upsert.
+  - Vong 8 lo tiep: 200 hoi thoai, 1.985 tin duoc upsert.
+  - Vong 8 lo tiep: 200 hoi thoai, 1.821 tin duoc upsert.
+  - Vong 16 lo tiep: 400 hoi thoai, 3.567 tin duoc upsert.
+  - Vong 16 lo tiep: 400 hoi thoai, 2.231 tin duoc upsert.
+  - Chay lien tuc den het cursor: them 107 lo / 5.350 hoi thoai / 81.020 tin duoc upsert.
+  - Luu y: so "duoc upsert" co the bao gom cap nhat dong cu khi Meta tra lai tin trung; so lieu production ben duoi la so tin nhan duy nhat dang co trong kho.
 - So lieu production bao phu tu 26/11/2022 den hien tai:
-  - `marketing_messages`: 23.604 tin Facebook.
-  - Tin khach gui vao: 6.629.
-  - Tin page tra ra: 16.968.
-  - Hoi thoai khach inbound rieng biet: 1.395.
-  - Hoi thoai co SDT: 257.
-  - Hoi thoai co tin hieu quan tam/dich vu: 1.194.
-  - Hoi thoai tung inbox nhung chua ro nhu cau: 167.
-  - Ban ghi cu nhat hien thay: 26/11/2022 12:51 UTC, khach Tuyen Le dat lich goi dau.
-- Cursor lich su van con `has_more=true`, can tiep tuc keo them cac lo sau neu muon lay that day du.
+  - `marketing_messages`: 123.320 tin Facebook duy nhat.
+  - Tin khach gui vao: 35.806.
+  - Tin page tra ra: 87.498.
+  - Dong sync/noi bo: 16.
+  - Dong text rong/attachment-only: 10.418.
+  - Hoi thoai khach inbound rieng biet: 6.033.
+  - Hoi thoai co SDT: 5.304.
+  - Hoi thoai co tin hieu quan tam/dich vu: 6.029.
+  - Hoi thoai tung inbox nhung chua ro nhu cau: 4.
+  - Tong conversation keys quet duoc: 8.069.
+  - Ban ghi cu nhat hien thay: 26/11/2022 06:19 UTC, khach Tran Thi Thien Trang doi lich triet long.
+- Cursor lich su `conversation_cursor_history_2022_2025` da `done=true`, `has_more=false`, cap nhat luc 11/06/2026 22:26 UTC. Viec keo inbox Fanpage lich su tu 26/11/2022 den hien tai da hoan tat.
+
+## Cap nhat 11/06/2026 - Phan nhom cham soc khach Fanpage
+
+- Da tao bang `marketing_fanpage_customer_segments` va view `v_marketing_fanpage_segment_summary` de gom tung hoi thoai thanh tung khach/dinh danh.
+- Da chay bo phan loai tren 123.320 tin nhan tho:
+  - Tong khach/dinh danh sau khi hop nhat: 6.021.
+  - Tong khach co SDT lay tu tin khach gui vao: 1.148.
+  - Khach co nhu cau nhung chua co SDT: 4.865.
+  - Khach da/chuan bi dat hen co SDT: 1.141.
+  - Khach can xu ly rieng: 10, trong do 5 co SDT.
+  - Khach nong co SDT: 1.
+  - Khach cu co SDT can goi lai: 1.
+  - Tuong tac thap: 3.
+- Da sua bo dieu kien "can xu ly rieng" de khong con bat nham cac cau nhu dau vai gay/massage thanh khieu nai; chi giu cac tin co dau hieu khieu nai, phan nan, hoan tien, khong hai long, di ung, bi bong, lua dao, khong hieu qua.
+- Tab Marketing > KH tiem nang da co khoi "Danh sach cham soc lai tu Fanpage" voi nhom cham soc, diem uu tien, dich vu quan tam, viec can lam va kich ban goi y.
+- Nut tren UI hien la "Lam moi phan nhom Fanpage" de tai lai ket qua da phan nhom; viec phan loai toan bo du lieu nen chay bang script/automation nen, tranh bam trong app lam timeout.
 
 - Da trien khai `marketing-meta-page-sync` mode `sync_conversations_batch`.
 - Mode nay luu cursor trong `marketing_connected_pages.metadata.conversation_cursor`, moi lan quet tiep tu dung diem dung cu, khong luu full paging URL co token.
@@ -390,3 +564,93 @@ Backfill Facebook từ mốc chi nhánh mới:
   - Doanh thu KH tiem nang = 80.000d
 - Giai thich cho anh Nam: `1800 messages` la so dong tin nhan da xu ly/upsert, gom ca tin khach + tin nhan vien/page tra loi + nhieu dong trong cung mot hoi thoai. No khong phai 1800 khach.
 - Huong tiep theo: backfill them conversation pages/cuoc hoi thoai cu hon hoac tang do sau sync neu muon tim SDT cho 75 KH tiem nang con chua noi.
+
+## Cap nhat 13/06/2026 - Marketing Module + Hop Thu realtime
+
+- Da quy hoach Marketing thanh menu cha lon, khong dung mot trang nhieu tab nho.
+- Da them `MarketingModulePage.jsx` lam tong quan va route khung cho:
+  - Hop Thu Khach Hang,
+  - Fanpage & Noi Dung,
+  - Khach Hang Tiem Nang,
+  - Cham Soc Sau Dich Vu,
+  - Nhac Lich Lieu Trinh,
+  - Chien Dich & Remarketing,
+  - Bao Cao Nhan Vien,
+  - Cau Hinh Kenh.
+- Hop Thu Khach Hang da duoc dua ve `/admin/marketing/hop-thu`.
+- Da them client Supabase Realtime trong Hop Thu:
+  - nghe insert `marketing_messages` kenh Facebook,
+  - nghe update `marketing_fanpage_customer_segments`,
+  - refresh nhe hang doi uu tien, khong tai lai toan bo message raw.
+- Da noi khung chat voi view nhe `v_marketing_fanpage_message_thread_light`, doc toi da 120 tin theo `conversation_ids` hoac `platform_user_id`.
+- Da them migration `107_marketing_message_thread_light_index.sql` va `108_marketing_realtime_inbox.sql` de production co:
+  - index conversation/sender,
+  - view hoi thoai nhe,
+  - realtime publication cho message/segment.
+- Can xac nhan production da apply 107/108. Lan kiem tra local tren UI bao production chua co view `v_marketing_fanpage_message_thread_light`.
+
+## Cap nhat 13/06/2026 - Supabase CLI token va lich su migration
+
+- Supabase access token trong clipboard dung duoc; CLI ket noi production thanh cong.
+- Da chay rieng 107/108 len production, xac nhan view `v_marketing_fanpage_message_thread_light` da ton tai.
+- Da repair migration history production: 090-108 => applied.
+- Da chuan hoa migration trung version 025:
+  - `025_fix_gia_tri_the.sql` thanh `0250_fix_gia_tri_the.sql`
+  - `025_pos_vat_and_staff_sale_income.sql` thanh `0251_pos_vat_and_staff_sale_income.sql`
+  - repair 025 reverted, 0250/0251 applied.
+- `supabase db push --dry-run` da bao remote up to date.
+- Hien tai Hop Thu khong con loi missing view, nhung doc lich su chat cu van timeout vi view con doc du lieu thread tu JSONB tren kho 123k tin.
+- Da tao migration 109 de them cot thread/index/trigger va ham backfill theo lo nho.
+- Chua apply duoc 109 vi Supabase production dang read-only sau khi lan dau update toan bang bi server process crash; transaction da rollback, khong tao cot.
+- Buoc tiep theo khi Supabase het read-only: apply 109 va backfill bang lo nho.
+
+## Cap nhat 13/06/2026 - Man hinh con Marketing da bat dau thanh module van hanh
+
+- Da tach `AdminChamSocKhachPage.jsx` thanh cac mode dung lai theo route:
+  - Hop Thu Khach Hang = `fanpage`.
+  - Cham Soc Sau Dich Vu = `today`.
+  - Nhac Lich Lieu Trinh = `pos`.
+  - Bao Cao Nhan Vien = `report`.
+- Da them KPI rieng cho tung mode bang `CareSummaryStrip`, giup nhan vien vao man hinh nao biet viec man hinh do ngay.
+- Da noi route that trong `MarketingModulePage.jsx` cho:
+  - `/admin/marketing/khach-tiem-nang`
+  - `/admin/marketing/cham-soc-sau-dich-vu`
+  - `/admin/marketing/nhac-lich-lieu-trinh`
+  - `/admin/marketing/bao-cao-nhan-vien`
+- Khach Hang Tiem Nang dung chung mode Fanpage nhung mac dinh filter `all`, de xem toan bo khach uu tien/can phan loai.
+- DevTools da xac nhan:
+  - Cham Soc Sau Dich Vu co nut `+ Nhap khach den`, KPI khach hom nay/7 ngay/KTV/cho cham lai.
+  - Nhac Lich Lieu Trinh co du lieu that: 284 can goi lai, 150 con buoi, 134 moi quay lai, tong gia tri nhom hien dang gon hon.
+  - Khach Hang Tiem Nang va Bao Cao Nhan Vien bi ve login do phien local het auth; chua gui lai mat khau.
+- `npm run build` pass sau thay doi.
+- Supabase production van read-only luc kiem tra lai, chua apply duoc migration 109.
+
+## Cap nhat 13/06/2026 - Fanpage, Chien Dich, Cau Hinh Kenh co UI that
+
+- Da them cac man hinh chuyen biet trong `MarketingModulePage.jsx`:
+  - `FanpageContentPage`
+  - `CampaignsPage`
+  - `ChannelSettingsPage`
+- Cac man hinh doc du lieu that tu cac bang/view marketing hien co, khong con chi la trang mo ta:
+  - `v_marketing_fanpage_overview`
+  - `marketing_page_posts`
+  - `marketing_content_calendar`
+  - `v_marketing_campaign_performance`
+  - `v_marketing_reactivation_customers`
+  - `v_marketing_source_quality`
+  - `v_marketing_fanpage_segment_summary`
+- `/admin/marketing/fanpage-noi-dung` hien:
+  - suc khoe Fanpage/webhook,
+  - bai viet co tin hieu tot,
+  - lich noi dung,
+  - chu de nen dang.
+- `/admin/marketing/chien-dich` hien:
+  - ROI/chi phi/doanh thu chien dich,
+  - tep khach remarketing,
+  - danh sach khach cu uu tien goi lai.
+- `/admin/marketing/cau-hinh-kenh` hien:
+  - trang thai Facebook/Zalo/Hotline/dien thoai,
+  - nguyen tac luu tru du lieu gon,
+  - nhom Fanpage HSMS dang quan ly.
+- `npm run build` pass.
+- DevTools snapshot bi nhay sang tab Vietnix, khong tiep tuc thao tac browser de tranh anh huong tab cua anh Nam.
