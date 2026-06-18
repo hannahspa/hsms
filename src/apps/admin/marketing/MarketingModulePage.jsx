@@ -1317,19 +1317,52 @@ function Overview() {
       <Header route={MARKETING_ROUTES[0]} />
       <StateNotice data={data} />
 
-      <div className="mkt-soft" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-        gap: 12,
-        marginBottom: 14,
-      }}>
-        <KpiCard label="Khách Fanpage" value={fmtNumber(total)} sub="Đã gom & phân nhóm chăm sóc" tone={C.taiSan} />
-        <KpiCard label="Đã có SĐT" value={fmtNumber(withPhone)} sub={`${pctOf(withPhone)}% nhận diện được hồ sơ`} tone={C.gold} />
-        <KpiCard label="Cần xử lý" value={fmtNumber(pending)} sub="Chưa chăm sóc lần nào" tone={C.chi} />
-        <KpiCard label="Có thể chốt lịch" value={fmtNumber(bookingReady)} sub="Khách đặt hẹn / khách nóng" tone={C.thu} />
+      <div style={{ fontSize: 11, fontWeight: 850, letterSpacing: '.16em', textTransform: 'uppercase', color: C.chi, marginBottom: 10 }}>
+        ● Việc cần làm hôm nay
+      </div>
+      <div className="mkt-soft" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12, marginBottom: 18 }}>
+        {[
+          { icon: '💬', label: 'Trả lời tin khách', value: pending, desc: 'Khách chưa được chăm — vào Hộp Thư trả lời ngay', path: '/admin/marketing/hop-thu', tone: C.taiSan },
+          { icon: '📅', label: 'Khách chốt lịch', value: bookingReady, desc: 'Khách đặt hẹn / khách nóng — mời chốt giờ đến', path: '/admin/marketing/khach-tiem-nang', tone: C.thu },
+          { icon: '🎫', label: 'Nhắc thẻ & khách cũ', value: null, desc: 'Khách còn buổi / lâu chưa đến — mời quay lại', path: '/admin/marketing/nhac-lich-lieu-trinh', tone: C.gold },
+        ].map(t => (
+          <button key={t.label} onClick={() => go(t.path)} style={{
+            textAlign: 'left', cursor: 'pointer', border: `1px solid ${t.tone}33`, background: `${t.tone}0C`,
+            borderRadius: 12, padding: 16, display: 'grid', gap: 6, boxShadow: C.shadowSm,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 22 }}>{t.icon}</span>
+              {t.value != null && <span style={{ fontFamily: FONT.serif, fontSize: 30, fontWeight: 900, color: t.tone, lineHeight: 1 }}>{fmtNumber(t.value)}</span>}
+            </div>
+            <div style={{ fontWeight: 900, color: C.text, fontSize: 15 }}>{t.label}</div>
+            <div style={{ fontSize: 12, color: C.textSub, lineHeight: 1.45 }}>{t.desc}</div>
+            <div style={{ marginTop: 2, fontSize: 12, fontWeight: 800, color: t.tone }}>Mở ngay →</div>
+          </button>
+        ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(320px, .65fr)', gap: 14, marginBottom: 16 }}>
+      <RealtimeInbox />
+
+      {[
+        { title: 'Chăm khách hằng ngày', desc: 'Việc lễ tân làm mỗi ngày', keys: ['inbox', 'prospects', 'aftercare', 'reminders'] },
+        { title: 'Quản lý & Phân tích', desc: 'Dành cho chủ / quản lý', keys: ['fanpage', 'campaigns', 'staff'] },
+        { title: 'Cấu hình kênh', desc: 'Kết nối kỹ thuật (admin)', keys: ['settings'] },
+      ].map(g => (
+        <div key={g.title} style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontFamily: FONT.serif, fontSize: 19, fontWeight: 900, color: C.text }}>{g.title}</span>
+            <span style={{ fontSize: 12, color: C.textSub }}>{g.desc}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+            {g.keys.map((k, i) => {
+              const r = routes.find(x => x.key === k)
+              return r ? <ModuleCard key={k} route={r} index={i} /> : null
+            })}
+          </div>
+        </div>
+      ))}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(320px, .65fr)', gap: 14, marginTop: 4 }}>
         <Funnel stages={funnelStages} loading={data.loading} />
         <div style={{
           border: `1px solid ${C.border}`,
@@ -1346,16 +1379,10 @@ function Overview() {
             {WORKFLOW.map((line, index) => (
               <div key={line} style={{ display: 'grid', gridTemplateColumns: '28px 1fr', gap: 10, alignItems: 'start' }}>
                 <div style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 8,
-                  background: 'rgba(201,169,110,.16)',
-                  color: '#F5DFAF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 12,
-                  fontWeight: 900,
+                  width: 28, height: 28, borderRadius: 8,
+                  background: 'rgba(201,169,110,.16)', color: '#F5DFAF',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 900,
                 }}>
                   {index + 1}
                 </div>
@@ -1364,16 +1391,6 @@ function Overview() {
             ))}
           </div>
         </div>
-      </div>
-
-      <RealtimeInbox />
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-        gap: 14,
-      }}>
-        {routes.map((route, index) => <ModuleCard key={route.key} route={route} index={index} />)}
       </div>
     </Shell>
   )
