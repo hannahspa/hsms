@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminChamSocKhachPage from '../cham-soc-khach/AdminChamSocKhachPage'
+import ModalDatHen from '../../internal/lich-hen/ModalDatHen'
 import { C, FONT } from '../../../constants/colors'
 import { supabase } from '../../../lib/supabase'
+import { todayISO } from '../../../lib/utils'
 import { notify } from '../../../components/ui/notify'
 
 const MARKETING_ROUTES = [
@@ -1548,6 +1550,25 @@ function InboxPage() {
   const [sending, setSending] = useState(false)
   const [nonce, setNonce] = useState(0)
   const [ai, setAi] = useState({ loading: false, reply: '', note: '', error: null })
+  const [datHen, setDatHen] = useState(null)   // initial cho ModalDatHen (null = đóng)
+  const [ktvList, setKtvList] = useState([])
+
+  // Mở đặt hẹn ngay trong Hộp Thư — điền sẵn tên/SĐT/mã KH từ hồ sơ đã nhận diện.
+  async function openDatHen() {
+    if (!ktvList.length) {
+      const { data } = await supabase.from('nhan_vien')
+        .select('id, ho_ten, vi_tri, avatar_url').eq('trang_thai', 'dang_lam').eq('vi_tri', 'ktv').order('ho_ten')
+      setKtvList(data || [])
+    }
+    const k = profile?.intel
+    setDatHen({
+      ten_khach: k?.ho_ten || selected?.name || '',
+      sdt_khach: profile?.phone || '',
+      khach_hang_id: k?.khach_hang_id || null,
+      ten_dich_vu: '', dich_vu_id: null, the_lieu_trinh_id: null, nhan_vien_id: null,
+      thoi_luong_phut: 60, ngay_hen: todayISO(), gio_hen: '10:00', ghi_chu: 'Khách đặt qua Hộp Thư', dich_vu_list: [],
+    })
+  }
 
   // Tải hội thoại có tin trong INBOX_DAYS ngày gần đây, gom theo conversation, ưu tiên chưa trả lời.
   useEffect(() => {
@@ -1801,8 +1822,23 @@ function InboxPage() {
                     <button onClick={() => loadAI(selected)} style={{ display: 'block', marginTop: 8, border: `1px solid ${C.border}`, background: '#fff', borderRadius: 8, padding: '7px 12px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Thử tạo gợi ý</button>
                   </div>}
           </Panel>
+          {selected && (
+            <button onClick={openDatHen} style={{
+              border: 'none', background: C.grad, color: '#fff', borderRadius: 10, padding: '12px 16px',
+              fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: C.shadowSm,
+            }}>📅 Đặt lịch cho khách này</button>
+          )}
         </div>
       </div>
+      {datHen && (
+        <ModalDatHen
+          initial={datHen}
+          ktvList={ktvList}
+          onSave={() => { setDatHen(null); notify('Đã đặt lịch hẹn cho khách', 'success') }}
+          onClose={() => setDatHen(null)}
+          user={null}
+        />
+      )}
     </Shell>
   )
 }
