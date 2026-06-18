@@ -2079,6 +2079,46 @@ async function handleSuggestReply(body: Record<string, unknown>) {
   }
 }
 
+// ── CHĂM SÓC SAU DỊCH VỤ ── soạn tin hỏi thăm + mời quay lại/đặt buổi tiếp + cross-sell, cá nhân hóa theo khách.
+async function handleCareMessage(body: Record<string, unknown>) {
+  const khId = (body.khach_hang_id as string) || null
+  const tenKhach = (body.ten_khach as string) || null
+  const dichVu = String(body.dich_vu_da_lam || '').trim()
+  const laLieuTrinh = !!body.la_lieu_trinh
+
+  // Hồ sơ giàu để tư vấn đúng (thẻ còn buổi, lịch sử, gợi ý upsell)
+  let context: any = { is_returning: false }
+  if (khId) {
+    const { data } = await supabase.from('v_customer_pos_intelligence').select('*').eq('khach_hang_id', khId).limit(1).maybeSingle()
+    if (data) context = {
+      is_returning: true, ho_ten: data.ho_ten, lan_cuoi_den: data.lan_cuoi_den,
+      so_the_active: Number(data.so_the_active || 0), tong_buoi_con: Number(data.tong_buoi_con || 0),
+      the_dang_co: data.the_dang_co, dich_vu_da_dung: data.dich_vu_da_dung, goi_y_upsell: data.goi_y_upsell, muc_tieu_tu_van: data.muc_tieu_tu_van,
+    }
+  }
+
+  const playbook = await getPlaybook()
+  const promos = await getActivePromotions()
+  const ai = await callAI(
+    [
+      'Bạn là lễ tân Hannah Beauty & Spa (Cần Thơ) — xưng "em", gọi khách "chị/anh".',
+      '── HIẾN PHÁP TƯ VẤN ──', playbook, '── HẾT ──',
+      promoBlock(promos),
+      'Soạn MỘT tin nhắn CHĂM SÓC SAU DỊCH VỤ gửi khách (khoảng 1 ngày sau khi khách đến làm dịch vụ). Đây là tin CHỦ ĐỘNG nên phải mở đầu thân thiện, xưng tên spa.',
+      'Mục tiêu: (1) hỏi thăm chân thành cảm nhận/tình trạng da sau khi làm "dich_vu_da_lam"; (2) thể hiện sự ân cần chuyên nghiệp của Hannah.',
+      'Nếu là LIỆU TRÌNH (triệt lông / chăm sóc da / peel / tắm trắng nhiều buổi): sau khi hỏi thăm, NHẸ NHÀNG xin phép đặt lịch buổi kế tiếp đúng chu kỳ để liệu trình hiệu quả (giải thích ngắn lý do khoa học). Nếu khách còn buổi trong thẻ (the_dang_co) → nhắc dùng tiếp.',
+      'Nếu là dịch vụ THƯ GIÃN (gội/massage): hỏi thăm + mời quay lại trải nghiệm đều đặn; có thể gợi 1 gói liên quan hoặc KM nếu phù hợp.',
+      'Có thể cross-sell nhẹ 1 gợi ý theo goi_y_upsell/muc_tieu_tu_van nếu hợp, KHÔNG ép.',
+      'Bám TÊN khách + dịch vụ vừa làm. 2–4 câu tiếng Việt ấm áp, tự nhiên, KHÔNG sáo rỗng, KHÔNG hứa khỏi bệnh, KHÔNG bịa số buổi ngoài context.',
+      'CHỈ trả JSON: { "reply": "<tin nhắn>", "note": "<lý do ngắn>" }.',
+    ].join('\n'),
+    { ten_khach: tenKhach, dich_vu_da_lam: dichVu, la_lieu_trinh: laLieuTrinh, khach_context: context },
+    'fast',
+  )
+  const parsed = ai.ok ? safeJSON(ai.text, {}) : {}
+  return { reply: String(parsed.reply || '').trim(), note: String(parsed.note || '').trim(), has_ai: ai.ok, error: ai.ok ? null : (ai as any).error || null }
+}
+
 // ── HỌC TỪ LỄ TÂN GIỎI (RAG) ── quét hội thoại thật, trích cặp (khách hỏi → lễ tân trả lời tốt) làm mẫu vàng.
 async function handleMineExamples(body: Record<string, unknown>) {
   const days = Math.min(Math.max(Number(body.days || 120), 7), 400)
@@ -2168,6 +2208,7 @@ serve(async (req) => {
 
     if (mode === 'inbox_webhook') result = await handleInbox((body.message || body) as IncomingMessage)
     else if (mode === 'suggest_reply') result = await handleSuggestReply(body)
+    else if (mode === 'care_message') result = await handleCareMessage(body)
     else if (mode === 'mine_examples') result = await handleMineExamples(body)
     else if (mode === 'analyze') result = await handleAnalyze()
     else if (mode === 'triage_fanpage') result = await handleFanpageTriage(body)
@@ -2186,6 +2227,7 @@ serve(async (req) => {
       modes: [
         'inbox_webhook',
         'suggest_reply',
+        'care_message',
         'mine_examples',
         'analyze',
         'triage_fanpage',

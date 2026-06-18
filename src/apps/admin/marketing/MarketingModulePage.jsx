@@ -41,6 +41,17 @@ const MARKETING_ROUTES = [
     metrics: ['Đã nối HSMS', 'Còn thẻ / buổi', 'Vắng lâu'],
   },
   {
+    key: 'aftercare',
+    path: '/admin/marketing/cham-soc-sau-dich-vu',
+    title: 'Chăm Sóc Sau Dịch Vụ',
+    short: 'Chăm Sóc Sau DV',
+    subtitle: 'Khách vừa đến làm dịch vụ — hệ thống nhắc chăm sóc lại, AI soạn sẵn tin hỏi thăm + mời đặt buổi tiếp + bán thêm.',
+    owner: 'Lễ tân',
+    status: 'Giữ chân khách',
+    accent: '#2D7A4F',
+    metrics: ['Khách đến hôm qua', 'AI soạn tin', 'Chưa quên ai'],
+  },
+  {
     key: 'fanpage',
     path: '/admin/marketing/fanpage-noi-dung',
     title: 'Fanpage & Chiến Dịch',
@@ -1843,6 +1854,142 @@ function InboxPage() {
   )
 }
 
+// ── VIỆC B: CHĂM SÓC SAU DỊCH VỤ (giai đoạn 1) ── khách đến hôm qua → AI soạn tin → lễ tân gửi tay.
+const LIEU_TRINH_DM = ['Triệt Lông', 'Chăm Sóc Da Mặt', 'PEEL DA SINH HỌC', 'Tắm Trắng Toàn Thân', 'Công Nghệ Cao - Laser', 'Phun Xăm']
+
+function ymdVN(offsetDays = 0) {
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+  d.setDate(d.getDate() + offsetDays)
+  return d.toISOString().slice(0, 10)
+}
+
+function AfterCarePage() {
+  const [ngay, setNgay] = useState(ymdVN(-1))   // mặc định hôm qua
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [aiById, setAiById] = useState({})       // don_hang_id -> { loading, reply, note }
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      setLoading(true)
+      try {
+        const { data: dons } = await supabase.from('don_hang')
+          .select('id, ma_don, ngay, khach_hang_id, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)')
+          .eq('ngay', ngay).eq('is_test', false).neq('trang_thai', 'huy')
+          .not('khach_hang_id', 'is', null).order('created_at', { ascending: false }).limit(120)
+        const ids = (dons || []).map(d => d.id)
+        let ctMap = {}, logSet = new Set()
+        if (ids.length) {
+          const { data: cts } = await supabase.from('don_hang_chi_tiet')
+            .select('don_hang_id, the_lieu_trinh_id, dich_vu:dich_vu_id(ten, danh_muc)').in('don_hang_id', ids)
+          for (const c of (cts || [])) {
+            if (!ctMap[c.don_hang_id]) ctMap[c.don_hang_id] = []
+            ctMap[c.don_hang_id].push(c)
+          }
+          const { data: logs } = await supabase.from('marketing_aftercare_log').select('don_hang_id').in('don_hang_id', ids)
+          for (const l of (logs || [])) logSet.add(l.don_hang_id)
+        }
+        const list = (dons || []).map(d => {
+          const cts = ctMap[d.id] || []
+          const dvNames = [...new Set(cts.map(c => c.dich_vu?.ten).filter(Boolean))]
+          const laLieuTrinh = cts.some(c => c.the_lieu_trinh_id || LIEU_TRINH_DM.includes(c.dich_vu?.danh_muc))
+          return {
+            id: d.id, ma_don: d.ma_don, khach_hang_id: d.khach_hang_id,
+            ten: d.khach_hang?.ho_ten || 'Khách lẻ', sdt: d.khach_hang?.so_dien_thoai || '',
+            dichVu: dvNames.join(', ') || '(không rõ dịch vụ)', laLieuTrinh, daCham: logSet.has(d.id),
+          }
+        }).filter(r => r.sdt) // chỉ khách có SĐT để nhắn được
+        if (alive) { setRows(list); setLoading(false) }
+      } catch (e) { if (alive) { setLoading(false); notify(`Lỗi tải: ${e.message || e}`, 'error') } }
+    })()
+    return () => { alive = false }
+  }, [ngay])
+
+  async function soanTin(r) {
+    setAiById(s => ({ ...s, [r.id]: { loading: true } }))
+    try {
+      const { data, error } = await supabase.functions.invoke('marketing-ai', {
+        body: { mode: 'care_message', khach_hang_id: r.khach_hang_id, ten_khach: r.ten, dich_vu_da_lam: r.dichVu, la_lieu_trinh: r.laLieuTrinh },
+      })
+      if (error) throw error
+      setAiById(s => ({ ...s, [r.id]: { loading: false, reply: data?.reply || '', note: data?.note || '' } }))
+    } catch (e) {
+      setAiById(s => ({ ...s, [r.id]: { loading: false, error: e.message || String(e) } }))
+    }
+  }
+
+  async function danhDauCham(r) {
+    const ai = aiById[r.id]
+    try {
+      await supabase.from('marketing_aftercare_log').upsert({
+        don_hang_id: r.id, khach_hang_id: r.khach_hang_id, ngay_den: ngay, da_cham: true,
+        kenh: 'zalo', noi_dung: ai?.reply || null,
+      }, { onConflict: 'don_hang_id' })
+      setRows(rs => rs.map(x => x.id === r.id ? { ...x, daCham: true } : x))
+      notify('Đã đánh dấu chăm sóc', 'success')
+    } catch (e) { notify(`Lỗi: ${e.message || e}`, 'error') }
+  }
+
+  const chuaCham = rows.filter(r => !r.daCham)
+  return (
+    <Shell>
+      <Header route={MARKETING_ROUTES.find(r => r.key === 'aftercare')} />
+      <div className="mkt-soft" style={{ border: `1px solid ${C.border}`, background: 'rgba(255,255,255,.6)', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 12.5, color: C.textSub, lineHeight: 1.5 }}>
+        💚 Khách đến làm dịch vụ ngày đã chọn. Bấm <b>AI soạn tin</b> → kiểm tra → <b>Chép</b> gửi qua Zalo/SĐT của khách → <b>Đánh dấu đã chăm</b>. Hệ thống ghi nhớ để không chăm trùng/bỏ sót.
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        {[['Hôm qua', ymdVN(-1)], ['Hôm nay', ymdVN(0)], ['Hôm kia', ymdVN(-2)]].map(([label, v]) => (
+          <button key={v} onClick={() => setNgay(v)} style={{
+            border: `1px solid ${ngay === v ? C.primary : C.border}`, background: ngay === v ? C.primary : '#fff',
+            color: ngay === v ? '#fff' : C.text, borderRadius: 8, padding: '8px 14px', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+          }}>{label}</button>
+        ))}
+        <span style={{ fontSize: 12.5, color: C.textSub, marginLeft: 4 }}>{fmtDate(ngay)} · {chuaCham.length} khách chưa chăm / {rows.length} tổng</span>
+      </div>
+
+      {loading ? <EmptyBox text="Đang tải danh sách khách…" />
+        : rows.length === 0 ? <EmptyBox text="Không có khách (có SĐT) đến trong ngày này." />
+          : <div style={{ display: 'grid', gap: 12 }}>
+              {rows.map(r => {
+                const ai = aiById[r.id]
+                return (
+                  <div key={r.id} style={{ border: `1px solid ${r.daCham ? C.thu + '40' : C.border}`, borderRadius: 12, background: r.daCham ? `${C.thu}08` : '#fff', padding: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ fontWeight: 900, fontSize: 15, color: C.text, fontFamily: FONT.serif }}>
+                          {r.ten} <span style={{ fontWeight: 600, fontSize: 12.5, color: C.textSub }}>· {r.sdt}</span>
+                          {r.laLieuTrinh && <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 800, color: C.primary, background: `${C.primary}14`, borderRadius: 99, padding: '2px 9px' }}>Liệu trình</span>}
+                          {r.daCham && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 800, color: '#fff', background: C.thu, borderRadius: 99, padding: '2px 9px' }}>Đã chăm</span>}
+                        </div>
+                        <div style={{ fontSize: 12.5, color: C.textSub, marginTop: 3 }}>Đã làm: {r.dichVu}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => soanTin(r)} disabled={ai?.loading} style={{ border: 'none', background: C.grad, color: '#fff', borderRadius: 8, padding: '8px 14px', fontWeight: 800, fontSize: 12.5, cursor: ai?.loading ? 'wait' : 'pointer' }}>
+                          {ai?.loading ? 'AI đang soạn…' : ai?.reply ? '↻ Soạn lại' : '✨ AI soạn tin'}
+                        </button>
+                      </div>
+                    </div>
+                    {ai?.reply && (
+                      <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                        <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.55, background: '#FFFDF8', border: `1px solid ${C.border}`, borderRadius: 8, padding: 11 }}>{ai.reply}</div>
+                        {ai.note && <div style={{ fontSize: 11.5, color: C.textMute, fontStyle: 'italic' }}>Vì sao: {ai.note}</div>}
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => { navigator.clipboard?.writeText(ai.reply); notify('Đã chép — dán vào Zalo/SMS gửi khách', 'success') }} style={{ border: `1px solid ${C.border}`, background: '#fff', borderRadius: 8, padding: '8px 14px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>📋 Chép tin</button>
+                          {!r.daCham && <button onClick={() => danhDauCham(r)} style={{ border: 'none', background: C.thu, color: '#fff', borderRadius: 8, padding: '8px 14px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>✓ Đánh dấu đã chăm</button>}
+                        </div>
+                      </div>
+                    )}
+                    {ai?.error && <div style={{ marginTop: 8, fontSize: 12.5, color: C.chi }}>Lỗi soạn tin: {ai.error}</div>}
+                  </div>
+                )
+              })}
+            </div>}
+    </Shell>
+  )
+}
+
 // ── B/Chặng 3: TRANG HUẤN LUYỆN AI ── sửa hiến pháp tư vấn + duyệt mẫu vàng học từ lễ tân.
 const TOPIC_LABEL = {
   triet_long: 'Triệt lông', da_mat: 'Da mặt / mụn / nám', massage: 'Massage', goi: 'Gội dưỡng sinh',
@@ -2019,7 +2166,6 @@ export default function MarketingModulePage() {
   // URL cũ đã gỡ khỏi menu → điều hướng về đúng chỗ
   if (path.startsWith('/admin/marketing/khach-tiem-nang')) { go('/admin/marketing/khach-remarketing'); return null }
   if (
-    path.startsWith('/admin/marketing/cham-soc-sau-dich-vu') ||
     path.startsWith('/admin/marketing/nhac-lich-lieu-trinh') ||
     path.startsWith('/admin/marketing/bao-cao-nhan-vien')
   ) { go('/admin/cham-soc-khach'); return null }
@@ -2039,6 +2185,7 @@ export default function MarketingModulePage() {
       />
     )
   }
+  if (route.key === 'aftercare') return <AfterCarePage />
   if (route.key === 'fanpage') return <FanpageContentPage route={route} />
   if (route.key === 'training') return <TrainingPage />
   if (route.key === 'settings') return <ChannelSettingsPage route={route} />
