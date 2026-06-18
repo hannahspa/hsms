@@ -215,9 +215,27 @@ async function getConnectedPageIds() {
 // Tra khách cũ theo SĐT (hoặc lấy SĐT từ segment theo platform_user_id), kèm thẻ còn buổi.
 // Chỉ lấy dữ liệu tối thiểu cần để AI tư vấn; KHÔNG đẩy số tiền chi tiết/SĐT ra prompt ngoài cần thiết.
 async function buildCustomerContext(phone?: string | null, platformUserId?: string | null) {
+  // ── NỀN NHẬN DIỆN ──
+  // Thứ tự ưu tiên tìm khach_hang_id:
+  //   1) bản đồ nhận diện đã chốt (marketing_customer_identities theo platform_user_id) — bắt khách cũ inbox lại
+  //   2) SĐT lấy trực tiếp từ tin
+  //   3) SĐT suy ra từ segment theo platform_user_id
+  let khachHangId: string | null = null
   let resolvedPhone = phone ? (extractPhone(phone) || phone) : null
 
-  if (!resolvedPhone && platformUserId) {
+  if (platformUserId) {
+    const { data: ident } = await supabase.from('marketing_customer_identities')
+      .select('khach_hang_id, phone_norm, confidence')
+      .eq('platform_user_id', platformUserId)
+      .not('khach_hang_id', 'is', null)
+      .order('confidence', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (ident?.khach_hang_id) khachHangId = ident.khach_hang_id
+    if (!resolvedPhone && ident?.phone_norm) resolvedPhone = ident.phone_norm
+  }
+
+  if (!resolvedPhone && !khachHangId && platformUserId) {
     const { data: seg } = await supabase.from('marketing_fanpage_customer_segments')
       .select('phone_norm')
       .eq('platform_user_id', platformUserId)
@@ -227,33 +245,38 @@ async function buildCustomerContext(phone?: string | null, platformUserId?: stri
     if (seg?.phone_norm) resolvedPhone = seg.phone_norm
   }
 
-  if (!resolvedPhone) return { is_returning: false }
+  // Đọc hồ sơ giàu từ view tổng hợp POS (thẻ đang có, dịch vụ đã dùng, mục tiêu tư vấn, gợi ý upsell).
+  let intel: any = null
+  if (khachHangId) {
+    const { data } = await supabase.from('v_customer_pos_intelligence')
+      .select('*').eq('khach_hang_id', khachHangId).limit(1).maybeSingle()
+    intel = data
+  }
+  if (!intel && resolvedPhone) {
+    const { data } = await supabase.from('v_customer_pos_intelligence')
+      .select('*').eq('phone_norm', resolvedPhone).limit(1).maybeSingle()
+    if (data) { intel = data; khachHangId = data.khach_hang_id }
+  }
 
-  const { data: kh } = await supabase.from('khach_hang')
-    .select('id, ho_ten, lan_cuoi_den, tong_chi_tieu')
-    .eq('so_dien_thoai', resolvedPhone)
-    .limit(1)
-    .maybeSingle()
-  if (!kh) return { is_returning: false }
-
-  const { data: cards } = await supabase.from('the_lieu_trinh')
-    .select('ten_dich_vu, so_buoi_con_lai, ngay_het_han')
-    .eq('khach_hang_id', kh.id)
-    .gt('so_buoi_con_lai', 0)
-    .order('ngay_het_han', { ascending: true })
-    .limit(10)
+  if (!intel) return { is_returning: false }
 
   return {
     is_returning: true,
-    khach_hang_id: kh.id,
-    ho_ten: kh.ho_ten || null,
-    lan_cuoi_den: kh.lan_cuoi_den || null,
-    da_chi_tieu: Number(kh.tong_chi_tieu || 0) > 0,
-    the_con_buoi: (cards || []).map((c: any) => ({
-      dich_vu: c.ten_dich_vu,
-      con_lai: c.so_buoi_con_lai,
-      het_han: c.ngay_het_han,
-    })),
+    khach_hang_id: intel.khach_hang_id,
+    ho_ten: intel.ho_ten || null,
+    so_dien_thoai: intel.so_dien_thoai || resolvedPhone || null,
+    lan_cuoi_den: intel.lan_cuoi_den || null,
+    so_don: Number(intel.so_don || 0),
+    tong_chi_tieu: Number(intel.tong_chi_tieu || 0),
+    da_chi_tieu: Number(intel.tong_chi_tieu || 0) > 0,
+    so_the_active: Number(intel.so_the_active || 0),
+    tong_buoi_con: Number(intel.tong_buoi_con || 0),
+    the_dang_co: intel.the_dang_co || null,        // thẻ liệu trình còn buổi (text tổng hợp)
+    dich_vu_da_dung: intel.dich_vu_da_dung || null, // thói quen — dịch vụ khách hay dùng
+    dich_vu_gan_nhat: intel.dich_vu_gan_nhat || null,
+    muc_tieu_tu_van: intel.muc_tieu_tu_van || null, // gợi ý nên tư vấn gì
+    goi_y_upsell: intel.goi_y_upsell || null,
+    ghi_chu_da_lieu: intel.ghi_chu_da_lieu || null,
   }
 }
 
@@ -1859,6 +1882,52 @@ async function handleRunApproved() {
   return { executed }
 }
 
+// Gợi ý câu trả lời BÁM CẢ HỘI THOẠI (không phân tích tin lẻ) — dùng cho Hộp Thư khi lễ tân mở 1 khách.
+async function handleSuggestReply(body: Record<string, unknown>) {
+  const rawMsgs = Array.isArray(body.messages) ? (body.messages as any[]) : []
+  // Chỉ lấy 14 tin gần nhất, bỏ tin rỗng/tin lỗi sync.
+  const msgs = rawMsgs
+    .filter((m) => m && String(m.noi_dung || '').trim() && String(m.sender_type || '') !== 'system')
+    .slice(-14)
+  const phone = (body.phone as string) || (body.so_dien_thoai as string) || null
+  const psid = (body.platform_user_id as string) || null
+  const context = await buildCustomerContext(phone, psid)
+
+  const thread = msgs
+    .map((m) => `${m.direction === 'inbound' ? 'KHÁCH' : 'SPA'}: ${String(m.noi_dung || '').trim()}`)
+    .join('\n')
+  const lastInbound = [...msgs].reverse().find((m) => m.direction === 'inbound')
+
+  if (!thread) return { reply: '', note: 'Chưa có nội dung hội thoại để gợi ý.', has_ai: false }
+
+  const ai = await callAI(
+    [
+      'Bạn là lễ tân Hannah Beauty & Spa (Cần Thơ) — thân thiện, chuyên nghiệp, xưng "em", gọi khách "chị/anh".',
+      'Đọc TOÀN BỘ đoạn hội thoại bên dưới (thứ tự thời gian) rồi soạn DUY NHẤT câu trả lời tiếp theo mà lễ tân nên gửi, BÁM SÁT tin cuối của khách và mạch hội thoại.',
+      'Nguyên tắc: nếu khách đang chốt đến/đặt lịch → xác nhận + hỏi/đề xuất khung giờ + nhắc địa chỉ 39 Nam Kỳ Khởi Nghĩa. Nếu hỏi giá → hỏi rõ nhu cầu rồi xin SĐT/Zalo (KHÔNG bịa số tiền). Nếu cảm ơn/đồng ý ngắn ("ok", "dạ") → chốt bước tiếp theo cụ thể, đừng hỏi lại điều đã rõ.',
+      'Khách cũ (khach_context.is_returning=true): chào theo tên, nhắc ĐÚNG thẻ/buổi còn lại (the_dang_co, tong_buoi_con) và gợi ý dùng tiếp/gia hạn; có thể upsell theo goi_y_upsell/muc_tieu_tu_van. TUYỆT ĐỐI không bịa số buổi/dịch vụ ngoài context.',
+      'Viết NHƯ người thật: 1-3 câu tiếng Việt tự nhiên, ấm áp, KHÔNG lặp lời chào nếu hội thoại đã chào, KHÔNG sáo rỗng, KHÔNG hứa chữa khỏi bệnh, KHÔNG tự giảm giá.',
+      'CHỈ trả về JSON: { "reply": "<câu trả lời>", "note": "<lý do ngắn gọn vì sao gợi ý vậy>" }.',
+    ].join('\n'),
+    {
+      hoi_thoai: thread,
+      tin_cuoi_cua_khach: lastInbound ? String(lastInbound.noi_dung || '') : '',
+      khach_context: context,
+    },
+    'fast',
+  )
+
+  const parsed = ai.ok ? safeJSON(ai.text, {}) : {}
+  return {
+    reply: String(parsed.reply || '').trim(),
+    note: String(parsed.note || '').trim(),
+    khach_cu: !!context.is_returning,
+    khach_context: context,
+    has_ai: ai.ok,
+    error: ai.ok ? null : (ai as any).error || (ai as any).note || null,
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   let mode = 'analyze'
@@ -1870,6 +1939,7 @@ serve(async (req) => {
     let result: unknown
 
     if (mode === 'inbox_webhook') result = await handleInbox((body.message || body) as IncomingMessage)
+    else if (mode === 'suggest_reply') result = await handleSuggestReply(body)
     else if (mode === 'analyze') result = await handleAnalyze()
     else if (mode === 'triage_fanpage') result = await handleFanpageTriage(body)
     else if (mode === 'cleanup_fanpage_leads') result = await handleFanpageLeadCleanup(body)
@@ -1886,6 +1956,7 @@ serve(async (req) => {
       error: 'mode_khong_ho_tro',
       modes: [
         'inbox_webhook',
+        'suggest_reply',
         'analyze',
         'triage_fanpage',
         'cleanup_fanpage_leads',

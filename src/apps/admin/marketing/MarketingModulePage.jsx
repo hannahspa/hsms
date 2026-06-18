@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminChamSocKhachPage from '../cham-soc-khach/AdminChamSocKhachPage'
 import { C, FONT } from '../../../constants/colors'
 import { supabase } from '../../../lib/supabase'
@@ -1518,6 +1518,16 @@ function extractPhoneLite(t) {
 
 const INBOX_DAYS = 30
 
+// Tin rác do quá trình đồng bộ tạo ra (lỗi Meta Sync, thông báo hệ thống) — KHÔNG hiện trong Hộp Thư.
+function isJunkMsg(m) {
+  if (!m) return true
+  if (m.sender_type === 'system') return true
+  const t = String(m.noi_dung || '').toLowerCase()
+  if (!t.trim()) return false // tin đính kèm/ảnh vẫn giữ
+  return /unexpected error|meta sync|an error occurred|\(#\d+\)|graph api error|invalid oauth|token.*expired/.test(t)
+       || /^meta\b/.test(String(m.sender_name || '').toLowerCase())
+}
+
 function InboxPage() {
   const [convos, setConvos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1526,6 +1536,7 @@ function InboxPage() {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [nonce, setNonce] = useState(0)
+  const [ai, setAi] = useState({ loading: false, reply: '', note: '', error: null })
 
   // Tải hội thoại có tin trong INBOX_DAYS ngày gần đây, gom theo conversation, ưu tiên chưa trả lời.
   useEffect(() => {
@@ -1535,14 +1546,15 @@ function InboxPage() {
       try {
         const since = new Date(Date.now() - INBOX_DAYS * 864e5).toISOString()
         const { data } = await supabase.from('marketing_messages')
-          .select('id, kenh, conversation_id, from_platform_user_id, recipient_id, sender_name, sender_type, direction, noi_dung, ai_suggested_reply, created_at, metadata')
+          .select('id, kenh, conversation_id, from_platform_user_id, recipient_id, sender_name, sender_type, direction, noi_dung, created_at, metadata')
           .in('kenh', ['facebook', 'zalo'])
           .gte('created_at', since)
           .order('created_at', { ascending: false })
-          .limit(500)
+          .limit(600)
         if (!alive) return
         const map = new Map()
         for (const m of (data || [])) {
+          if (isJunkMsg(m)) continue // lọc rác trước khi gom
           const cid = m.conversation_id || m.from_platform_user_id || m.id
           if (!map.has(cid)) map.set(cid, [])
           map.get(cid).push(m)
@@ -1552,14 +1564,15 @@ function InboxPage() {
           const last = sorted[sorted.length - 1]
           const firstInbound = sorted.find(x => x.direction === 'inbound')
           const psid = firstInbound?.from_platform_user_id || msgs[0].from_platform_user_id || msgs[0].metadata?.customer_id || null
-          const aiReply = sorted.slice().reverse().find(x => x.ai_suggested_reply)?.ai_suggested_reply || ''
           return {
             cid, kenh: last.kenh, msgs: sorted, last,
             unreplied: last.direction === 'inbound',
             name: firstInbound?.sender_name || last.sender_name || 'Khách',
-            psid, aiReply, lastAt: last.created_at,
+            psid, lastAt: last.created_at,
           }
-        }).sort((a, b) => (b.unreplied ? 1 : 0) - (a.unreplied ? 1 : 0) || new Date(b.lastAt) - new Date(a.lastAt))
+        })
+          .filter(c => c.msgs.length > 0)
+          .sort((a, b) => (b.unreplied ? 1 : 0) - (a.unreplied ? 1 : 0) || new Date(b.lastAt) - new Date(a.lastAt))
         setConvos(list); setLoading(false)
         setSelId(prev => prev || (list[0] && list[0].cid) || null)
       } catch { if (alive) setLoading(false) }
@@ -1572,31 +1585,64 @@ function InboxPage() {
 
   const selected = convos.find(c => c.cid === selId) || null
 
-  // Nhận diện khách: SĐT (từ tin / segment) → khach_hang → mã KH + thẻ còn buổi
+  // ── NHẬN DIỆN KHÁCH (nền identity map) ──
+  // 1) bản đồ nhận diện đã chốt (marketing_customer_identities theo PSID) → bắt khách cũ inbox lại (vd Minh Khải)
+  // 2) SĐT lấy từ tin · 3) SĐT suy ra từ segment. Có khach_hang_id → đọc hồ sơ giàu từ v_customer_pos_intelligence.
   useEffect(() => {
     let alive = true
     setProfile(null)
-    setDraft(selected?.aiReply || '')
     if (!selected) return
     ;(async () => {
-      let phone = null
-      for (const m of selected.msgs) { const p = extractPhoneLite(m.noi_dung); if (p) { phone = p; break } }
-      if (!phone && selected.psid) {
+      let khId = null, phone = null
+      if (selected.psid) {
+        const { data: ident } = await supabase.from('marketing_customer_identities')
+          .select('khach_hang_id, phone_norm, confidence')
+          .eq('platform_user_id', selected.psid).not('khach_hang_id', 'is', null)
+          .order('confidence', { ascending: false }).limit(1).maybeSingle()
+        if (ident?.khach_hang_id) khId = ident.khach_hang_id
+        if (ident?.phone_norm) phone = ident.phone_norm
+      }
+      if (!phone) { for (const m of selected.msgs) { const p = extractPhoneLite(m.noi_dung); if (p) { phone = p; break } } }
+      if (!phone && !khId && selected.psid) {
         const { data: seg } = await supabase.from('marketing_fanpage_customer_segments')
           .select('phone_norm').eq('platform_user_id', selected.psid).not('phone_norm', 'is', null).limit(1).maybeSingle()
         if (seg?.phone_norm) phone = seg.phone_norm
       }
-      if (!phone) { if (alive) setProfile({ is_new: true }); return }
-      const { data: kh } = await supabase.from('khach_hang')
-        .select('id, ho_ten, so_dien_thoai, tong_chi_tieu, lan_cuoi_den')
-        .eq('so_dien_thoai', phone).limit(1).maybeSingle()
-      if (!kh) { if (alive) setProfile({ is_new: true, phone }); return }
-      const { data: cards } = await supabase.from('the_lieu_trinh')
-        .select('ten_dich_vu, so_buoi_con_lai').eq('khach_hang_id', kh.id).gt('so_buoi_con_lai', 0).limit(8)
-      if (alive) setProfile({ is_new: false, phone, kh, cards: cards || [] })
+      // Đọc hồ sơ giàu: thẻ đang có, dịch vụ đã dùng, lần cuối ghé, gợi ý upsell
+      let intel = null
+      if (khId) {
+        const { data } = await supabase.from('v_customer_pos_intelligence').select('*').eq('khach_hang_id', khId).limit(1).maybeSingle()
+        intel = data
+      }
+      if (!intel && phone) {
+        const { data } = await supabase.from('v_customer_pos_intelligence').select('*').eq('phone_norm', phone).limit(1).maybeSingle()
+        intel = data
+      }
+      if (!alive) return
+      if (intel) setProfile({ is_new: false, phone: intel.so_dien_thoai || phone, intel })
+      else setProfile({ is_new: true, phone })
     })()
     return () => { alive = false }
   }, [selId, convos])
+
+  // ── GỢI Ý AI BÁM CẢ HỘI THOẠI ── gọi edge function suggest_reply mỗi khi mở khách mới.
+  const loadAI = useCallback(async (conv) => {
+    if (!conv) { setAi({ loading: false, reply: '', note: '', error: null }); return }
+    setAi({ loading: true, reply: '', note: '', error: null })
+    try {
+      const msgs = conv.msgs.map(m => ({ direction: m.direction, sender_type: m.sender_type, noi_dung: m.noi_dung }))
+      const { data, error } = await supabase.functions.invoke('marketing-ai', {
+        body: { mode: 'suggest_reply', messages: msgs, platform_user_id: conv.psid || null },
+      })
+      if (error) throw error
+      setAi({ loading: false, reply: data?.reply || '', note: data?.note || '', error: data?.error || null })
+      setDraft(prev => prev && prev.trim() ? prev : (data?.reply || ''))
+    } catch (e) {
+      setAi({ loading: false, reply: '', note: '', error: e.message || String(e) })
+    }
+  }, [])
+
+  useEffect(() => { setDraft(''); loadAI(selected) }, [selId, selected, loadAI])
 
   async function sendReply() {
     if (!draft.trim()) { notify('Chưa có nội dung tin nhắn', 'error'); return }
@@ -1700,25 +1746,49 @@ function InboxPage() {
                       <b style={{ color: C.text }}>{profile.phone ? 'Có SĐT, chưa có hồ sơ HSMS' : 'Khách mới — chưa rõ SĐT'}</b><br />
                       {profile.phone ? `SĐT: ${profile.phone}. Nên tạo hồ sơ trước khi tư vấn sâu.` : 'Mục tiêu đầu tiên: xin SĐT / mời Quan Tâm Zalo.'}
                     </div>
-                  : <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>
-                      <b>{profile.kh.ho_ten || 'Khách'}</b> · <span style={{ color: C.thu, fontWeight: 800 }}>Khách cũ</span><br />
-                      <span style={{ color: C.textSub }}>SĐT {profile.kh.so_dien_thoai} · chi tiêu {fmtMoney(profile.kh.tong_chi_tieu)}</span><br />
-                      <span style={{ color: C.textSub }}>Lần cuối đến: {fmtDate(profile.kh.lan_cuoi_den)}</span>
-                      {profile.cards.length > 0 && (
-                        <div style={{ marginTop: 8 }}>
-                          <div style={{ fontWeight: 800, fontSize: 12, color: C.textMute, textTransform: 'uppercase', letterSpacing: '.08em' }}>Thẻ còn buổi</div>
-                          {profile.cards.map((c, i) => <div key={i} style={{ fontSize: 12.5 }}>• {c.ten_dich_vu}: còn {c.so_buoi_con_lai} buổi</div>)}
+                  : (() => {
+                      const k = profile.intel
+                      const Row = ({ label, value }) => value ? (
+                        <div style={{ marginTop: 7 }}>
+                          <div style={{ fontWeight: 800, fontSize: 11, color: C.textMute, textTransform: 'uppercase', letterSpacing: '.08em' }}>{label}</div>
+                          <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.5 }}>{value}</div>
                         </div>
-                      )}
-                    </div>}
+                      ) : null
+                      return (
+                        <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>
+                          <b style={{ fontSize: 14 }}>{k.ho_ten || 'Khách'}</b> · <span style={{ color: C.thu, fontWeight: 800 }}>Khách cũ</span><br />
+                          <span style={{ color: C.textSub }}>SĐT {k.so_dien_thoai || profile.phone || '—'} · {Number(k.so_don || 0)} đơn · {fmtMoney(k.tong_chi_tieu)}</span><br />
+                          <span style={{ color: C.textSub }}>Lần cuối ghé: {k.lan_cuoi_den ? fmtDate(k.lan_cuoi_den) : '—'}</span>
+                          {Number(k.so_the_active || 0) > 0 && (
+                            <div style={{ marginTop: 7, background: `${C.thu}10`, border: `1px solid ${C.thu}30`, borderRadius: 8, padding: '7px 10px' }}>
+                              <div style={{ fontWeight: 800, fontSize: 11, color: C.thu, textTransform: 'uppercase', letterSpacing: '.06em' }}>🎫 Thẻ đang có ({k.so_the_active}) · còn {Number(k.tong_buoi_con || 0)} buổi</div>
+                              {k.the_dang_co && <div style={{ fontSize: 12.5, color: C.text, marginTop: 3, lineHeight: 1.5 }}>{k.the_dang_co}</div>}
+                            </div>
+                          )}
+                          <Row label="Thói quen — dịch vụ hay dùng" value={k.dich_vu_da_dung} />
+                          <Row label="Dịch vụ gần nhất" value={k.dich_vu_gan_nhat} />
+                          <Row label="Nên tư vấn / upsell" value={k.goi_y_upsell || k.muc_tieu_tu_van} />
+                          <Row label="Ghi chú da liễu" value={k.ghi_chu_da_lieu} />
+                        </div>
+                      )
+                    })()}
           </Panel>
-          <Panel title="Gợi ý trả lời (AI)" eyebrow="DeepSeek">
-            {selected?.aiReply
-              ? <div style={{ display: 'grid', gap: 8 }}>
-                  <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, background: '#FFFDF8', border: `1px solid ${C.border}`, borderRadius: 8, padding: 10 }}>{selected.aiReply}</div>
-                  <button onClick={() => setDraft(selected.aiReply)} style={{ border: `1px solid ${C.border}`, background: '#fff', borderRadius: 8, padding: '7px 12px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Dùng gợi ý này</button>
-                </div>
-              : <span style={{ color: C.textSub, fontSize: 13 }}>AI nền đang phân tích — gợi ý sẽ hiện sau khi xử lý tin này.</span>}
+          <Panel title="Gợi ý trả lời (AI)" eyebrow="DeepSeek · bám hội thoại">
+            {ai.loading
+              ? <span style={{ color: C.textSub, fontSize: 13 }}>🤖 AI đang đọc cả hội thoại để gợi ý…</span>
+              : ai.reply
+                ? <div style={{ display: 'grid', gap: 8 }}>
+                    <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, background: '#FFFDF8', border: `1px solid ${C.border}`, borderRadius: 8, padding: 10 }}>{ai.reply}</div>
+                    {ai.note && <div style={{ fontSize: 11.5, color: C.textMute, fontStyle: 'italic', lineHeight: 1.4 }}>Vì sao: {ai.note}</div>}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => setDraft(ai.reply)} style={{ flex: 1, border: 'none', background: C.grad, color: '#fff', borderRadius: 8, padding: '7px 12px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Dùng gợi ý</button>
+                      <button onClick={() => loadAI(selected)} title="Tạo lại gợi ý" style={{ border: `1px solid ${C.border}`, background: '#fff', borderRadius: 8, padding: '7px 12px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>↻</button>
+                    </div>
+                  </div>
+                : <div style={{ fontSize: 13, color: C.textSub, lineHeight: 1.5 }}>
+                    {ai.error ? `Chưa tạo được gợi ý (${ai.error}).` : 'Chưa có gợi ý.'}
+                    <button onClick={() => loadAI(selected)} style={{ display: 'block', marginTop: 8, border: `1px solid ${C.border}`, background: '#fff', borderRadius: 8, padding: '7px 12px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Thử tạo gợi ý</button>
+                  </div>}
           </Panel>
         </div>
       </div>
