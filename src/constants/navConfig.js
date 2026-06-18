@@ -62,6 +62,7 @@ export const ADMIN_NAV = [
     { id: 'mkt-inbox', label: 'Hộp Thư', path: '/admin/marketing/hop-thu' },
     { id: 'mkt-remarketing', label: 'Khách & Remarketing', path: '/admin/marketing/khach-remarketing' },
     { id: 'mkt-fanpage', label: 'Fanpage & Chiến Dịch', path: '/admin/marketing/fanpage-noi-dung' },
+    { id: 'mkt-training', label: 'Huấn Luyện AI', path: '/admin/marketing/huan-luyen' },
     { id: 'mkt-cauhinh', label: 'Cấu Hình Kênh', path: '/admin/marketing/cau-hinh-kenh' },
   ]},
 

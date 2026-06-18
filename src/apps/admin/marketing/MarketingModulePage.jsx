@@ -50,6 +50,17 @@ const MARKETING_ROUTES = [
     metrics: ['Bài viết tốt', 'Chiến dịch', 'ROI'],
   },
   {
+    key: 'training',
+    path: '/admin/marketing/huan-luyen',
+    title: 'Huấn Luyện AI',
+    short: 'Huấn Luyện AI',
+    subtitle: 'Dạy AI tư vấn: sửa hiến pháp/giọng nói, duyệt mẫu vàng học từ lễ tân giỏi để AI ngày càng chuyên nghiệp.',
+    owner: 'Chủ / quản lý',
+    status: 'Training',
+    accent: '#6C3483',
+    metrics: ['Hiến pháp', 'Mẫu vàng', 'Khuyến mãi'],
+  },
+  {
     key: 'settings',
     path: '/admin/marketing/cau-hinh-kenh',
     title: 'Cấu Hình Kênh',
@@ -1796,6 +1807,177 @@ function InboxPage() {
   )
 }
 
+// ── B/Chặng 3: TRANG HUẤN LUYỆN AI ── sửa hiến pháp tư vấn + duyệt mẫu vàng học từ lễ tân.
+const TOPIC_LABEL = {
+  triet_long: 'Triệt lông', da_mat: 'Da mặt / mụn / nám', massage: 'Massage', goi: 'Gội dưỡng sinh',
+  tam_trang: 'Tắm trắng', phun_xam: 'Phun xăm', gia: 'Hỏi giá', dat_lich: 'Đặt lịch', khac: 'Khác',
+}
+
+function TrainingPage() {
+  const [tab, setTab] = useState('playbook')
+  return (
+    <Shell>
+      <Header route={MARKETING_ROUTES.find(r => r.key === 'training')} />
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[['playbook', '📜 Hiến pháp tư vấn'], ['examples', '🏅 Mẫu vàng (AI học)'], ['promo', '🏷️ Khuyến mãi']].map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)} style={{
+            border: `1px solid ${tab === k ? C.primary : C.border}`, background: tab === k ? C.primary : '#fff',
+            color: tab === k ? '#fff' : C.text, borderRadius: 9, padding: '9px 16px', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+          }}>{label}</button>
+        ))}
+      </div>
+      {tab === 'playbook' && <PlaybookEditor />}
+      {tab === 'examples' && <GoldExamples />}
+      {tab === 'promo' && <PromoLink />}
+    </Shell>
+  )
+}
+
+function PlaybookEditor() {
+  const [text, setText] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [exists, setExists] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const { data } = await supabase.from('marketing_ai_config').select('value').eq('key', 'sales_playbook').maybeSingle()
+        if (!alive) return
+        if (data?.value) { setText(data.value); setExists(true) }
+      } catch { /* ignore */ }
+      if (alive) setLoading(false)
+    })()
+    return () => { alive = false }
+  }, [])
+
+  async function save() {
+    if (text.trim().length < 50) { notify('Hiến pháp quá ngắn — cần ít nhất vài dòng', 'error'); return }
+    setSaving(true)
+    try {
+      const { error } = await supabase.from('marketing_ai_config')
+        .upsert({ key: 'sales_playbook', value: text, mo_ta: 'Hiến pháp tư vấn AI Marketing', updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      if (error) throw error
+      setExists(true)
+      notify('Đã lưu — AI áp dụng trong vòng 5 phút', 'success')
+    } catch (e) { notify(`Lưu lỗi: ${e.message || e}`, 'error') } finally { setSaving(false) }
+  }
+
+  return (
+    <Panel title="Hiến pháp tư vấn" eyebrow="AI đọc mỗi lần gợi ý"
+      action={<button onClick={save} disabled={saving || loading} style={{ border: 'none', background: C.grad, color: '#fff', borderRadius: 8, padding: '9px 18px', fontWeight: 800, fontSize: 13, cursor: saving ? 'wait' : 'pointer' }}>{saving ? 'Đang lưu…' : 'Lưu'}</button>}>
+      <div className="mkt-soft" style={{ border: `1px solid ${C.border}`, background: 'rgba(255,255,255,.6)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12.5, color: C.textSub, lineHeight: 1.5 }}>
+        Đây là "bộ não" tư vấn: thương hiệu, giọng nói, nguyên tắc bán, giá, kịch bản. Sửa ở đây xong bấm Lưu — AI tự áp dụng (không cần lập trình viên). {!exists && 'Hiện chưa có bản tùy chỉnh — AI đang dùng bản mặc định cài sẵn; lưu lần đầu để ghi đè.'}
+        <br /><b style={{ color: C.primary }}>Gợi ý cần điền:</b> hotline/Zalo chính thức để AI đưa khách; ưu đãi đang chạy; cập nhật giá khi đổi.
+      </div>
+      {loading ? <EmptyBox text="Đang tải hiến pháp…" />
+        : <textarea value={text} onChange={e => setText(e.target.value)}
+            placeholder="Nhập hiến pháp tư vấn (để trống = AI dùng bản mặc định)…"
+            style={{ width: '100%', minHeight: 460, borderRadius: 8, border: `1px solid ${C.border}`, padding: 14, fontSize: 13, lineHeight: 1.6, resize: 'vertical', fontFamily: FONT.sans }} />}
+    </Panel>
+  )
+}
+
+function GoldExamples() {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [topic, setTopic] = useState('all')
+  const [mining, setMining] = useState(false)
+  const [nonce, setNonce] = useState(0)
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      setLoading(true)
+      try {
+        let q = supabase.from('marketing_ai_examples')
+          .select('id, chu_de, khach_hoi, le_tan_tra_loi, diem, da_duyet')
+          .order('da_duyet', { ascending: false }).order('diem', { ascending: false }).limit(150)
+        if (topic !== 'all') q = q.eq('chu_de', topic)
+        const { data } = await q
+        if (alive) { setRows(data || []); setLoading(false) }
+      } catch { if (alive) setLoading(false) }
+    })()
+    return () => { alive = false }
+  }, [topic, nonce])
+
+  async function mine() {
+    setMining(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('marketing-ai', { body: { mode: 'mine_examples', days: 180 } })
+      if (error) throw error
+      notify(`Đã quét: ${data?.saved_new || 0} mẫu mới (xét ${data?.candidates || 0} ứng viên)`, 'success')
+      setNonce(n => n + 1)
+    } catch (e) { notify(`Quét lỗi: ${e.message || e}`, 'error') } finally { setMining(false) }
+  }
+
+  async function setDuyet(id, val) {
+    try {
+      await supabase.from('marketing_ai_examples').update({ da_duyet: val }).eq('id', id)
+      setRows(rs => rs.map(r => r.id === id ? { ...r, da_duyet: val } : r))
+    } catch (e) { notify(`Lỗi: ${e.message || e}`, 'error') }
+  }
+  async function del(id) {
+    try { await supabase.from('marketing_ai_examples').delete().eq('id', id); setRows(rs => rs.filter(r => r.id !== id)) }
+    catch (e) { notify(`Lỗi: ${e.message || e}`, 'error') }
+  }
+
+  const duyetCount = rows.filter(r => r.da_duyet).length
+  return (
+    <Panel title="Mẫu vàng — AI học từ lễ tân giỏi" eyebrow={`${rows.length} mẫu · ${duyetCount} đã duyệt`}
+      action={<button onClick={mine} disabled={mining} style={{ border: 'none', background: C.grad, color: '#fff', borderRadius: 8, padding: '9px 16px', fontWeight: 800, fontSize: 13, cursor: mining ? 'wait' : 'pointer' }}>{mining ? 'Đang quét…' : '↻ Quét mẫu mới'}</button>}>
+      <div className="mkt-soft" style={{ border: `1px solid ${C.border}`, background: 'rgba(255,255,255,.6)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12.5, color: C.textSub, lineHeight: 1.5 }}>
+        Đây là các đoạn lễ tân thật trả lời tốt (tự quét mỗi 6 giờ). AI dùng làm ví dụ để bắt chước cách bán của Hannah. <b style={{ color: C.thu }}>Duyệt</b> mẫu hay để ưu tiên cho AI học; <b style={{ color: C.chi }}>Xóa</b> mẫu dở.
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        {['all', ...Object.keys(TOPIC_LABEL)].map(t => (
+          <button key={t} onClick={() => setTopic(t)} style={{
+            border: `1px solid ${topic === t ? C.primary : C.border}`, background: topic === t ? `${C.primary}12` : '#fff',
+            color: topic === t ? C.primary : C.textSub, borderRadius: 99, padding: '5px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+          }}>{t === 'all' ? 'Tất cả' : TOPIC_LABEL[t]}</button>
+        ))}
+      </div>
+      {loading ? <EmptyBox text="Đang tải mẫu…" />
+        : rows.length === 0 ? <EmptyBox text="Chưa có mẫu. Bấm “Quét mẫu mới” để AI học từ hội thoại thật." />
+          : <div style={{ display: 'grid', gap: 10 }}>
+              {rows.map(r => (
+                <div key={r.id} style={{ border: `1px solid ${r.da_duyet ? C.thu + '40' : C.border}`, borderRadius: 10, background: r.da_duyet ? `${C.thu}08` : '#fff', padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span style={{ fontSize: 10.5, fontWeight: 800, color: C.primary, background: `${C.primary}12`, borderRadius: 99, padding: '2px 9px' }}>{TOPIC_LABEL[r.chu_de] || r.chu_de}</span>
+                      <span style={{ fontSize: 11, color: C.textMute }}>điểm {r.diem}</span>
+                      {r.da_duyet && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#fff', background: C.thu, borderRadius: 99, padding: '2px 9px' }}>Đã duyệt</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => setDuyet(r.id, !r.da_duyet)} style={{ border: `1px solid ${C.border}`, background: '#fff', borderRadius: 7, padding: '5px 10px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{r.da_duyet ? 'Bỏ duyệt' : 'Duyệt'}</button>
+                      <button onClick={() => del(r.id)} style={{ border: `1px solid ${C.chi}40`, background: '#fff', color: C.chi, borderRadius: 7, padding: '5px 10px', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Xóa</button>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: C.textSub, lineHeight: 1.5 }}><b style={{ color: C.text }}>Khách:</b> {r.khach_hoi}</div>
+                  <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.5, marginTop: 4 }}><b style={{ color: C.thu }}>Lễ tân:</b> {r.le_tan_tra_loi}</div>
+                </div>
+              ))}
+            </div>}
+    </Panel>
+  )
+}
+
+function PromoLink() {
+  return (
+    <Panel title="Khuyến mãi đang chạy" eyebrow="AI báo đúng giá KM">
+      <div style={{ fontSize: 13.5, color: C.text, lineHeight: 1.7 }}>
+        AI tự đọc các chương trình khuyến mãi <b>đang chạy</b> để báo đúng giá cho khách (vd Massage cổ vai gáy 99k thay vì 159k).
+        <br /><br />
+        Anh quản lý khuyến mãi ở trang <b>Khuyến Mãi</b> — thêm chương trình, đặt giá gốc / giá KM, thời gian và trạng thái “Đang chạy”. AI cập nhật trong vòng 5 phút.
+        <div style={{ marginTop: 14 }}>
+          <button onClick={() => go('/admin/khuyen-mai')} style={{ border: 'none', background: C.grad, color: '#fff', borderRadius: 8, padding: '10px 20px', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>Mở trang Khuyến Mãi →</button>
+        </div>
+      </div>
+    </Panel>
+  )
+}
+
 export default function MarketingModulePage() {
   const path = window.location.pathname
   // URL cũ đã gỡ khỏi menu → điều hướng về đúng chỗ
@@ -1822,6 +2004,7 @@ export default function MarketingModulePage() {
     )
   }
   if (route.key === 'fanpage') return <FanpageContentPage route={route} />
+  if (route.key === 'training') return <TrainingPage />
   if (route.key === 'settings') return <ChannelSettingsPage route={route} />
   // Chiến dịch: truy cập trực tiếp (gộp trong Fanpage & Chiến Dịch)
   if (path.startsWith('/admin/marketing/chien-dich')) {
