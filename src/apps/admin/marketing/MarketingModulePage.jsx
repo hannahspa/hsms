@@ -10,97 +10,53 @@ const MARKETING_ROUTES = [
     path: '/admin/marketing',
     title: 'Tổng Quan Marketing',
     short: 'Tổng Quan',
-    subtitle: 'Bức tranh vận hành khách hàng: từ tin nhắn, đặt hẹn, khách đến spa đến chăm sóc lại.',
+    subtitle: 'Trung tâm báo cáo toàn hệ thống Marketing — nhìn vào là biết hôm nay cần làm gì.',
     owner: 'Chủ / quản lý',
-    status: 'Đang xây nền',
+    status: 'Báo cáo',
     accent: C.gold,
-    metrics: ['Tin nhắn mới', 'Khách cần xử lý', 'Tỷ lệ đặt hẹn'],
+    metrics: ['Tin mới hôm nay', 'Cần trả lời', 'Khách chốt lịch'],
   },
   {
     key: 'inbox',
     path: '/admin/marketing/hop-thu',
-    title: 'Hộp Thư Khách Hàng',
+    title: 'Hộp Thư',
     short: 'Hộp Thư',
-    subtitle: 'Nơi lễ tân nhắn khách, xem lịch sử hội thoại, HSMS tự nhận diện hồ sơ và gợi ý tư vấn.',
-    owner: 'Lễ tân / quản lý',
-    status: 'Ưu tiên cao',
+    subtitle: 'Tất cả chat Facebook + Zalo đổ về một nơi. AI nhận diện khách (mã KH), gợi ý câu trả lời cho lễ tân.',
+    owner: 'Lễ tân',
+    status: 'Việc hằng ngày',
     accent: '#1A5276',
-    metrics: ['Realtime Facebook', 'Gợi ý trả lời', 'Gắn hồ sơ HSMS'],
+    metrics: ['Đa kênh FB+Zalo', 'Nhận diện khách', 'Gợi ý trả lời'],
+  },
+  {
+    key: 'remarketing',
+    path: '/admin/marketing/khach-remarketing',
+    title: 'Khách & Remarketing',
+    short: 'Khách & Remarketing',
+    subtitle: 'Kho khách từ dữ liệu đã quét, gán vào hồ sơ HSMS theo mã KH, phân nhóm để mời quay lại.',
+    owner: 'Chủ / lễ tân',
+    status: 'Khai thác dữ liệu',
+    accent: '#8A6A6E',
+    metrics: ['Đã nối HSMS', 'Còn thẻ / buổi', 'Vắng lâu'],
   },
   {
     key: 'fanpage',
     path: '/admin/marketing/fanpage-noi-dung',
-    title: 'Fanpage & Nội Dung',
-    short: 'Fanpage',
-    subtitle: 'Theo dõi sức khoẻ Fanpage, bài viết hiệu quả, lịch đăng bài và chủ đề nên triển khai.',
+    title: 'Fanpage & Chiến Dịch',
+    short: 'Fanpage & Chiến Dịch',
+    subtitle: 'Sức khoẻ Fanpage, bài viết hiệu quả, gợi ý nội dung; quản lý chiến dịch quảng cáo và ROI.',
     owner: 'Chủ / marketing',
-    status: 'Kế tiếp',
+    status: 'Phân tích',
     accent: C.rose,
-    metrics: ['Bài viết tốt', 'Lịch đăng', 'Chủ đề nên làm'],
-  },
-  {
-    key: 'prospects',
-    path: '/admin/marketing/khach-tiem-nang',
-    title: 'Khách Hàng Tiềm Năng',
-    short: 'Tiềm Năng',
-    subtitle: 'Phân loại khách inbox, khách có số điện thoại, khách nóng, khách cần quản lý xem trước.',
-    owner: 'Lễ tân / quản lý',
-    status: 'Đang nối dữ liệu',
-    accent: '#8A6A6E',
-    metrics: ['Khách nóng', 'Cần xin SĐT', 'Có thể chốt lịch'],
-  },
-  {
-    key: 'aftercare',
-    path: '/admin/marketing/cham-soc-sau-dich-vu',
-    title: 'Chăm Sóc Sau Dịch Vụ',
-    short: 'Sau Dịch Vụ',
-    subtitle: 'Ghi nhận khách đã đến hôm nay, phản hồi dịch vụ, KTV thực hiện và việc cần chăm lại.',
-    owner: 'Lễ tân',
-    status: 'Sắp triển khai',
-    accent: C.sage,
-    metrics: ['Khách đã đến', 'Phản hồi', 'Cần gọi lại'],
-  },
-  {
-    key: 'reminders',
-    path: '/admin/marketing/nhac-lich-lieu-trinh',
-    title: 'Nhắc Lịch Liệu Trình',
-    short: 'Nhắc Lịch',
-    subtitle: 'Nhắc khách da, triệt lông, thẻ còn buổi, khách lâu không đến và khách cần tái đặt lịch.',
-    owner: 'Lễ tân / quản lý',
-    status: 'Sắp triển khai',
-    accent: '#6C3483',
-    metrics: ['Còn buổi', 'Đến chu kỳ', 'Quá hạn'],
-  },
-  {
-    key: 'campaigns',
-    path: '/admin/marketing/chien-dich',
-    title: 'Chiến Dịch & Remarketing',
-    short: 'Chiến Dịch',
-    subtitle: 'Quản lý chiến dịch quảng cáo, tệp khách chăm lại, chi phí, doanh thu và hiệu quả.',
-    owner: 'Chủ / marketing',
-    status: 'Có dữ liệu cũ',
-    accent: C.warn,
-    metrics: ['Chi phí', 'Khách quay lại', 'Doanh thu'],
-  },
-  {
-    key: 'staff',
-    path: '/admin/marketing/bao-cao-nhan-vien',
-    title: 'Báo Cáo Nhân Viên',
-    short: 'Nhân Viên',
-    subtitle: 'Nhân viên đã tư vấn khách nào, kết quả ra sao, phản hồi khách và việc còn bỏ sót.',
-    owner: 'Chủ / quản lý',
-    status: 'Sắp triển khai',
-    accent: '#2D7A4F',
-    metrics: ['Đã tư vấn', 'Đã hẹn', 'Bỏ sót'],
+    metrics: ['Bài viết tốt', 'Chiến dịch', 'ROI'],
   },
   {
     key: 'settings',
     path: '/admin/marketing/cau-hinh-kenh',
     title: 'Cấu Hình Kênh',
     short: 'Cấu Hình',
-    subtitle: 'Kết nối Facebook, Zalo, hotline, webhook, phân quyền gửi tin và giới hạn lưu trữ dữ liệu.',
+    subtitle: 'Kết nối Facebook/Zalo, webhook, token, đồng bộ thủ công và phân công nhân viên.',
     owner: 'Chủ / kỹ thuật',
-    status: 'Cần bảo mật',
+    status: 'Admin',
     accent: C.primary,
     metrics: ['Facebook', 'Zalo', 'Webhook'],
   },
@@ -612,6 +568,11 @@ function FanpageContentPage({ route }) {
         <a href="/admin/marketing/cau-hinh-kenh" style={{ color: C.primary, fontWeight: 700, textDecoration: 'none' }}>Cấu Hình Kênh</a>.
       </div>
 
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <span style={{ padding: '8px 14px', borderRadius: 9, fontWeight: 800, fontSize: 13, background: C.grad, color: '#fff' }}>Fanpage &amp; Nội Dung</span>
+        <button onClick={() => go('/admin/marketing/chien-dich')} style={{ padding: '8px 14px', borderRadius: 9, fontWeight: 800, fontSize: 13, border: `1px solid ${C.border}`, background: '#fff', color: C.text, cursor: 'pointer' }}>Chiến Dịch &amp; ROI →</button>
+      </div>
+
       <MetricGrid items={[
         { label: 'Người theo dõi', value: fmtNumber(overview.followers_count || overview.fan_count), sub: 'Từ Fanpage đã kết nối', tone: C.taiSan },
         { label: 'Bài đã lưu', value: fmtNumber(overview.so_bai_viet), sub: `Bài mới nhất ${fmtDate(overview.bai_moi_nhat_at)}`, tone: C.gold },
@@ -704,6 +665,10 @@ function CampaignsPage({ route }) {
     <Shell>
       <Header route={route} />
       <StateNotice data={data} />
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <button onClick={() => go('/admin/marketing/fanpage-noi-dung')} style={{ padding: '8px 14px', borderRadius: 9, fontWeight: 800, fontSize: 13, border: `1px solid ${C.border}`, background: '#fff', color: C.text, cursor: 'pointer' }}>← Fanpage &amp; Nội Dung</button>
+        <span style={{ padding: '8px 14px', borderRadius: 9, fontWeight: 800, fontSize: 13, background: C.grad, color: '#fff' }}>Chiến Dịch &amp; ROI</span>
+      </div>
       <MetricGrid items={[
         { label: 'Chiến dịch chạy', value: activeCampaigns, sub: `${performance.length} chiến dịch trong hệ thống`, tone: C.warn },
         { label: 'Chi phí ghi nhận', value: fmtCompactMoney(totalSpend), sub: 'Theo thống kê chiến dịch', tone: C.chi },
@@ -1322,9 +1287,9 @@ function Overview() {
       </div>
       <div className="mkt-soft" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12, marginBottom: 18 }}>
         {[
-          { icon: '💬', label: 'Trả lời tin khách', value: pending, desc: 'Khách chưa được chăm — vào Hộp Thư trả lời ngay', path: '/admin/marketing/hop-thu', tone: C.taiSan },
-          { icon: '📅', label: 'Khách chốt lịch', value: bookingReady, desc: 'Khách đặt hẹn / khách nóng — mời chốt giờ đến', path: '/admin/marketing/khach-tiem-nang', tone: C.thu },
-          { icon: '🎫', label: 'Nhắc thẻ & khách cũ', value: null, desc: 'Khách còn buổi / lâu chưa đến — mời quay lại', path: '/admin/marketing/nhac-lich-lieu-trinh', tone: C.gold },
+          { icon: '💬', label: 'Trả lời tin khách', value: pending, desc: 'Khách đang nhắn chưa được trả lời — vào Hộp Thư ngay', path: '/admin/marketing/hop-thu', tone: C.taiSan },
+          { icon: '📅', label: 'Khách chốt lịch', value: bookingReady, desc: 'Khách đặt hẹn / khách nóng — mời chốt giờ đến', path: '/admin/marketing/hop-thu', tone: C.thu },
+          { icon: '🎯', label: 'Khách mời quay lại', value: null, desc: 'Kho khách cũ còn thẻ / vắng lâu — chăm lại (remarketing)', path: '/admin/marketing/khach-remarketing', tone: C.gold },
         ].map(t => (
           <button key={t.label} onClick={() => go(t.path)} style={{
             textAlign: 'left', cursor: 'pointer', border: `1px solid ${t.tone}33`, background: `${t.tone}0C`,
@@ -1341,12 +1306,9 @@ function Overview() {
         ))}
       </div>
 
-      <RealtimeInbox />
-
       {[
-        { title: 'Chăm khách hằng ngày', desc: 'Việc lễ tân làm mỗi ngày', keys: ['inbox', 'prospects', 'aftercare', 'reminders'] },
-        { title: 'Quản lý & Phân tích', desc: 'Dành cho chủ / quản lý', keys: ['fanpage', 'campaigns', 'staff'] },
-        { title: 'Cấu hình kênh', desc: 'Kết nối kỹ thuật (admin)', keys: ['settings'] },
+        { title: 'Chăm khách', desc: 'Hộp thư hằng ngày & remarketing', keys: ['inbox', 'remarketing'] },
+        { title: 'Phân tích & Cấu hình', desc: 'Dành cho chủ / admin', keys: ['fanpage', 'settings'] },
       ].map(g => (
         <div key={g.title} style={{ marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
@@ -1545,56 +1507,256 @@ function DetailPage({ route }) {
   )
 }
 
+// ── B2: HỘP THƯ — hội thoại đang hoạt động (30 ngày), đa kênh, AI nhận diện + gợi ý ──
+function extractPhoneLite(t) {
+  const m = String(t || '').match(/(?:\+?84|0)(?:[\s.-]?\d){8,10}/)
+  if (!m) return null
+  const d = m[0].replace(/\D/g, '')
+  const p = d.startsWith('84') && d.length === 11 ? '0' + d.slice(2) : d
+  return /^0\d{9}$/.test(p) ? p : null
+}
+
+const INBOX_DAYS = 30
+
+function InboxPage() {
+  const [convos, setConvos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selId, setSelId] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [nonce, setNonce] = useState(0)
+
+  // Tải hội thoại có tin trong INBOX_DAYS ngày gần đây, gom theo conversation, ưu tiên chưa trả lời.
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      setLoading(true)
+      try {
+        const since = new Date(Date.now() - INBOX_DAYS * 864e5).toISOString()
+        const { data } = await supabase.from('marketing_messages')
+          .select('id, kenh, conversation_id, from_platform_user_id, recipient_id, sender_name, sender_type, direction, noi_dung, ai_suggested_reply, created_at, metadata')
+          .in('kenh', ['facebook', 'zalo'])
+          .gte('created_at', since)
+          .order('created_at', { ascending: false })
+          .limit(500)
+        if (!alive) return
+        const map = new Map()
+        for (const m of (data || [])) {
+          const cid = m.conversation_id || m.from_platform_user_id || m.id
+          if (!map.has(cid)) map.set(cid, [])
+          map.get(cid).push(m)
+        }
+        const list = [...map.entries()].map(([cid, msgs]) => {
+          const sorted = msgs.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+          const last = sorted[sorted.length - 1]
+          const firstInbound = sorted.find(x => x.direction === 'inbound')
+          const psid = firstInbound?.from_platform_user_id || msgs[0].from_platform_user_id || msgs[0].metadata?.customer_id || null
+          const aiReply = sorted.slice().reverse().find(x => x.ai_suggested_reply)?.ai_suggested_reply || ''
+          return {
+            cid, kenh: last.kenh, msgs: sorted, last,
+            unreplied: last.direction === 'inbound',
+            name: firstInbound?.sender_name || last.sender_name || 'Khách',
+            psid, aiReply, lastAt: last.created_at,
+          }
+        }).sort((a, b) => (b.unreplied ? 1 : 0) - (a.unreplied ? 1 : 0) || new Date(b.lastAt) - new Date(a.lastAt))
+        setConvos(list); setLoading(false)
+        setSelId(prev => prev || (list[0] && list[0].cid) || null)
+      } catch { if (alive) setLoading(false) }
+    })()
+    const ch = supabase.channel('inbox-page-rt')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'marketing_messages' }, () => { if (alive) setNonce(n => n + 1) })
+      .subscribe()
+    return () => { alive = false; supabase.removeChannel(ch) }
+  }, [nonce])
+
+  const selected = convos.find(c => c.cid === selId) || null
+
+  // Nhận diện khách: SĐT (từ tin / segment) → khach_hang → mã KH + thẻ còn buổi
+  useEffect(() => {
+    let alive = true
+    setProfile(null)
+    setDraft(selected?.aiReply || '')
+    if (!selected) return
+    ;(async () => {
+      let phone = null
+      for (const m of selected.msgs) { const p = extractPhoneLite(m.noi_dung); if (p) { phone = p; break } }
+      if (!phone && selected.psid) {
+        const { data: seg } = await supabase.from('marketing_fanpage_customer_segments')
+          .select('phone_norm').eq('platform_user_id', selected.psid).not('phone_norm', 'is', null).limit(1).maybeSingle()
+        if (seg?.phone_norm) phone = seg.phone_norm
+      }
+      if (!phone) { if (alive) setProfile({ is_new: true }); return }
+      const { data: kh } = await supabase.from('khach_hang')
+        .select('id, ho_ten, so_dien_thoai, tong_chi_tieu, lan_cuoi_den')
+        .eq('so_dien_thoai', phone).limit(1).maybeSingle()
+      if (!kh) { if (alive) setProfile({ is_new: true, phone }); return }
+      const { data: cards } = await supabase.from('the_lieu_trinh')
+        .select('ten_dich_vu, so_buoi_con_lai').eq('khach_hang_id', kh.id).gt('so_buoi_con_lai', 0).limit(8)
+      if (alive) setProfile({ is_new: false, phone, kh, cards: cards || [] })
+    })()
+    return () => { alive = false }
+  }, [selId, convos])
+
+  async function sendReply() {
+    if (!draft.trim()) { notify('Chưa có nội dung tin nhắn', 'error'); return }
+    if (!selected?.psid) { notify('Chưa xác định được người nhận — hãy Chép tin để gửi tay', 'error'); return }
+    setSending(true)
+    try {
+      const { error } = await supabase.functions.invoke('marketing-meta-page-sync', {
+        body: { mode: 'send_message', recipient_id: selected.psid, message: draft.trim(), kenh: selected.kenh },
+      })
+      if (error) throw error
+      notify('Đã gửi tin cho khách', 'success')
+      setNonce(n => n + 1)
+    } catch (e) {
+      notify(`Chưa gửi được qua HSMS (${e.message || e}). Hãy bấm Chép để gửi tay.`, 'error')
+    } finally { setSending(false) }
+  }
+
+  const copy = (t) => { navigator.clipboard?.writeText(t || ''); notify('Đã chép', 'success') }
+
+  return (
+    <Shell>
+      <Header route={MARKETING_ROUTES.find(r => r.key === 'inbox')} />
+      <div className="mkt-soft" style={{
+        border: `1px solid ${C.border}`, background: 'rgba(255,255,255,.6)', borderRadius: 10,
+        padding: '10px 14px', marginBottom: 14, fontSize: 12.5, color: C.textSub, lineHeight: 1.5,
+      }}>
+        💬 Hội thoại có tin trong {INBOX_DAYS} ngày gần đây (khách cũ hơn nằm ở mục Khách & Remarketing). Khách đang chờ trả lời được đẩy lên đầu.
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px,.8fr) minmax(0,1.4fr) minmax(260px,.9fr)', gap: 14, minHeight: 560 }}>
+        {/* Cột trái: danh sách hội thoại */}
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, background: '#fff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.border}`, fontWeight: 900, color: C.text }}>
+            Cần trả lời {convos.filter(c => c.unreplied).length > 0 && <span style={{ color: C.chi }}>· {convos.filter(c => c.unreplied).length}</span>}
+          </div>
+          <div style={{ overflow: 'auto', maxHeight: 560 }}>
+            {loading ? <EmptyBox text="Đang tải hội thoại…" />
+              : convos.length === 0 ? <EmptyBox text={`Chưa có hội thoại trong ${INBOX_DAYS} ngày. Khi khách nhắn Fanpage/Zalo, hội thoại sẽ hiện ở đây.`} />
+                : convos.map(c => {
+                  const active = c.cid === selId
+                  return (
+                    <button key={c.cid} onClick={() => setSelId(c.cid)} style={{
+                      width: '100%', textAlign: 'left', cursor: 'pointer', padding: '11px 13px',
+                      border: 'none', borderBottom: `1px solid ${C.border}`, borderLeft: `3px solid ${active ? C.primary : 'transparent'}`,
+                      background: active ? `${C.primary}0C` : '#fff',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                        <strong style={{ color: C.text, fontSize: 13 }}>{c.name}</strong>
+                        {c.unreplied && <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: C.chi, borderRadius: 99, padding: '2px 7px' }}>Chờ</span>}
+                      </div>
+                      <div style={{ marginTop: 3, fontSize: 12, color: C.textSub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.last.direction === 'outbound' ? 'Bạn: ' : ''}{(c.last.noi_dung || '(đính kèm)').slice(0, 50)}
+                      </div>
+                      <div style={{ marginTop: 3, fontSize: 10.5, color: C.textMute }}>{c.kenh === 'zalo' ? 'Zalo' : 'Facebook'} · {fmtDateTime(c.lastAt)}</div>
+                    </button>
+                  )
+                })}
+          </div>
+        </div>
+
+        {/* Cột giữa: hội thoại + soạn tin */}
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {!selected ? <EmptyBox text="Chọn một khách bên trái để xem hội thoại." />
+            : (
+              <>
+                <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.border}`, fontWeight: 900, color: C.text }}>
+                  {selected.name} <span style={{ fontWeight: 600, fontSize: 12, color: C.textSub }}>· {selected.kenh === 'zalo' ? 'Zalo' : 'Facebook'}</span>
+                </div>
+                <div style={{ flex: 1, overflow: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380 }}>
+                  {selected.msgs.map(m => (
+                    <div key={m.id} style={{ alignSelf: m.direction === 'outbound' ? 'flex-end' : 'flex-start', maxWidth: '78%' }}>
+                      <div style={{
+                        background: m.direction === 'outbound' ? C.primary : '#F1ECE4', color: m.direction === 'outbound' ? '#fff' : C.text,
+                        borderRadius: 12, padding: '8px 12px', fontSize: 13, lineHeight: 1.45,
+                      }}>{m.noi_dung || '(đính kèm/hình ảnh)'}</div>
+                      <div style={{ fontSize: 10, color: C.textMute, marginTop: 2, textAlign: m.direction === 'outbound' ? 'right' : 'left' }}>{fmtDateTime(m.created_at)}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ borderTop: `1px solid ${C.border}`, padding: 12 }}>
+                  <textarea value={draft} onChange={e => setDraft(e.target.value)} placeholder="Soạn tin trả lời khách… (gợi ý AI đã điền sẵn nếu có)"
+                    style={{ width: '100%', minHeight: 70, borderRadius: 8, border: `1px solid ${C.border}`, padding: 10, fontSize: 13, resize: 'vertical' }} />
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                    <button onClick={() => copy(draft)} style={{ border: `1px solid ${C.border}`, background: '#fff', borderRadius: 8, padding: '8px 14px', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>Chép</button>
+                    <button onClick={sendReply} disabled={sending} style={{ border: 'none', background: C.grad, color: '#fff', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13, cursor: sending ? 'wait' : 'pointer' }}>
+                      {sending ? 'Đang gửi…' : 'Gửi từ HSMS'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+        </div>
+
+        {/* Cột phải: hồ sơ khách + gợi ý AI */}
+        <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
+          <Panel title="Khách này là ai" eyebrow="Nhận diện HSMS">
+            {!selected ? <span style={{ color: C.textSub, fontSize: 13 }}>—</span>
+              : !profile ? <span style={{ color: C.textSub, fontSize: 13 }}>Đang tra hồ sơ…</span>
+                : profile.is_new
+                  ? <div style={{ fontSize: 13, color: C.textSub, lineHeight: 1.5 }}>
+                      <b style={{ color: C.text }}>{profile.phone ? 'Có SĐT, chưa có hồ sơ HSMS' : 'Khách mới — chưa rõ SĐT'}</b><br />
+                      {profile.phone ? `SĐT: ${profile.phone}. Nên tạo hồ sơ trước khi tư vấn sâu.` : 'Mục tiêu đầu tiên: xin SĐT / mời Quan Tâm Zalo.'}
+                    </div>
+                  : <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6 }}>
+                      <b>{profile.kh.ho_ten || 'Khách'}</b> · <span style={{ color: C.thu, fontWeight: 800 }}>Khách cũ</span><br />
+                      <span style={{ color: C.textSub }}>SĐT {profile.kh.so_dien_thoai} · chi tiêu {fmtMoney(profile.kh.tong_chi_tieu)}</span><br />
+                      <span style={{ color: C.textSub }}>Lần cuối đến: {fmtDate(profile.kh.lan_cuoi_den)}</span>
+                      {profile.cards.length > 0 && (
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ fontWeight: 800, fontSize: 12, color: C.textMute, textTransform: 'uppercase', letterSpacing: '.08em' }}>Thẻ còn buổi</div>
+                          {profile.cards.map((c, i) => <div key={i} style={{ fontSize: 12.5 }}>• {c.ten_dich_vu}: còn {c.so_buoi_con_lai} buổi</div>)}
+                        </div>
+                      )}
+                    </div>}
+          </Panel>
+          <Panel title="Gợi ý trả lời (AI)" eyebrow="DeepSeek">
+            {selected?.aiReply
+              ? <div style={{ display: 'grid', gap: 8 }}>
+                  <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, background: '#FFFDF8', border: `1px solid ${C.border}`, borderRadius: 8, padding: 10 }}>{selected.aiReply}</div>
+                  <button onClick={() => setDraft(selected.aiReply)} style={{ border: `1px solid ${C.border}`, background: '#fff', borderRadius: 8, padding: '7px 12px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>Dùng gợi ý này</button>
+                </div>
+              : <span style={{ color: C.textSub, fontSize: 13 }}>AI nền đang phân tích — gợi ý sẽ hiện sau khi xử lý tin này.</span>}
+          </Panel>
+        </div>
+      </div>
+    </Shell>
+  )
+}
+
 export default function MarketingModulePage() {
+  const path = window.location.pathname
+  // URL cũ đã gỡ khỏi menu → điều hướng về đúng chỗ
+  if (path.startsWith('/admin/marketing/khach-tiem-nang')) { go('/admin/marketing/khach-remarketing'); return null }
+  if (
+    path.startsWith('/admin/marketing/cham-soc-sau-dich-vu') ||
+    path.startsWith('/admin/marketing/nhac-lich-lieu-trinh') ||
+    path.startsWith('/admin/marketing/bao-cao-nhan-vien')
+  ) { go('/admin/cham-soc-khach'); return null }
+
   const route = getRoute()
 
   if (route.key === 'overview') return <Overview />
-  if (route.key === 'inbox') return <AdminChamSocKhachPage embeddedInMarketing fixedTab="fanpage" />
-  if (route.key === 'fanpage') return <FanpageContentPage route={route} />
-  if (route.key === 'prospects') {
+  if (route.key === 'inbox') return <InboxPage />
+  if (route.key === 'remarketing') {
     return (
       <AdminChamSocKhachPage
         embeddedInMarketing
         fixedTab="fanpage"
         initialFanpageFilter="all"
-        title="Khách Hàng Tiềm Năng"
-        subtitle="Tất cả khách Fanpage đang có tín hiệu cần phân loại: khách nóng, cần xin SĐT, đã nhận diện HSMS hoặc cần quản lý xem trước."
+        title="Khách & Remarketing"
+        subtitle="Kho khách từ dữ liệu đã quét, đã gán vào hồ sơ HSMS theo mã KH — phân nhóm để mời quay lại."
       />
     )
   }
-  if (route.key === 'aftercare') {
-    return (
-      <AdminChamSocKhachPage
-        embeddedInMarketing
-        fixedTab="today"
-        showVisitButton
-        title="Chăm Sóc Sau Dịch Vụ"
-        subtitle="Nhập khách đã đến spa, phản hồi dịch vụ, KTV phụ trách và cơ hội chăm sóc lại."
-      />
-    )
-  }
-  if (route.key === 'reminders') {
-    return (
-      <AdminChamSocKhachPage
-        embeddedInMarketing
-        fixedTab="pos"
-        title="Nhắc Lịch Liệu Trình"
-        subtitle="Ưu tiên khách còn buổi, khách lâu không đến và khách cần được mời quay lại đúng chu kỳ."
-      />
-    )
-  }
-  if (route.key === 'campaigns') return <CampaignsPage route={route} />
-  if (route.key === 'staff') {
-    return (
-      <AdminChamSocKhachPage
-        embeddedInMarketing
-        fixedTab="report"
-        title="Báo Cáo Nhân Viên"
-        subtitle="Xem nhân viên đã chăm khách nào, kết quả ra sao và nhóm khách nào còn bị bỏ sót."
-      />
-    )
-  }
+  if (route.key === 'fanpage') return <FanpageContentPage route={route} />
   if (route.key === 'settings') return <ChannelSettingsPage route={route} />
+  // Chiến dịch: truy cập trực tiếp (gộp trong Fanpage & Chiến Dịch)
+  if (path.startsWith('/admin/marketing/chien-dich')) {
+    return <CampaignsPage route={MARKETING_ROUTES.find(r => r.key === 'fanpage')} />
+  }
 
-  return <DetailPage route={route} />
+  return <Overview />
 }
