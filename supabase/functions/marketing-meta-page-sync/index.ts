@@ -5,7 +5,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
 const GRAPH_VERSION = Deno.env.get('META_GRAPH_VERSION') || 'v25.0'
-const FALLBACK_PAGE_TOKEN = Deno.env.get('META_PAGE_ACCESS_TOKEN') || ''
+// Token vĩnh viễn nằm ở env. Hỗ trợ cả 2 tên biến (FB_* dùng chung với marketing-ai/webhook, META_* là tên cũ).
+const FALLBACK_PAGE_TOKEN = Deno.env.get('META_PAGE_ACCESS_TOKEN') || Deno.env.get('FB_PAGE_ACCESS_TOKEN') || ''
 const PAGE_INSIGHT_METRICS = (Deno.env.get('META_PAGE_INSIGHT_METRICS') || '')
   .split(',')
   .map((metric) => metric.trim())
