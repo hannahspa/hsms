@@ -38,11 +38,11 @@ function normalizeZaloEvent(event: ZaloMsg) {
     return {
       kenh: 'zalo',
       direction: 'inbound',
-      platform_user_id: userId,
       platform_message_id: msgId,
       sender_name: null,
       noi_dung: text || (attachments.length ? `[${eventName === 'oa_send_image' ? 'Hình ảnh' : eventName === 'oa_send_file' ? 'File' : 'Sticker'}]` : ''),
       attachments,
+      ai_safety_level: 'normal',
       conversation_id: stableId('zalo', userId),
       from_platform_user_id: userId,
       recipient_id: OA_ID,
@@ -116,7 +116,8 @@ serve(async (req) => {
       // Lưu outgoing message
       await supabase.from('marketing_messages').insert({
         kenh: 'zalo', direction: 'outbound', sender_type: 'staff', sender_name: 'Hannah Spa',
-        noi_dung: body.text, trang_thai: 'sent', platform_message_id: data.message_id || data.msg_id,
+        noi_dung: body.text, attachments: [], ai_safety_level: 'normal', trang_thai: 'sent',
+        platform_message_id: data.message_id || data.msg_id,
         conversation_id: stableId('zalo', String(body.user_id)),
         from_platform_user_id: OA_ID, recipient_id: String(body.user_id),
         metadata: { source: 'hsms_send', oa_id: OA_ID },
@@ -137,7 +138,11 @@ serve(async (req) => {
       } catch { /* OK */ }
 
       const { error } = await supabase.from('marketing_messages').insert(row)
-      if (!error) saved++
+      if (error) {
+        console.error('zalo-webhook insert error:', JSON.stringify(error))
+      } else {
+        saved++
+      }
     }
     return jsonRes({ ok: true, processed: saved, total: events.length })
   } catch (e: any) {
