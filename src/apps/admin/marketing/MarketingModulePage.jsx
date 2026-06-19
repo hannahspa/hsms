@@ -1691,9 +1691,11 @@ function InboxPage() {
     if (!selected?.psid) { notify('Chưa xác định được người nhận — hãy Chép tin để gửi tay', 'error'); return }
     setSending(true)
     try {
-      const { error } = await supabase.functions.invoke('marketing-meta-page-sync', {
-        body: { mode: 'send_message', recipient_id: selected.psid, message: draft.trim(), kenh: selected.kenh },
-      })
+      const fnName = selected.kenh === 'zalo' ? 'zalo-webhook' : 'marketing-meta-page-sync'
+      const body = selected.kenh === 'zalo'
+        ? { mode: 'send_message', user_id: selected.psid, text: draft.trim() }
+        : { mode: 'send_message', recipient_id: selected.psid, message: draft.trim(), kenh: selected.kenh }
+      const { error } = await supabase.functions.invoke(fnName, { body })
       if (error) throw error
       notify('Đã gửi tin cho khách', 'success')
       setNonce(n => n + 1)
