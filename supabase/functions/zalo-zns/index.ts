@@ -86,13 +86,15 @@ serve(async (req) => {
     const data = await resp.json()
     const ok = data.error === 0 || data.error === undefined
     // Ghi log gửi ZNS
-    await supabase.from('marketing_messages').insert({
-      kenh: 'zalo', direction: 'outbound', sender_type: 'system', sender_name: 'Hannah Spa (ZNS)',
-      noi_dung: `[ZNS ${body.template_key || templateId}] ${JSON.stringify(body.params || {})}`,
-      attachments: [], ai_safety_level: 'normal', trang_thai: ok ? 'sent' : 'failed',
-      recipient_id: phone, conversation_id: `zns:${phone}`,
-      metadata: { source: 'zns', template_key: body.template_key, template_id: templateId, result: data },
-    }).catch(() => {})
+    try {
+      await supabase.from('marketing_messages').insert({
+        kenh: 'zalo', direction: 'outbound', sender_type: 'system', sender_name: 'Hannah Spa (ZNS)',
+        noi_dung: `[ZNS ${body.template_key || templateId}] ${JSON.stringify(body.params || {})}`,
+        attachments: [], ai_safety_level: 'normal', trang_thai: ok ? 'sent' : 'failed',
+        recipient_id: phone, conversation_id: `zns:${phone}`,
+        metadata: { source: 'zns', template_key: body.template_key, template_id: templateId, result: data },
+      })
+    } catch { /* log lỗi không chặn */ }
 
     if (!ok) return jsonRes({ ok: false, error: data.message || JSON.stringify(data), zalo: data }, 200)
     return jsonRes({ ok: true, msg_id: data.data?.msg_id, sent_time: data.data?.sent_time, quota: data.data?.quota })
