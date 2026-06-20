@@ -205,7 +205,7 @@ export default function AdminNhacLieuTrinhPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
             <thead>
               <tr>
-                {['Khách hàng', 'Thẻ liệu trình', 'Buổi còn', 'Ngày vắng', 'Nhịp nhắc', 'Trạng thái', ''].map((h, i) => (
+                {['Khách hàng', 'Thẻ liệu trình', 'Buổi còn', 'Lần dùng thẻ gần nhất', 'Nhịp nhắc', 'Trạng thái', ''].map((h, i) => (
                   <th key={i} style={th}>{h}</th>
                 ))}
               </tr>
@@ -232,10 +232,11 @@ export default function AdminNhacLieuTrinhPage() {
                       <span style={{ color: C.textMute }}>/{r.so_buoi_tong}</span>
                     </td>
                     <td style={td}>
-                      {r.so_ngay_vang == null ? <span style={{ color: C.textMute }}>—</span> : (
-                        <span style={{ fontWeight: 700, color: r.so_ngay_vang >= 30 ? C.chi : r.so_ngay_vang >= 10 ? C.warn : C.textSub }}>
-                          {r.so_ngay_vang} ngày
-                        </span>
+                      <div style={{ fontSize: 13, color: C.text, fontWeight: 600 }}>{fmtDate(r.lan_dung_gan_nhat)}</div>
+                      {r.so_ngay_vang != null && (
+                        <div style={{ fontSize: 11.5, fontWeight: 700, color: r.so_ngay_vang >= 30 ? C.chi : r.so_ngay_vang >= 10 ? C.warn : C.textSub }}>
+                          {r.so_ngay_vang} ngày trước
+                        </div>
                       )}
                     </td>
                     <td style={td}>
@@ -258,7 +259,7 @@ export default function AdminNhacLieuTrinhPage() {
       </div>
 
       <div style={{ marginTop: 14, fontSize: 11.5, color: C.textMute, lineHeight: 1.6 }}>
-        Cứ ~10 ngày khách chưa quay lại, hệ thống sẽ nhắc 1 nhịp với kịch bản leo thang (nhắc nhẹ → lợi ích → sale chéo + khuyến mãi). Khi ZNS sẵn sàng (nạp tiền ZBS), cron tự gửi; hiện tại nhân viên dùng nút Gọi/Zalo/Chép để chủ động.
+🤖 <b>Tự động:</b> cứ ~10 ngày kể từ lần khách <b>dùng buổi thẻ</b>, nếu chưa quay lại hệ thống tự nhắc qua Zalo (ZNS) lúc 9h sáng — nhân viên KHÔNG cần thao tác. Khi khách dùng buổi mới, bộ đếm tự reset. Nút Gọi/Zalo/Soạn nhắc bên dưới chỉ dùng khi muốn chăm sóc thủ công thêm hoặc cá nhân hóa lời mời (AI gợi ý kịch bản sale chéo theo nhịp).
       </div>
 
       {/* Modal soạn nhắc */}
@@ -266,7 +267,7 @@ export default function AdminNhacLieuTrinhPage() {
         open={!!openCard}
         onClose={() => setOpenCard(null)}
         title={openCard ? `Nhắc ${openCard.ho_ten || 'khách'}` : ''}
-        subtitle={openCard ? `${openCard.ten_dich_vu} · còn ${openCard.so_buoi_con_lai} buổi · vắng ${openCard.so_ngay_vang ?? '—'} ngày · nhịp ${(openCard.so_lan_nhac || 0) + 1}` : ''}
+        subtitle={openCard ? `${openCard.ten_dich_vu} · còn ${openCard.so_buoi_con_lai} buổi · dùng gần nhất ${fmtDate(openCard.lan_dung_gan_nhat)} (${openCard.so_ngay_vang ?? '—'} ngày trước) · nhịp ${(openCard.so_lan_nhac || 0) + 1}` : ''}
         icon="💌"
         size="lg"
         footer={openCard && (

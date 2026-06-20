@@ -218,9 +218,9 @@ serve(async (req) => {
         }
         if (daGui >= limit) break  // tránh Edge timeout, mẻ sau cron tiếp
 
-        const sug = await suggestForCard(card, promos)
-        // Thử gửi tự động qua ZNS. CHỈ ghi nhận (tăng nhịp) khi GỬI THẬT thành công —
-        // nếu kênh chưa sống (chưa nạp tiền/template), KHÔNG tăng nhịp để hôm sau thử lại, tránh đánh dấu sai.
+        // Gửi tự động qua ZNS bằng TEMPLATE cố định (KHÔNG gọi AI → nhanh, không timeout, tự động 100%).
+        // CHỈ ghi nhận (tăng nhịp) khi GỬI THẬT thành công — chưa gửi được thì để hôm sau thử lại.
+        const nhip = Number(card.so_lan_nhac || 0) + 1
         let znsResult: any = null, sent = false
         try {
           const r = await supabase.functions.invoke('zalo-zns', {
@@ -236,13 +236,15 @@ serve(async (req) => {
 
         if (sent) {
           await supabase.rpc('ghi_nhan_nhac_lieu_trinh', {
-            p_the_id: card.the_id, p_kenh: 'zns', p_noi_dung: sug.tin_nhan, p_ket_qua: 'da_gui',
+            p_the_id: card.the_id, p_kenh: 'zns',
+            p_noi_dung: `ZNS tự động: ${card.ten_dich_vu} còn ${card.so_buoi_con_lai} buổi (nhịp ${nhip})`,
+            p_ket_qua: 'da_gui',
           })
           daGui++
-          results.push({ the_id: card.the_id, ho_ten: card.ho_ten, nhip: sug.nhip, kenh: 'zns', ket_qua: 'da_gui' })
+          results.push({ the_id: card.the_id, ho_ten: card.ho_ten, nhip, kenh: 'zns', ket_qua: 'da_gui' })
         } else {
           // Chưa gửi được → bỏ qua, không tăng nhịp (chờ kênh sống). Báo để giám sát.
-          results.push({ the_id: card.the_id, ho_ten: card.ho_ten, nhip: sug.nhip, kenh: 'cho_kenh', ket_qua: 'chua_gui_duoc', ly_do: znsResult?.error || znsResult })
+          results.push({ the_id: card.the_id, ho_ten: card.ho_ten, nhip, kenh: 'cho_kenh', ket_qua: 'chua_gui_duoc', ly_do: znsResult?.error || znsResult })
         }
       }
 
