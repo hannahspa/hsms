@@ -16,6 +16,7 @@ const AdminTheLieuTrinhPage = lazy(() => import('./the-lieu-trinh/AdminTheLieuTr
 const AdminBaoCaoTheLieuTrinh = lazy(() => import('./the-lieu-trinh/AdminBaoCaoTheLieuTrinh'))
 const AdminDichVuPage = lazy(() => import('./dich-vu/AdminDichVuPage'))
 const AdminChamSocKhachPage = lazy(() => import('./cham-soc-khach/AdminChamSocKhachPage'))
+const AdminNhacLieuTrinhPage = lazy(() => import('./nhac-lieu-trinh/AdminNhacLieuTrinhPage'))
 
 function AdminRoute({ children }) {
   return (
@@ -67,6 +68,7 @@ const MODULES = [
   { icon: '👤', label: 'CRM Khách Hàng', href: '/admin/crm',             badge: null,    group: 'nb',  color: '#8e44ad', desc: 'Hồ sơ · Thẻ liệu trình · Công nợ' },
   { icon: '💗', label: 'Chăm Sóc Khách', href: '/admin/cham-soc-khach',  badge: 'Mới',   group: 'nb',  color: '#d6336c', desc: 'Cần gọi hôm nay · Rời bỏ · Sinh nhật' },
   { icon: '🎫', label: 'Thẻ Liệu Trình', href: '/admin/the-lieu-trinh', badge: null,    group: 'nb',  color: '#6c3483', desc: 'Danh sách thẻ · Tiến độ · Hết hạn' },
+  { icon: '💌', label: 'Nhắc Thẻ LT',     href: '/admin/nhac-lieu-trinh', badge: 'AI',    group: 'nb',  color: '#d6336c', desc: 'Khách còn buổi · Mời quay lại · Sale chéo' },
   { icon: '💎', label: 'Dịch Vụ',         href: '/admin/dich-vu',       badge: null,    group: 'nb',  color: '#a0714f', desc: 'Mã DV · Danh mục · Giá bán' },
   { icon: '📦', label: 'Kho Hàng',        href: '/admin/kho-hang',        badge: null,    group: 'nb',  color: '#16a085', desc: 'Nhập xuất · Tồn kho · Cảnh báo' },
   { icon: '🏷️', label: 'Khuyến Mãi',     href: '/admin/khuyen-mai',      badge: null,    group: 'nb',  color: '#c0392b', desc: 'CRUD KM · Badge giảm giá · ROI' },
@@ -92,6 +94,7 @@ export default function AdminApp() {
   if (path.startsWith('/admin/khuyen-mai')) return <AdminRoute><AdminKhuyenMaiPage /></AdminRoute>
   if (path.startsWith('/admin/trang-chu'))  return <AdminRoute><AdminHomepagePage /></AdminRoute>
   if (path.startsWith('/admin/kho-hang'))   return <AdminRoute><AdminKhoHangPage /></AdminRoute>
+  if (path.startsWith('/admin/nhac-lieu-trinh')) return <AdminRoute><AdminNhacLieuTrinhPage /></AdminRoute>
   if (path.startsWith('/admin/cham-soc-khach')) return <AdminRoute><AdminChamSocKhachPage /></AdminRoute>
   if (path.startsWith('/admin/crm'))        return <AdminRoute><AdminCRMPage /></AdminRoute>
   // Bản đầy đủ cũ — giữ tạm trong lúc port nút vận hành sang module mới (sync Fanpage, đặt hẹn từ lead, duyệt AI, CRUD chiến dịch)
