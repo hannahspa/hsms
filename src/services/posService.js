@@ -775,6 +775,23 @@ export const posService = {
     if (data?.success === false && data?.error_code !== 'CHUA_DU_BUOI') {
       throw new Error(data.error || 'Không thể chốt đơn')
     }
+    // Gửi ZNS hóa đơn cho khách qua Zalo (không chặn luồng nếu lỗi/thiếu SĐT)
+    if (data?.success !== false) {
+      try {
+        const { data: dh } = await supabase.from('don_hang')
+          .select('ma_don, thuc_thu, con_no, khach_hang:khach_hang_id(ho_ten, so_dien_thoai), don_hang_chi_tiet(dich_vu:dich_vu_id(ten))')
+          .eq('id', orderId).single()
+        const sdt = dh?.khach_hang?.so_dien_thoai
+        if (sdt) {
+          const dvNames = [...new Set((dh.don_hang_chi_tiet || []).map(c => c.dich_vu?.ten).filter(Boolean))].join(', ')
+          const { znsHoaDon } = await import('../lib/zns')
+          znsHoaDon({
+            ten_khach: dh.khach_hang?.ho_ten, sdt, ma_don: dh.ma_don, tong_tien: dh.thuc_thu,
+            trang_thai: (dh.con_no > 0 ? `Còn nợ ${dh.con_no}đ` : 'Đã thanh toán'), dich_vu: dvNames,
+          })
+        }
+      } catch (e) { console.warn('ZNS hóa đơn lỗi (bỏ qua):', e?.message || e) }
+    }
     return data
   },
 

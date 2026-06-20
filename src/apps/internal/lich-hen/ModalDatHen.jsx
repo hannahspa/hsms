@@ -6,6 +6,7 @@ import { todayISO, getNowVN } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
 import { C, fmtDate, dayOfWeek, shortName, GIO_LIST_15, normalizePhone, dedupeHints, removeAccent } from './lichHenShared'
 import { notify } from '../../../components/ui/notify'
+import { znsXacNhanLich } from '../../../lib/zns'
 
 const safeSearchTerm = (value) => String(value || '')
   .replace(/[,%()]/g, ' ')
@@ -182,8 +183,23 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
         ghi_chu: form.ghi_chu?.trim() || null, nguoi_nhap: user?.email || user?.ho_ten || 'Lễ Tân',
         dich_vu_list: dvThemSaved,
       }
+      let lichHenId = initial?.id
       if (initial?.id) await supabase.from('lich_hen').update(payload).eq('id', initial.id)
-      else { payload.trang_thai = 'cho_xac_nhan'; await supabase.from('lich_hen').insert(payload) }
+      else {
+        payload.trang_thai = 'cho_xac_nhan'
+        const { data: ins } = await supabase.from('lich_hen').insert(payload).select('id').single()
+        lichHenId = ins?.id
+      }
+
+      // Gửi ZNS xác nhận đặt lịch cho khách (chỉ khi tạo mới + có SĐT) — không chặn lưu nếu lỗi
+      if (!initial?.id && payload.sdt_khach) {
+        znsXacNhanLich({
+          ten_khach: payload.ten_khach, sdt: payload.sdt_khach,
+          ma_lich: 'LH' + String(payload.ngay_hen || '').replace(/-/g, '') + '-' + String(payload.gio_hen || '').slice(0, 5).replace(':', ''),
+          gio_hen: payload.gio_hen, ngay_hen: payload.ngay_hen,
+          dich_vu: payload.ten_dich_vu,
+        })
+      }
 
       // Thông báo đẩy cho KTV được phân lịch (không chặn lưu nếu lỗi)
       if (payload.nhan_vien_id) {
