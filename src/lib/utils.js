@@ -117,3 +117,21 @@ export const daysAgo = (iso) => {
 export const viTriLabel = (v) => {
   return v === 'ktv' ? 'KTV' : v === 'le_tan' ? 'Lễ Tân' : v === 'tap_vu' ? 'Tạp Vụ' : v || ''
 }
+
+// ── Khuyến Mãi: nhãn ngắn theo loại (badge trên Menu iPad + card admin) ──────────
+// Trả về chuỗi ngắn gọn: "Mua 10 tặng 4", "Mua 3 lần -30%", "-50%"
+export const kmBadge = (km) => {
+  if (!km) return ''
+  if (km.loai_km === 'mua_x_tang_y' && km.mua_x && km.tang_y)
+    return `Mua ${km.mua_x} tặng ${km.tang_y}`
+  if (km.loai_km === 'mua_n_giam_pct' && km.mua_x)
+    return `Mua ${km.mua_x} lần -${Math.round(km.pct_giam_lan ?? km.phan_tram_giam ?? 0)}%`
+  return `-${Math.round(km.phan_tram_giam ?? 0)}%`
+}
+
+// Nhãn loại đầy đủ (cho dropdown / mô tả)
+export const KM_LOAI_LABEL = {
+  giam_gia:       'Giảm giá đơn',
+  mua_x_tang_y:   'Mua X tặng Y',
+  mua_n_giam_pct: 'Mua N lần giảm %',
+}

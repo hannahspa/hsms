@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { COLORS } from '../../../constants/colors'
 import { confirmDialog } from '../../../components/ui/notify'
+import { kmBadge } from '../../../lib/utils'
 import ROITab from './ROITab'
 
 const STATUS_LABEL = { active: 'Đang chạy', draft: 'Nháp', expired: 'Hết hạn' }
@@ -26,26 +27,35 @@ function todayISO() {
 }
 
 // ── Form tạo / sửa KM ─────────────────────────────────────────────────────────
-function KMForm({ initial, dichVuList, onSave, onCancel }) {
+function KMForm({ initial, dichVuList, comboList = [], onSave, onCancel }) {
   const isEdit = !!initial?.id
   const [form, setForm] = useState({
-    ten:          initial?.ten          || '',
-    mo_ta:        initial?.mo_ta        || '',
-    dich_vu_id:   initial?.dich_vu_id   || '',
-    gia_goc:      initial?.gia_goc      || '',
-    gia_km:       initial?.gia_km       || '',
-    ngay_bat_dau: initial?.ngay_bat_dau || todayISO(),
-    ngay_ket_thuc:initial?.ngay_ket_thuc|| '',
-    trang_thai:   initial?.trang_thai   || 'active',
+    ten:           initial?.ten           || '',
+    mo_ta:         initial?.mo_ta         || '',
+    dich_vu_id:    initial?.dich_vu_id    || '',
+    nhom_ap_dung:  initial?.nhom_ap_dung  || '',
+    combo_id:      initial?.combo_id      || '',
+    loai_km:       initial?.loai_km       || 'giam_gia',
+    gia_goc:       initial?.gia_goc       || '',
+    gia_km:        initial?.gia_km        || '',
+    mua_x:         initial?.mua_x         || '',
+    tang_y:        initial?.tang_y        || '',
+    pct_giam_lan:  initial?.pct_giam_lan  || '',
+    gioi_han_suat: initial?.gioi_han_suat || '',
+    ngay_bat_dau:  initial?.ngay_bat_dau  || todayISO(),
+    ngay_ket_thuc: initial?.ngay_ket_thuc || '',
+    trang_thai:    initial?.trang_thai    || 'active',
   })
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState('')
-
-  const pct = form.gia_goc && form.gia_km
-    ? Math.round((form.gia_goc - form.gia_km) / form.gia_goc * 100)
-    : 0
+  const [phamVi, setPhamVi] = useState(
+    initial?.combo_id ? 'combo' : initial?.nhom_ap_dung ? 'nhom' : initial?.dich_vu_id ? 'dich_vu' : (initial ? 'none' : 'dich_vu')
+  )
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Danh sách nhóm dịch vụ (nhom_hien_thi) duy nhất
+  const nhomList = [...new Set(dichVuList.map(d => d.nhom_hien_thi).filter(Boolean))]
 
   const handleDichVu = (id) => {
     set('dich_vu_id', id)
@@ -53,20 +63,61 @@ function KMForm({ initial, dichVuList, onSave, onCancel }) {
     if (dv?.gia_co_ban) set('gia_goc', dv.gia_co_ban)
   }
 
+  const handleCombo = (id) => {
+    set('combo_id', id)
+    const cb = comboList.find(c => c.id === id)
+    if (cb?.gia_ban) set('gia_goc', cb.gia_ban)
+  }
+
+  // Tính gia_km hiệu dụng theo loại KM (để badge % hiển thị đúng)
+  const giaGocN = +form.gia_goc || 0
+  const giaKmTinh = () => {
+    if (form.loai_km === 'mua_x_tang_y') {
+      const x = +form.mua_x || 0, y = +form.tang_y || 0
+      if (!giaGocN || !x || x + y === 0) return 0
+      return Math.round(giaGocN * x / (x + y))         // giá hiệu dụng / buổi
+    }
+    if (form.loai_km === 'mua_n_giam_pct') {
+      const p = +form.pct_giam_lan || 0
+      return Math.round(giaGocN * (1 - p / 100))       // giá sau giảm mỗi lần
+    }
+    return +form.gia_km || 0
+  }
+  const giaKmFinal = giaKmTinh()
+  const pct = giaGocN && giaKmFinal ? Math.round((giaGocN - giaKmFinal) / giaGocN * 100) : 0
+
   const handleSave = async () => {
-    if (!form.ten.trim())      return setErr('Nhập tên khuyến mãi')
-    if (!form.gia_goc)         return setErr('Nhập giá gốc')
-    if (!form.gia_km)          return setErr('Nhập giá khuyến mãi')
-    if (+form.gia_km >= +form.gia_goc) return setErr('Giá KM phải nhỏ hơn giá gốc')
-    if (!form.ngay_ket_thuc)   return setErr('Chọn ngày kết thúc')
+    if (!form.ten.trim())  return setErr('Nhập tên khuyến mãi')
+    if (!form.gia_goc)     return setErr('Nhập giá gốc / giá mỗi buổi')
+    if (form.loai_km === 'giam_gia') {
+      if (!form.gia_km)                  return setErr('Nhập giá khuyến mãi')
+      if (+form.gia_km >= giaGocN)       return setErr('Giá KM phải nhỏ hơn giá gốc')
+    } else if (form.loai_km === 'mua_x_tang_y') {
+      if (!form.mua_x || !form.tang_y)   return setErr('Nhập số buổi Mua X và Tặng Y')
+    } else if (form.loai_km === 'mua_n_giam_pct') {
+      if (!form.mua_x)                   return setErr('Nhập số lần mua (N)')
+      if (!form.pct_giam_lan || +form.pct_giam_lan <= 0 || +form.pct_giam_lan >= 100)
+        return setErr('Nhập % giảm hợp lệ (1–99)')
+    }
+    if (!form.ngay_ket_thuc)  return setErr('Chọn ngày kết thúc')
     if (form.ngay_ket_thuc < form.ngay_bat_dau) return setErr('Ngày kết thúc phải sau ngày bắt đầu')
     setSaving(true); setErr('')
+    if (phamVi === 'dich_vu' && !form.dich_vu_id) return setErr('Chọn dịch vụ áp dụng')
+    if (phamVi === 'nhom' && !form.nhom_ap_dung)  return setErr('Chọn nhóm dịch vụ áp dụng')
+    if (phamVi === 'combo' && !form.combo_id)     return setErr('Chọn combo áp dụng')
     const payload = {
       ten:           form.ten.trim(),
       mo_ta:         form.mo_ta.trim(),
-      dich_vu_id:    form.dich_vu_id || null,
-      gia_goc:       +form.gia_goc,
-      gia_km:        +form.gia_km,
+      dich_vu_id:    phamVi === 'dich_vu' ? (form.dich_vu_id || null) : null,
+      nhom_ap_dung:  phamVi === 'nhom' ? (form.nhom_ap_dung || null) : null,
+      combo_id:      phamVi === 'combo' ? (form.combo_id || null) : null,
+      loai_km:       form.loai_km,
+      gia_goc:       giaGocN,
+      gia_km:        giaKmFinal,
+      mua_x:         form.loai_km === 'giam_gia' ? null : (+form.mua_x || null),
+      tang_y:        form.loai_km === 'mua_x_tang_y' ? (+form.tang_y || null) : null,
+      pct_giam_lan:  form.loai_km === 'mua_n_giam_pct' ? (+form.pct_giam_lan || null) : null,
+      gioi_han_suat: +form.gioi_han_suat || null,
       ngay_bat_dau:  form.ngay_bat_dau,
       ngay_ket_thuc: form.ngay_ket_thuc,
       trang_thai:    form.trang_thai,
@@ -118,33 +169,142 @@ function KMForm({ initial, dichVuList, onSave, onCancel }) {
               placeholder="VD: Ưu đãi tháng 5 - Massage Body" />
           </div>
 
-          {/* Chọn dịch vụ */}
+          {/* Phạm vi áp dụng */}
           <div>
-            <label style={labelStyle}>DỊCH VỤ ÁP DỤNG</label>
-            <select style={inputStyle} value={form.dich_vu_id} onChange={e => handleDichVu(e.target.value)}>
-              <option value="">— Không gắn dịch vụ cụ thể —</option>
-              {dichVuList.map(dv => (
-                <option key={dv.id} value={dv.id}>
-                  {dv.ten} ({fmt(dv.gia_co_ban)})
-                </option>
+            <label style={labelStyle}>ÁP DỤNG CHO *</label>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+              {[
+                ['dich_vu', '1 dịch vụ'],
+                ['nhom', 'Cả nhóm dịch vụ'],
+                ['combo', 'Combo liệu trình'],
+                ['none', 'Không gắn'],
+              ].map(([k, l]) => (
+                <button key={k} type="button" onClick={() => setPhamVi(k)}
+                  style={{ flex: 1, minWidth: 110, padding: '9px 8px', borderRadius: 10,
+                    border: phamVi === k ? 'none' : `1px solid ${COLORS.border}`,
+                    background: phamVi === k ? COLORS.grad : COLORS.bg,
+                    color: phamVi === k ? 'white' : COLORS.textSub,
+                    fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{l}</button>
               ))}
-            </select>
+            </div>
+            {phamVi === 'dich_vu' && (
+              <select style={inputStyle} value={form.dich_vu_id} onChange={e => handleDichVu(e.target.value)}>
+                <option value="">— Chọn dịch vụ —</option>
+                {dichVuList.map(dv => (
+                  <option key={dv.id} value={dv.id}>{dv.ten} ({fmt(dv.gia_co_ban)})</option>
+                ))}
+              </select>
+            )}
+            {phamVi === 'nhom' && (
+              <>
+                <select style={inputStyle} value={form.nhom_ap_dung} onChange={e => set('nhom_ap_dung', e.target.value)}>
+                  <option value="">— Chọn nhóm dịch vụ —</option>
+                  {nhomList.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+                <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 4 }}>
+                  KM sẽ gắn badge lên mọi dịch vụ trong nhóm này trên Menu iPad.
+                </div>
+              </>
+            )}
+            {phamVi === 'combo' && (
+              <>
+                <select style={inputStyle} value={form.combo_id} onChange={e => handleCombo(e.target.value)}>
+                  <option value="">— Chọn combo liệu trình —</option>
+                  {comboList.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.ten_combo} ({fmt(c.gia_ban)})
+                    </option>
+                  ))}
+                </select>
+                <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 4 }}>
+                  KM gắn vào combo (gói bảo hành) — hiển thị giá ưu đãi ở trang Combo Liệu Trình, không lên Menu iPad.
+                </div>
+              </>
+            )}
+            {phamVi === 'none' && (
+              <div style={{ fontSize: 11.5, color: COLORS.textMute }}>
+                Không gắn dịch vụ — chỉ lưu để quản lý / tham khảo, không hiện badge trên Menu.
+              </div>
+            )}
           </div>
 
-          {/* Giá */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          {/* Loại khuyến mãi */}
+          <div>
+            <label style={labelStyle}>LOẠI KHUYẾN MÃI *</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[
+                ['giam_gia', '🏷️ Giảm giá đơn'],
+                ['mua_x_tang_y', '🎁 Mua X tặng Y'],
+                ['mua_n_giam_pct', '🔢 Mua N lần giảm %'],
+              ].map(([k, l]) => (
+                <button key={k} type="button" onClick={() => set('loai_km', k)}
+                  style={{ flex: 1, minWidth: 120, padding: '10px 8px', borderRadius: 10,
+                    border: form.loai_km === k ? 'none' : `1px solid ${COLORS.border}`,
+                    background: form.loai_km === k ? COLORS.grad : COLORS.bg,
+                    color: form.loai_km === k ? 'white' : COLORS.textSub,
+                    fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{l}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Giá gốc (chung mọi loại) */}
+          <div style={{ display: 'grid', gridTemplateColumns: form.loai_km === 'giam_gia' ? '1fr 1fr' : '1fr', gap: '12px' }}>
             <div>
-              <label style={labelStyle}>GIÁ GỐC (đ) *</label>
+              <label style={labelStyle}>
+                {form.loai_km === 'giam_gia' ? 'GIÁ GỐC (đ) *' : 'GIÁ GỐC / BUỔI (đ) *'}
+              </label>
               <input style={inputStyle} type="number" value={form.gia_goc}
                 onChange={e => set('gia_goc', e.target.value)}
                 placeholder="VD: 300000" />
             </div>
-            <div>
-              <label style={labelStyle}>GIÁ KHUYẾN MÃI (đ) *</label>
-              <input style={inputStyle} type="number" value={form.gia_km}
-                onChange={e => set('gia_km', e.target.value)}
-                placeholder="VD: 199000" />
+            {form.loai_km === 'giam_gia' && (
+              <div>
+                <label style={labelStyle}>GIÁ KHUYẾN MÃI (đ) *</label>
+                <input style={inputStyle} type="number" value={form.gia_km}
+                  onChange={e => set('gia_km', e.target.value)}
+                  placeholder="VD: 199000" />
+              </div>
+            )}
+          </div>
+
+          {/* Mua X tặng Y */}
+          {form.loai_km === 'mua_x_tang_y' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>MUA (X buổi) *</label>
+                <input style={inputStyle} type="number" value={form.mua_x}
+                  onChange={e => set('mua_x', e.target.value)} placeholder="VD: 10" />
+              </div>
+              <div>
+                <label style={labelStyle}>TẶNG (Y buổi) *</label>
+                <input style={inputStyle} type="number" value={form.tang_y}
+                  onChange={e => set('tang_y', e.target.value)} placeholder="VD: 4" />
+              </div>
             </div>
+          )}
+
+          {/* Mua N lần giảm % */}
+          {form.loai_km === 'mua_n_giam_pct' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>SỐ LẦN MUA (N) *</label>
+                <input style={inputStyle} type="number" value={form.mua_x}
+                  onChange={e => set('mua_x', e.target.value)} placeholder="VD: 3" />
+              </div>
+              <div>
+                <label style={labelStyle}>GIẢM (%) *</label>
+                <input style={inputStyle} type="number" value={form.pct_giam_lan}
+                  onChange={e => set('pct_giam_lan', e.target.value)} placeholder="VD: 30" />
+              </div>
+            </div>
+          )}
+
+          {/* Giới hạn suất/khách (tùy chọn, mọi loại) */}
+          <div>
+            <label style={labelStyle}>GIỚI HẠN SUẤT / KHÁCH (tùy chọn)</label>
+            <input style={inputStyle} type="number" value={form.gioi_han_suat}
+              onChange={e => set('gioi_han_suat', e.target.value)}
+              placeholder="VD: 3 (để trống = không giới hạn)" />
           </div>
 
           {/* Phần trăm preview */}
@@ -153,7 +313,11 @@ function KMForm({ initial, dichVuList, onSave, onCancel }) {
               padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '20px' }}>🏷️</span>
               <span style={{ fontWeight: '700', color: '#E65100', fontSize: '15px' }}>
-                Giảm {pct}% — Tiết kiệm {fmt(form.gia_goc - form.gia_km)}
+                {form.loai_km === 'giam_gia'
+                  ? `Giảm ${pct}% — Tiết kiệm ${fmt(giaGocN - giaKmFinal)}`
+                  : form.loai_km === 'mua_x_tang_y'
+                    ? `Mua ${form.mua_x || '?'} tặng ${form.tang_y || '?'} — tương đương giảm ~${pct}% (giá hiệu dụng ${fmt(giaKmFinal)}/buổi)`
+                    : `Mua ${form.mua_x || '?'} lần giảm ${form.pct_giam_lan || '?'}% — còn ${fmt(giaKmFinal)}/buổi`}
               </span>
             </div>
           )}
@@ -219,7 +383,7 @@ function KMForm({ initial, dichVuList, onSave, onCancel }) {
 }
 
 // ── Promo Card ────────────────────────────────────────────────────────────────
-function KMRow({ km, dichVuMap, onEdit, onDelete, onToggle }) {
+function KMRow({ km, dichVuMap, comboMap = {}, onEdit, onDelete, onToggle }) {
   const sc = STATUS_COLOR[km.trang_thai] || STATUS_COLOR.draft
   const today = todayISO()
   const isExpiredDate = km.ngay_ket_thuc < today && km.trang_thai === 'active'
@@ -246,9 +410,10 @@ function KMRow({ km, dichVuMap, onEdit, onDelete, onToggle }) {
           position: 'absolute', top: 10, right: 10,
           background: 'rgba(192,57,43,.9)', color: 'white',
           borderRadius: 6, padding: '4px 10px',
-          fontSize: 13, fontWeight: 800, letterSpacing: '.02em',
+          fontSize: km.loai_km && km.loai_km !== 'giam_gia' ? 11.5 : 13,
+          fontWeight: 800, letterSpacing: '.02em', whiteSpace: 'nowrap',
         }}>
-          -{km.phan_tram_giam}%
+          {kmBadge(km)}
         </div>
         {/* Status badge */}
         <div style={{
@@ -273,6 +438,16 @@ function KMRow({ km, dichVuMap, onEdit, onDelete, onToggle }) {
             {dichVuMap[km.dich_vu_id]}
           </div>
         )}
+        {km.nhom_ap_dung && (
+          <div style={{ fontSize: 11.5, color: 'var(--ink3)' }}>
+            📂 Cả nhóm: {km.nhom_ap_dung}
+          </div>
+        )}
+        {km.combo_id && (
+          <div style={{ fontSize: 11.5, color: 'var(--ink3)' }}>
+            🎟 Combo: {comboMap[km.combo_id] || 'liệu trình'}
+          </div>
+        )}
         {/* Price row */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 2 }}>
           <span style={{ fontFamily: 'var(--serif)', fontSize: 17, fontWeight: 700, color: 'var(--chi)' }}>
@@ -282,6 +457,16 @@ function KMRow({ km, dichVuMap, onEdit, onDelete, onToggle }) {
             {fmt(km.gia_goc)}
           </span>
         </div>
+        {km.loai_km && km.loai_km !== 'giam_gia' && (
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: '#C0392B' }}>
+            🎁 {kmBadge(km)}{km.loai_km === 'mua_x_tang_y' ? ` (≈ ${fmt(km.gia_km)}/buổi)` : ''}
+          </div>
+        )}
+        {km.gioi_han_suat > 0 && (
+          <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+            Tối đa {km.gioi_han_suat} suất/khách
+          </div>
+        )}
         <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
           {fmtDate(km.ngay_bat_dau)} → {fmtDate(km.ngay_ket_thuc)}
         </div>
@@ -453,6 +638,7 @@ const KM_PATH_TAB = {
 export default function AdminKhuyenMaiPage() {
   const [list, setList]           = useState([])
   const [dichVuList, setDichVuList] = useState([])
+  const [comboList, setComboList] = useState([])
   const [filter, setFilter]       = useState('all')
   const [loading, setLoading]     = useState(true)
   const [showForm, setShowForm]   = useState(false)
@@ -480,9 +666,15 @@ export default function AdminKhuyenMaiPage() {
       .order('nhom_hien_thi')
       .order('ten')
       .then(({ data }) => setDichVuList(data || []))
+    supabase.from('combo_lieu_trinh')
+      .select('id, ten_combo, gia_ban, thoi_han_so, thoi_han_don_vi')
+      .eq('trang_thai', 'active')
+      .order('ten_combo')
+      .then(({ data }) => setComboList(data || []))
   }, [])
 
   const dichVuMap = Object.fromEntries(dichVuList.map(d => [d.id, d.ten]))
+  const comboMap  = Object.fromEntries(comboList.map(c => [c.id, c.ten_combo]))
 
   const filtered = filter === 'all' ? list : list.filter(k => k.trang_thai === filter)
 
@@ -592,7 +784,7 @@ export default function AdminKhuyenMaiPage() {
           ) : (
             <div className="promo-grid">
               {filtered.map(km => (
-                <KMRow key={km.id} km={km} dichVuMap={dichVuMap}
+                <KMRow key={km.id} km={km} dichVuMap={dichVuMap} comboMap={comboMap}
                   onEdit={handleEdit} onDelete={handleDelete} onToggle={handleToggle} />
               ))}
             </div>
@@ -605,6 +797,7 @@ export default function AdminKhuyenMaiPage() {
         <KMForm
           initial={editing}
           dichVuList={dichVuList}
+          comboList={comboList}
           onSave={handleSave}
           onCancel={() => setShowForm(false)}
         />

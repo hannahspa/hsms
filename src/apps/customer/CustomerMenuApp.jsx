@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
+import { kmBadge } from '../../lib/utils'
 
 // ── Thứ tự và nhãn các nhóm hiển thị ─────────────────────────────────────────
 const NHOM_ORDER = [
@@ -74,7 +75,7 @@ function ServiceCard({ service, km, nhomColor, onClick }) {
 
       {/* Badge KM góc phải trên */}
       {hasKM && (
-        <div className="mn-km-badge">-{Math.round(km.phan_tram_giam)}%</div>
+        <div className="mn-km-badge">{kmBadge(km)}</div>
       )}
 
       {/* Body */}
@@ -102,13 +103,14 @@ function ServiceCard({ service, km, nhomColor, onClick }) {
       {/* Footer giá */}
       <div className="mn-card-footer" style={{ borderTop: `1px solid ${(hasKM ? '#C0392B' : color)}22` }}>
         {service.la_hot && !hasKM && <span className="mn-card-hot">🔥 HOT</span>}
-        {hasKM ? (
+        {hasKM && km.loai_km === 'giam_gia' ? (
           <div className="mn-card-gia-km">
             <span className="mn-gia-goc">{fmt(km.gia_goc)}</span>
             <span className="mn-gia-moi" style={{ color: '#C0392B' }}>{fmt(km.gia_km)}</span>
           </div>
         ) : (
-          <span className="mn-card-gia" style={{ color }}>{fmt(service.gia_co_ban)}</span>
+          // KM theo số lần (mua X tặng Y / mua N lần): khách vẫn trả giá dịch vụ gốc — badge góc thể hiện ưu đãi
+          <span className="mn-card-gia" style={{ color: hasKM ? '#C0392B' : color }}>{fmt(service.gia_co_ban)}</span>
         )}
       </div>
     </button>
@@ -176,15 +178,29 @@ function ServiceModal({ service, km, onClose }) {
           {km ? (
             <div className="mn-modal-gia-block" style={{ borderColor: '#C0392B33', background: '#FFF5F5' }}>
               <div>
-                <div className="mn-modal-gia-label">Giá khuyến mãi · Tiết kiệm {fmt(km.gia_goc - km.gia_km)}</div>
+                <div className="mn-modal-gia-label">
+                  {km.loai_km === 'mua_x_tang_y'
+                    ? `Ưu đãi · mua ${km.mua_x} tặng ${km.tang_y} buổi`
+                    : km.loai_km === 'mua_n_giam_pct'
+                      ? `Ưu đãi · mua ${km.mua_x} lần giảm ${Math.round(km.pct_giam_lan ?? km.phan_tram_giam)}%`
+                      : `Giá khuyến mãi · Tiết kiệm ${fmt(km.gia_goc - km.gia_km)}`}
+                  {km.gioi_han_suat > 0 ? ` · tối đa ${km.gioi_han_suat} suất/khách` : ''}
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                  <span style={{ fontSize: '14px', color: '#B8A898', textDecoration: 'line-through' }}>{fmt(km.gia_goc)}</span>
-                  <span className="mn-modal-gia" style={{ color: '#C0392B' }}>{fmt(km.gia_km)}</span>
+                  {km.loai_km === 'giam_gia' ? (
+                    <>
+                      <span style={{ fontSize: '14px', color: '#B8A898', textDecoration: 'line-through' }}>{fmt(km.gia_goc)}</span>
+                      <span className="mn-modal-gia" style={{ color: '#C0392B' }}>{fmt(km.gia_km)}</span>
+                    </>
+                  ) : (
+                    // KM theo số lần: hiển thị giá dịch vụ gốc, ưu đãi nằm ở badge
+                    <span className="mn-modal-gia" style={{ color: '#C0392B' }}>{fmt(service.gia_co_ban)}</span>
+                  )}
                 </div>
               </div>
               <span style={{ background: '#C0392B', color: 'white', borderRadius: '8px',
-                padding: '4px 10px', fontSize: '14px', fontWeight: '800', flexShrink: 0 }}>
-                -{Math.round(km.phan_tram_giam)}%
+                padding: '4px 10px', fontSize: '14px', fontWeight: '800', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                {kmBadge(km)}
               </span>
             </div>
           ) : (
@@ -244,11 +260,18 @@ export default function CustomerMenuApp() {
       setServices(dvs || [])
       // Map dich_vu_id → km (lấy KM giảm nhiều nhất nếu có nhiều)
       const map = {}
+      const better = (a, b) => !b || (a.phan_tram_giam ?? 0) > (b.phan_tram_giam ?? 0)
+      // 1) KM theo nhóm dịch vụ (nhom_ap_dung) — áp cho mọi dịch vụ trong nhóm
+      ;(kms || []).forEach(km => {
+        if (!km.nhom_ap_dung) return
+        ;(dvs || []).forEach(dv => {
+          if (dv.nhom_hien_thi === km.nhom_ap_dung && better(km, map[dv.id])) map[dv.id] = km
+        })
+      })
+      // 2) KM gắn dịch vụ cụ thể — ưu tiên hơn KM nhóm khi giảm sâu hơn
       ;(kms || []).forEach(km => {
         if (!km.dich_vu_id) return
-        if (!map[km.dich_vu_id] || km.phan_tram_giam > map[km.dich_vu_id].phan_tram_giam) {
-          map[km.dich_vu_id] = km
-        }
+        if (better(km, map[km.dich_vu_id])) map[km.dich_vu_id] = km
       })
       setKmMap(map)
       setLoading(false)

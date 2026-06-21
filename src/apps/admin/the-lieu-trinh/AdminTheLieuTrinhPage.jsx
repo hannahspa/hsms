@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { formatCurrency } from '../../../lib/utils'
+import { formatCurrency, kmBadge, todayISO } from '../../../lib/utils'
+import { supabase } from '../../../lib/supabase'
 import I from '../../../components/shared/Icons'
 import ModalCheckoutBuoi from './components/ModalCheckoutBuoi'
 import { ComboStatus, StatusBadge } from './components/StatusBadges'
@@ -52,11 +53,25 @@ export default function AdminTheLieuTrinhPage() {
   const [reviewAction, setReviewAction] = useState(null)
   const [comboError, setComboError] = useState('')
   const [checkoutCard, setCheckoutCard] = useState(null)
+  const [kmComboMap, setKmComboMap] = useState({})
 
   useEffect(() => {
     loadCards()
     loadCombos()
+    loadComboKM()
   }, [])
+
+  const loadComboKM = async () => {
+    const today = todayISO()
+    const { data } = await supabase.from('khuyen_mai').select('*')
+      .eq('trang_thai', 'active').not('combo_id', 'is', null)
+      .lte('ngay_bat_dau', today).gte('ngay_ket_thuc', today)
+    const map = {}
+    ;(data || []).forEach(km => {
+      if (!map[km.combo_id] || (km.phan_tram_giam ?? 0) > (map[km.combo_id].phan_tram_giam ?? 0)) map[km.combo_id] = km
+    })
+    setKmComboMap(map)
+  }
 
   useEffect(() => {
     setCardPage(1)
@@ -351,7 +366,21 @@ export default function AdminTheLieuTrinhPage() {
                           </td>
                           <td>{combo.thoi_han_so} {combo.thoi_han_don_vi === 'year' ? 'năm' : combo.thoi_han_don_vi}</td>
                           <td className="amount">{formatCurrency(combo.menh_gia || 0)}</td>
-                          <td className="amount" style={{ fontWeight: 800 }}>{formatCurrency(combo.gia_ban || 0)}</td>
+                          <td className="amount" style={{ fontWeight: 800 }}>
+                            {kmComboMap[combo.id] ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                                <span style={{ fontSize: 11, color: 'var(--ink3)', textDecoration: 'line-through', fontWeight: 600 }}>
+                                  {formatCurrency(combo.gia_ban || 0)}
+                                </span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                  <span style={{ color: 'var(--danger)' }}>{formatCurrency(kmComboMap[combo.id].gia_km || 0)}</span>
+                                  <span style={{ background: 'var(--danger)', color: '#fff', borderRadius: 5, padding: '1px 5px', fontSize: 10, fontWeight: 800 }}>
+                                    {kmBadge(kmComboMap[combo.id])}
+                                  </span>
+                                </span>
+                              </div>
+                            ) : formatCurrency(combo.gia_ban || 0)}
+                          </td>
                           <td className="amount">
                             <div style={{ fontWeight: 800, color: combo.ti_le_commission > 0 || combo.tien_hoa_hong > 0 ? '#426a2c' : 'var(--ink3)' }}>
                               {combo.tien_hoa_hong > 0
