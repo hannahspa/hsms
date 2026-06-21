@@ -26,15 +26,34 @@ const FILTERS = [
   { key: 'den_han', label: 'Đến hạn nhắc' },
   { key: 'theo_doi', label: 'Đang theo dõi' },
   { key: 'da_quay_lai', label: 'Đã quay lại' },
-  { key: 'tam_dung', label: 'Tạm dừng' },
+  { key: 'tam_dung', label: 'Đã bỏ chăm' },
   { key: 'all', label: 'Tất cả' },
 ]
+
+// Phân nhóm dịch vụ theo từ khóa trong tên thẻ
+const SERVICE_GROUPS = [
+  { key: 'all', label: 'Tất cả dịch vụ' },
+  { key: 'triet', label: 'Triệt lông', kw: ['triệt'] },
+  { key: 'massage', label: 'Massage / Trị liệu', kw: ['massage', 'cổ vai gáy', 'body', 'thải độc', 'ngâm chân', 'trị liệu', 'thư giãn'] },
+  { key: 'giam_beo', label: 'Giảm béo', kw: ['giảm béo', 'giảm mỡ', 'tan mỡ', 'giảm cân'] },
+  { key: 'da', label: 'Chăm sóc da / Trẻ hóa', kw: ['trẻ hóa', 'chăm sóc da', 'rf', 'hifu', 'aqua', 'ánh sáng', 'mụn', 'nám', 'collagen', 'meso', 'bắn', 'căng bóng', 'phục hồi', 'thải chì', 'cấy'] },
+  { key: 'tam_trang', label: 'Tắm trắng', kw: ['tắm trắng', 'trắng da', 'tắm'] },
+  { key: 'khac', label: 'Khác' },
+]
+function matchGroup(ten, key) {
+  if (key === 'all') return true
+  const t = (ten || '').toLowerCase()
+  if (key === 'khac') return !SERVICE_GROUPS.filter(g => g.kw).some(g => g.kw.some(k => t.includes(k)))
+  const g = SERVICE_GROUPS.find(x => x.key === key)
+  return !!g?.kw?.some(k => t.includes(k))
+}
 
 export default function AdminNhacLieuTrinhPage() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
   const [filter, setFilter] = useState('den_han')
+  const [serviceGroup, setServiceGroup] = useState('all')
   const [search, setSearch] = useState('')
   const [toast, setToast] = useState('')
 
@@ -56,7 +75,7 @@ export default function AdminNhacLieuTrinhPage() {
         .select('*')
         .order('den_han_nhac', { ascending: false })
         .order('so_ngay_vang', { ascending: false })
-        .limit(600)
+        .limit(2000)
       if (error) throw error
       setRows(data || [])
     } catch (e) {
@@ -79,13 +98,19 @@ export default function AdminNhacLieuTrinhPage() {
     else if (filter === 'theo_doi') list = list.filter(r => r.trang_thai_cham_soc === 'theo_doi')
     else if (filter === 'da_quay_lai') list = list.filter(r => r.trang_thai_cham_soc === 'da_quay_lai' || r.da_quay_lai_sau_nhac)
     else if (filter === 'tam_dung') list = list.filter(r => r.trang_thai_cham_soc === 'tam_dung')
+    if (serviceGroup !== 'all') list = list.filter(r => matchGroup(r.ten_dich_vu, serviceGroup))
     const q = search.trim().toLowerCase()
     if (q) list = list.filter(r =>
       (r.ho_ten || '').toLowerCase().includes(q) ||
       (r.so_dien_thoai || '').includes(q) ||
       (r.ten_dich_vu || '').toLowerCase().includes(q))
-    return list
-  }, [rows, filter, search])
+    // Ưu tiên khách 2026 lên đầu (theo năm mua thẻ giảm dần), rồi khách vắng lâu hơn
+    return [...list].sort((a, b) => {
+      const ya = String(a.ngay_mua || '').slice(0, 4), yb = String(b.ngay_mua || '').slice(0, 4)
+      if (ya !== yb) return yb.localeCompare(ya)
+      return (b.so_ngay_vang || 0) - (a.so_ngay_vang || 0)
+    })
+  }, [rows, filter, serviceGroup, search])
 
   async function openSoanNhac(card) {
     setOpenCard(card); setDraft(''); setStaffHint(''); setAiLoading(true)
@@ -173,7 +198,7 @@ export default function AdminNhacLieuTrinhPage() {
         <StatCard label="Thẻ đang theo dõi" value={stats.tong} color={C.taiSan} />
         <StatCard label="Đến hạn nhắc" value={stats.den_han} color={C.warn} highlight />
         <StatCard label="Đã quay lại" value={stats.quay_lai} color={C.thu} />
-        <StatCard label="Tạm dừng" value={stats.tam_dung} color={C.textSub} />
+        <StatCard label="Đã bỏ chăm" value={stats.tam_dung} color={C.textSub} />
       </div>
 
       {/* Filter + search */}
@@ -192,11 +217,19 @@ export default function AdminNhacLieuTrinhPage() {
             )
           })}
         </div>
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Tìm tên, SĐT, dịch vụ..."
-          style={{ padding: '9px 14px', borderRadius: RADIUS.full, border: `1px solid ${C.border}`, fontSize: 13, width: 280, maxWidth: '100%', outline: 'none', fontFamily: FONT.sans }}
-        />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select
+            value={serviceGroup} onChange={e => setServiceGroup(e.target.value)}
+            style={{ padding: '9px 12px', borderRadius: RADIUS.full, border: `1px solid ${C.border}`, fontSize: 13, outline: 'none', fontFamily: FONT.sans, background: C.card, color: C.text, cursor: 'pointer' }}
+          >
+            {SERVICE_GROUPS.map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
+          </select>
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Tìm tên, SĐT, dịch vụ..."
+            style={{ padding: '9px 14px', borderRadius: RADIUS.full, border: `1px solid ${C.border}`, fontSize: 13, width: 240, maxWidth: '100%', outline: 'none', fontFamily: FONT.sans }}
+          />
+        </div>
       </div>
 
       {/* Bảng */}
@@ -247,8 +280,22 @@ export default function AdminNhacLieuTrinhPage() {
                       <Badge tone={tt.tone}>{tt.text}</Badge>
                       {r.den_han_nhac && <div style={{ marginTop: 4 }}><Badge tone="warning">⏰ Đến hạn</Badge></div>}
                     </td>
-                    <td style={{ ...td, textAlign: 'right' }}>
+                    <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <Button size="sm" onClick={() => openSoanNhac(r)}>Soạn nhắc</Button>
+                      {r.trang_thai_cham_soc !== 'tam_dung' && (
+                        <button
+                          onClick={() => doiTrangThai(r, 'tam_dung')}
+                          title="Bỏ khỏi danh sách chăm sóc"
+                          style={{ marginLeft: 6, padding: '7px 12px', borderRadius: RADIUS.full, border: `1px solid ${C.border}`, background: C.card, color: C.textSub, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: FONT.sans }}
+                        >Bỏ</button>
+                      )}
+                      {r.trang_thai_cham_soc === 'tam_dung' && (
+                        <button
+                          onClick={() => doiTrangThai(r, 'theo_doi')}
+                          title="Đưa lại vào danh sách chăm sóc"
+                          style={{ marginLeft: 6, padding: '7px 12px', borderRadius: RADIUS.full, border: `1px solid ${C.border}`, background: C.card, color: C.thu, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: FONT.sans }}
+                        >Khôi phục</button>
+                      )}
                     </td>
                   </tr>
                 )
