@@ -18,6 +18,7 @@ const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: 
 const SO_TON_DONG = 40        // số khách data cũ gửi mỗi ngày
 const NHIP = 10               // nhịp nhắc: 10 ngày kể từ lần dùng thẻ
 const A_MIN = 10, A_MAX = 13  // "đúng nhịp": vắng 10–13 ngày (đệm phòng cron lỗi 1-2 hôm)
+const B_MAX_VANG = 90         // tồn đọng lùi dần: vắng 14–90 ngày (>90 = bước 3 chương trình Hot)
 
 function todayVN() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' })).toISOString().slice(0, 10)
@@ -31,9 +32,12 @@ async function layHaiNhom(off = 0) {
     .gte('so_ngay_vang', A_MIN - off).lte('so_ngay_vang', A_MAX - off)
     .order('so_ngay_vang', { ascending: true }).limit(500)
   const aIds = new Set((A || []).map((x: any) => x.the_id))
-  // Nhóm B tồn đọng: tất cả đến hạn còn lại, ưu tiên ấm, lấy 40
+  // Nhóm B tồn đọng (lùi dần): CHỈ khách CHƯA nhắc lần nào (mỗi khách 1 lần, không trùng),
+  // vắng 14–90 ngày (tin mời quay lại thường). Vắng >90 = bước 3 (chương trình Hot, chờ template).
   const { data: Ball } = await supabase.from('v_nhac_lieu_trinh').select('*')
-    .eq('den_han_nhac', true).order('so_ngay_vang', { ascending: true }).limit(2000)
+    .eq('den_han_nhac', true).eq('so_lan_nhac', 0)
+    .gt('so_ngay_vang', A_MAX - off).lte('so_ngay_vang', B_MAX_VANG - off)
+    .order('so_ngay_vang', { ascending: true }).limit(2000)
   const B = (Ball || []).filter((x: any) => !aIds.has(x.the_id)).slice(0, SO_TON_DONG)
   // map mã thẻ
   const ids = [...(A || []), ...B].map((x: any) => x.the_id)
