@@ -946,8 +946,9 @@ export const posService = {
       .select(TREATMENT_CARD_SELECT)
       .eq('khach_hang_id', khachHangId)
       .neq('trang_thai', 'active')
+      .order('so_buoi_con_lai', { ascending: false })   // thẻ hết hạn CÒN BUỔI lên đầu (khách còn quyền lợi)
       .order('ngay_mua', { ascending: false })
-      .limit(20)
+      .limit(100)
     if (error) throw error
     return (data || []).map(withTreatmentDisplayValue)
   },

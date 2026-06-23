@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { posService } from '../../services/posService'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, getNowVN, todayISO } from '../../lib/utils'
+import { addDurationISO } from '../../lib/dateMath'
 import { calcCommissionRates } from '../../lib/serviceCommission'
 import { getCardComboService, getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
 import { useAuth } from '../../context/AuthContext'
@@ -67,7 +68,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   const [customerDebt, setCustomerDebt]         = useState([])
   const [customerPrepaid, setCustomerPrepaid]   = useState(0)   // số dư ví trả trước
   const [cardHistory, setCardHistory]           = useState([])
-  const [showCardHistory, setShowCardHistory]   = useState(false)
+  const [showCardHistory, setShowCardHistory]   = useState(true)   // mặc định HIỆN hết thẻ hết hạn/đã dùng (anh Nam: show up hết)
   const [custSearch, setCustSearch]     = useState('')
   const [custResults, setCustResults]   = useState([])
   // Modal thu nợ
@@ -110,10 +111,80 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
 
   const custTimer = useRef(null)
 
+  // CTKM tự nhận biết: map dich_vu_id → km active khớp (gồm KM theo nhóm)
+  const [kmByDichVu, setKmByDichVu] = useState({})
+
+  // Gia hạn thẻ liệu trình (khách quay lại)
+  const [giaHanCard, setGiaHanCard]   = useState(null)   // card đang gia hạn
+  const [giaHanNgay, setGiaHanNgay]   = useState('')
+  const [giaHanOpen, setGiaHanOpen]   = useState(false)  // DatePicker
+  const [giaHanLoading, setGiaHanLoading] = useState(false)
+
+  const openGiaHan = (card) => {
+    setGiaHanCard(card)
+    setGiaHanNgay(addDurationISO(todayISO(), 1, 'year'))  // mặc định +1 năm từ hôm nay
+  }
+  const doGiaHan = async () => {
+    if (!giaHanCard || !giaHanNgay) return
+    setGiaHanLoading(true)
+    const ngayMoiVi = giaHanNgay.split('-').reverse().join('/')
+    try {
+      if (isLeTan) {
+        // Lễ tân: gửi YÊU CẦU gia hạn → Admin duyệt mới có hiệu lực (thẻ vẫn hết hạn đến khi duyệt)
+        const { error } = await supabase.from('yeu_cau_chinh_sua').insert({
+          loai_yeu_cau: 'sua', loai_bang: 'the_lieu_trinh', ban_ghi_id: giaHanCard.id,
+          du_lieu_cu: { ten_dich_vu: giaHanCard.ten_dich_vu, ngay_het_han: giaHanCard.ngay_het_han },
+          du_lieu_moi: { ngay_het_han: giaHanNgay },
+          ly_do: `Gia hạn thẻ "${giaHanCard.ten_dich_vu}" đến ${ngayMoiVi} (khách quay lại dùng tiếp)`,
+          nguoi_yeu_cau: user?.ho_ten || user?.email || 'Lễ tân',
+          trang_thai: 'cho_duyet',
+        })
+        if (error) throw error
+        notify('✓ Đã gửi yêu cầu gia hạn — chờ Admin duyệt mới dùng được thẻ')
+        setGiaHanCard(null)
+      } else {
+        // Admin: gia hạn áp luôn
+        const { error } = await supabase.from('the_lieu_trinh')
+          .update({ ngay_het_han: giaHanNgay }).eq('id', giaHanCard.id)
+        if (error) throw error
+        supabase.from('nhat_ky_hoat_dong').insert({
+          nguoi_dung_id: user?.id || null, hanh_dong: 'gia_han_the', bang: 'the_lieu_trinh',
+          du_lieu_cu: { id: giaHanCard.id, ten_dich_vu: giaHanCard.ten_dich_vu, ngay_het_han: giaHanCard.ngay_het_han },
+          du_lieu_moi: { ngay_het_han: giaHanNgay },
+        }).then(() => {}, () => {})
+        notify('✓ Đã gia hạn thẻ đến ' + ngayMoiVi)
+        setGiaHanCard(null)
+        if (selectedCustomer?.id) {
+          posService.getCustomerCards(selectedCustomer.id).then(c => setCustomerCards(c || [])).catch(() => {})
+        }
+      }
+    } catch (err) { notify('Lỗi gia hạn: ' + err.message) }
+    finally { setGiaHanLoading(false) }
+  }
+
   // ── Load ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     posService.getTodayStats().then(s => setTodayStats(s))
     posService.getKTVs().then(d => setKtvList(d || []))
+    // Khuyến mãi đang chạy (giảm giá đơn / mua X tặng Y / mua N lần) → gợi ý trong giỏ
+    const today = todayISO()
+    Promise.all([
+      supabase.from('khuyen_mai').select('*')
+        .eq('trang_thai', 'active').lte('ngay_bat_dau', today).gte('ngay_ket_thuc', today)
+        .or('dich_vu_id.not.is.null,nhom_ap_dung.not.is.null'),
+      supabase.from('dich_vu').select('id, nhom_hien_thi').eq('is_active', true),
+    ]).then(([{ data: kms }, { data: dvs }]) => {
+      const map = {}
+      const better = (a, b) => !b || (a.phan_tram_giam ?? 0) > (b.phan_tram_giam ?? 0)
+      // KM theo nhóm trước (áp mọi DV trong nhóm)
+      ;(kms || []).forEach(km => {
+        if (!km.nhom_ap_dung) return
+        ;(dvs || []).forEach(d => { if (d.nhom_hien_thi === km.nhom_ap_dung && better(km, map[d.id])) map[d.id] = km })
+      })
+      // KM gắn dịch vụ cụ thể — ưu tiên hơn
+      ;(kms || []).forEach(km => { if (km.dich_vu_id && better(km, map[km.dich_vu_id])) map[km.dich_vu_id] = km })
+      setKmByDichVu(map)
+    }).catch(() => {})
   }, [])
 
   // Resume đơn nháp từ danh sách
@@ -295,6 +366,12 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
 
   // ── Item handlers — local hoặc DB nếu đã lưu ────────────────────────────────
   const handleAddCard = async (card) => {
+    // Chặn dùng thẻ đã hết hạn — phải gia hạn (admin duyệt) trước khi dùng
+    const expired = !card.is_khong_gioi_han && card.ngay_het_han && card.ngay_het_han < todayISO()
+    if (expired) {
+      notify('Thẻ đã hết hạn ' + String(card.ngay_het_han).split('-').reverse().join('/') + '. Vui lòng GIA HẠN (Admin duyệt) trước khi dùng.')
+      return
+    }
     const comboService = getCardComboService(card)
     const displayValue = getTreatmentCardDisplayValue(card)
     let policy = null
@@ -1248,7 +1325,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
               {customerCards.filter(c => c.so_buoi_con_lai > 0).length > 0 && (
                 <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
                   {customerCards.filter(c => c.so_buoi_con_lai > 0).map(card => (
-                    <LieuTrinhCard key={card.id} card={card} onUse={handleAddCard} />
+                    <LieuTrinhCard key={card.id} card={card} onUse={handleAddCard} onGiaHan={openGiaHan} />
                   ))}
                 </div>
               )}
@@ -1334,7 +1411,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                     fontSize: 11, color: C.ink3, fontFamily: FONT.sans, display: 'flex', alignItems: 'center', gap: 4,
                   }}>
                     <span style={{ fontSize: 9, transform: showCardHistory ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform .15s' }}>▶</span>
-                    Lịch sử thẻ liệu trình ({cardHistory.length} thẻ đã hết)
+                    Thẻ hết hạn / đã dùng ({cardHistory.length})
                   </button>
                   {showCardHistory && (
                     <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -1349,8 +1426,10 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                               {c.ten_dich_vu}
                             </div>
                             <div style={{ color: C.ink3, marginTop: 1 }}>
-                              {c.so_buoi_da_dung}/{c.so_buoi_tong} buổi · {formatCurrency(c.gia_tri_the || 0)}
-                              {c.ngay_mua && <span style={{ marginLeft: 6 }}>Mua: {fmtDate(c.ngay_mua)}</span>}
+                              {c.so_buoi_da_dung}/{c.so_buoi_tong} buổi
+                              {c.so_buoi_con_lai > 0 && <span style={{ marginLeft: 5, color: '#C0392B', fontWeight: 700 }}>· Còn {c.so_buoi_con_lai} buổi</span>}
+                              {' · '}{formatCurrency(c.gia_tri_the || 0)}
+                              {c.ngay_het_han && <span style={{ marginLeft: 6 }}>HH: {fmtDate(c.ngay_het_han)}</span>}
                             </div>
                           </div>
                           <span style={{
@@ -1470,6 +1549,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                   onSelectKTV={setKtvPopup}
                   onToggleCard={handleToggleCard}
                   onUpsale={handleUpsale}
+                  kmGoiY={item.dich_vu_id ? kmByDichVu[item.dich_vu_id] : null}
                 />
               ))}
             </div>
@@ -1738,6 +1818,61 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       onNap={handleNap}
       onClose={() => { setNapModalOpen(false); setNapSoTien(''); setNapGhiChu(''); setNapHinhThuc('tien_mat') }}
     />
+
+    {/* Modal: Gia hạn thẻ liệu trình (khách quay lại) */}
+    {giaHanCard && createPortal(
+      <div onClick={() => setGiaHanCard(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: 'min(420px,94vw)', background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 20px 60px rgba(0,0,0,.3)' }}>
+          <div style={{ fontSize: 16, fontWeight: 800, fontFamily: FONT.serif, color: C.ink, marginBottom: 2 }}>Gia Hạn Thẻ Liệu Trình</div>
+          <div style={{ fontSize: 13, color: C.ink2, fontWeight: 700, marginBottom: 2 }}>{giaHanCard.ten_dich_vu}</div>
+          <div style={{ fontSize: 12, color: C.ink3, marginBottom: 14 }}>
+            Hạn hiện tại: {giaHanCard.ngay_het_han ? String(giaHanCard.ngay_het_han).split('-').reverse().join('/') : 'Không giới hạn'}
+            {giaHanCard.ngay_het_han && giaHanCard.ngay_het_han < todayISO() && <span style={{ color: C.chi, fontWeight: 700 }}> · đã hết hạn</span>}
+          </div>
+
+          <div style={{ fontSize: 11.5, color: C.ink3, fontWeight: 700, marginBottom: 6 }}>Gia hạn nhanh (tính từ hôm nay):</div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            {[['+3 tháng', 3, 'month'], ['+6 tháng', 6, 'month'], ['+1 năm', 1, 'year'], ['+2 năm', 2, 'year']].map(([l, so, dv]) => {
+              const ngay = addDurationISO(todayISO(), so, dv)
+              const active = giaHanNgay === ngay
+              return (
+                <button key={l} type="button" onClick={() => setGiaHanNgay(ngay)} style={{
+                  flex: '1 1 80px', padding: '8px 6px', borderRadius: 9,
+                  border: active ? 'none' : `1px solid ${C.line2}`,
+                  background: active ? C.grad : C.surface2, color: active ? '#fff' : C.ink2,
+                  fontWeight: 800, fontSize: 12, cursor: 'pointer',
+                }}>{l}</button>
+              )
+            })}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+            <span style={{ fontSize: 12, color: C.ink3 }}>Hạn mới:</span>
+            <button onClick={() => setGiaHanOpen(true)} style={{
+              flex: 1, border: `1px solid ${C.champagne}`, borderRadius: 8, padding: '8px 12px',
+              fontSize: 13.5, fontWeight: 800, background: '#fff', color: C.champagne, cursor: 'pointer', textAlign: 'left',
+            }}>
+              {giaHanNgay ? String(giaHanNgay).split('-').reverse().join('/') : 'Chọn ngày...'}
+            </button>
+          </div>
+
+          {isLeTan && (
+            <div style={{ fontSize: 11.5, color: '#9C6A12', background: '#FFF6E9', border: '1px solid #F0C674', borderRadius: 8, padding: '7px 10px', marginBottom: 12, lineHeight: 1.4 }}>
+              ⚠ Lễ tân gia hạn cần <b>Admin duyệt</b>. Yêu cầu sẽ gửi đi — thẻ chỉ dùng được sau khi Admin duyệt.
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setGiaHanCard(null)} style={{ flex: 1, padding: '11px', background: '#fff', border: `1px solid ${C.line2}`, borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', color: C.ink2 }}>Huỷ</button>
+            <button onClick={doGiaHan} disabled={giaHanLoading || !giaHanNgay} style={{ flex: 2, padding: '11px', background: C.grad, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: 'pointer', opacity: giaHanLoading ? .7 : 1 }}>
+              {giaHanLoading ? 'Đang lưu...' : isLeTan ? '📨 Gửi yêu cầu duyệt' : '✓ Xác nhận gia hạn'}
+            </button>
+          </div>
+
+          <DatePicker open={giaHanOpen} selectedDate={giaHanNgay || null} onClose={() => setGiaHanOpen(false)} onConfirm={d => { setGiaHanNgay(d); setGiaHanOpen(false) }} />
+        </div>
+      </div>,
+      document.body
+    )}
 
     {/* Modal: Lễ tân nhập LÝ DO chỉnh sửa (bắt buộc) trước khi gửi duyệt */}
     {showProposeModal && (
