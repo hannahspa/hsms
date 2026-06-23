@@ -2315,7 +2315,7 @@ function PromoLink() {
   )
 }
 
-// ── Chăm Sóc Lại: hàng đợi gửi ZNS 40 khách/ngày, chốt 20h30, gửi 9h ──
+// ── Chăm Sóc Lại theo NHỊP: 9h tự gửi nhóm "đúng nhịp 10 ngày" + 40 khách "tồn đọng" ──
 function ChamSocLaiPage() {
   const [stats, setStats] = useState(null)
   const [tab, setTab] = useState('ngay_mai')
@@ -2324,6 +2324,8 @@ function ChamSocLaiPage() {
   const [busy, setBusy] = useState(false)
   const [nonce, setNonce] = useState(0)
 
+  const ngayMaiISO = () => { const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' })); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10) }
+
   useEffect(() => {
     let alive = true
     ;(async () => {
@@ -2331,35 +2333,45 @@ function ChamSocLaiPage() {
       try {
         const s = await supabase.functions.invoke('cham-soc-lai', { body: { mode: 'stats' } })
         if (alive) setStats(s.data || null)
-        const today = todayISO()
-        let q = supabase.from('cham_soc_hang_doi').select('*')
-        if (tab === 'ngay_mai') q = q.eq('trang_thai', 'da_chot').order('uu_tien', { ascending: true })
-        else if (tab === 'hang_doi') q = q.eq('trang_thai', 'cho_gui').order('uu_tien', { ascending: true }).limit(500)
-        else q = q.gte('gui_luc', `${today}T00:00:00`).neq('trang_thai', 'cho_gui').order('gui_luc', { ascending: false }).limit(500)
-        const { data } = await q
-        if (alive) setRows(data || [])
+        if (tab === 'ngay_mai') {
+          const p = await supabase.functions.invoke('cham-soc-lai', { body: { mode: 'preview' } })
+          const d = p.data || {}
+          if (alive) setRows([...(d.dung_nhip || []), ...(d.ton_dong || [])])
+        } else {
+          const { data } = await supabase.from('cham_soc_hang_doi').select('*').eq('ngay_du_kien', todayISO()).order('nhom', { ascending: true }).order('so_ngay_vang', { ascending: true })
+          if (alive) setRows(data || [])
+        }
       } finally { if (alive) setLoading(false) }
     })()
     return () => { alive = false }
   }, [tab, nonce])
 
-  async function chotNgayMai() {
+  // Gửi đợt hôm nay ngay (thường để cron 9h tự chạy; nút này cho admin chủ động/test)
+  async function guiNgay() {
+    if (!window.confirm('Gửi ZNS đợt hôm nay ngay bây giờ?\n(Nhóm đúng nhịp + 40 khách tồn đọng — bình thường hệ thống tự gửi 9h sáng.)')) return
     setBusy(true)
     try {
-      const r = await supabase.functions.invoke('cham-soc-lai', { body: { mode: 'chot' } })
-      if (r.data?.ok) notify(`Đã chốt ${r.data.da_chot} khách cho ngày mai (thêm ${r.data.da_them_vao_hang_doi} vào hàng đợi)`, 'success')
-      else notify('Chốt lịch lỗi', 'error')
-      setNonce(n => n + 1)
+      const r = await supabase.functions.invoke('cham-soc-lai', { body: { mode: 'gui' } })
+      if (r.data?.ok) notify(`Đã gửi ${r.data.da_gui} khách (đúng nhịp ${r.data.dung_nhip} + tồn đọng ${r.data.ton_dong})${r.data.loi ? `, ${r.data.loi} lỗi` : ''}`, 'success')
+      else notify(r.data?.skipped || 'Gửi lỗi', 'error')
+      setTab('hom_nay'); setNonce(n => n + 1)
     } catch (e) { notify(String(e.message || e), 'error') } finally { setBusy(false) }
   }
 
-  // Loại khách đã hết buổi (thực tế) khỏi danh sách gửi — sẽ không bao giờ bị gửi lại
+  // Loại khách đã hết buổi thực tế khỏi đợt gửi
   async function boQua(r) {
-    if (!window.confirm(`Loại "${r.ho_ten || 'khách'}" khỏi danh sách chăm sóc?\n(Dùng khi khách đã hết buổi thực tế — sẽ không gửi tin cho khách này.)`)) return
+    if (!window.confirm(`Loại "${r.ho_ten || 'khách'}"${r.ma_the ? ` (${r.ma_the})` : ''} khỏi đợt gửi?\n(Dùng khi khách đã hết buổi thực tế.)`)) return
     try {
-      await supabase.from('cham_soc_hang_doi').update({ trang_thai: 'bo_qua', updated_at: new Date().toISOString() }).eq('id', r.id)
-      notify(`Đã loại ${r.ho_ten || 'khách'} khỏi danh sách`, 'success')
-      setNonce(n => n + 1)
+      if (tab === 'ngay_mai') {
+        await supabase.from('cham_soc_hang_doi').upsert({
+          the_dai_dien_id: r.the_id, khach_hang_id: r.khach_hang_id, ma_the: r.ma_the, ho_ten: r.ho_ten,
+          so_dien_thoai: r.so_dien_thoai, ten_dich_vu: r.ten_dich_vu, so_buoi_con_lai: r.so_buoi_con_lai,
+          so_ngay_vang: r.so_ngay_vang, nhom: r.nhom, ngay_du_kien: ngayMaiISO(), trang_thai: 'bo_qua',
+        }, { onConflict: 'the_dai_dien_id,ngay_du_kien' })
+      } else {
+        await supabase.from('cham_soc_hang_doi').update({ trang_thai: 'bo_qua' }).eq('id', r.id)
+      }
+      notify('Đã loại khỏi đợt gửi', 'success'); setNonce(n => n + 1)
     } catch (e) { notify(String(e.message || e), 'error') }
   }
 
@@ -2369,17 +2381,17 @@ function ChamSocLaiPage() {
     da_quan_tam: { text: '💜 Quan tâm OA', color: '#6C3483' },
     da_quay_lai: { text: '✓ Đã quay lại', color: C.thu },
     gui_loi:     { text: '⚠ Gửi lỗi', color: C.chi },
-    da_chot:     { text: 'Chờ gửi 9h mai', color: C.gold },
-    cho_gui:     { text: 'Trong hàng đợi', color: C.textMute },
+    bo_qua:      { text: 'Đã bỏ', color: C.textMute },
+    da_chot:     { text: 'Chờ gửi', color: C.gold },
   }
   const card = (label, val, sub, color) => (
-    <div style={{ flex: 1, background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: '14px 16px' }}>
+    <div style={{ flex: 1, minWidth: 180, background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: '14px 16px' }}>
       <div style={{ fontSize: 12, color: C.textSub, fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: 26, fontWeight: 900, color: color || C.text, fontFamily: FONT.serif, marginTop: 2 }}>{val}</div>
       {sub && <div style={{ fontSize: 11.5, color: C.textMute, marginTop: 2 }}>{sub}</div>}
     </div>
   )
-  const cuMoi = (o) => o ? `cũ ${o.cu} · mới ${o.moi}` : ''
+  const hn = stats?.hom_nay, nm = stats?.ngay_mai
 
   return (
     <Shell>
@@ -2387,40 +2399,40 @@ function ChamSocLaiPage() {
 
       {/* Thống kê */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-        {card('Hôm nay đã gửi', stats?.hom_nay?.tong ?? '—', cuMoi(stats?.hom_nay), '#1A5276')}
-        {card('Đã xem / Quan tâm OA', `${stats?.hom_nay?.da_xem ?? 0} / ${stats?.hom_nay?.quan_tam_oa ?? 0}`, 'trong số đã gửi hôm nay', '#6C3483')}
-        {card('Ngày mai sẽ gửi', stats?.ngay_mai?.tong ?? '—', cuMoi(stats?.ngay_mai), C.gold)}
-        {card('Còn trong hàng đợi', stats?.hang_doi?.tong ?? '—', `${cuMoi(stats?.hang_doi)} · ~${stats?.hang_doi?.uoc_tinh_ngay ?? '?'} ngày`, '#C0392B')}
+        {card('Hôm nay đã gửi', hn?.da_gui ?? '—', `đúng nhịp ${hn?.dung_nhip ?? 0} · tồn đọng ${hn?.ton_dong ?? 0}`, '#1A5276')}
+        {card('Đã xem / Quan tâm OA', `${hn?.da_xem ?? 0} / ${hn?.quan_tam_oa ?? 0}`, 'trong số đã gửi hôm nay', '#6C3483')}
+        {card('Ngày mai sẽ gửi', nm?.tong ?? '—', `đúng nhịp ${nm?.dung_nhip ?? 0} · tồn đọng ${nm?.ton_dong ?? 0}`, C.gold)}
+        {card('Lỗi gửi hôm nay', hn?.loi ?? 0, hn?.loi ? 'cần kiểm tra ZNS' : 'không có lỗi', hn?.loi ? C.chi : C.thu)}
       </div>
 
       <div className="mkt-soft" style={{ border: `1px solid ${C.border}`, background: 'rgba(255,255,255,.6)', borderRadius: 10, padding: '10px 14px', margin: '8px 0 14px', fontSize: 12.5, color: C.textSub, lineHeight: 1.5 }}>
-        🤖 Mỗi tối <b>20h30</b> hệ thống tự chốt 40 khách (ưu tiên khách <b>ấm</b> — vắng ít ngày nhất) cho ngày mai. <b>9h sáng</b> tự gửi ZNS mời quay lại. Khách quay lại dùng buổi → tự rời hàng đợi.
+        🤖 Tự động <b>9h sáng</b> mỗi ngày: gửi ZNS mời quay lại cho <b>nhóm Đúng Nhịp</b> (khách đến dùng thẻ đúng ~10 ngày trước — vd hôm nay nhắc khách của 10 ngày trước) + <b>40 khách Tồn Đọng</b> (data cũ, ưu tiên ấm). Khách dùng buổi mới → bộ đếm reset, tự ngừng nhắc.
       </div>
 
-      {/* Tabs + nút chốt */}
+      {/* Tabs + nút gửi ngay */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 8 }}>
-          {[['ngay_mai', `Ngày mai (${stats?.ngay_mai?.tong ?? 0})`], ['hom_nay', `Hôm nay (${stats?.hom_nay?.tong ?? 0})`], ['hang_doi', `Hàng đợi (${stats?.hang_doi?.tong ?? 0})`]].map(([k, lb]) => (
+          {[['ngay_mai', `Ngày mai sẽ gửi (${nm?.tong ?? 0})`], ['hom_nay', `Hôm nay đã gửi (${hn?.tong ?? 0})`]].map(([k, lb]) => (
             <button key={k} onClick={() => setTab(k)} style={{
               padding: '8px 16px', borderRadius: 99, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FONT.sans,
               border: `1px solid ${tab === k ? C.primary : C.border}`, background: tab === k ? C.primary : '#fff', color: tab === k ? '#fff' : C.textSub,
             }}>{lb}</button>
           ))}
         </div>
-        <button onClick={chotNgayMai} disabled={busy} style={{
+        <button onClick={guiNgay} disabled={busy} style={{
           padding: '9px 18px', borderRadius: 99, fontSize: 13, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', fontFamily: FONT.sans,
           border: 'none', background: C.gold, color: '#fff',
-        }}>{busy ? 'Đang chốt…' : '📋 Chốt lại danh sách ngày mai'}</button>
+        }}>{busy ? 'Đang gửi…' : '📨 Gửi đợt hôm nay ngay'}</button>
       </div>
 
       {/* Danh sách */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
             <thead>
               <tr style={{ background: C.bg }}>
-                {['Khách hàng', 'Tình trạng thẻ', 'Vắng', 'Loại', 'Trạng thái tin', tab === 'hom_nay' ? 'Gửi lúc' : 'Dự kiến', ''].map((h, i) => (
-                  <th key={i} style={{ textAlign: i > 1 && i < 5 ? 'center' : 'left', padding: '11px 14px', fontSize: 12, color: C.textSub, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                {['Khách hàng', 'Mã thẻ', 'Tình trạng thẻ', 'Vắng', 'Nhóm', 'Trạng thái', ''].map((h, i) => (
+                  <th key={i} style={{ textAlign: i >= 3 && i <= 5 ? 'center' : 'left', padding: '11px 14px', fontSize: 12, color: C.textSub, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -2429,33 +2441,32 @@ function ChamSocLaiPage() {
                 <tr><td colSpan={7} style={{ padding: 36, textAlign: 'center', color: C.textSub }}>Đang tải…</td></tr>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={7} style={{ padding: 36, textAlign: 'center', color: C.textSub }}>
-                  {tab === 'ngay_mai' ? 'Chưa chốt danh sách ngày mai — bấm "Chốt lại danh sách ngày mai" hoặc đợi 20h30.' : tab === 'hom_nay' ? 'Hôm nay chưa gửi khách nào.' : 'Hàng đợi trống 🌿'}
+                  {tab === 'ngay_mai' ? 'Ngày mai chưa có khách nào đến nhịp nhắc 🌿' : 'Hôm nay chưa gửi khách nào.'}
                 </td></tr>
-              ) : rows.map((r, i) => {
-                const tt = TT[r.trang_thai] || { text: r.trang_thai, color: C.textMute }
+              ) : rows.map((r) => {
+                const tt = TT[r.trang_thai] || { text: tab === 'ngay_mai' ? 'Dự kiến gửi' : (r.trang_thai || '—'), color: tab === 'ngay_mai' ? C.gold : C.textMute }
+                const dungNhip = r.nhom === 'dung_nhip'
                 return (
-                  <tr key={r.id} style={{ borderTop: i ? `1px solid ${C.borderLight || C.border}` : 'none' }}>
+                  <tr key={r.id || r.the_id} style={{ borderTop: `1px solid ${C.borderLight || C.border}` }}>
                     <td style={{ padding: '10px 14px' }}>
                       <div style={{ fontFamily: FONT.serif, fontWeight: 600, fontSize: 14, color: C.text }}>{r.ho_ten || 'Khách'}</div>
                       <div style={{ fontSize: 12, color: C.textSub }}>{r.so_dien_thoai || '—'}</div>
                     </td>
+                    <td style={{ padding: '10px 14px', fontSize: 12.5, fontWeight: 700, color: C.taiSan, whiteSpace: 'nowrap' }}>{r.ma_the || '—'}</td>
                     <td style={{ padding: '10px 14px' }}>
                       <div style={{ fontSize: 13, color: C.text }}>{r.ten_dich_vu}</div>
-                      <div style={{ fontSize: 11.5, color: C.primary, fontWeight: 700 }}>Còn {r.so_buoi_con_lai} buổi{r.so_the > 1 ? ` · ${r.so_the} thẻ` : ''}</div>
+                      <div style={{ fontSize: 11.5, color: C.primary, fontWeight: 700 }}>Còn {r.so_buoi_con_lai} buổi</div>
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 12.5, fontWeight: 700, color: r.so_ngay_vang >= 30 ? C.chi : C.textSub }}>{r.so_ngay_vang}n</td>
                     <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                      <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 99, background: r.la_khach_moi ? `${C.thu}1A` : `${C.textMute}1A`, color: r.la_khach_moi ? C.thu : C.textSub }}>{r.la_khach_moi ? 'MỚI' : 'CŨ'}</span>
+                      <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, background: dungNhip ? `${C.thu}1A` : `${C.gold}22`, color: dungNhip ? C.thu : '#9a7a2e' }}>{dungNhip ? '⏰ Đúng nhịp' : 'Tồn đọng'}</span>
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: tt.color }}>{tt.text}</span>
                     </td>
-                    <td style={{ padding: '10px 14px', fontSize: 12, color: C.textSub }}>
-                      {tab === 'hom_nay' ? fmtDateTime(r.gui_luc) : (r.ngay_du_kien ? fmtDate(r.ngay_du_kien) : '—')}
-                    </td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }}>
-                      {tab !== 'hom_nay' && (
-                        <button onClick={() => boQua(r)} title="Khách đã hết buổi — loại khỏi danh sách gửi" style={{
+                      {r.trang_thai !== 'bo_qua' && (
+                        <button onClick={() => boQua(r)} title="Khách đã hết buổi — loại khỏi đợt gửi" style={{
                           padding: '6px 12px', borderRadius: 99, border: `1px solid ${C.border}`, background: '#fff',
                           color: C.chi, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: FONT.sans, whiteSpace: 'nowrap',
                         }}>Đã hết · Bỏ</button>
