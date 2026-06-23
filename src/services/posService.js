@@ -775,24 +775,60 @@ export const posService = {
     if (data?.success === false && data?.error_code !== 'CHUA_DU_BUOI') {
       throw new Error(data.error || 'Không thể chốt đơn')
     }
-    // Gửi ZNS hóa đơn cho khách qua Zalo (không chặn luồng nếu lỗi/thiếu SĐT)
+    // Gửi ZNS cho khách qua Zalo (không chặn luồng nếu lỗi/thiếu SĐT)
+    // - Hóa đơn: khi có thu tiền (thuc_thu > 0)
+    // - Mua thẻ mới (loai_item='the_moi'): xác nhận thẻ liệu trình
+    // - Dùng buổi (loai_item='the_lieu_trinh'): thông báo số dư thẻ còn lại
     if (data?.success !== false) {
       try {
         const { data: dh } = await supabase.from('don_hang')
-          .select('ma_don, thuc_thu, con_no, khach_hang:khach_hang_id(ho_ten, so_dien_thoai), don_hang_chi_tiet(dich_vu:dich_vu_id(ten), nhan_vien:nhan_vien_id(ho_ten))')
+          .select(`ma_don, thuc_thu, con_no, ngay,
+            khach_hang:khach_hang_id(ho_ten, so_dien_thoai),
+            don_hang_chi_tiet(loai_item, dich_vu:dich_vu_id(ten), nhan_vien:nhan_vien_id(ho_ten),
+              the:the_lieu_trinh_id(ma_the, ten_dich_vu, so_buoi_tong, so_buoi_da_dung, so_buoi_con_lai, gia_tri_the, ngay_het_han))`)
           .eq('id', orderId).single()
         const sdt = dh?.khach_hang?.so_dien_thoai
         if (sdt) {
-          const dvNames = [...new Set((dh.don_hang_chi_tiet || []).map(c => c.dich_vu?.ten).filter(Boolean))].join(', ')
-          const nvNames = [...new Set((dh.don_hang_chi_tiet || []).map(c => c.nhan_vien?.ho_ten).filter(Boolean))].join(', ')
-          const { znsHoaDon } = await import('../lib/zns')
-          znsHoaDon({
-            ten_khach: dh.khach_hang?.ho_ten, sdt, ma_don: dh.ma_don, tong_tien: dh.thuc_thu,
-            trang_thai: (dh.con_no > 0 ? `Còn nợ ${dh.con_no}đ` : 'Đã thanh toán'), dich_vu: dvNames,
-            nhan_vien: nvNames,
-          })
+          const ct = dh.don_hang_chi_tiet || []
+          const tenKhach = dh.khach_hang?.ho_ten
+          const zns = await import('../lib/zns')
+
+          // 1) Hóa đơn — chỉ khi có thu tiền (đơn dùng buổi 0đ thì bỏ qua, đã có tin số dư thẻ)
+          if ((dh.thuc_thu || 0) > 0) {
+            const dvNames = [...new Set(ct.map(c => c.dich_vu?.ten).filter(Boolean))].join(', ')
+            const nvNames = [...new Set(ct.map(c => c.nhan_vien?.ho_ten).filter(Boolean))].join(', ')
+            zns.znsHoaDon({
+              ten_khach: tenKhach, sdt, ma_don: dh.ma_don, tong_tien: dh.thuc_thu,
+              trang_thai: (dh.con_no > 0 ? `Còn nợ ${dh.con_no}đ` : 'Đã thanh toán'), dich_vu: dvNames,
+              nhan_vien: nvNames,
+            })
+          }
+
+          // 2) Mua thẻ mới — mỗi thẻ 1 tin xác nhận
+          for (const c of ct) {
+            if (c.loai_item === 'the_moi' && c.the) {
+              zns.znsMuaLieuTrinh({
+                ten_khach: tenKhach, sdt, ten_the: c.the.ten_dich_vu, ma_the: c.the.ma_the,
+                dich_vu: c.the.ten_dich_vu, gia_tri: c.the.gia_tri_the, ngay_het_han: c.the.ngay_het_han,
+                ngay: dh.ngay, ma_don: dh.ma_don,
+              })
+            }
+          }
+
+          // 3) Dùng buổi — gom theo thẻ (1 thẻ 1 tin số dư, tránh trùng nếu dùng nhiều buổi)
+          const theDaGui = new Set()
+          for (const c of ct) {
+            if (c.loai_item === 'the_lieu_trinh' && c.the && !theDaGui.has(c.the.ma_the)) {
+              theDaGui.add(c.the.ma_the)
+              zns.znsTheLieuTrinh({
+                ten_khach: tenKhach, sdt, ma_the: c.the.ma_the, dich_vu: c.the.ten_dich_vu,
+                tong_buoi: c.the.so_buoi_tong, da_dung: c.the.so_buoi_da_dung, con_lai: c.the.so_buoi_con_lai,
+                ngay: dh.ngay, ma_don: dh.ma_don,
+              })
+            }
+          }
         }
-      } catch (e) { console.warn('ZNS hóa đơn lỗi (bỏ qua):', e?.message || e) }
+      } catch (e) { console.warn('ZNS POS lỗi (bỏ qua):', e?.message || e) }
     }
     return data
   },
