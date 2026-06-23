@@ -50,8 +50,8 @@ export function znsNhacLich({ ten_khach, ma_lich, gio_hen, ngay_hen, dich_vu, sd
   })
 }
 
-// Hóa đơn / xác nhận đơn (template 287028): order_code, date, cost, payment_status, customer_name, product_name
-export function znsHoaDon({ ten_khach, ma_don, ngay, tong_tien, trang_thai, dich_vu, sdt }) {
+// Hóa đơn / xác nhận đơn (template 596818): customer_name, order_code, payment_status, product_name, cost, date, staff_name
+export function znsHoaDon({ ten_khach, ma_don, ngay, tong_tien, trang_thai, dich_vu, nhan_vien, sdt }) {
   return guiZNS('hoa_don', sdt, {
     order_code: ma_don || '—',
     date: dmy(ngay) || dmy(new Date().toISOString()),
@@ -59,6 +59,21 @@ export function znsHoaDon({ ten_khach, ma_don, ngay, tong_tien, trang_thai, dich
     payment_status: trang_thai || 'Đã thanh toán',
     customer_name: ten_khach || 'Quý khách',
     product_name: dich_vu || 'Dịch vụ tại Hannah Spa',
+    staff_name: nhan_vien || 'Hannah Spa',
+  })
+}
+
+// Mua liệu trình (template 596824): customer_name, treatment_name, treatment_code, services, cost, expiry_date, date, order_code
+export function znsMuaLieuTrinh({ ten_khach, ten_the, ma_the, dich_vu, gia_tri, ngay_het_han, ngay, ma_don, sdt }) {
+  return guiZNS('mua_lieu_trinh', sdt, {
+    customer_name: ten_khach || 'Quý khách',
+    treatment_name: ten_the || 'Liệu trình tại Hannah Spa',
+    treatment_code: ma_the || '—',
+    services: dich_vu || ten_the || 'Dịch vụ tại Hannah Spa',
+    cost: String(gia_tri ?? 0),
+    expiry_date: ngay_het_han ? dmy(ngay_het_han) : 'Không giới hạn',
+    date: dmy(ngay) || dmy(new Date().toISOString()),
+    order_code: ma_don || '—',
   })
 }
 
