@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModalDatHen from '../../internal/lich-hen/ModalDatHen'
 import { C, FONT } from '../../../constants/colors'
 import { supabase } from '../../../lib/supabase'
@@ -1622,8 +1622,32 @@ function InboxPage() {
     const ch = supabase.channel('inbox-page-rt')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'marketing_messages' }, () => { if (alive) setNonce(n => n + 1) })
       .subscribe()
-    return () => { alive = false; supabase.removeChannel(ch) }
+    // Dự phòng: realtime self-host có thể chập chờn → cứ 40s tải lại để chắc chắn không sót tin khách
+    const poll = setInterval(() => { if (alive && !document.hidden) setNonce(n => n + 1) }, 40000)
+    return () => { alive = false; clearInterval(poll); supabase.removeChannel(ch) }
   }, [nonce])
+
+  // ── THÔNG BÁO khách nhắn: chuông + tiêu đề tab khi có hội thoại CHỜ trả lời mới ──
+  const prevUnrepRef = useRef(null)
+  useEffect(() => {
+    if (loading) return
+    const unrep = convos.filter(c => c.unreplied).length
+    if (prevUnrepRef.current !== null && unrep > prevUnrepRef.current) {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext
+        if (AC) {
+          const ac = new AC(), o = ac.createOscillator(), g = ac.createGain()
+          o.connect(g); g.connect(ac.destination); g.gain.value = 0.07
+          o.frequency.setValueAtTime(880, ac.currentTime)
+          o.frequency.setValueAtTime(660, ac.currentTime + 0.13)
+          o.start(); o.stop(ac.currentTime + 0.26)
+        }
+      } catch { /* trình duyệt chặn audio khi chưa tương tác — bỏ qua */ }
+    }
+    prevUnrepRef.current = unrep
+    document.title = unrep > 0 ? `(${unrep}) 💬 Khách nhắn — Hannah Spa` : 'Hannah Spa'
+    return () => { document.title = 'Hannah Spa' }
+  }, [convos, loading])
 
   const selected = convos.find(c => c.cid === selId) || null
 
