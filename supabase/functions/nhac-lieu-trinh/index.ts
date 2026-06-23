@@ -199,7 +199,14 @@ serve(async (req) => {
           ghi_chu: 'Kênh ZNS tự động chưa cấu hình (thiếu marketing_ai_config.zns_moi_quay_lai) hoặc chưa nạp tiền ZBS. Cron đang ở chế độ chờ — nhân viên dùng trang Nhắc Thẻ LT để gửi thủ công. Khi ZNS sống, cron tự gửi.',
         })
       }
-      const { data, error } = await supabase.from('v_nhac_lieu_trinh').select('*').eq('den_han_nhac', true).limit(500)
+      // CHỈ tự gửi cho khách MỚI phát sinh (dùng buổi thẻ TỪ ngày triển khai trở đi).
+      // Khách CŨ tồn đọng (dùng thẻ trước mốc) → KHÔNG tự gửi, để anh Nam duyệt danh sách thủ công trên trang Nhắc Thẻ LT.
+      const { data: cfgAuto } = await supabase.from('marketing_ai_config').select('value').eq('key', 'zns_nhac_auto_tu_ngay').maybeSingle()
+      const autoTuNgay = cfgAuto?.value || '2099-01-01'  // mặc định khoá auto nếu chưa set mốc
+      const { data, error } = await supabase.from('v_nhac_lieu_trinh')
+        .select('*').eq('den_han_nhac', true)
+        .gte('lan_dung_gan_nhat', autoTuNgay)
+        .limit(500)
       if (error) throw error
       const promos = await getActivePromos()
       const results: any[] = []
