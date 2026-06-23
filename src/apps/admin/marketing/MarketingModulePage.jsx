@@ -2353,6 +2353,16 @@ function ChamSocLaiPage() {
     } catch (e) { notify(String(e.message || e), 'error') } finally { setBusy(false) }
   }
 
+  // Loại khách đã hết buổi (thực tế) khỏi danh sách gửi — sẽ không bao giờ bị gửi lại
+  async function boQua(r) {
+    if (!window.confirm(`Loại "${r.ho_ten || 'khách'}" khỏi danh sách chăm sóc?\n(Dùng khi khách đã hết buổi thực tế — sẽ không gửi tin cho khách này.)`)) return
+    try {
+      await supabase.from('cham_soc_hang_doi').update({ trang_thai: 'bo_qua', updated_at: new Date().toISOString() }).eq('id', r.id)
+      notify(`Đã loại ${r.ho_ten || 'khách'} khỏi danh sách`, 'success')
+      setNonce(n => n + 1)
+    } catch (e) { notify(String(e.message || e), 'error') }
+  }
+
   const TT = {
     da_gui:      { text: 'Đã gửi', color: '#1A5276' },
     da_xem:      { text: '👁 Đã xem', color: '#6C3483' },
@@ -2409,16 +2419,16 @@ function ChamSocLaiPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
             <thead>
               <tr style={{ background: C.bg }}>
-                {['Khách hàng', 'Tình trạng thẻ', 'Vắng', 'Loại', 'Trạng thái tin', tab === 'hom_nay' ? 'Gửi lúc' : 'Dự kiến'].map((h, i) => (
+                {['Khách hàng', 'Tình trạng thẻ', 'Vắng', 'Loại', 'Trạng thái tin', tab === 'hom_nay' ? 'Gửi lúc' : 'Dự kiến', ''].map((h, i) => (
                   <th key={i} style={{ textAlign: i > 1 && i < 5 ? 'center' : 'left', padding: '11px 14px', fontSize: 12, color: C.textSub, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ padding: 36, textAlign: 'center', color: C.textSub }}>Đang tải…</td></tr>
+                <tr><td colSpan={7} style={{ padding: 36, textAlign: 'center', color: C.textSub }}>Đang tải…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 36, textAlign: 'center', color: C.textSub }}>
+                <tr><td colSpan={7} style={{ padding: 36, textAlign: 'center', color: C.textSub }}>
                   {tab === 'ngay_mai' ? 'Chưa chốt danh sách ngày mai — bấm "Chốt lại danh sách ngày mai" hoặc đợi 20h30.' : tab === 'hom_nay' ? 'Hôm nay chưa gửi khách nào.' : 'Hàng đợi trống 🌿'}
                 </td></tr>
               ) : rows.map((r, i) => {
@@ -2442,6 +2452,14 @@ function ChamSocLaiPage() {
                     </td>
                     <td style={{ padding: '10px 14px', fontSize: 12, color: C.textSub }}>
                       {tab === 'hom_nay' ? fmtDateTime(r.gui_luc) : (r.ngay_du_kien ? fmtDate(r.ngay_du_kien) : '—')}
+                    </td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                      {tab !== 'hom_nay' && (
+                        <button onClick={() => boQua(r)} title="Khách đã hết buổi — loại khỏi danh sách gửi" style={{
+                          padding: '6px 12px', borderRadius: 99, border: `1px solid ${C.border}`, background: '#fff',
+                          color: C.chi, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: FONT.sans, whiteSpace: 'nowrap',
+                        }}>Đã hết · Bỏ</button>
+                      )}
                     </td>
                   </tr>
                 )
