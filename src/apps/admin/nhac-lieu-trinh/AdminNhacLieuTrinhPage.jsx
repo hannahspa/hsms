@@ -63,6 +63,9 @@ export default function AdminNhacLieuTrinhPage() {
   const [staffHint, setStaffHint] = useState('')   // gợi ý cho nhân viên
   const [sending, setSending] = useState(false)
 
+  const [selectedIds, setSelectedIds] = useState(() => new Set())   // thẻ được tick để gửi hàng loạt
+  const [batch, setBatch] = useState(null)         // tiến độ gửi hàng loạt {running,done,total,ok,fail}
+
   useEffect(() => { load() }, [])
 
   function showToast(m) { setToast(m); setTimeout(() => setToast(''), 2600) }
@@ -132,6 +135,41 @@ export default function AdminNhacLieuTrinhPage() {
 
   function fallbackText(card) {
     return `Hannah Spa thân gửi chị ${card.ho_ten || ''}! Thẻ ${card.ten_dich_vu} của mình vẫn còn ${card.so_buoi_con_lai} buổi. Mình sắp xếp ghé lại để Hannah chăm sóc tiếp nhé, chị muốn hẹn ngày nào ạ? 🌸`
+  }
+
+  // ── Chọn / gửi hàng loạt ──
+  function toggleSelect(id) {
+    setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+  }
+  function chonNhomAm() {   // tick nhanh nhóm còn ấm: đến hạn + vắng < 30 ngày
+    const ids = filtered.filter(r => r.den_han_nhac && (r.so_ngay_vang || 0) < 30 && r.so_dien_thoai).map(r => r.the_id)
+    setSelectedIds(new Set(ids))
+    showToast(`Đã chọn ${ids.length} khách còn ấm (vắng < 30 ngày)`)
+  }
+  function boChon() { setSelectedIds(new Set()) }
+
+  async function guiHangLoat() {
+    const cards = filtered.filter(r => selectedIds.has(r.the_id) && r.so_dien_thoai)
+    if (!cards.length) { showToast('Chưa chọn khách nào có SĐT'); return }
+    if (!window.confirm(`Gửi ZNS mời quay lại cho ${cards.length} khách?\nMỗi tin tốn phí ZNS — chỉ bấm OK khi đã duyệt danh sách.`)) return
+    setBatch({ running: true, done: 0, total: cards.length, ok: 0, fail: 0 })
+    let ok = 0, fail = 0
+    for (let i = 0; i < cards.length; i++) {
+      const c = cards[i]
+      try {
+        const { data, error } = await supabase.functions.invoke('nhac-lieu-trinh', {
+          body: { mode: 'send', the_id: c.the_id, kenh: 'zns', noi_dung: fallbackText(c) },
+        })
+        if (error) throw error
+        if (data?.ket_qua === 'da_gui') ok++; else fail++
+      } catch { fail++ }
+      setBatch({ running: true, done: i + 1, total: cards.length, ok, fail })
+    }
+    setBatch({ running: false, done: cards.length, total: cards.length, ok, fail })
+    showToast(`Đã gửi ${ok}/${cards.length} khách${fail ? ` · ${fail} chưa gửi được` : ''}`)
+    setSelectedIds(new Set())
+    await load()
+    setTimeout(() => setBatch(null), 6000)
   }
 
   async function ghiNhan(card, kenh) {
@@ -232,26 +270,48 @@ export default function AdminNhacLieuTrinhPage() {
         </div>
       </div>
 
+      {/* Thanh gửi hàng loạt — duyệt rồi gửi cho nhóm còn ấm trước */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12, padding: '10px 14px', background: C.card, border: `1px solid ${C.border}`, borderRadius: RADIUS.md }}>
+        <button onClick={chonNhomAm} style={tabBtn(false)}>☀️ Chọn nhóm còn ấm (vắng &lt; 30 ngày)</button>
+        {selectedIds.size > 0 && (
+          <button onClick={boChon} style={{ padding: '8px 14px', borderRadius: RADIUS.full, border: `1px solid ${C.border}`, background: C.card, color: C.textSub, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: FONT.sans }}>Bỏ chọn ({selectedIds.size})</button>
+        )}
+        <div style={{ flex: 1 }} />
+        {batch && (
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: batch.running ? C.warn : C.thu }}>
+            {batch.running ? `Đang gửi… ${batch.done}/${batch.total}` : `Đã gửi ${batch.ok}/${batch.total}${batch.fail ? ` · ${batch.fail} lỗi` : ''}`}
+          </span>
+        )}
+        <Button disabled={selectedIds.size === 0 || batch?.running} onClick={guiHangLoat}>
+          {batch?.running ? `Đang gửi ${batch.done}/${batch.total}…` : `📨 Gửi ZNS hàng loạt (${selectedIds.size})`}
+        </Button>
+      </div>
+
       {/* Bảng */}
       <div style={{ background: C.card, borderRadius: RADIUS.lg, border: `1px solid ${C.border}`, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
             <thead>
               <tr>
-                {['Khách hàng', 'Thẻ liệu trình', 'Buổi còn', 'Lần dùng thẻ gần nhất', 'Nhịp nhắc', 'Trạng thái', ''].map((h, i) => (
+                {['', 'Khách hàng', 'Thẻ liệu trình', 'Buổi còn', 'Lần dùng thẻ gần nhất', 'Nhịp nhắc', 'Trạng thái', ''].map((h, i) => (
                   <th key={i} style={th}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: C.textSub }}>Đang tải...</td></tr>
+                <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: C.textSub }}>Đang tải...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: C.textSub }}>Không có thẻ nào trong nhóm này 🌿</td></tr>
+                <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: C.textSub }}>Không có thẻ nào trong nhóm này 🌿</td></tr>
               ) : filtered.map(r => {
                 const tt = TT_LABEL[r.trang_thai_cham_soc] || TT_LABEL.theo_doi
                 return (
-                  <tr key={r.the_id} style={{ borderTop: `1px solid ${C.borderLight}` }}>
+                  <tr key={r.the_id} style={{ borderTop: `1px solid ${C.borderLight}`, background: selectedIds.has(r.the_id) ? `${C.primary}0A` : 'transparent' }}>
+                    <td style={{ ...td, textAlign: 'center', width: 40 }}>
+                      <input type="checkbox" checked={selectedIds.has(r.the_id)} disabled={!r.so_dien_thoai}
+                        onChange={() => toggleSelect(r.the_id)} title={r.so_dien_thoai ? 'Chọn gửi ZNS' : 'Khách chưa có SĐT'}
+                        style={{ width: 17, height: 17, cursor: r.so_dien_thoai ? 'pointer' : 'not-allowed', accentColor: C.primary }} />
+                    </td>
                     <td style={td}>
                       <div style={{ fontFamily: FONT.serif, fontWeight: 600, fontSize: 14, color: C.text }}>{r.ho_ten || 'Khách lẻ'}</div>
                       <div style={{ fontSize: 12, color: C.textSub }}>{r.so_dien_thoai || '—'}</div>
