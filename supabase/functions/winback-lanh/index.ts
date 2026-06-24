@@ -66,9 +66,11 @@ serve(async (req) => {
             body: { template_key: 'uu_dai_voucher', phone: r.so_dien_thoai, params: {
               customer_name: r.ho_ten || 'Quý khách',
               service: NHOM_TEN[r.nhom_so_thich] || 'dịch vụ',
-              voucher: r.voucher_code,
               discount: String(r.phan_tram) + '%',
-              expiry: vm?.han_dung ? dmy(vm.han_dung) : '',
+              voucher_code: r.voucher_code,
+              // Mẫu Voucher Zalo yêu cầu loại "Thời gian" định dạng HH:MM:SS DD/MM/YYYY
+              start_date: '00:00:00 ' + dmy(todayVN()),
+              expire: vm?.han_dung ? '23:59:00 ' + dmy(vm.han_dung) : '',
             } },
           })
           if (z.data?.ok) { sent = true; msgId = z.data.msg_id || null } else znsErr = z.data?.error || z.error
