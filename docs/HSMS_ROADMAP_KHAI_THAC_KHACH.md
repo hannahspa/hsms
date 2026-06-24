@@ -12,8 +12,9 @@ Khách CÒN thẻ, vắng ≤90 ngày. Tự động khép kín: 21:00 chốt →
 - Đã gửi thật 46/47 (24/06). Module: Marketing → "Chăm Sóc Lại".
 
 ## GIAI ĐOẠN 2 — WIN-BACK KHÁCH LẠNH (module RIÊNG) ⬅️ ĐANG LÊN KẾ HOẠCH
-**Đối tượng:** CHỈ khách đã từng mua thẻ LT, vắng >90 ngày, lần cuối 2023→2026 = **367 khách** ("mỏ vàng").
-**Thứ tự ưu tiên gửi:** 2026 (16) → 2025 (167) → 2024 (43) → 2023 (141). **50 khách/ngày** đến hết (~8 ngày).
+**Định nghĩa (anh Nam chốt):** Tập = khách **MUA thẻ LT trong 3 năm** (ngay_mua ≥ 2023-01-01). LẠNH = trong tập đó, **lần cuối ĐẾN SPA** (= MAX ngày đơn hàng bất kỳ, KHÔNG phải lần dùng thẻ) **>90 ngày** = **462 khách**.
+**Thứ tự ưu tiên gửi:** 2026 (104) → 2025 (224) → 2024 (90) → 2023 (44). **50 khách/ngày** (~10 ngày).
+> ⚠️ BÀI HỌC: (1) "lần cuối ĐẾN SPA" = MAX(don_hang.ngay) — KHÔNG dùng "lần dùng thẻ" (data dùng thẻ 2024 thiếu → nghịch lý). (2) Ranh giới: NÓNG ≤90 ngày (tin thường, module Chăm Sóc Lại), LẠNH >90 ngày (voucher). (3) Khách mua thẻ 2019 nhưng tuần rồi mới đến → KHÔNG lạnh. Khách mua thẻ 3 năm = 779, ấm (≤90) thuộc nóng, lạnh (>90) = 462.
 
 **Phân 3 nhóm sở thích (gửi voucher đúng gu):**
 | Nhóm | Gồm | Voucher giảm |
