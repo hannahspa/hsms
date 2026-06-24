@@ -17,37 +17,44 @@ const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } })
 const SO_TON_DONG = 40        // số khách data cũ gửi mỗi ngày
 const NHIP = 10               // nhịp nhắc: 10 ngày kể từ lần dùng thẻ
-const A_MIN = 10, A_MAX = 13  // "đúng nhịp": vắng 10–13 ngày (đệm phòng cron lỗi 1-2 hôm)
-const B_MAX_VANG = 90         // tồn đọng lùi dần: vắng 14–90 ngày (>90 = bước 3 chương trình Hot)
+const A_NHIP = 10             // nhịp ĐÚNG 10 ngày (24/06 chăm khách 14/06)
+const B_MAX_VANG = 90         // tồn đọng lùi dần: vắng 11–90 ngày (>90 = bước 3 chương trình Hot)
 
 function todayVN() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' })).toISOString().slice(0, 10)
 }
 
+// GOM theo KHÁCH: 1 khách = 1 dòng (giữ thẻ đầu tiên theo thứ tự đã sort = đại diện)
+function gomTheoKhach(rows: any[]) {
+  const m = new Map<string, any>()
+  for (const r of (rows || [])) if (r.khach_hang_id && !m.has(r.khach_hang_id)) m.set(r.khach_hang_id, r)
+  return [...m.values()]
+}
+
 // Lấy 2 nhóm theo "độ lệch ngày" off (0 = hôm nay, 1 = ngày mai để xem trước)
 async function layHaiNhom(off = 0) {
-  // Nhóm A đúng nhịp: chưa nhắc + vắng nằm trong cửa sổ (dịch theo off để preview ngày mai)
-  const { data: A } = await supabase.from('v_nhac_lieu_trinh').select('*')
+  const vangNhip = A_NHIP - off   // nhịp ĐÚNG: vắng = đúng 10 ngày (24/06 ⇽ 14/06)
+  // Nhóm A đúng nhịp: chưa nhắc, vắng ĐÚNG vangNhip; gom theo khách (giữ thẻ nhiều buổi nhất)
+  const { data: Araw } = await supabase.from('v_nhac_lieu_trinh').select('*')
+    .eq('den_han_nhac', true).eq('so_lan_nhac', 0).eq('so_ngay_vang', vangNhip)
+    .order('so_buoi_con_lai', { ascending: false }).limit(500)
+  // Nhóm B tồn đọng (lùi dần): chưa nhắc, vắng (vangNhip+1)…90 ngày; gom theo khách (ấm trước)
+  const { data: Braw } = await supabase.from('v_nhac_lieu_trinh').select('*')
     .eq('den_han_nhac', true).eq('so_lan_nhac', 0)
-    .gte('so_ngay_vang', A_MIN - off).lte('so_ngay_vang', A_MAX - off)
-    .order('so_ngay_vang', { ascending: true }).limit(500)
-  const aIds = new Set((A || []).map((x: any) => x.the_id))
-  // Nhóm B tồn đọng (lùi dần): CHỈ khách CHƯA nhắc lần nào (mỗi khách 1 lần, không trùng),
-  // vắng 14–90 ngày (tin mời quay lại thường). Vắng >90 = bước 3 (chương trình Hot, chờ template).
-  const { data: Ball } = await supabase.from('v_nhac_lieu_trinh').select('*')
-    .eq('den_han_nhac', true).eq('so_lan_nhac', 0)
-    .gt('so_ngay_vang', A_MAX - off).lte('so_ngay_vang', B_MAX_VANG - off)
+    .gt('so_ngay_vang', vangNhip).lte('so_ngay_vang', B_MAX_VANG - off)
     .order('so_ngay_vang', { ascending: true }).limit(2000)
-  const B = (Ball || []).filter((x: any) => !aIds.has(x.the_id)).slice(0, SO_TON_DONG)
+  let A = gomTheoKhach(Araw || [])
+  const aKh = new Set(A.map(x => x.khach_hang_id))
+  let B = gomTheoKhach(Braw || []).filter(x => !aKh.has(x.khach_hang_id)).slice(0, SO_TON_DONG)
   // map mã thẻ
-  const ids = [...(A || []), ...B].map((x: any) => x.the_id)
+  const ids = [...A, ...B].map((x: any) => x.the_id)
   let maMap: Record<string, string> = {}
   if (ids.length) {
     const { data: thes } = await supabase.from('the_lieu_trinh').select('id, ma_the').in('id', ids)
     maMap = Object.fromEntries((thes || []).map((t: any) => [t.id, t.ma_the]))
   }
   const tag = (arr: any[], nhom: string) => (arr || []).map((c: any) => ({ ...c, nhom, ma_the: maMap[c.the_id] || null }))
-  return { A: tag(A || [], 'dung_nhip'), B: tag(B, 'ton_dong') }
+  return { A: tag(A, 'dung_nhip'), B: tag(B, 'ton_dong') }
 }
 
 serve(async (req) => {
