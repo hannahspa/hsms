@@ -31,8 +31,10 @@ Phân bố lạnh theo nhóm: Thư Giãn 255 · Triệt 116 · Da 77 (1 khách c
 - Nguyên tắc: giảm trên giá gốc; KHÔNG áp 2 KM (DV đã có giá KM thì mã không giảm thêm); đo được ai đến nhờ mã nào.
 - Khách còn buổi+hết hạn (trừ triệt) → mời GIA HẠN. Khách hết buổi → mời mua mới/sale chéo.
 
-## GIAI ĐOẠN 3 — KHÁCH DÙNG LẺ (không mua gói)
-Mở rộng target sang khách từng dùng dịch vụ lẻ (chưa mua thẻ) — số lượng lớn trong 6.070 khách. Voucher kéo về dùng tiếp / mua gói lần đầu.
+## GIAI ĐOẠN 3 — KHÁCH DÙNG LẺ (chưa mua gói) — MỜI QUAY LẠI
+**Phân tích (24/06):** 3.079 khách lẻ (đến 2023-2026, CHƯA mua thẻ, có SĐT); 3.009 đã >30 ngày chưa lại; **437 khách đến ≥3 lần = TARGET VÀNG** (đã tin tưởng, quay lại đều). Sở thích: Thư Giãn (gội/massage) 2.519 áp đảo · Khác 1.025 · Chăm Sóc Da 331 · Triệt 35.
+**Chiến lược (anh Nam chốt):** CHỦ YẾU **mời khách quay lại dùng dịch vụ** (KHÔNG ép mua gói). Tin nhẹ nhàng mời quay lại trải nghiệm dịch vụ họ thích (gội/massage), có thể kèm quà/ưu đãi nhỏ chào đón. Ưu tiên 437 khách trung thành trước, rồi mở rộng. 50 khách/ngày.
+**Cần:** template ZNS "mời khách quay lại" RIÊNG cho khách lẻ (KHÔNG có mã thẻ — họ chưa có thẻ; khác template moi_quay_lai/uu_dai_voucher). Module tương tự Chăm Sóc Lại: view khách lẻ + hàng đợi + cron 21h/9h.
 
 ## GIAI ĐOẠN 4 — MINI APP ZALO
 Mini App thương hiệu Hannah (gói OA đã có nền). Khách xem thẻ/lịch sử, đặt lịch, nhận voucher.
