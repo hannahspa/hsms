@@ -96,6 +96,27 @@ async function sendZaloMessage(userId: string, text: string) {
   return data
 }
 
+// Đánh dấu khách đã tương tác (đã xem / quan tâm OA) trong hàng đợi chăm sóc lại.
+// loai='message' (khách nhắn lại OA = đã đọc/quan tâm) | 'follow' (quan tâm OA).
+async function danhDauTuongTac(userId: string, loai: 'message' | 'follow') {
+  if (!userId) return
+  try {
+    const { data: ident } = await supabase.from('marketing_customer_identities')
+      .select('khach_hang_id').eq('platform_user_id', userId).not('khach_hang_id', 'is', null)
+      .order('confidence', { ascending: false }).limit(1).maybeSingle()
+    const khId = ident?.khach_hang_id
+    if (!khId) return
+    const now = new Date().toISOString()
+    if (loai === 'follow') {
+      await supabase.from('cham_soc_hang_doi').update({ da_quan_tam_oa: true, trang_thai: 'da_quan_tam', tuong_tac_luc: now })
+        .eq('khach_hang_id', khId).in('trang_thai', ['da_gui', 'da_xem'])
+    } else {
+      await supabase.from('cham_soc_hang_doi').update({ da_xem: true, trang_thai: 'da_xem', tuong_tac_luc: now })
+        .eq('khach_hang_id', khId).eq('trang_thai', 'da_gui')
+    }
+  } catch (_) { /* best-effort, không chặn webhook */ }
+}
+
 serve(async (req) => {
   // Zalo webhook verification + health check — phải trả 200 OK
   if (req.method === 'GET') return jsonRes({ ok: true, ts: Date.now() })
@@ -129,8 +150,17 @@ serve(async (req) => {
     const events: ZaloMsg[] = Array.isArray(body) ? body : (body.events || [body])
     let saved = 0
     for (const event of events) {
+      // follow OA → quan tâm OA (đo hiệu quả chăm sóc lại)
+      if (event.event_name === 'follow') {
+        await danhDauTuongTac((event as any).follower?.id || event.sender?.id || event.user_id_by_app || '', 'follow')
+        continue
+      }
       const row = normalizeZaloEvent(event)
       if (!row) continue
+      // khách nhắn lại OA → đã xem/tương tác
+      if (row.direction === 'inbound' && row.sender_type === 'customer') {
+        await danhDauTuongTac(row.from_platform_user_id, 'message')
+      }
       try {
         const { data: existing } = await supabase.from('marketing_messages')
           .select('id').eq('platform_message_id', row.platform_message_id).maybeSingle()
