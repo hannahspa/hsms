@@ -24,6 +24,15 @@ import { C, FONT } from '../../constants/colors'
 
 const PTTT_OPTS = HINH_THUC_THU
 
+// Phân dịch vụ → nhóm voucher (khớp hàm SQL voucher_nhom_dich_vu, migration 122)
+function nhomDichVuVoucher(ten) {
+  const t = (ten || '').toLowerCase()
+  if (t.includes('triệt')) return 'triet_long'
+  if (/(gội|massage|cổ vai gáy|body|dưỡng sinh)/.test(t)) return 'thu_gian'
+  if (/(laser|công nghệ|béo|tắm|trắng|peel|collagen|mụn|điện di|tái tạo|da)/.test(t)) return 'cham_soc_da'
+  return null
+}
+
 // ── PosCreateOrder ────────────────────────────────────────────────────────────
 function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   const { user } = useAuth()
@@ -94,6 +103,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   const [giamMode, setGiamMode]   = useState('pct')   // 'pct' | 'vnd'
   const [vatPct, setVatPct]       = useState('')
   const [maKM, setMaKM]           = useState('')
+  const [voucher, setVoucher]     = useState(null)   // {code, nhom, phan_tram, ten_nhom, khach_hang_id}
+  const [voucherMsg, setVoucherMsg] = useState('')   // thông báo lỗi/ok khi áp mã
+  const [voucherChecking, setVoucherChecking] = useState(false)
   const [todayStats, setTodayStats] = useState({ soDon: 0, tongThu: 0 })
   const [loading, setLoading]     = useState(false)
 
@@ -613,9 +625,29 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     } catch (err) { notify('Lỗi tạo KH: ' + err.message) }
   }
 
+  // Áp mã giảm giá (voucher): kiểm tra mã, hệ thống tự biết nhóm + % (nhân viên không cần biết)
+  async function apDungVoucher() {
+    const code = (maKM || '').trim()
+    if (!code) { setVoucher(null); setVoucherMsg(''); return }
+    setVoucherChecking(true); setVoucherMsg('')
+    try {
+      const { data, error } = await supabase.rpc('voucher_kiem_tra', { p_code: code })
+      if (error) throw error
+      if (!data?.hop_le) { setVoucher(null); setVoucherMsg(data?.ly_do || 'Mã không hợp lệ'); return }
+      // Cảnh báo nếu mã gắn cho khách khác với khách đang chọn (không chặn cứng — admin quyết)
+      if (data.khach_hang_id && selectedCustomer?.id && data.khach_hang_id !== selectedCustomer.id) {
+        setVoucherMsg('⚠ Mã này thuộc khách khác — kiểm tra lại')
+      }
+      setVoucher(data)
+    } catch (e) {
+      setVoucher(null); setVoucherMsg('Lỗi kiểm tra mã: ' + (e.message || e))
+    } finally { setVoucherChecking(false) }
+  }
+
   const resetCreateForm = () => {
     setLineItems([])
     setGiamDVPct(''); setGiamDVVnd(''); setVatPct(''); setMaKM('')
+    setVoucher(null); setVoucherMsg('')
     _payId.current = 1
     setPayLines([{ _id: 1, soTien: 0, hinhThuc: 'tien_mat' }])
     setGhiChuDon('')
@@ -951,6 +983,11 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         return  // dừng, chờ KH thanh toán
       }
 
+      // Đánh dấu voucher đã dùng (đơn đã chốt thành công) — ghi đơn + số tiền giảm để đo hiệu quả
+      if (voucher?.code && voucherGiam > 0) {
+        try { await supabase.rpc('voucher_ap_dung', { p_code: voucher.code, p_don_hang_id: oid, p_gia_tri_giam: voucherGiam }) } catch (_) {}
+      }
+
       const comboItems = preparedItems.filter(i => i.loai_item === 'the_moi' && i.meta?.loai === 'combo_lieu_trinh')
       if (comboItems.length > 0) {
         await posService.markCreatedComboCards(oid, comboItems)
@@ -1063,9 +1100,22 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   // Có bán thẻ liệu trình trong đơn → hiện panel Hoa Hồng NV bán (ẩn với đơn dịch vụ/dùng thẻ)
   const coBanThe   = lineItems.some(i => i.loai_item === 'the_moi')
   const tongHang   = lineItems.reduce((s, i) => s + (i.thanh_tien || 0), 0)
-  const giamDVAmt  = giamMode === 'vnd'
+  const giamDVThuCong = giamMode === 'vnd'
     ? Math.min(tongHang, parseVND(giamDVVnd))
     : Math.round(tongHang * (parseFloat(giamDVPct) || 0) / 100)
+  // Voucher: CHỈ giảm % cho dòng DỊCH VỤ thuộc ĐÚNG nhóm của mã + CHƯA có KM khác (giá bán = giá gốc).
+  const voucherGiam = (() => {
+    if (!voucher) return 0
+    return lineItems.reduce((s, i) => {
+      if (i.loai_item !== 'dich_vu') return s
+      const ten = i.dich_vu?.ten || i.ten_dich_vu || ''
+      if (nhomDichVuVoucher(ten) !== voucher.nhom) return s            // sai nhóm → không giảm
+      const giaGoc = (i.dich_vu?.gia_co_ban || 0) * (i.so_luong || 1)
+      if (giaGoc > 0 && (i.thanh_tien || 0) < giaGoc) return s          // đã có KM → không áp 2 KM
+      return s + Math.round((i.thanh_tien || 0) * (voucher.phan_tram || 0) / 100)
+    }, 0)
+  })()
+  const giamDVAmt  = giamDVThuCong + voucherGiam
   const vatAmt     = Math.round((tongHang - giamDVAmt) * (parseFloat(vatPct) || 0) / 100)
   const tongCuoi   = Math.max(0, tongHang - giamDVAmt + vatAmt)
 
@@ -1558,18 +1608,35 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
             {lineItems.length > 0 && (
             <div style={{ padding: '10px 14px' }}>
 
-              {/* Mã KM */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                <input value={maKM} onChange={e => setMaKM(e.target.value)} placeholder="Mã khuyến mại"
-                  style={{ flex: 1, border: '1px solid var(--bord)', borderRadius: 6, padding: '5px 8px', fontSize: 12, background: '#fff', outline: 'none', fontFamily: 'var(--sans)' }} />
-                <button style={{ padding: '5px 12px', border: 'none', borderRadius: 6, background: 'var(--champagne)', color: '#2a1d14', fontWeight: 700, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--sans)' }}>ÁP DỤNG</button>
+              {/* Mã KM / Voucher */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: voucher || voucherMsg ? 4 : 8 }}>
+                <input value={maKM} onChange={e => { setMaKM(e.target.value); setVoucher(null); setVoucherMsg('') }}
+                  onKeyDown={e => { if (e.key === 'Enter') apDungVoucher() }} placeholder="Nhập mã giảm giá của khách"
+                  style={{ flex: 1, border: '1px solid var(--bord)', borderRadius: 6, padding: '5px 8px', fontSize: 12, background: '#fff', outline: 'none', fontFamily: 'var(--sans)', textTransform: 'uppercase' }} />
+                <button onClick={apDungVoucher} disabled={voucherChecking} style={{ padding: '5px 12px', border: 'none', borderRadius: 6, background: 'var(--champagne)', color: '#2a1d14', fontWeight: 700, fontSize: 11, cursor: 'pointer', fontFamily: 'var(--sans)' }}>{voucherChecking ? '...' : 'ÁP DỤNG'}</button>
               </div>
+              {voucher && (
+                <div style={{ marginBottom: 8, padding: '5px 9px', borderRadius: 6, background: `${C.thu}14`, fontSize: 11.5, color: C.thu, fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>✓ {voucher.ten_nhom} −{voucher.phan_tram}%</span>
+                  <span style={{ cursor: 'pointer', color: C.chi }} onClick={() => { setVoucher(null); setMaKM(''); setVoucherMsg('') }}>✕ bỏ</span>
+                </div>
+              )}
+              {voucher && voucherGiam === 0 && (
+                <div style={{ marginBottom: 8, fontSize: 11, color: C.chi }}>Đơn chưa có dịch vụ thuộc nhóm mã (hoặc DV đã có KM) → mã chưa giảm được.</div>
+              )}
+              {voucherMsg && <div style={{ marginBottom: 8, fontSize: 11, color: C.chi, fontWeight: 600 }}>{voucherMsg}</div>}
 
               {/* Tạm tính */}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 5 }}>
                 <span style={{ color: 'var(--ink3)' }}>Tạm tính</span>
                 <span style={{ fontWeight: 700, fontFamily: 'var(--serif)' }}>{formatCurrency(tongHang)}</span>
               </div>
+              {voucherGiam > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 5 }}>
+                  <span style={{ color: C.thu }}>− Voucher ({voucher.phan_tram}% {voucher.ten_nhom?.split(' (')[0]})</span>
+                  <span style={{ fontWeight: 700, color: C.thu, fontFamily: 'var(--serif)' }}>−{formatCurrency(voucherGiam)}</span>
+                </div>
+              )}
 
               {/* Giảm giá — toggle % / VNĐ */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5, fontSize: 12 }}>
