@@ -95,6 +95,17 @@ const MARKETING_ROUTES = [
     metrics: ['462 khách lạnh', 'Voucher mã riêng', 'Đo ai đến nhờ mã'],
   },
   {
+    key: 'khach-le',
+    path: '/admin/marketing/khach-le',
+    title: 'Mời Khách Lẻ Quay Lại',
+    short: 'Khách Lẻ Quay Lại',
+    subtitle: 'Khách từng đến nhưng chưa mua gói, >30 ngày chưa quay lại — mời quay lại dùng dịch vụ họ yêu thích. Ưu tiên khách đến nhiều lần, 50 khách/ngày.',
+    owner: 'Chủ / marketing',
+    status: 'Kéo khách lẻ về',
+    accent: '#16A085',
+    metrics: ['3.079 khách lẻ', 'Ưu tiên trung thành', 'Mời quay lại'],
+  },
+  {
     key: 'settings',
     path: '/admin/marketing/cau-hinh-kenh',
     title: 'Cấu Hình Kênh',
@@ -2639,6 +2650,127 @@ function WinbackPage() {
   )
 }
 
+// ── Mời Khách Lẻ Quay Lại (GĐ3) ──
+function KhachLePage() {
+  const [stats, setStats] = useState(null)
+  const [tab, setTab] = useState('du_kien')
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [nonce, setNonce] = useState(0)
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      setLoading(true)
+      try {
+        const s = await supabase.functions.invoke('moi-khach-le', { body: { mode: 'stats' } })
+        if (alive) setStats(s.data || null)
+        if (tab === 'du_kien') {
+          const { data: chot } = await supabase.from('le_hang_doi').select('*').eq('trang_thai', 'da_chot').order('so_don', { ascending: false })
+          if (chot && chot.length) { if (alive) setRows(chot) }
+          else {
+            const p = await supabase.functions.invoke('moi-khach-le', { body: { mode: 'preview' } })
+            if (alive) setRows((p.data?.danh_sach || []).map(r => ({ ...r, _preview: true })))
+          }
+        } else {
+          const { data } = await supabase.from('le_hang_doi').select('*').neq('trang_thai', 'da_chot').order('gui_luc', { ascending: false }).limit(500)
+          if (alive) setRows(data || [])
+        }
+      } finally { if (alive) setLoading(false) }
+    })()
+    return () => { alive = false }
+  }, [tab, nonce])
+
+  async function chot() {
+    setBusy(true)
+    try {
+      const r = await supabase.functions.invoke('moi-khach-le', { body: { mode: 'chot' } })
+      if (r.data?.ok) notify(`Đã chốt ${r.data.da_chot} khách lẻ cho ngày mai`, 'success'); else notify('Chốt lỗi', 'error')
+      setNonce(n => n + 1)
+    } catch (e) { notify(String(e.message || e), 'error') } finally { setBusy(false) }
+  }
+  async function gui() {
+    if (!window.confirm('Gửi tin mời quay lại cho các khách đã chốt ngay bây giờ?')) return
+    setBusy(true)
+    try {
+      const r = await supabase.functions.invoke('moi-khach-le', { body: { mode: 'gui' } })
+      if (r.data?.ok && r.data.da_gui != null) notify(`Đã gửi ${r.data.da_gui}/${r.data.tong_chot}${r.data.loi ? `, ${r.data.loi} lỗi` : ''}`, 'success')
+      else notify(r.data?.skipped || 'Chưa gửi được', 'error')
+      setTab('da_gui'); setNonce(n => n + 1)
+    } catch (e) { notify(String(e.message || e), 'error') } finally { setBusy(false) }
+  }
+
+  const NHOM = { cham_soc_da: { t: 'Chăm Sóc Da', c: '#8E44AD' }, thu_gian: { t: 'Thư Giãn', c: '#2D7A4F' }, triet_long: { t: 'Triệt Lông', c: '#C0392B' } }
+  const TT = { da_gui: { t: 'Đã gửi', c: '#1A5276' }, gui_loi: { t: '⚠ Lỗi', c: C.chi }, da_den: { t: '✓ Đã đến', c: C.thu } }
+  const card = (label, val, sub, color) => (
+    <div style={{ flex: 1, minWidth: 170, background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: '14px 16px' }}>
+      <div style={{ fontSize: 12, color: C.textSub, fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 900, color: color || C.text, fontFamily: FONT.serif, marginTop: 2 }}>{val}</div>
+      {sub && <div style={{ fontSize: 11.5, color: C.textMute, marginTop: 2 }}>{sub}</div>}
+    </div>
+  )
+
+  return (
+    <Shell>
+      <Header route={MARKETING_ROUTES.find(r => r.key === 'khach-le')} />
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+        {card('Còn lại chưa mời', stats?.con_lai_chua_xu_ly ?? '—', '3.079 khách lẻ tổng', '#16A085')}
+        {card('Đã gửi mời', stats?.tong_da_xu_ly ?? '—', `hôm nay ${stats?.hom_nay_gui ?? 0}`, '#1A5276')}
+        {card('Khách đã quay lại', stats?.da_den ?? 0, 'đo hiệu quả', C.thu)}
+        {card('Lỗi gửi', stats?.loi ?? 0, '', stats?.loi ? C.chi : C.thu)}
+      </div>
+      <div className="mkt-soft" style={{ border: `1px solid ${C.border}`, background: 'rgba(255,255,255,.6)', borderRadius: 10, padding: '10px 14px', margin: '8px 0 14px', fontSize: 12.5, color: C.textSub, lineHeight: 1.5 }}>
+        💚 Mỗi tối <b>21:00</b> chốt 50 khách lẻ (ưu tiên khách đến <b>nhiều lần</b> — đã tin tưởng), <b>9h sáng</b> gửi ZNS mời quay lại dùng dịch vụ họ yêu thích. Khách quay lại → tự đánh dấu đã đến.
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[['du_kien', 'Dự kiến / Đã chốt'], ['da_gui', 'Đã gửi']].map(([k, lb]) => (
+            <button key={k} onClick={() => setTab(k)} style={{ padding: '8px 16px', borderRadius: 99, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FONT.sans, border: `1px solid ${tab === k ? C.primary : C.border}`, background: tab === k ? C.primary : '#fff', color: tab === k ? '#fff' : C.textSub }}>{lb}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={chot} disabled={busy} style={{ padding: '9px 16px', borderRadius: 99, fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: FONT.sans, border: `1px solid ${C.gold}`, background: '#fff', color: '#9a7a2e' }}>{busy ? '…' : '📋 Chốt 50 ngày mai'}</button>
+          <button onClick={gui} disabled={busy} style={{ padding: '9px 16px', borderRadius: 99, fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: FONT.sans, border: 'none', background: '#16A085', color: '#fff' }}>{busy ? 'Đang gửi…' : '💌 Gửi mời ngay'}</button>
+        </div>
+      </div>
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+            <thead><tr style={{ background: C.bg }}>
+              {['Khách hàng', 'Sở thích', 'Số lần đến', 'Lần cuối', 'Trạng thái'].map((h, i) => (
+                <th key={i} style={{ textAlign: i >= 1 && i <= 3 ? 'center' : 'left', padding: '11px 14px', fontSize: 12, color: C.textSub, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {loading ? <tr><td colSpan={5} style={{ padding: 36, textAlign: 'center', color: C.textSub }}>Đang tải…</td></tr>
+                : rows.length === 0 ? <tr><td colSpan={5} style={{ padding: 36, textAlign: 'center', color: C.textSub }}>{tab === 'du_kien' ? 'Chưa chốt — bấm "Chốt 50 ngày mai".' : 'Chưa gửi mời nào.'}</td></tr>
+                : rows.map((r) => {
+                  const ng = NHOM[r.nhom_so_thich] || { t: r.nhom_so_thich, c: C.textMute }
+                  const tt = TT[r.trang_thai] || { t: r._preview ? 'Dự kiến' : (r.trang_thai || '—'), c: r._preview ? C.gold : C.textMute }
+                  return (
+                    <tr key={r.id || r.khach_hang_id} style={{ borderTop: `1px solid ${C.borderLight || C.border}` }}>
+                      <td style={{ padding: '10px 14px' }}>
+                        <div style={{ fontFamily: FONT.serif, fontWeight: 600, fontSize: 14, color: C.text }}>{r.ho_ten || 'Khách'}</div>
+                        <div style={{ fontSize: 12, color: C.textSub }}>{r.so_dien_thoai || '—'}</div>
+                      </td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 99, background: `${ng.c}1A`, color: ng.c }}>{ng.t}</span>
+                      </td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: r.so_don >= 5 ? C.thu : C.textSub }}>{r.so_don} lần</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 12.5, color: C.textSub }}>{r.nam_lan_cuoi} · {r.so_ngay_vang}n</td>
+                      <td style={{ padding: '10px 14px' }}><span style={{ fontSize: 12, fontWeight: 700, color: tt.c }}>{tt.t}</span></td>
+                    </tr>
+                  )
+                })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </Shell>
+  )
+}
+
 export default function MarketingModulePage() {
   const path = window.location.pathname
   // URL cũ đã gỡ khỏi menu → điều hướng về đúng chỗ
@@ -2656,6 +2788,7 @@ export default function MarketingModulePage() {
   if (route.key === 'aftercare') return <AfterCarePage />
   if (route.key === 'cham-soc-lai') return <ChamSocLaiPage />
   if (route.key === 'winback') return <WinbackPage />
+  if (route.key === 'khach-le') return <KhachLePage />
   if (route.key === 'fanpage') return <FanpageContentPage route={route} />
   if (route.key === 'training') return <TrainingPage />
   if (route.key === 'settings') return <ChannelSettingsPage route={route} />
