@@ -102,10 +102,11 @@ serve(async (req) => {
       })
     }
 
-    // ── CHỐT (cron 21:00): quét + lên lịch danh sách cho NGÀY MAI ──
+    // ── CHỐT (cron 21:00): quét + lên lịch danh sách cho NGÀY MAI (off=0 = chốt HÔM NAY) ──
     if (mode === 'chot') {
-      const { A, B } = await layHaiNhom(1)
-      const mai = ngayMaiVN()
+      const off = body.off != null ? Number(body.off) : 1
+      const { A, B } = await layHaiNhom(off)
+      const mai = off === 0 ? todayVN() : ngayMaiVN()
       let daChot = 0, boQua = 0
       for (const card of [...A, ...B]) {
         const ins = await supabase.from('cham_soc_hang_doi').insert({
@@ -135,7 +136,8 @@ serve(async (req) => {
         try {
           const z = await supabase.functions.invoke('zalo-zns', {
             body: { template_key: 'moi_quay_lai', phone: r.so_dien_thoai, params: {
-              customer_name: r.ho_ten || 'Quý khách', service: r.ten_dich_vu || 'liệu trình', remain_time: String(r.so_buoi_con_lai ?? ''),
+              customer_name: r.ho_ten || 'Quý khách', service: r.ten_dich_vu || 'liệu trình',
+              remain_time: String(r.so_buoi_con_lai ?? ''), treatment_code: r.ma_the || '—',
             } },
           })
           if (z.data?.ok) { sent = true; msgId = z.data.msg_id || null } else znsErr = z.data?.error || z.error
