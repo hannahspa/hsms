@@ -2334,9 +2334,14 @@ function ChamSocLaiPage() {
         const s = await supabase.functions.invoke('cham-soc-lai', { body: { mode: 'stats' } })
         if (alive) setStats(s.data || null)
         if (tab === 'ngay_mai') {
-          const p = await supabase.functions.invoke('cham-soc-lai', { body: { mode: 'preview' } })
-          const d = p.data || {}
-          if (alive) setRows([...(d.dung_nhip || []), ...(d.ton_dong || [])])
+          const mai = ngayMaiISO()
+          const { data: chot } = await supabase.from('cham_soc_hang_doi').select('*').eq('trang_thai', 'da_chot').eq('ngay_du_kien', mai).order('uu_tien', { ascending: true })
+          if (chot && chot.length) { if (alive) setRows(chot) }
+          else {
+            const p = await supabase.functions.invoke('cham-soc-lai', { body: { mode: 'preview' } })
+            const d = p.data || {}
+            if (alive) setRows([...(d.dung_nhip || []), ...(d.ton_dong || [])])
+          }
         } else {
           const { data } = await supabase.from('cham_soc_hang_doi').select('*').eq('ngay_du_kien', todayISO()).order('nhom', { ascending: true }).order('so_ngay_vang', { ascending: true })
           if (alive) setRows(data || [])
@@ -2346,14 +2351,25 @@ function ChamSocLaiPage() {
     return () => { alive = false }
   }, [tab, nonce])
 
+  // Chốt danh sách ngày mai ngay (thường cron 21:00 tự chạy; nút cho admin chủ động)
+  async function chotNgayMai() {
+    setBusy(true)
+    try {
+      const r = await supabase.functions.invoke('cham-soc-lai', { body: { mode: 'chot' } })
+      if (r.data?.ok) notify(`Đã chốt ${r.data.da_chot} khách cho ngày mai (đúng nhịp ${r.data.dung_nhip} + tồn đọng ${r.data.ton_dong})`, 'success')
+      else notify('Chốt lỗi', 'error')
+      setTab('ngay_mai'); setNonce(n => n + 1)
+    } catch (e) { notify(String(e.message || e), 'error') } finally { setBusy(false) }
+  }
+
   // Gửi đợt hôm nay ngay (thường để cron 9h tự chạy; nút này cho admin chủ động/test)
   async function guiNgay() {
-    if (!window.confirm('Gửi ZNS đợt hôm nay ngay bây giờ?\n(Nhóm đúng nhịp + 40 khách tồn đọng — bình thường hệ thống tự gửi 9h sáng.)')) return
+    if (!window.confirm('Gửi ZNS cho các khách ĐÃ CHỐT của hôm nay ngay bây giờ?\n(Bình thường hệ thống tự gửi 9h sáng.)')) return
     setBusy(true)
     try {
       const r = await supabase.functions.invoke('cham-soc-lai', { body: { mode: 'gui' } })
-      if (r.data?.ok) notify(`Đã gửi ${r.data.da_gui} khách (đúng nhịp ${r.data.dung_nhip} + tồn đọng ${r.data.ton_dong})${r.data.loi ? `, ${r.data.loi} lỗi` : ''}`, 'success')
-      else notify(r.data?.skipped || 'Gửi lỗi', 'error')
+      if (r.data?.ok && r.data.da_gui != null) notify(`Đã gửi ${r.data.da_gui}/${r.data.tong_chot} khách${r.data.loi ? `, ${r.data.loi} lỗi` : ''}`, 'success')
+      else notify(r.data?.skipped || 'Chưa có khách đã chốt để gửi', 'error')
       setTab('hom_nay'); setNonce(n => n + 1)
     } catch (e) { notify(String(e.message || e), 'error') } finally { setBusy(false) }
   }
@@ -2406,7 +2422,7 @@ function ChamSocLaiPage() {
       </div>
 
       <div className="mkt-soft" style={{ border: `1px solid ${C.border}`, background: 'rgba(255,255,255,.6)', borderRadius: 10, padding: '10px 14px', margin: '8px 0 14px', fontSize: 12.5, color: C.textSub, lineHeight: 1.5 }}>
-        🤖 Tự động <b>9h sáng</b> mỗi ngày: gửi ZNS mời quay lại cho <b>nhóm Đúng Nhịp</b> (khách đến dùng thẻ đúng ~10 ngày trước — vd hôm nay nhắc khách của 10 ngày trước) + <b>40 khách Tồn Đọng</b> (data cũ, ưu tiên ấm). Khách dùng buổi mới → bộ đếm reset, tự ngừng nhắc.
+        🤖 Khép kín tự động: <b>21:00 mỗi tối</b> hệ thống quét + chốt danh sách cho ngày mai (xem tab "Ngày mai"), <b>9h sáng</b> tự gửi ZNS. Gồm <b>Đúng Nhịp</b> (khách dùng thẻ đúng 10 ngày trước) + <b>40 Tồn Đọng</b> (khách cũ vắng ≤90 ngày, ưu tiên ấm, lùi dần). Khách dùng buổi mới → tự ngừng nhắc.
       </div>
 
       {/* Tabs + nút gửi ngay */}
@@ -2419,10 +2435,16 @@ function ChamSocLaiPage() {
             }}>{lb}</button>
           ))}
         </div>
-        <button onClick={guiNgay} disabled={busy} style={{
-          padding: '9px 18px', borderRadius: 99, fontSize: 13, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', fontFamily: FONT.sans,
-          border: 'none', background: C.gold, color: '#fff',
-        }}>{busy ? 'Đang gửi…' : '📨 Gửi đợt hôm nay ngay'}</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={chotNgayMai} disabled={busy} style={{
+            padding: '9px 16px', borderRadius: 99, fontSize: 13, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', fontFamily: FONT.sans,
+            border: `1px solid ${C.gold}`, background: '#fff', color: '#9a7a2e',
+          }}>{busy ? '…' : '📋 Chốt ngày mai'}</button>
+          <button onClick={guiNgay} disabled={busy} style={{
+            padding: '9px 16px', borderRadius: 99, fontSize: 13, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', fontFamily: FONT.sans,
+            border: 'none', background: C.gold, color: '#fff',
+          }}>{busy ? 'Đang gửi…' : '📨 Gửi hôm nay ngay'}</button>
+        </div>
       </div>
 
       {/* Danh sách */}

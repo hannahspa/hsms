@@ -23,6 +23,11 @@ const B_MAX_VANG = 90         // tồn đọng lùi dần: vắng 11–90 ngày 
 function todayVN() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' })).toISOString().slice(0, 10)
 }
+function ngayMaiVN() {
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
 
 // GOM theo KHÁCH: 1 khách = 1 dòng (giữ thẻ đầu tiên theo thứ tự đã sort = đại diện)
 function gomTheoKhach(rows: any[]) {
@@ -71,9 +76,19 @@ serve(async (req) => {
 
     // ── STATS ──
     if (mode === 'stats') {
-      const today = todayVN()
+      const today = todayVN(), mai = ngayMaiVN()
       const { data: homNay } = await supabase.from('cham_soc_hang_doi').select('nhom, trang_thai, da_xem, da_quan_tam_oa').eq('ngay_du_kien', today)
-      const mai = await layHaiNhom(1)
+      // Ngày mai: ưu tiên đọc danh sách ĐÃ CHỐT (21:00); nếu chưa chốt thì dự báo
+      const { data: maiRows } = await supabase.from('cham_soc_hang_doi').select('nhom').eq('trang_thai', 'da_chot').eq('ngay_du_kien', mai)
+      let nmDN: number, nmTD: number, daChot: boolean
+      if ((maiRows || []).length > 0) {
+        daChot = true
+        nmDN = maiRows!.filter(r => r.nhom === 'dung_nhip').length
+        nmTD = maiRows!.filter(r => r.nhom === 'ton_dong').length
+      } else {
+        daChot = false
+        const p = await layHaiNhom(1); nmDN = p.A.length; nmTD = p.B.length
+      }
       const dem = (arr: any[], nhom: string) => arr.filter(r => r.nhom === nhom).length
       const rowsHN = homNay || []
       return json({ ok: true,
@@ -83,52 +98,58 @@ serve(async (req) => {
           da_xem: rowsHN.filter(r => r.da_xem).length, quan_tam_oa: rowsHN.filter(r => r.da_quan_tam_oa).length,
           loi: rowsHN.filter(r => r.trang_thai === 'gui_loi').length,
         },
-        ngay_mai: { dung_nhip: mai.A.length, ton_dong: mai.B.length, tong: mai.A.length + mai.B.length },
+        ngay_mai: { dung_nhip: nmDN, ton_dong: nmTD, tong: nmDN + nmTD, da_chot: daChot },
       })
     }
 
-    // ── GỬI (cron 9h): nhóm A (hết) + nhóm B (40) ──
-    if (mode === 'gui') {
-      const { data: cfg } = await supabase.from('marketing_ai_config').select('value').eq('key', 'zns_moi_quay_lai').maybeSingle()
-      if (!cfg?.value && body.force !== true) return json({ ok: true, skipped: 'zns_moi_quay_lai chưa cấu hình' })
-      const today = todayVN()
-      const { A, B } = await layHaiNhom(0)
-      const all = [...A, ...B]
-      let daGui = 0, loi = 0, boQua = 0
-      const results: any[] = []
-      for (const card of all) {
-        // Ghi nhật ký trước (1 thẻ/ngày) — trùng (đã ghi hôm nay / đã bỏ qua) thì skip
+    // ── CHỐT (cron 21:00): quét + lên lịch danh sách cho NGÀY MAI ──
+    if (mode === 'chot') {
+      const { A, B } = await layHaiNhom(1)
+      const mai = ngayMaiVN()
+      let daChot = 0, boQua = 0
+      for (const card of [...A, ...B]) {
         const ins = await supabase.from('cham_soc_hang_doi').insert({
           the_dai_dien_id: card.the_id, khach_hang_id: card.khach_hang_id, ma_the: card.ma_the,
           ho_ten: card.ho_ten, so_dien_thoai: card.so_dien_thoai, ten_dich_vu: card.ten_dich_vu,
           so_buoi_con_lai: card.so_buoi_con_lai, so_the: 1, so_ngay_vang: card.so_ngay_vang,
-          nhom: card.nhom, uu_tien: card.so_ngay_vang, ngay_du_kien: today, trang_thai: 'da_chot',
+          nhom: card.nhom, uu_tien: card.so_ngay_vang, ngay_du_kien: mai, trang_thai: 'da_chot', chot_luc: new Date().toISOString(),
         }).select('id').single()
-        if (ins.error) { boQua++; continue }   // unique → đã có dòng hôm nay
-        const noiDung = `ZNS chăm sóc lại: ${card.ten_dich_vu} còn ${card.so_buoi_con_lai} buổi (${card.nhom === 'dung_nhip' ? 'đúng nhịp' : 'tồn đọng'})`
+        if (ins.error) boQua++; else daChot++   // unique (the,ngày) → đã chốt rồi
+      }
+      return json({ ok: true, ngay_du_kien: mai, da_chot: daChot, bo_qua: boQua, dung_nhip: A.length, ton_dong: B.length })
+    }
+
+    // ── GỬI (cron 9h): gửi các khách ĐÃ CHỐT cho hôm nay (gửi bù cả ngày trước nếu sót) ──
+    if (mode === 'gui') {
+      const { data: cfg } = await supabase.from('marketing_ai_config').select('value').eq('key', 'zns_moi_quay_lai').maybeSingle()
+      if (!cfg?.value && body.force !== true) return json({ ok: true, skipped: 'zns_moi_quay_lai chưa cấu hình' })
+      const today = todayVN()
+      const { data: rows } = await supabase.from('cham_soc_hang_doi')
+        .select('*').eq('trang_thai', 'da_chot').lte('ngay_du_kien', today)
+        .order('uu_tien', { ascending: true }).limit(200)
+      let daGui = 0, loi = 0
+      const results: any[] = []
+      for (const r of (rows || [])) {
+        const noiDung = `ZNS chăm sóc lại: ${r.ten_dich_vu} còn ${r.so_buoi_con_lai} buổi (${r.nhom === 'dung_nhip' ? 'đúng nhịp' : 'tồn đọng'})`
         let sent = false, msgId: string | null = null, znsErr: any = null
         try {
           const z = await supabase.functions.invoke('zalo-zns', {
-            body: { template_key: 'moi_quay_lai', phone: card.so_dien_thoai, params: {
-              customer_name: card.ho_ten || 'Quý khách', service: card.ten_dich_vu || 'liệu trình',
-              remain_time: String(card.so_buoi_con_lai ?? ''),
+            body: { template_key: 'moi_quay_lai', phone: r.so_dien_thoai, params: {
+              customer_name: r.ho_ten || 'Quý khách', service: r.ten_dich_vu || 'liệu trình', remain_time: String(r.so_buoi_con_lai ?? ''),
             } },
           })
           if (z.data?.ok) { sent = true; msgId = z.data.msg_id || null } else znsErr = z.data?.error || z.error
         } catch (e) { znsErr = String(e) }
-
         if (sent) {
-          await supabase.from('cham_soc_hang_doi').update({
-            trang_thai: 'da_gui', gui_luc: new Date().toISOString(), msg_id: msgId, ket_qua_gui: 'da_gui', noi_dung: noiDung,
-          }).eq('id', ins.data.id)
-          await supabase.rpc('ghi_nhan_nhac_lieu_trinh', { p_the_id: card.the_id, p_kenh: 'zns', p_noi_dung: noiDung, p_ket_qua: 'da_gui' }).then(() => {}, () => {})
-          daGui++; results.push({ ho_ten: card.ho_ten, ma_the: card.ma_the, nhom: card.nhom, ket_qua: 'da_gui' })
+          await supabase.from('cham_soc_hang_doi').update({ trang_thai: 'da_gui', gui_luc: new Date().toISOString(), msg_id: msgId, ket_qua_gui: 'da_gui', noi_dung: noiDung }).eq('id', r.id)
+          await supabase.rpc('ghi_nhan_nhac_lieu_trinh', { p_the_id: r.the_dai_dien_id, p_kenh: 'zns', p_noi_dung: noiDung, p_ket_qua: 'da_gui' }).then(() => {}, () => {})
+          daGui++; results.push({ ho_ten: r.ho_ten, ma_the: r.ma_the, nhom: r.nhom, ket_qua: 'da_gui' })
         } else {
-          await supabase.from('cham_soc_hang_doi').update({ trang_thai: 'gui_loi', ket_qua_gui: String(znsErr).slice(0, 200) }).eq('id', ins.data.id)
-          loi++; results.push({ ho_ten: card.ho_ten, ma_the: card.ma_the, nhom: card.nhom, ket_qua: 'gui_loi', ly_do: znsErr })
+          await supabase.from('cham_soc_hang_doi').update({ trang_thai: 'gui_loi', ket_qua_gui: String(znsErr).slice(0, 200) }).eq('id', r.id)
+          loi++; results.push({ ho_ten: r.ho_ten, ma_the: r.ma_the, ket_qua: 'gui_loi', ly_do: znsErr })
         }
       }
-      return json({ ok: true, ngay: today, dung_nhip: A.length, ton_dong: B.length, da_gui: daGui, loi, bo_qua: boQua, results })
+      return json({ ok: true, ngay: today, da_gui: daGui, loi, tong_chot: (rows || []).length, results })
     }
 
     return json({ ok: false, error: 'mode không hợp lệ' }, 400)
