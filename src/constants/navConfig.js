@@ -63,6 +63,7 @@ export const ADMIN_NAV = [
     { id: 'mkt-remarketing', label: 'Khách & Remarketing', path: '/admin/marketing/khach-remarketing' },
     { id: 'mkt-aftercare', label: 'Chăm Sóc Sau Dịch Vụ', path: '/admin/marketing/cham-soc-sau-dich-vu' },
     { id: 'mkt-chamsoclai', label: 'Chăm Sóc Lại (Thẻ LT)', path: '/admin/marketing/cham-soc-lai' },
+    { id: 'mkt-winback', label: 'Win-back Khách Lạnh', path: '/admin/marketing/win-back' },
     { id: 'mkt-fanpage', label: 'Fanpage & Chiến Dịch', path: '/admin/marketing/fanpage-noi-dung' },
     { id: 'mkt-training', label: 'Huấn Luyện AI', path: '/admin/marketing/huan-luyen' },
     { id: 'mkt-cauhinh', label: 'Cấu Hình Kênh', path: '/admin/marketing/cau-hinh-kenh' },
