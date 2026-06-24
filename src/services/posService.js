@@ -977,12 +977,13 @@ export const posService = {
   },
 
   async getCustomerCardsHistory(khachHangId) {
+    // Lịch sử = thẻ KHÔNG còn dùng được: hết buổi (con<=0) HOẶC trạng thái huỷ/khác.
+    // Thẻ het_han CÒN BUỔI đã lên danh sách chính (getCustomerCards) nên loại khỏi đây để không trùng.
     const { data, error } = await supabase
       .from('the_lieu_trinh')
       .select(TREATMENT_CARD_SELECT)
       .eq('khach_hang_id', khachHangId)
-      .neq('trang_thai', 'active')
-      .order('so_buoi_con_lai', { ascending: false })   // thẻ hết hạn CÒN BUỔI lên đầu (khách còn quyền lợi)
+      .or('so_buoi_con_lai.lte.0,and(trang_thai.neq.active,trang_thai.neq.het_han)')
       .order('ngay_mua', { ascending: false })
       .limit(100)
     if (error) throw error
@@ -990,11 +991,14 @@ export const posService = {
   },
 
   async getCustomerCards(khachHangId) {
+    // Lấy thẻ CÒN BUỔI (active + het_han còn buổi) — khách vẫn còn quyền lợi.
+    // Thẻ hết hạn còn buổi hiện màu xám + nút Gia hạn; chỉ thẻ hết buổi (con=0) vào lịch sử.
     const { data, error } = await supabase
       .from('the_lieu_trinh')
       .select(TREATMENT_CARD_SELECT)
       .eq('khach_hang_id', khachHangId)
-      .eq('trang_thai', 'active')
+      .in('trang_thai', ['active', 'het_han'])
+      .gt('so_buoi_con_lai', 0)
       .order('ngay_het_han', { ascending: true })
     if (error) throw error
     return data || []

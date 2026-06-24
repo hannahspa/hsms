@@ -1,4 +1,5 @@
-import { formatCurrency } from '../../lib/utils'
+import { formatCurrency, todayISO } from '../../lib/utils'
+import { addDurationISO } from '../../lib/dateMath'
 import { getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
 
 export function parseVND(value) {
@@ -99,7 +100,7 @@ export function Toggle({ on, onChange, label }) {
   )
 }
 
-export function LieuTrinhCard({ card, onUse }) {
+export function LieuTrinhCard({ card, onUse, onGiaHan }) {
   const pct = card.so_buoi_tong > 0 ? (card.so_buoi_da_dung / card.so_buoi_tong) * 100 : 0
   const displayValue = getTreatmentCardDisplayValue(card)
   const originalValue = Number(card.gia_tri_the_goc ?? card.gia_tri_the ?? 0)
@@ -108,6 +109,33 @@ export function LieuTrinhCard({ card, onUse }) {
   const du30pct = paidValue >= Math.round(originalValue * 0.30)
   const coNo = conNo > 0
 
+  // ── Thời hạn thẻ: bảo hành 3 năm → 3 năm; thẻ khác → mặc định 1 năm ──
+  const namHan = (() => {
+    const so = Number(card.combo?.thoi_han_so) || 0
+    if (so > 0) return so
+    const t = (card.ten_dich_vu || '').toLowerCase()
+    return /3\s*n[ăa]m|b[ảa]o h[àa]nh\s*3/.test(t) ? 3 : 1
+  })()
+  const hanThuc = card.ngay_het_han
+    || (card.ngay_mua ? addDurationISO(card.ngay_mua, namHan, 'year') : null)
+  const khongGH = card.is_khong_gioi_han || !hanThuc
+  const hetHan = !khongGH && hanThuc < todayISO()
+  const hetBuoi = (card.so_buoi_con_lai ?? (card.so_buoi_tong - card.so_buoi_da_dung)) <= 0
+  const hanText = khongGH
+    ? 'HH: Không giới hạn'
+    : `HH: ${String(hanThuc).split('-').reverse().join('/')}${hetHan ? ' (đã hết hạn)' : ''}`
+
+  // ── Màu nền phân loại trạng thái (giống MySpa) ──
+  //   Hết hạn → xám trầm · Có nợ → đỏ · Hoạt động → champagne
+  const bg = hetHan
+    ? 'linear-gradient(135deg,#6E6E6E 0%,#565656 55%,#3F3F3F 100%)'
+    : coNo
+      ? 'linear-gradient(135deg,#8e2218 0%,#C0392B 55%,#922b21 100%)'
+      : 'linear-gradient(135deg,#C9A96E 0%,#A0714F 55%,#7D5A3C 100%)'
+  const shadow = hetHan
+    ? '0 2px 8px rgba(80,80,80,.3)'
+    : coNo ? '0 2px 8px rgba(192,57,43,.35)' : '0 2px 8px rgba(160,113,79,.25)'
+
   return (
     <div style={{
       minWidth: 160,
@@ -115,19 +143,32 @@ export function LieuTrinhCard({ card, onUse }) {
       flexShrink: 0,
       borderRadius: 8,
       padding: '7px 10px',
-      background: coNo
-        ? 'linear-gradient(135deg,#8e2218 0%,#C0392B 55%,#922b21 100%)'
-        : 'linear-gradient(135deg,#C9A96E 0%,#A0714F 55%,#7D5A3C 100%)',
+      background: bg,
       color: '#fff',
-      boxShadow: coNo
-        ? '0 2px 8px rgba(192,57,43,.35)'
-        : '0 2px 8px rgba(160,113,79,.25)',
+      boxShadow: shadow,
+      opacity: hetHan ? .92 : 1,
     }}>
+      {(hetHan || hetBuoi) && (
+        <div style={{
+          display: 'inline-block', fontSize: 8, fontWeight: 800, letterSpacing: '.04em',
+          background: hetHan ? 'rgba(0,0,0,.28)' : 'rgba(255,255,255,.22)',
+          border: '1px solid rgba(255,255,255,.35)', borderRadius: 4,
+          padding: '1px 5px', marginBottom: 3,
+        }}>
+          {hetHan ? '⏳ HẾT HẠN' : '✓ HẾT BUỔI'}
+        </div>
+      )}
       <div style={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1.3, marginBottom: 1 }}>
         {card.ten_dich_vu}
       </div>
-      <div style={{ fontSize: 9, opacity: .8, marginBottom: coNo ? 3 : 5 }}>
+      <div style={{ fontSize: 9, opacity: .8, marginBottom: 2 }}>
         {card.so_buoi_da_dung}/{card.so_buoi_tong} buổi · {formatCurrency(displayValue || 0)}
+      </div>
+      <div style={{
+        fontSize: 9, fontWeight: hetHan ? 800 : 600, marginBottom: coNo ? 3 : 5,
+        color: hetHan ? '#FFD9D4' : undefined, opacity: hetHan ? 1 : .85,
+      }}>
+        ⏳ {hanText}
       </div>
       {coNo && (
         <div style={{
@@ -146,8 +187,16 @@ export function LieuTrinhCard({ card, onUse }) {
       <div style={{ height: 2, background: 'rgba(255,255,255,.25)', borderRadius: 2, marginBottom: 5 }}>
         <div style={{ height: '100%', borderRadius: 2, background: '#fff', width: `${pct}%` }} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 8.5, opacity: .7 }}>{card.ma_the || '-'}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 8.5, opacity: .7, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.ma_the || '-'}</span>
+        {onGiaHan && (hetHan || !khongGH) && (
+          <button onClick={() => onGiaHan(card)} style={{
+            background: 'rgba(255,255,255,.18)',
+            border: '1px solid rgba(255,255,255,.4)',
+            borderRadius: 5, padding: '2px 7px', color: '#fff', cursor: 'pointer',
+            fontSize: 10, fontWeight: 700, fontFamily: 'var(--sans)', flexShrink: 0,
+          }}>Gia hạn</button>
+        )}
         <button onClick={() => onUse(card)} style={{
           background: 'rgba(255,255,255,.25)',
           border: '1px solid rgba(255,255,255,.4)',
@@ -158,6 +207,7 @@ export function LieuTrinhCard({ card, onUse }) {
           fontSize: 10,
           fontWeight: 700,
           fontFamily: 'var(--sans)',
+          flexShrink: 0,
         }}>Dùng</button>
       </div>
     </div>

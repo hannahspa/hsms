@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { posService } from '../../services/posService'
-import { formatCurrency, todayISO } from '../../lib/utils'
+import { supabase } from '../../lib/supabase'
+import { formatCurrency, todayISO, kmBadge } from '../../lib/utils'
 import { notify } from '../../components/ui/notify'
 import { addDurationISO } from '../../lib/dateMath'
 import { calcServiceCommission, getCommissionPercent, getMyspaCommissionRule, serviceSalePrice } from '../../lib/serviceCommission'
@@ -35,6 +36,7 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
   const [products, setProducts] = useState([])
   const [cards, setCards] = useState([])
   const [combos, setCombos] = useState([])
+  const [kmByCombo, setKmByCombo] = useState({})   // combo_id → km active (giảm 70% gói bảo hành...)
   const [showOtherMenu, setShowOtherMenu] = useState(false)
   const [otherMenuPos, setOtherMenuPos] = useState({ top: 0, left: 0, width: 220 })
   const otherMenuBtnRef = useRef(null)
@@ -58,6 +60,17 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
 
   const loadCombos = useCallback(async () => {
     try { setCombos(await posService.getTreatmentCombos()) } catch (_) { setCombos([]) }
+    try {
+      const today = todayISO()
+      const { data } = await supabase.from('khuyen_mai').select('*')
+        .eq('trang_thai', 'active').not('combo_id', 'is', null)
+        .lte('ngay_bat_dau', today).gte('ngay_ket_thuc', today)
+      const map = {}
+      ;(data || []).forEach(km => {
+        if (!map[km.combo_id] || (km.phan_tram_giam ?? 0) > (map[km.combo_id].phan_tram_giam ?? 0)) map[km.combo_id] = km
+      })
+      setKmByCombo(map)
+    } catch (_) { setKmByCombo({}) }
   }, [])
 
   useEffect(() => { loadServices() }, [loadServices])
@@ -167,8 +180,14 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
     }
     const primary = combo.dich_vu?.[0] || {}
     const soLan = primary.khong_gioi_han ? 9999 : (primary.so_lan || 1)
-    const gia = combo.gia_ban || 0
-    const commission = combo.tien_hoa_hong || Math.round(gia * (combo.ti_le_commission || 0) / 100)
+    const giaGoc = combo.gia_ban || 0
+    // CTKM combo (vd giảm 70% gói bảo hành 1 năm): áp giá KM, giữ giá gốc tham khảo
+    const km = kmByCombo[combo.id]
+    const gia = km ? (km.gia_km || giaGoc) : giaGoc
+    const kmRefPct = km ? Number(km.phan_tram_giam || 0) : 0
+    const commission = km
+      ? Math.round(gia * (combo.ti_le_commission || 0) / 100)   // hoa hồng theo giá KM thật khách trả
+      : (combo.tien_hoa_hong || Math.round(gia * (combo.ti_le_commission || 0) / 100))
     const ngayHetHan = addDurationISO(todayISO(), combo.thoi_han_so || 1, combo.thoi_han_don_vi || 'year')
     onAddItem({
       loai_item: 'the_moi',
@@ -190,6 +209,10 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
         soBuoiTang: 0,
         soBuoiTong: soLan,
         giaTriThe: gia,
+        giaGocBuoi: giaGoc,
+        phanTramGiam: kmRefPct,
+        kmRefPct,
+        kmId: km?.id || null,
         ngayHetHan,
         khongGioiHan: !!primary.khong_gioi_han,
         thoiHanSo: combo.thoi_han_so || 1,
@@ -348,13 +371,16 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 8 }}>
           {combos.filter(c => !search || `${c.ten_combo} ${c.ma_combo}`.toLowerCase().includes(search.toLowerCase())).map(combo => {
             const primary = combo.dich_vu?.[0]
+            const km = kmByCombo[combo.id]
+            const giaHT = km ? (km.gia_km || combo.gia_ban) : combo.gia_ban
+            const baseMeta = `${primary?.ten_dich_vu || 'Combo'} · ${primary?.khong_gioi_han ? 'Không giới hạn' : `${primary?.so_lan || 0} lần`} · ${combo.thoi_han_so} ${combo.thoi_han_don_vi === 'year' ? 'năm' : combo.thoi_han_don_vi}`
             return (
               <CatalogButton
                 key={combo.id}
                 onClick={() => handleAddCombo(combo)}
                 title={combo.ten_combo}
-                meta={`${primary?.ten_dich_vu || 'Combo'} · ${primary?.khong_gioi_han ? 'Không giới hạn' : `${primary?.so_lan || 0} lần`} · ${combo.thoi_han_so} ${combo.thoi_han_don_vi === 'year' ? 'năm' : combo.thoi_han_don_vi}`}
-                price={combo.gia_ban}
+                meta={km ? `${baseMeta} · 🎁 ${kmBadge(km)} (gốc ${formatCurrency(combo.gia_ban)})` : baseMeta}
+                price={giaHT}
                 wide
               />
             )

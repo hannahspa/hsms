@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import DatePicker from '../../../components/shared/DatePicker'
-import { formatCurrency } from '../../../lib/utils'
+import { formatCurrency, kmBadge } from '../../../lib/utils'
 import { calcKmRefPct, kmRefAlert } from '../../../lib/serviceCommission'
 import { C } from '../../../constants/colors'
 import { posService } from '../../../services/posService'
 import { parseVND, fmtInput, NvAvatar, shortName } from '../posShared'
 
-export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange, onSelectKTV, onToggleCard, onUpsale }) {
+export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange, onSelectKTV, onToggleCard, onUpsale, kmGoiY }) {
   const name = item.dich_vu?.ten || item.san_pham?.ten || item.the_lieu_trinh?.ten_dich_vu || item.meta?.tenDichVu || '-'
   const donGia = item.don_gia || 0
   const isDichVu = item.loai_item === 'dich_vu'
@@ -77,6 +77,34 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
     width: 22, height: 22, border: `1px solid ${C.line2}`, borderRadius: 3,
     background: C.surface2, cursor: 'pointer', fontSize: 14, lineHeight: 1,
     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: C.ink2,
+  }
+
+  // ── CTKM tự nhận biết: áp khuyến mãi khớp dịch vụ này (lễ tân bấm xác nhận) ──
+  const kmLoai = kmGoiY?.loai_km
+  // Đã áp chưa? (để đổi nhãn nút / ẩn gợi ý trùng)
+  const kmApplied = !!kmGoiY && (
+    kmLoai === 'giam_gia'
+      ? (isDichVu && !isCard && Math.abs((item.thanh_tien || 0) - (kmGoiY.gia_km || 0) * qty) < 1)
+      : isCard && (item.meta?.soBuoiMua === (kmGoiY.mua_x || 0))
+  )
+  const applyKm = () => {
+    if (!kmGoiY) return
+    if (kmLoai === 'mua_x_tang_y') {
+      const mua = Math.max(1, kmGoiY.mua_x || 1), tang = Math.max(0, kmGoiY.tang_y || 0)
+      setCardBuoiMua(mua); setCardBuoiTang(tang); setCardGiaBan(donGia)
+      commitCard(mua, tang, cardNgayHH, cardKhongGH, donGia)
+    } else if (kmLoai === 'mua_n_giam_pct') {
+      const mua = Math.max(1, kmGoiY.mua_x || 1)
+      const pct = Number(kmGoiY.pct_giam_lan ?? kmGoiY.phan_tram_giam ?? 0)
+      const giaBan = Math.round(donGia * (1 - pct / 100))
+      setCardBuoiMua(mua); setCardBuoiTang(0); setCardGiaBan(giaBan)
+      commitCard(mua, 0, cardNgayHH, cardKhongGH, giaBan)
+    } else { // giam_gia — dịch vụ lẻ
+      const giaKm = kmGoiY.gia_km || donGia
+      const newTT = giaKm * qty
+      setDiscAmt(Math.max(0, donGia * qty - newTT))
+      if (onDiscountChange) onDiscountChange(item._lid, newTT)
+    }
   }
 
   const theLTConLai = item.the_lieu_trinh?.so_buoi_con_lai ?? null
@@ -166,6 +194,38 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
           </label>
         )}
       </div>
+
+      {/* ── Gợi ý CTKM tự nhận biết ── */}
+      {kmGoiY && isDichVu && (
+        <div style={{
+          marginTop: 6, marginLeft: 16, marginRight: 4, padding: '7px 10px',
+          background: kmApplied ? '#eafaf1' : '#FFF6E9',
+          border: `1px solid ${kmApplied ? '#27AE6055' : '#F0C674'}`, borderRadius: 8,
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: 14 }}>🎁</span>
+          <div style={{ flex: 1, minWidth: 140 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: kmApplied ? '#1E7E47' : '#9C6A12' }}>
+              {kmApplied ? '✓ Đã áp CTKM' : 'Có CTKM cho dịch vụ này'}
+              <span style={{ marginLeft: 6, background: C.chi, color: '#fff', borderRadius: 5, padding: '1px 6px', fontSize: 10, fontWeight: 800 }}>
+                {kmBadge(kmGoiY)}
+              </span>
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--ink3)', marginTop: 1 }}>
+              {kmGoiY.ten}
+              {kmGoiY.gioi_han_suat > 0 ? ` · tối đa ${kmGoiY.gioi_han_suat} suất/khách` : ''}
+            </div>
+          </div>
+          {!kmApplied && (
+            <button type="button" onClick={applyKm} style={{
+              border: 'none', background: C.grad || C.champagne, color: '#fff',
+              borderRadius: 6, padding: '5px 12px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap',
+            }}>
+              {kmLoai === 'giam_gia' ? 'Áp giá KM' : 'Áp gói thẻ'}
+            </button>
+          )}
+        </div>
+      )}
 
       {isDichVu && upOpen && (
         <div style={{ marginTop: 6, marginLeft: 16, marginRight: 4, padding: '8px 10px', background: '#F4EFFA', border: '1px solid #D8C8F0', borderRadius: 8 }}>

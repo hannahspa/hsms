@@ -332,7 +332,7 @@ export default function TabXetDuyet({ onUpdate }) {
             {suaXoaList.length > 0 && (
               <div>
                 <div style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-                  ✏️ Yêu Cầu Sửa / Xóa Giao Dịch ({suaXoaList.length})
+                  ✏️ Yêu Cầu Sửa / Xóa / Gia Hạn Thẻ ({suaXoaList.length})
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -351,8 +351,10 @@ export default function TabXetDuyet({ onUpdate }) {
                       {suaXoaList.map((yc, i) => {
                         const isSua = yc.loai_yeu_cau === 'sua'
                         const isOff = yc.loai_bang === 'dang_ky_off'
+                        const isThe = yc.loai_bang === 'the_lieu_trinh'
+                        const isNgay = isOff || isThe
                         const fmtNgay = (d) => d ? String(d).split('-').reverse().join('/') : '—'
-                        const bangLabel = yc.loai_bang === 'doanh_thu' ? 'Doanh Thu' : yc.loai_bang === 'chi_phi' ? 'Chi Phí' : isOff ? '🔄 Đổi Ngày OFF' : 'Chuyển Khoản'
+                        const bangLabel = yc.loai_bang === 'doanh_thu' ? 'Doanh Thu' : yc.loai_bang === 'chi_phi' ? 'Chi Phí' : isOff ? '🔄 Đổi Ngày OFF' : isThe ? '🎟 Gia Hạn Thẻ' : 'Chuyển Khoản'
                         return (
                           <tr key={yc.id} style={{ borderTop: i > 0 ? `1px solid ${LUX.line}` : 'none', background: i % 2 === 0 ? 'white' : LUX.bg }}>
                             <TD>
@@ -361,12 +363,12 @@ export default function TabXetDuyet({ onUpdate }) {
                             <TD muted>{bangLabel}</TD>
                             <TD align="right">
                               <span style={{ fontFamily: LUX.fontMono, color: '#C0392B' }}>
-                                {isOff ? fmtNgay(yc.du_lieu_cu?.ngay_off) : (yc.du_lieu_cu?.so_tien ? Number(yc.du_lieu_cu.so_tien).toLocaleString('vi-VN') + 'đ' : '—')}
+                                {isNgay ? fmtNgay(yc.du_lieu_cu?.ngay_off || yc.du_lieu_cu?.ngay_het_han) : (yc.du_lieu_cu?.so_tien ? Number(yc.du_lieu_cu.so_tien).toLocaleString('vi-VN') + 'đ' : '—')}
                               </span>
                             </TD>
                             <TD align="right">
                               {isSua
-                                ? <span style={{ fontFamily: LUX.fontMono, color: '#2D7A4F' }}>{isOff ? fmtNgay(yc.du_lieu_moi?.ngay_off) : (yc.du_lieu_moi?.so_tien ? Number(yc.du_lieu_moi.so_tien).toLocaleString('vi-VN') + 'đ' : '—')}</span>
+                                ? <span style={{ fontFamily: LUX.fontMono, color: '#2D7A4F' }}>{isNgay ? fmtNgay(yc.du_lieu_moi?.ngay_off || yc.du_lieu_moi?.ngay_het_han) : (yc.du_lieu_moi?.so_tien ? Number(yc.du_lieu_moi.so_tien).toLocaleString('vi-VN') + 'đ' : '—')}</span>
                                 : <span style={{ color: LUX.ink3, fontSize: 12 }}>Xóa bản ghi</span>
                               }
                             </TD>
