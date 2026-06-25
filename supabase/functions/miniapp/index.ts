@@ -69,7 +69,7 @@ serve(async (req) => {
     // danh sách dịch vụ — public, không cần SĐT
     if (action === 'danh_sach_dich_vu') {
       const { data } = await supabase.from('dich_vu')
-        .select('id, ten, gia_co_ban, nhom_hien_thi, thoi_luong_phut')
+        .select('id, ten, gia_co_ban, nhom_hien_thi, thoi_gian_phut')
         .eq('is_active', true).eq('hien_tren_menu', true)
         .order('nhom_hien_thi').order('ten')
       return json({ ok: true, dich_vu: data || [] })

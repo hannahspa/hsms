@@ -27,7 +27,7 @@ export default function DatLichPage() {
       await api.datLich({
         dich_vu_id: form.dich_vu_id || null,
         ten_dich_vu: dv?.ten || null,
-        thoi_luong_phut: dv?.thoi_luong_phut || 60,
+        thoi_luong_phut: dv?.thoi_gian_phut || 60,
         ngay_hen: form.ngay_hen, gio_hen: form.gio_hen, ghi_chu: form.ghi_chu || null,
       })
       setDone(true)
