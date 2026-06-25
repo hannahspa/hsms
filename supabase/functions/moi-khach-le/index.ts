@@ -60,6 +60,7 @@ serve(async (req) => {
             body: { template_key: 'moi_khach_le', phone: r.so_dien_thoai, params: {
               customer_name: r.ho_ten || 'Quý khách',
               service: NHOM_TEN[r.nhom_so_thich] || 'dịch vụ',
+              customer_phone: r.so_dien_thoai || '',   // tham số định danh (Zalo yêu cầu)
             } },
           })
           if (z.data?.ok) { sent = true; msgId = z.data.msg_id || null } else znsErr = z.data?.error || z.error
