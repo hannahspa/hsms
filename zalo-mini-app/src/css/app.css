@@ -1,0 +1,60 @@
+:root {
+  --gold: #C9A96E;
+  --primary: #A0714F;
+  --espresso: #7D5A3C;
+  --bg: #FAF7F4;
+  --text: #1A1209;
+  --text-sub: #8B7355;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body, #app {
+  margin: 0;
+  font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.hn-page { background: var(--bg); min-height: 100%; padding-bottom: 24px; }
+
+.hn-hero {
+  background: linear-gradient(135deg, #C9A96E 0%, #A0714F 45%, #7D5A3C 100%);
+  color: #fff; padding: 28px 20px 30px; border-radius: 0 0 26px 26px;
+}
+.hn-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
+
+.hn-card {
+  background: #fff; border-radius: 16px; padding: 16px;
+  box-shadow: 0 4px 20px rgba(139,94,60,0.08);
+  border: 1px solid rgba(160,113,79,0.12);
+}
+
+.hn-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: #fff; border-radius: 18px; padding: 20px 10px;
+  box-shadow: 0 4px 18px rgba(139,94,60,0.10);
+  border: 1px solid rgba(160,113,79,0.12); cursor: pointer;
+  transition: transform .15s ease;
+}
+.hn-tile:active { transform: scale(0.96); }
+.hn-tile .ic { font-size: 30px; }
+.hn-tile .lb { font-size: 13.5px; font-weight: 700; color: var(--text); text-align: center; }
+
+.hn-btn {
+  width: 100%; padding: 14px; border: none; border-radius: 14px;
+  background: linear-gradient(135deg, #C9A96E 0%, #A0714F 45%, #7D5A3C 100%);
+  color: #fff; font-weight: 800; font-size: 15px; cursor: pointer;
+}
+.hn-btn:disabled { opacity: .6; }
+.hn-btn.ghost { background: #fff; color: var(--primary); border: 1px solid rgba(160,113,79,0.25); }
+
+.hn-input, .hn-select {
+  width: 100%; padding: 12px 14px; border: 1px solid rgba(160,113,79,0.22);
+  border-radius: 12px; font-size: 15px; background: #fff; color: var(--text); outline: none;
+}
+
+.hn-empty { text-align: center; padding: 48px 20px; color: var(--text-sub); }
+
+.spin { animation: hnspin 1s linear infinite; }
+@keyframes hnspin { to { transform: rotate(360deg); } }
