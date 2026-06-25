@@ -7,6 +7,9 @@ export const SUPABASE_ANON_KEY = 'PASTE_ANON_KEY_HERE'
 // Bật khi chạy thật trong Zalo (lấy SĐT qua getPhoneNumber). Tắt = dùng SĐT nhập tay để test trên trình duyệt.
 export const DUNG_ZALO_AUTH = true
 
+// OA Hannah Spa — dùng cho nút "Chat với Hannah" (mở chat OA) trong Mini App.
+export const OA_ID = '3846632539612664683'
+
 export const MAU = {
   bg: '#FAF7F4', card: '#FFFFFF', gold: '#C9A96E', primary: '#A0714F',
   espresso: '#7D5A3C', text: '#1A1209', textSub: '#8B7355', textMute: '#B8A898',

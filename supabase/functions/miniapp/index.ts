@@ -117,6 +117,48 @@ serve(async (req) => {
       return json({ ok: true, lich_hen_id: data.id, message: 'Đã gửi yêu cầu đặt lịch, Hannah Spa sẽ xác nhận sớm!' })
     }
 
+    if (action === 'lich_hen_cua_toi') {
+      let q = supabase.from('lich_hen')
+        .select('id, ten_dich_vu, dich_vu_list, ngay_hen, gio_hen, trang_thai, ghi_chu')
+        .order('ngay_hen', { ascending: false }).limit(30)
+      q = khach ? q.or(`khach_hang_id.eq.${khach.id},sdt_khach.eq.${phone}`) : q.eq('sdt_khach', phone)
+      const { data } = await q
+      return json({ ok: true, lich_hen: data || [] })
+    }
+
+    if (action === 'lich_su_dich_vu') {
+      if (!khach) return json({ ok: true, lich_su: [] })
+      const { data: dons } = await supabase.from('don_hang')
+        .select('id, ma_don, ngay, thuc_thu, con_no, trang_thai')
+        .eq('khach_hang_id', khach.id).eq('is_test', false)
+        .order('ngay', { ascending: false }).limit(20)
+      const ids = (dons || []).map((d: any) => d.id)
+      const ctMap: Record<string, string[]> = {}
+      if (ids.length) {
+        const { data: cts } = await supabase.from('don_hang_chi_tiet')
+          .select('don_hang_id, loai_item, so_luong, dich_vu:dich_vu_id(ten), the:the_lieu_trinh_id(ten_dich_vu)')
+          .in('don_hang_id', ids)
+        for (const c of (cts || [])) {
+          const a = c as any
+          const ten = a.dich_vu?.ten || a.the?.ten_dich_vu || (a.loai_item === 'san_pham' ? 'Sản phẩm' : null)
+          if (ten) (ctMap[a.don_hang_id] = ctMap[a.don_hang_id] || []).push(ten)
+        }
+      }
+      const list = (dons || []).map((d: any) => ({ ...d, dich_vu: ctMap[d.id] || [] }))
+      return json({ ok: true, lich_su: list })
+    }
+
+    if (action === 'danh_gia') {
+      const so_sao = parseInt(body.so_sao, 10)
+      if (!(so_sao >= 1 && so_sao <= 5)) return json({ ok: false, error: 'Vui lòng chọn 1–5 sao' }, 400)
+      const { error } = await supabase.from('danh_gia').insert({
+        khach_hang_id: khach?.id || null, so_dien_thoai: phone,
+        don_hang_id: body.don_hang_id || null, so_sao, noi_dung: body.noi_dung || null, nguon: 'miniapp',
+      })
+      if (error) return json({ ok: false, error: error.message }, 500)
+      return json({ ok: true, message: 'Cảm ơn bạn đã đánh giá Hannah Spa!' })
+    }
+
     if (action === 'vong_quay') {
       if (!khach) return json({ ok: false, error: 'Chưa có hồ sơ khách — vui lòng đến spa 1 lần để được tham gia' }, 403)
       // Giới hạn 1 lần/ngày: kiểm tra voucher nguồn 'vong_quay' tạo hôm nay

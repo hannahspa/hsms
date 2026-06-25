@@ -25,4 +25,7 @@ export const api = {
   danhSachDichVu: ()        => call('danh_sach_dich_vu', {}, { auth: false }),
   datLich:        (payload) => call('dat_lich', payload),
   vongQuay:       ()        => call('vong_quay'),
+  lichHenCuaToi:  ()        => call('lich_hen_cua_toi'),
+  lichSuDichVu:   ()        => call('lich_su_dich_vu'),
+  danhGia:        (payload) => call('danh_gia', payload),
 }
