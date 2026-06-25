@@ -628,10 +628,135 @@ function MayTinhKM({ dichVuList }) {
   )
 }
 
+// ── Cấu hình Voucher Win-back (% theo nhóm dịch vụ) ────────────────────────────
+// Mã voucher RIÊNG từng khách (gửi qua Zalo OA) — Lễ tân nhập ở POS để giảm % giá gốc.
+// % ở đây áp cho voucher SINH MỚI; voucher đã phát giữ % tại thời điểm phát.
+const VOUCHER_NHOM_THU_TU = ['cham_soc_da', 'thu_gian', 'triet_long']
+const VOUCHER_NHOM_ICON = { cham_soc_da: '💧', thu_gian: '💆', triet_long: '✨' }
+
+function VoucherConfigTab() {
+  const [rows, setRows]     = useState([])
+  const [stats, setStats]   = useState({})
+  const [loading, setLoading] = useState(true)
+  const [savingId, setSavingId] = useState(null)
+  const [toast, setToast]   = useState('')
+  const showToast = (m) => { setToast(m); setTimeout(() => setToast(''), 2500) }
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase.from('voucher_nhom_config').select('*')
+    const ordered = (data || []).slice().sort(
+      (a, b) => VOUCHER_NHOM_THU_TU.indexOf(a.nhom) - VOUCHER_NHOM_THU_TU.indexOf(b.nhom)
+    )
+    setRows(ordered)
+    // Thống kê voucher đã phát / đã dùng theo nhóm
+    const { data: vm } = await supabase.from('voucher_ma').select('nhom, trang_thai')
+    const agg = {}
+    for (const v of (vm || [])) {
+      agg[v.nhom] = agg[v.nhom] || { tong: 0, da_dung: 0 }
+      agg[v.nhom].tong++
+      if (v.trang_thai === 'da_dung') agg[v.nhom].da_dung++
+    }
+    setStats(agg)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const setField = (id, k, v) => setRows(rs => rs.map(r => r.id === id ? { ...r, [k]: v } : r))
+
+  const handleSave = async (row) => {
+    const pt = parseInt(row.phan_tram, 10)
+    const hn = parseInt(row.han_ngay, 10)
+    if (!(pt > 0 && pt < 100)) return showToast('⚠️ % giảm phải trong khoảng 1–99')
+    if (!(hn > 0)) return showToast('⚠️ Hạn dùng phải lớn hơn 0 ngày')
+    setSavingId(row.id)
+    const { error } = await supabase.from('voucher_nhom_config')
+      .update({ phan_tram: pt, han_ngay: hn, ten_hien_thi: row.ten_hien_thi, mo_ta: row.mo_ta, is_active: row.is_active, updated_at: new Date().toISOString() })
+      .eq('id', row.id)
+    setSavingId(null)
+    if (error) return showToast('❌ Lỗi: ' + error.message)
+    showToast('✅ Đã lưu cấu hình nhóm!')
+    load()
+  }
+
+  const lbl = { fontSize: 11.5, fontWeight: 700, color: COLORS.textSub, marginBottom: 6, display: 'block' }
+  const inp = { width: '100%', padding: '10px 12px', border: `1px solid ${COLORS.border}`, borderRadius: 10, fontSize: 14, background: COLORS.bg, color: COLORS.text, outline: 'none', boxSizing: 'border-box' }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ background: '#FFF8E1', border: '1px solid #F4D03F', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: '#8a6d1a', lineHeight: 1.55 }}>
+        🎟 <b>Voucher Win-back</b> — mã giảm giá RIÊNG từng khách, gửi qua Zalo OA cho khách lạnh.
+        Lễ tân nhập mã ở POS sẽ giảm % <b>giá gốc</b> đúng nhóm dịch vụ (không áp lên dịch vụ đã có khuyến mãi, không cộng 2 chương trình).
+        <br />% chỉnh ở đây áp cho voucher <b>sinh mới</b>; voucher đã phát giữ nguyên % lúc phát.
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 50, color: 'var(--ink3)' }}>Đang tải cấu hình voucher…</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(330px,1fr))', gap: 16 }}>
+          {rows.map(r => {
+            const st = stats[r.nhom] || { tong: 0, da_dung: 0 }
+            return (
+              <div key={r.id} style={{ background: 'white', borderRadius: 16, border: `1px solid ${COLORS.border}`, padding: 18, display: 'flex', flexDirection: 'column', gap: 12, opacity: r.is_active ? 1 : 0.72 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 22 }}>{VOUCHER_NHOM_ICON[r.nhom] || '🎟'}</span>
+                    <div style={{ fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 700, color: COLORS.text }}>
+                      {r.nhom === 'cham_soc_da' ? 'Chăm Sóc Da' : r.nhom === 'thu_gian' ? 'Thư Giãn' : r.nhom === 'triet_long' ? 'Triệt Lông' : r.nhom}
+                    </div>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, color: r.is_active ? COLORS.thu : COLORS.textMute }}>
+                    <input type="checkbox" checked={!!r.is_active} onChange={e => setField(r.id, 'is_active', e.target.checked)} />
+                    {r.is_active ? 'Bật' : 'Tắt'}
+                  </label>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={lbl}>% GIẢM (giá gốc)</label>
+                    <input style={inp} type="number" value={r.phan_tram} onChange={e => setField(r.id, 'phan_tram', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={lbl}>HẠN DÙNG (ngày)</label>
+                    <input style={inp} type="number" value={r.han_ngay} onChange={e => setField(r.id, 'han_ngay', e.target.value)} />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={lbl}>TÊN HIỂN THỊ (trên tin & POS)</label>
+                  <input style={inp} value={r.ten_hien_thi || ''} onChange={e => setField(r.id, 'ten_hien_thi', e.target.value)} />
+                </div>
+
+                <div style={{ display: 'flex', gap: 14, fontSize: 12, color: COLORS.textSub, borderTop: `1px solid ${COLORS.border}`, paddingTop: 10 }}>
+                  <span>Đã phát: <b style={{ color: COLORS.text }}>{st.tong}</b></span>
+                  <span>Đã dùng: <b style={{ color: COLORS.thu }}>{st.da_dung}</b></span>
+                </div>
+
+                <button onClick={() => handleSave(r)} disabled={savingId === r.id}
+                  style={{ padding: '11px', background: COLORS.grad, color: 'white', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: 'pointer', opacity: savingId === r.id ? 0.7 : 1 }}>
+                  {savingId === r.id ? 'Đang lưu…' : '💾 Lưu nhóm này'}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'var(--espresso)', color: '#f5ede0', padding: '12px 24px', borderRadius: 999, fontWeight: 700, fontSize: 14, zIndex: 999, boxShadow: 'var(--sh-3)' }}>
+          {toast}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 const KM_PATH_TAB = {
   '/admin/khuyen-mai':         'list',
   '/admin/khuyen-mai/may-tinh':'calc',
+  '/admin/khuyen-mai/voucher': 'voucher',
   '/admin/khuyen-mai/roi':     'roi',
 }
 
@@ -720,6 +845,7 @@ export default function AdminKhuyenMaiPage() {
           <div className="subtabs">
             <div className={`st${tab === 'list' ? ' active' : ''}`} onClick={() => setTab('list')}>Danh Sách</div>
             <div className={`st${tab === 'calc' ? ' active' : ''}`} onClick={() => setTab('calc')}>🧮 Máy Tính KM</div>
+            <div className={`st${tab === 'voucher' ? ' active' : ''}`} onClick={() => setTab('voucher')}>🎟 Voucher</div>
             <div className={`st${tab === 'roi' ? ' active' : ''}`} onClick={() => setTab('roi')}>Phân Tích ROI</div>
           </div>
           <button className="btn gold" onClick={handleCreate}>
@@ -750,6 +876,9 @@ export default function AdminKhuyenMaiPage() {
 
       {/* Máy tính KM */}
       {tab === 'calc' && <MayTinhKM dichVuList={dichVuList} />}
+
+      {/* Voucher Win-back config */}
+      {tab === 'voucher' && <VoucherConfigTab />}
 
       {/* ROI Tab */}
       {tab === 'roi' && <ROITab list={list} />}

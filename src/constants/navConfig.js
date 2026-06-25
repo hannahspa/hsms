@@ -54,6 +54,7 @@ export const ADMIN_NAV = [
 
   { id: 'khuyenmai', icon: '🏷️', label: 'Khuyến Mãi', children: [
     { id: 'km-danhsach', label: 'Danh Sách', path: '/admin/khuyen-mai' },
+    { id: 'km-voucher', label: 'Voucher Win-back', path: '/admin/khuyen-mai/voucher' },
     { id: 'km-roi', label: 'Phân Tích ROI', path: '/admin/khuyen-mai/roi' },
   ]},
 
