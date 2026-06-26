@@ -2,7 +2,10 @@
 // ⚠️ Điền ANON KEY của Supabase VPS (giống VITE_SUPABASE_ANON_KEY của web HSMS).
 //    Anon key chỉ để qua cổng gateway; mọi truy vấn data đều xác thực SĐT phía backend.
 export const API_BASE = 'https://api.hannahspa.vn/functions/v1/miniapp'
-export const SUPABASE_ANON_KEY = 'PASTE_ANON_KEY_HERE'
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgxNDUyNzkxLCJleHAiOjIwOTY4MTI3OTF9.9mOrcB-5S-lRLtDZarhA31oQw75wJNnQ5_PzADHvjfc'
+
+// Mini App ID (Zalo) + OA — phục vụ cấu hình/deploy
+export const MINIAPP_ID = '1606535416930484609'
 
 // Bật khi chạy thật trong Zalo (lấy SĐT qua getPhoneNumber). Tắt = dùng SĐT nhập tay để test trên trình duyệt.
 export const DUNG_ZALO_AUTH = true

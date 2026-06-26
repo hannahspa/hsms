@@ -37,8 +37,13 @@ async function resolvePhone(body: any): Promise<{ phone: string | null; err?: st
   const userAccessToken = body.access_token   // zmp getAccessToken()
   if (token && userAccessToken) {
     try {
-      const { data: cfg } = await supabase.from('marketing_ai_config').select('value').eq('key', 'zalo_miniapp_secret').maybeSingle()
-      const secret = cfg?.value
+      // Dùng App Secret của Zalo App HSMS (đã có sẵn trên VPS, dùng chung OAuth/ZNS);
+      // fallback marketing_ai_config.zalo_miniapp_secret nếu cấu hình riêng.
+      let secret = Deno.env.get('ZALO_APP_SECRET')
+      if (!secret) {
+        const { data: cfg } = await supabase.from('marketing_ai_config').select('value').eq('key', 'zalo_miniapp_secret').maybeSingle()
+        secret = cfg?.value
+      }
       if (secret) {
         const r = await fetch('https://graph.zalo.me/v2.0/me/info', {
           headers: { access_token: userAccessToken, code: token, secret_key: secret },
