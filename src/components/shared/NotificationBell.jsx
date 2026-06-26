@@ -255,7 +255,7 @@ export default function NotificationBell() {
                 {otherList.map((yc, i) => {
                   const isLast = i === otherList.length - 1
                   const label = YC_LABEL[yc.loai_yeu_cau] || yc.loai_yeu_cau
-                  const bangLabel = yc.loai_bang === 'doanh_thu' ? 'Doanh Thu' : yc.loai_bang === 'chi_phi' ? 'Chi Phí' : yc.loai_bang === 'chuyen_khoan_noi_bo' ? 'CK Nội Bộ' : (yc.loai_bang || '')
+                  const bangLabel = yc.loai_bang === 'doanh_thu' ? 'Doanh Thu' : yc.loai_bang === 'chi_phi' ? 'Chi Phí' : yc.loai_bang === 'chuyen_khoan_noi_bo' ? 'CK Nội Bộ' : yc.loai_bang === 'the_lieu_trinh' ? 'Gia Hạn Thẻ' : (yc.loai_bang || '')
                   const nvCu = yc.du_lieu_cu?.nhan_vien_ten || ''
 
                   return (
@@ -283,7 +283,7 @@ export default function NotificationBell() {
 
           {/* ── Footer link ── */}
           {total > 0 && (
-            <a style={linkStyle} href="/admin/nhan-su?tab=off" onClick={(e) => { e.preventDefault(); setShow(false); window.location.href = '/admin/nhan-su?tab=off' }}>
+            <a style={linkStyle} href="/admin/nhan-su/xet-duyet" onClick={(e) => { e.preventDefault(); setShow(false); window.location.href = '/admin/nhan-su/xet-duyet' }}>
               Xem tất cả trong Xét Duyệt →
             </a>
           )}
