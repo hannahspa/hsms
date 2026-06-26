@@ -340,8 +340,8 @@ export default function TabXetDuyet({ onUpdate }) {
                       <tr>
                         <TH>Loại YC</TH>
                         <TH>Bảng</TH>
-                        <TH align="right" w={120}>Số Tiền Cũ</TH>
-                        <TH align="right" w={120}>Số Tiền Mới</TH>
+                        <TH align="right" w={120}>Giá Trị Cũ</TH>
+                        <TH align="right" w={120}>Giá Trị Mới</TH>
                         <TH>Lý Do</TH>
                         <TH w={110} align="center">Người YC</TH>
                         <TH w={160} align="center">Hành Động</TH>
