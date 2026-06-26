@@ -75,6 +75,16 @@ serve(async (req) => {
       return json({ ok: true, dich_vu: data || [] })
     }
 
+    // Ưu đãi (khuyến mãi đang chạy) — public
+    if (action === 'uu_dai') {
+      const today = todayVN()
+      const { data } = await supabase.from('khuyen_mai')
+        .select('id, ten, mo_ta, loai_km, gia_goc, gia_km, mua_x, tang_y, pct_giam_lan, ngay_bat_dau, ngay_ket_thuc')
+        .eq('trang_thai', 'active').gte('ngay_ket_thuc', today)
+        .order('ngay_bat_dau', { ascending: false }).limit(50)
+      return json({ ok: true, uu_dai: data || [] })
+    }
+
     // Các action còn lại cần xác thực SĐT
     const { phone, err } = await resolvePhone(body)
     if (!phone) return json({ ok: false, error: err || 'Không xác thực được SĐT' }, 401)

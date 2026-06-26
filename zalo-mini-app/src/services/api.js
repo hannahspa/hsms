@@ -23,6 +23,7 @@ export const api = {
   theCuaToi:      ()        => call('the_cua_toi'),
   voucherCuaToi:  ()        => call('voucher_cua_toi'),
   danhSachDichVu: ()        => call('danh_sach_dich_vu', {}, { auth: false }),
+  uuDai:          ()        => call('uu_dai', {}, { auth: false }),
   datLich:        (payload) => call('dat_lich', payload),
   vongQuay:       ()        => call('vong_quay'),
   lichHenCuaToi:  ()        => call('lich_hen_cua_toi'),
