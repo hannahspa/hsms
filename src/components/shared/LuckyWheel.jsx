@@ -24,7 +24,7 @@ export default function LuckyWheel({ items = [], onResult, pickIndex, size = 440
 
   const n = Math.max(items.length, 1)
   const seg = 360 / n
-  const cx = 220, cy = 220, R = 176
+  const cx = 220, cy = 220, R = 190
 
   const polar = (ang, r) => {
     const a = (ang - 90) * Math.PI / 180
@@ -60,11 +60,9 @@ export default function LuckyWheel({ items = [], onResult, pickIndex, size = 440
 
         {/* Bánh xe + vành + đèn — QUAY CÙNG NHAU */}
         <g style={{ transformOrigin: '220px 220px', transform: `rotate(${rot}deg)`, transition: busy ? 'transform 6s cubic-bezier(0.13, 0.79, 0.05, 1)' : 'none' }}>
-          {/* Vành vàng 3D */}
-          <circle cx={cx} cy={cy} r={R + 44} fill="#A85800" />
-          <circle cx={cx} cy={cy} r={R + 40} fill={`url(#${gid}ring)`} />
-          <circle cx={cx} cy={cy} r={R + 10} fill="#9A4E00" />
-          <circle cx={cx} cy={cy} r={R + 6} fill="#FFFFFF" />
+          {/* Vành vàng 3D (ô bung sát tới đèn, không còn viền trắng) */}
+          <circle cx={cx} cy={cy} r={R + 26} fill="#A85800" />
+          <circle cx={cx} cy={cy} r={R + 22} fill={`url(#${gid}ring)`} />
 
           {/* Các ô */}
           {items.map((it, i) => {
@@ -81,8 +79,7 @@ export default function LuckyWheel({ items = [], onResult, pickIndex, size = 440
               <g key={i}>
                 <path d={d} fill={fill} stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round" />
                 <g transform={`translate(${lx.toFixed(2)} ${ly.toFixed(2)}) rotate(${flip ? mid + 90 : mid - 90})`}>
-                  {it.icon && <text textAnchor="middle" x={flip ? -64 : 64} y="6" fontSize="20">{it.icon}</text>}
-                  <text textAnchor="middle" y="6" fontSize={n > 8 ? 13 : 15} fontWeight="800"
+                  <text textAnchor="middle" y="6" fontSize={n > 8 ? 15 : 18} fontWeight="800"
                     fontFamily="'Lora','Playfair Display',serif" fill={tcol}
                     style={{ letterSpacing: '.2px' }}>{it.label}</text>
                 </g>
@@ -92,7 +89,7 @@ export default function LuckyWheel({ items = [], onResult, pickIndex, size = 440
 
           {/* Đèn nhấp nháy — gắn trên vành nên QUAY THEO */}
           {Array.from({ length: SO_DEN }, (_, i) => {
-            const [bx, by] = polar((i * 360) / SO_DEN, R + 25)
+            const [bx, by] = polar((i * 360) / SO_DEN, R + 14)
             return (
               <circle key={i} cx={bx} cy={by} r="8.5" fill={`url(#${gid}bulb)`} stroke="#C8860B" strokeWidth="1">
                 <animate attributeName="opacity" values="1;0.25;1" dur="0.9s" begin={i % 2 ? '0.45s' : '0s'} repeatCount="indefinite" />
@@ -106,11 +103,11 @@ export default function LuckyWheel({ items = [], onResult, pickIndex, size = 440
         <circle cx={cx} cy={cy} r="40" fill={`url(#${gid}hub)`} stroke="#C8860B" strokeWidth="2" />
       </svg>
 
-      {/* Kim chỉ */}
+      {/* Kim chỉ — đặt ngoài vành, đầu nhọn chỉ chạm mép, không che ô */}
       <div style={{
-        position: 'absolute', top: '3%', left: '50%', transform: 'translateX(-50%)', zIndex: 5,
-        width: 0, height: 0, borderLeft: '16px solid transparent', borderRight: '16px solid transparent',
-        borderTop: '34px solid #E1141C', filter: 'drop-shadow(0 3px 4px rgba(0,0,0,.35))',
+        position: 'absolute', top: '-3%', left: '50%', transform: 'translateX(-50%)', zIndex: 5,
+        width: 0, height: 0, borderLeft: '15px solid transparent', borderRight: '15px solid transparent',
+        borderTop: '30px solid #E1141C', filter: 'drop-shadow(0 3px 4px rgba(0,0,0,.35))',
       }} />
 
       {/* Nút QUAY (đè lên hub) */}
