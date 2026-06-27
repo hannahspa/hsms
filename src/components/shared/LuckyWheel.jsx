@@ -58,14 +58,15 @@ export default function LuckyWheel({ items = [], onResult, pickIndex, size = 440
           </radialGradient>
         </defs>
 
-        {/* Vành vàng 3D */}
-        <circle cx={cx} cy={cy} r={R + 44} fill="#A85800" />
-        <circle cx={cx} cy={cy} r={R + 40} fill={`url(#${gid}ring)`} />
-        <circle cx={cx} cy={cy} r={R + 10} fill="#9A4E00" />
-        <circle cx={cx} cy={cy} r={R + 6} fill="#FFFFFF" />
-
-        {/* Bánh xe quay */}
+        {/* Bánh xe + vành + đèn — QUAY CÙNG NHAU */}
         <g style={{ transformOrigin: '220px 220px', transform: `rotate(${rot}deg)`, transition: busy ? 'transform 6s cubic-bezier(0.13, 0.79, 0.05, 1)' : 'none' }}>
+          {/* Vành vàng 3D */}
+          <circle cx={cx} cy={cy} r={R + 44} fill="#A85800" />
+          <circle cx={cx} cy={cy} r={R + 40} fill={`url(#${gid}ring)`} />
+          <circle cx={cx} cy={cy} r={R + 10} fill="#9A4E00" />
+          <circle cx={cx} cy={cy} r={R + 6} fill="#FFFFFF" />
+
+          {/* Các ô */}
           {items.map((it, i) => {
             const [x0, y0] = polar(i * seg, R)
             const [x1, y1] = polar((i + 1) * seg, R)
@@ -88,19 +89,19 @@ export default function LuckyWheel({ items = [], onResult, pickIndex, size = 440
               </g>
             )
           })}
+
+          {/* Đèn nhấp nháy — gắn trên vành nên QUAY THEO */}
+          {Array.from({ length: SO_DEN }, (_, i) => {
+            const [bx, by] = polar((i * 360) / SO_DEN, R + 25)
+            return (
+              <circle key={i} cx={bx} cy={by} r="8.5" fill={`url(#${gid}bulb)`} stroke="#C8860B" strokeWidth="1">
+                <animate attributeName="opacity" values="1;0.25;1" dur="0.9s" begin={i % 2 ? '0.45s' : '0s'} repeatCount="indefinite" />
+              </circle>
+            )
+          })}
         </g>
 
-        {/* Đèn nhấp nháy trên vành (đứng yên) */}
-        {Array.from({ length: SO_DEN }, (_, i) => {
-          const [bx, by] = polar((i * 360) / SO_DEN, R + 25)
-          return (
-            <circle key={i} cx={bx} cy={by} r="8.5" fill={`url(#${gid}bulb)`} stroke="#C8860B" strokeWidth="1">
-              <animate attributeName="opacity" values="1;0.25;1" dur="0.9s" begin={i % 2 ? '0.45s' : '0s'} repeatCount="indefinite" />
-            </circle>
-          )
-        })}
-
-        {/* Hub */}
+        {/* Hub cố định ở giữa */}
         <circle cx={cx} cy={cy} r="44" fill="#FFFFFF" />
         <circle cx={cx} cy={cy} r="40" fill={`url(#${gid}hub)`} stroke="#C8860B" strokeWidth="2" />
       </svg>
