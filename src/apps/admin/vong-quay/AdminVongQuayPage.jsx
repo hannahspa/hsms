@@ -44,7 +44,7 @@ export default function AdminVongQuayPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) 1.1fr', gap: 24, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(440px, 1fr) 1fr', gap: 24, alignItems: 'start' }}>
         {/* ── Bánh xe ── */}
         <div style={{ background: C.heroGrad, borderRadius: 24, padding: '30px 20px 26px', textAlign: 'center', boxShadow: C.shadowLg }}>
           <div style={{ fontFamily: 'var(--serif, serif)', fontSize: 24, fontWeight: 700, color: '#F5EDE0', letterSpacing: '.4px' }}>
@@ -52,7 +52,7 @@ export default function AdminVongQuayPage() {
           </div>
           <div style={{ fontSize: 12.5, color: 'rgba(245,237,224,.7)', marginBottom: 22 }}>Quay là trúng — ưu đãi mỗi ngày</div>
 
-          <LuckyWheel items={items} pickIndex={pickIndex} onResult={onResult} size={340} />
+          <LuckyWheel items={items} pickIndex={pickIndex} onResult={onResult} size={420} />
 
           <div style={{ marginTop: 22, minHeight: 30 }}>
             {ketqua ? (
