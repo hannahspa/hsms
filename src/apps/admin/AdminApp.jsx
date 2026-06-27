@@ -5,6 +5,7 @@ import { todayISO, getNowVN, fmtCompact } from '../../lib/utils'
 
 const AdminNhanSuPage = lazy(() => import('./nhan-su/AdminNhanSuPage'))
 const AdminKhuyenMaiPage = lazy(() => import('./khuyen-mai/AdminKhuyenMaiPage'))
+const AdminVongQuayPage = lazy(() => import('./vong-quay/AdminVongQuayPage'))
 const AdminHomepagePage = lazy(() => import('./trang-chu/AdminHomepagePage'))
 const AdminKhoHangPage = lazy(() => import('./kho-hang/AdminKhoHangPage'))
 const AdminCRMPage = lazy(() => import('./crm/AdminCRMPage'))
@@ -92,6 +93,7 @@ export default function AdminApp() {
 
   // Sub-page routing
   if (path.startsWith('/admin/nhan-su'))    return <AdminRoute><AdminNhanSuPage /></AdminRoute>
+  if (path.startsWith('/admin/vong-quay')) return <AdminRoute><AdminVongQuayPage /></AdminRoute>
   if (path.startsWith('/admin/khuyen-mai')) return <AdminRoute><AdminKhuyenMaiPage /></AdminRoute>
   if (path.startsWith('/admin/trang-chu'))  return <AdminRoute><AdminHomepagePage /></AdminRoute>
   if (path.startsWith('/admin/kho-hang'))   return <AdminRoute><AdminKhoHangPage /></AdminRoute>
