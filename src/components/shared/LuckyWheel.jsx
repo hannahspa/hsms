@@ -56,6 +56,9 @@ export default function LuckyWheel({ items = [], onResult, pickIndex, size = 440
           <radialGradient id={`${gid}hub`} cx="38%" cy="32%" r="72%">
             <stop offset="0%" stopColor="#FFE07A" /><stop offset="55%" stopColor="#FF9D2E" /><stop offset="100%" stopColor="#E07B00" />
           </radialGradient>
+          <filter id={`${gid}glow`} x="-120%" y="-120%" width="340%" height="340%">
+            <feDropShadow dx="0" dy="0" stdDeviation="3.4" floodColor="#FFE45C" floodOpacity="1" />
+          </filter>
         </defs>
 
         {/* Bánh xe + vành + đèn — QUAY CÙNG NHAU */}
@@ -87,12 +90,14 @@ export default function LuckyWheel({ items = [], onResult, pickIndex, size = 440
             )
           })}
 
-          {/* Đèn nhấp nháy — gắn trên vành nên QUAY THEO */}
+          {/* Đèn nhấp nháy lung linh — chạy đuổi 3 pha + tỏa sáng, quay theo vành */}
           {Array.from({ length: SO_DEN }, (_, i) => {
             const [bx, by] = polar((i * 360) / SO_DEN, R + 14)
+            const begin = `${(i % 3) * 0.27}s`
             return (
-              <circle key={i} cx={bx} cy={by} r="8.5" fill={`url(#${gid}bulb)`} stroke="#C8860B" strokeWidth="1">
-                <animate attributeName="opacity" values="1;0.25;1" dur="0.9s" begin={i % 2 ? '0.45s' : '0s'} repeatCount="indefinite" />
+              <circle key={i} cx={bx} cy={by} r="8.5" fill={`url(#${gid}bulb)`} stroke="#B8860B" strokeWidth="0.8" filter={`url(#${gid}glow)`}>
+                <animate attributeName="opacity" values="1;0.95;0.2;0.95;1" dur="0.8s" begin={begin} repeatCount="indefinite" />
+                <animate attributeName="r" values="9;9.2;7.4;9.2;9" dur="0.8s" begin={begin} repeatCount="indefinite" />
               </circle>
             )
           })}
