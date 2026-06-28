@@ -1151,13 +1151,13 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
       ? Math.max(0.001, Math.abs(sl - Number(sp.ton_kho)))
       : slCoSo
 
-    const { error: e1 } = await supabase.from('kho_giao_dich').insert({
+    const { data: gdNew, error: e1 } = await supabase.from('kho_giao_dich').insert({
       san_pham_id: f.san_pham_id, loai: f.loai, so_luong: soLuongDB,
       gia_don_vi: Math.round((+f.gia_don_vi || 0) / qd),   // đơn giá / đơn vị cơ sở
       ghi_chu: ghiChuFinal,
       ngay: f.ngay, nguoi_thuc_hien: userId || null,
       nhan_vien_nhan_id: (f.loai === 'xuat_su_dung' && nguoiNhanId) ? nguoiNhanId : null,
-    })
+    }).select('id').single()
     if (e1) { setSaving(false); return setErr(e1.message) }
 
     // Cập nhật tồn kho (đơn vị cơ sở)
@@ -1173,17 +1173,21 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
       .update(updSP).eq('id', f.san_pham_id)
     if (e2) { setSaving(false); return setErr(e2.message) }
 
-    // Auto tạo chi_phi khi nhập kho
+    // Auto tạo chi_phi khi nhập kho — LINK trực tiếp vào giao dịch kho (1 đầu dữ liệu)
     if (f.loai === 'nhap_kho' && f.taoChi && tongTien > 0) {
       const dm = findDanhMuc(sp.loai)
       if (dm) {
-        await supabase.from('chi_phi').insert({
+        const { data: cpNew } = await supabase.from('chi_phi').insert({
           ngay: f.ngay, danh_muc_id: dm.id,
           so_tien: tongTien,
           hinh_thuc_thanh_toan: f.hinh_thuc,
           dien_giai: `Nhập kho: ${sp.ten} (${sl} ${dvInput} × ${fmt(+f.gia_don_vi)}${qd > 1 ? ` = ${slCoSo} ${sp.don_vi}` : ''})`,
           nguoi_nhap: userId || null,
-        })
+        }).select('id').single()
+        // Gắn phiếu chi vào giao dịch kho → sửa/xóa kho tự đồng bộ thu chi chính xác
+        if (cpNew?.id && gdNew?.id) {
+          await supabase.from('kho_giao_dich').update({ lien_quan_id: cpNew.id }).eq('id', gdNew.id)
+        }
       }
     }
 
