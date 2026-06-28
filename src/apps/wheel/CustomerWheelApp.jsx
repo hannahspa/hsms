@@ -27,6 +27,9 @@ export default function CustomerWheelApp() {
       const arr = Array.isArray(data) ? data : []
       setConfig(arr); tongRef.current = arr.reduce((s, it) => s + (+it.ty_le || 0), 0)
     })
+    // mở từ POS có sẵn SĐT khách → điền sẵn
+    const s = new URLSearchParams(window.location.search).get('sdt')
+    if (s) setPhone(s)
   }, [])
 
   const pickIndex = useCallback(() => {

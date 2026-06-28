@@ -106,6 +106,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   const [voucher, setVoucher]     = useState(null)   // {code, nhom, phan_tram, ten_nhom, khach_hang_id}
   const [voucherMsg, setVoucherMsg] = useState('')   // thông báo lỗi/ok khi áp mã
   const [voucherChecking, setVoucherChecking] = useState(false)
+  const [goiYVoucher, setGoiYVoucher] = useState([])  // mã KM riêng của khách (vòng quay / win-back) chưa dùng
   const [todayStats, setTodayStats] = useState({ soDon: 0, tongThu: 0 })
   const [loading, setLoading]     = useState(false)
 
@@ -626,8 +627,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   }
 
   // Áp mã giảm giá (voucher): kiểm tra mã, hệ thống tự biết nhóm + % (nhân viên không cần biết)
-  async function apDungVoucher() {
-    const code = (maKM || '').trim()
+  async function apDungVoucher(codeArg) {
+    const code = ((typeof codeArg === 'string' ? codeArg : maKM) || '').trim()
+    if (code && code !== maKM) setMaKM(code)
     if (!code) { setVoucher(null); setVoucherMsg(''); return }
     setVoucherChecking(true); setVoucherMsg('')
     try {
@@ -643,6 +645,17 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       setVoucher(null); setVoucherMsg('Lỗi kiểm tra mã: ' + (e.message || e))
     } finally { setVoucherChecking(false) }
   }
+
+  // Gợi ý mã KM đặc biệt của khách (vòng quay / win-back) khi chọn khách → Lễ tân thấy + áp 1 chạm
+  useEffect(() => {
+    const id = selectedCustomer?.id
+    if (!id) { setGoiYVoucher([]); return }
+    supabase.from('voucher_ma')
+      .select('code, nhom, phan_tram, han_dung, nguon')
+      .eq('khach_hang_id', id).eq('trang_thai', 'chua_dung').gte('han_dung', todayISO())
+      .order('han_dung', { ascending: true })
+      .then(({ data }) => setGoiYVoucher(data || []))
+  }, [selectedCustomer?.id])
 
   const resetCreateForm = () => {
     setLineItems([])
@@ -1370,6 +1383,11 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--champagne)' }}>{selectedCustomer.ho_ten}</div>
                   <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{selectedCustomer.so_dien_thoai}{selectedCustomer.ma_kh && <span style={{ marginLeft: 6, fontWeight: 600 }}>{selectedCustomer.ma_kh}</span>}</div>
                 </div>
+                {selectedCustomer.so_dien_thoai && (
+                  <button onClick={() => window.open('/quay?sdt=' + encodeURIComponent(selectedCustomer.so_dien_thoai), '_blank')}
+                    title="Mở Vòng Quay May Mắn cho khách (theo chi tiêu trong ngày)"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 17, lineHeight: 1, padding: 4 }}>🎡</button>
+                )}
                 <button onClick={clearCustomer} style={{ background: 'none', border: 'none', color: 'var(--ink3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 4 }}>✕</button>
               </div>
               {customerCards.filter(c => c.so_buoi_con_lai > 0).length > 0 && (
@@ -1607,6 +1625,21 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
             {/* ── Summary + Payment ── */}
             {lineItems.length > 0 && (
             <div style={{ padding: '10px 14px' }}>
+
+              {/* Gợi ý mã KM đặc biệt của khách (vòng quay / win-back) */}
+              {goiYVoucher.length > 0 && !voucher && (
+                <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: '#FFF6E0', border: '1px solid var(--champagne)' }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--taupe)', marginBottom: 6 }}>💡 Khách có {goiYVoucher.length} mã ưu đãi đặc biệt — bấm để áp dụng:</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {goiYVoucher.map(v => (
+                      <button key={v.code} onClick={() => apDungVoucher(v.code)}
+                        style={{ border: '1px solid var(--champagne)', background: '#fff', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 700, color: 'var(--taupe)', cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                        {v.nguon === 'vong_quay' ? '🎡 ' : '🎁 '}{v.code} · −{v.phan_tram}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Mã KM / Voucher */}
               <div style={{ display: 'flex', gap: 6, marginBottom: voucher || voucherMsg ? 4 : 8 }}>
