@@ -20,15 +20,34 @@ export default function AdminVongQuayPage() {
   const [items, setItems] = useState(buildPT())
   const [ketqua, setKetqua] = useState(null)
   const [lichSu, setLichSu] = useState([])
+  const [nguong, setNguong] = useState(1000000)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState('')
 
-  // Lấy % voucher thật từ cấu hình Hannah (trang Khuyến Mãi → Voucher)
+  // Lấy % voucher thật + ngưỡng chi tiêu đã lưu
   useEffect(() => {
     supabase.from('voucher_nhom_config').select('nhom, phan_tram').then(({ data }) => {
       if (!data?.length) return
       const m = Object.fromEntries(data.map(d => [d.nhom, d.phan_tram]))
       setItems(buildPT(m.cham_soc_da ?? 50, m.thu_gian ?? 40, m.triet_long ?? 70))
     })
+    supabase.from('marketing_ai_config').select('value').eq('key', 'vong_quay_nguong').maybeSingle()
+      .then(({ data }) => { if (data?.value) setNguong(+data.value) })
+    supabase.from('marketing_ai_config').select('value').eq('key', 'vong_quay_config').maybeSingle()
+      .then(({ data }) => { try { const a = JSON.parse(data?.value); if (Array.isArray(a) && a.length) setItems(a) } catch {} })
   }, [])
+
+  const luuCauHinh = async () => {
+    setSaving(true)
+    const clean = items.map(({ label, mota, loai, nhom, phan_tram, gia_tri, ty_le }) => ({ label, mota, loai, nhom, phan_tram, gia_tri, ty_le }))
+    const { error } = await supabase.from('marketing_ai_config').upsert([
+      { key: 'vong_quay_config', value: JSON.stringify(clean) },
+      { key: 'vong_quay_nguong', value: String(nguong) },
+    ], { onConflict: 'key' })
+    setSaving(false)
+    setToast(error ? '❌ Lỗi: ' + error.message : '✅ Đã lưu cấu hình vòng quay!')
+    setTimeout(() => setToast(''), 2800)
+  }
 
   const tongTyLe = items.reduce((s, it) => s + (+it.ty_le || 0), 0)
 
@@ -50,7 +69,11 @@ export default function AdminVongQuayPage() {
       <div className="mod-head" style={{ marginBottom: 20 }}>
         <div>
           <div className="ttl">Vòng Quay May Mắn 🎡</div>
-          <div className="sub">Phần thưởng dựng theo ưu đãi thực tế của Hannah · thu hút khách & tặng voucher riêng. Sắp gắn vào POS (mua thẻ → tặng lượt quay)</div>
+          <div className="sub">Khách quay trên iPad tại quầy · trúng voucher sinh mã riêng lưu hồ sơ. Mở cho khách: <b>hannahspa.vn/quay</b></div>
+        </div>
+        <div className="acts" style={{ display: 'flex', gap: 10 }}>
+          <a href="/quay" target="_blank" rel="noreferrer" className="btn" style={{ textDecoration: 'none' }}>↗ Mở trang khách</a>
+          <button className="btn gold" onClick={luuCauHinh} disabled={saving}>{saving ? 'Đang lưu…' : '💾 Lưu cấu hình'}</button>
         </div>
       </div>
 
@@ -77,8 +100,22 @@ export default function AdminVongQuayPage() {
           </div>
         </div>
 
-        {/* ── Cấu hình phần thưởng (không icon) ── */}
+        {/* ── Cấu hình ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Điều kiện tham gia */}
+          <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.border}`, padding: 18 }}>
+            <div style={{ fontWeight: 800, fontSize: 15, color: C.text, marginBottom: 10 }}>🎯 Điều kiện tham gia</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 14, color: C.textSub }}>Khách chi tiêu trong ngày mỗi</span>
+              <input type="number" value={nguong} onChange={e => setNguong(+e.target.value)} step={100000}
+                style={{ width: 130, padding: '8px 12px', border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, fontWeight: 700, background: '#fff', color: C.text, outline: 'none', textAlign: 'right' }} />
+              <span style={{ fontSize: 14, color: C.textSub }}>đ → <b style={{ color: C.primary }}>1 lượt quay</b></span>
+            </div>
+            <div style={{ fontSize: 11.5, color: C.textMute, marginTop: 8 }}>
+              VD ngưỡng {new Intl.NumberFormat('vi-VN').format(nguong)}đ: khách chi {new Intl.NumberFormat('vi-VN').format(nguong * 2)}đ trong ngày → <b>2 lượt</b>. Nhập SĐT, hệ thống tự tính chi tiêu hôm nay &amp; số lượt.
+            </div>
+          </div>
+
           <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.border}`, padding: 18 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div style={{ fontWeight: 800, fontSize: 15, color: C.text }}>Phần thưởng &amp; tỷ lệ trúng</div>
@@ -128,6 +165,12 @@ export default function AdminVongQuayPage() {
           </div>
         </div>
       </div>
+
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'var(--espresso, #1A1209)', color: '#f5ede0', padding: '12px 24px', borderRadius: 999, fontWeight: 700, fontSize: 14, zIndex: 999, boxShadow: C.shadowLg }}>
+          {toast}
+        </div>
+      )}
     </>
   )
 }
