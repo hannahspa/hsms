@@ -1409,6 +1409,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
 // ══════════════════════════════════════════════════════════════════════════════
 function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, showToast }) {
   const [showForm, setShowForm] = useState(false)
+  const [editGd, setEditGd]     = useState(null)   // giao dịch đang sửa (admin)
   const [filterLoai, setFilterLoai] = useState('all')
   const [filterDate, setFilterDate] = useState('month') // today/week/month/custom
   const [customFrom, setCustomFrom] = useState('')
@@ -1498,6 +1499,43 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
     }
 
     showToast('🗑 Đã xóa giao dịch')
+    onReload()
+  }
+
+  // ── SỬA giao dịch (admin) — cập nhật tồn kho theo delta + chi phí nếu nhập kho ──
+  const handleSaveEdit = async (gd, vals) => {
+    const sp = spMap[gd.san_pham_id]
+    const loaiGD = LOAI_GD[gd.loai] || {}
+    const slOld = Number(gd.so_luong || 0)
+    const slNew = Number(vals.so_luong || 0)
+    const giaNew = Number(vals.gia_don_vi || 0)
+    if (slNew <= 0) return showToast('⚠️ Số lượng phải lớn hơn 0')
+    const delta = (loaiGD.sign || 0) * (slNew - slOld)   // thay đổi tồn kho
+
+    const { error } = await supabase.from('kho_giao_dich')
+      .update({ so_luong: slNew, gia_don_vi: giaNew, ngay: vals.ngay, ghi_chu: vals.ghi_chu || null })
+      .eq('id', gd.id)
+    if (error) return showToast('❌ ' + error.message)
+
+    if (sp && delta !== 0) {
+      await supabase.from('kho_san_pham')
+        .update({ ton_kho: Math.max(0, Number(sp.ton_kho || 0) + delta) })
+        .eq('id', gd.san_pham_id)
+    }
+
+    // Nhập kho có phiếu chi: cập nhật số tiền nếu chỉ 1 mặt hàng link
+    if (gd.loai === 'nhap_kho' && gd.lien_quan_id) {
+      const { count } = await supabase.from('kho_giao_dich')
+        .select('id', { count: 'exact', head: true }).eq('lien_quan_id', gd.lien_quan_id)
+      if ((count || 0) <= 1) {
+        await supabase.from('chi_phi').update({ so_tien: slNew * giaNew }).eq('id', gd.lien_quan_id)
+      } else {
+        showToast('⚠️ Đã sửa kho. Phiếu chi gồm nhiều mặt hàng — sửa số tiền tại Sổ Thu Chi.')
+      }
+    }
+
+    showToast('✅ Đã sửa giao dịch')
+    setEditGd(null)
     onReload()
   }
 
@@ -1599,6 +1637,14 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
                 )}
               </div>
               {canDelete && (
+                <button onClick={() => setEditGd(gd)}
+                  style={{ padding: '5px 8px', background: '#FFF6E9', border: '1px solid #F0C674',
+                    borderRadius: '7px', cursor: 'pointer', fontSize: '11px', color: '#9C6A12',
+                    flexShrink: 0 }}>
+                  ✏️
+                </button>
+              )}
+              {canDelete && (
                 <button onClick={() => handleDelete(gd)}
                   style={{ padding: '5px 8px', background: '#FDECEA', border: '1px solid #FADBD8',
                     borderRadius: '7px', cursor: 'pointer', fontSize: '11px', color: '#C0392B',
@@ -1611,6 +1657,12 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
         })}
       </div>
 
+      {editGd && (
+        <SuaGiaoDichModal gd={editGd} sp={spMap[editGd.san_pham_id]}
+          onSave={(vals) => handleSaveEdit(editGd, vals)}
+          onClose={() => setEditGd(null)} />
+      )}
+
       {showForm && (
         <FormGiaoDich
           products={products.filter(p => p.is_active)}
@@ -1621,6 +1673,80 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
         />
       )}
 
+    </div>
+  )
+}
+
+// ── Modal: Admin sửa 1 giao dịch kho ──────────────────────────────────────────
+function SuaGiaoDichModal({ gd, sp, onSave, onClose }) {
+  const loaiGD = LOAI_GD[gd.loai] || {}
+  const isNhap = gd.loai === 'nhap_kho'
+  const [form, setForm] = useState({
+    so_luong:   gd.so_luong   || '',
+    gia_don_vi: gd.gia_don_vi || '',
+    ngay:       gd.ngay       || todayISO(),
+    ghi_chu:    gd.ghi_chu    || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const lbl = { fontSize: '12px', fontWeight: 700, color: COLORS.textSub, marginBottom: '6px', display: 'block' }
+
+  const submit = async () => {
+    setSaving(true)
+    await onSave(form)
+    setSaving(false)
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.55)', zIndex: 300,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px,94vw)', background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+        <div style={{ background: COLORS.grad, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ color: 'white', fontWeight: 800, fontSize: '15px' }}>✏️ Sửa Giao Dịch Kho</div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer' }}>✕</button>
+        </div>
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>
+            {loaiGD.icon} {sp?.ten || '—'} <span style={{ color: COLORS.textMute, fontWeight: 500 }}>· {loaiGD.label}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: isNhap ? '1fr 1fr' : '1fr', gap: 12 }}>
+            <div>
+              <label style={lbl}>SỐ LƯỢNG ({sp?.don_vi || ''}) *</label>
+              <input style={inp} type="number" value={form.so_luong}
+                onChange={e => set('so_luong', e.target.value)} />
+            </div>
+            {isNhap && (
+              <div>
+                <label style={lbl}>ĐƠN GIÁ (đ/{sp?.don_vi || ''})</label>
+                <input style={inp} type="number" value={form.gia_don_vi}
+                  onChange={e => set('gia_don_vi', e.target.value)} />
+              </div>
+            )}
+          </div>
+          {isNhap && Number(form.so_luong) > 0 && (
+            <div style={{ fontSize: 12, color: COLORS.textSub }}>
+              Thành tiền: <b style={{ color: '#2D7A4F' }}>{fmt(Number(form.so_luong) * Number(form.gia_don_vi || 0))}</b>
+            </div>
+          )}
+          <div>
+            <label style={lbl}>NGÀY</label>
+            <input style={inp} type="date" value={form.ngay} onChange={e => set('ngay', e.target.value)} />
+          </div>
+          <div>
+            <label style={lbl}>GHI CHÚ</label>
+            <input style={inp} value={form.ghi_chu} onChange={e => set('ghi_chu', e.target.value)} placeholder="Lý do / ghi chú..." />
+          </div>
+          <div style={{ fontSize: 11.5, color: '#9C6A12', background: '#FFF6E9', border: '1px solid #F0C674', borderRadius: 8, padding: '8px 10px', lineHeight: 1.4 }}>
+            ⚠️ Đổi số lượng sẽ tự điều chỉnh <b>tồn kho</b>{isNhap ? ' và số tiền phiếu chi (nếu có)' : ''} theo chênh lệch.
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onClose} style={{ flex: 1, padding: 12, background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', color: COLORS.textSub }}>Hủy</button>
+            <button onClick={submit} disabled={saving} style={{ flex: 2, padding: 12, background: COLORS.grad, color: 'white', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+              {saving ? 'Đang lưu...' : '💾 Lưu thay đổi'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
