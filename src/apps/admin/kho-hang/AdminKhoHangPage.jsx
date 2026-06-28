@@ -1523,14 +1523,25 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
         .eq('id', gd.san_pham_id)
     }
 
-    // Nhập kho có phiếu chi: cập nhật số tiền nếu chỉ 1 mặt hàng link
-    if (gd.loai === 'nhap_kho' && gd.lien_quan_id) {
-      const { count } = await supabase.from('kho_giao_dich')
-        .select('id', { count: 'exact', head: true }).eq('lien_quan_id', gd.lien_quan_id)
-      if ((count || 0) <= 1) {
-        await supabase.from('chi_phi').update({ so_tien: slNew * giaNew }).eq('id', gd.lien_quan_id)
-      } else {
-        showToast('⚠️ Đã sửa kho. Phiếu chi gồm nhiều mặt hàng — sửa số tiền tại Sổ Thu Chi.')
+    // Nhập kho có ghi sổ thu chi → cập nhật số tiền phiếu chi cho khớp
+    if (gd.loai === 'nhap_kho') {
+      const tienMoi = slNew * giaNew
+      if (gd.lien_quan_id) {
+        // Phiếu chi từ form Sổ Thu Chi mới (link qua lien_quan_id)
+        const { count } = await supabase.from('kho_giao_dich')
+          .select('id', { count: 'exact', head: true }).eq('lien_quan_id', gd.lien_quan_id)
+        if ((count || 0) <= 1) {
+          await supabase.from('chi_phi').update({ so_tien: tienMoi }).eq('id', gd.lien_quan_id)
+        } else {
+          showToast('⚠️ Đã sửa kho. Phiếu chi gồm nhiều mặt hàng — sửa số tiền tại Sổ Thu Chi.')
+        }
+      } else if (sp) {
+        // Phiếu chi kiểu cũ — match theo "Nhập kho: <tên>" + ngày cũ + số tiền cũ (chính xác đúng phiếu)
+        const tienCu = slOld * Number(gd.gia_don_vi || 0)
+        await supabase.from('chi_phi')
+          .update({ so_tien: tienMoi })
+          .eq('ngay', gd.ngay).eq('so_tien', tienCu)
+          .ilike('dien_giai', `Nhập kho: ${sp.ten}%`)
       }
     }
 
@@ -2228,7 +2239,7 @@ export default function AdminKhoHangPage() {
   const TABS = [
     { key: 'tong-quan', icon: '📊', label: 'Tổng Quan' },
     { key: 'san-pham',  icon: '📋', label: 'Sản Phẩm' },
-    { key: 'giao-dich', icon: '📥', label: 'Nhập/Xuất' },
+    { key: 'giao-dich', icon: '📥', label: 'Nhật Ký Nhập/Xuất' },
     { key: 'bao-cao',   icon: '📈', label: 'Báo Cáo' },
   ]
 

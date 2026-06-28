@@ -47,7 +47,7 @@ export const ADMIN_NAV = [
   { id: 'kho', icon: '📦', label: 'Kho Hàng', children: [
     { id: 'kho-tongquan', label: 'Tổng Quan', path: '/admin/kho-hang' },
     { id: 'kho-sanpham', label: 'Sản Phẩm', path: '/admin/kho-hang/san-pham' },
-    { id: 'kho-giaodich', label: 'Nhập / Xuất', path: '/admin/kho-hang/giao-dich' },
+    { id: 'kho-giaodich', label: 'Nhật Ký Nhập/Xuất', path: '/admin/kho-hang/giao-dich' },
     { id: 'kho-kiemkho', label: 'Kiểm Kho', path: '/admin/kho-hang/kiem-kho' },
     { id: 'kho-baocao', label: 'Báo Cáo', path: '/admin/kho-hang/bao-cao' },
   ]},
@@ -95,7 +95,7 @@ export const LETAN_NAV = [
   { id: 'kho', icon: '📦', label: 'Kho Hàng', children: [
     { id: 'kho-tongquan', label: 'Tổng Quan',   path: '/admin/kho-hang' },
     { id: 'kho-sanpham',  label: 'Sản Phẩm',    path: '/admin/kho-hang/san-pham' },
-    { id: 'kho-giaodich', label: 'Nhập / Xuất', path: '/admin/kho-hang/giao-dich' },
+    { id: 'kho-giaodich', label: 'Nhật Ký Nhập/Xuất', path: '/admin/kho-hang/giao-dich' },
     { id: 'kho-kiemkho',  label: 'Kiểm Kho',    path: '/admin/kho-hang/kiem-kho' },
     { id: 'kho-baocao',   label: 'Báo Cáo',     path: '/admin/kho-hang/bao-cao' },
   ]},
