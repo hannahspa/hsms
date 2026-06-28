@@ -11,6 +11,7 @@ const AdminApp = lazy(() => import('./apps/admin/AdminApp'))
 const LandingPage = lazy(() => import('./apps/website/LandingPage'))
 const HomePage = lazy(() => import('./apps/website/HomePage'))
 const CustomerMenuApp = lazy(() => import('./apps/customer/CustomerMenuApp'))
+const CustomerWheelApp = lazy(() => import('./apps/wheel/CustomerWheelApp'))
 const PosApp = lazy(() => import('./apps/pos/PosApp'))
 
 // Các /admin/* paths mà Lễ Tân được phép truy cập (không yêu cầu admin)
@@ -100,6 +101,9 @@ export default function App() {
 
   // Menu dịch vụ cho khách (iPad tại quầy)
   if (path.startsWith('/menu')) return <ErrorBoundary><LazyRoute><CustomerMenuApp /></LazyRoute></ErrorBoundary>
+
+  // Vòng quay may mắn cho khách (iPad tại quầy)
+  if (path.startsWith('/quay')) return <ErrorBoundary><LazyRoute><CustomerWheelApp /></LazyRoute></ErrorBoundary>
 
   // Shop (sắp ra mắt)
   if (path.startsWith('/shop')) return <ErrorBoundary><LazyRoute><LandingPage /></LazyRoute></ErrorBoundary>
