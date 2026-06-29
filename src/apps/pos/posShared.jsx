@@ -1,5 +1,4 @@
 import { formatCurrency, todayISO } from '../../lib/utils'
-import { addDurationISO } from '../../lib/dateMath'
 import { getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
 
 export function parseVND(value) {
@@ -109,21 +108,14 @@ export function LieuTrinhCard({ card, onUse, onGiaHan }) {
   const du30pct = paidValue >= Math.round(originalValue * 0.30)
   const coNo = conNo > 0
 
-  // ── Thời hạn thẻ: bảo hành 3 năm → 3 năm; thẻ khác → mặc định 1 năm ──
-  const namHan = (() => {
-    const so = Number(card.combo?.thoi_han_so) || 0
-    if (so > 0) return so
-    const t = (card.ten_dich_vu || '').toLowerCase()
-    return /3\s*n[ăa]m|b[ảa]o h[àa]nh\s*3/.test(t) ? 3 : 1
-  })()
-  const hanThuc = card.ngay_het_han
-    || (card.ngay_mua ? addDurationISO(card.ngay_mua, namHan, 'year') : null)
-  const khongGH = card.is_khong_gioi_han || !hanThuc
-  const hetHan = !khongGH && hanThuc < todayISO()
+  // ── Thời hạn thẻ: ĐỌC TRỰC TIẾP ngay_het_han. NULL = VÔ THỜI HẠN ──
+  // (KHÔNG tự tính ngày mua + 1 năm — chính sách: thẻ số lần cũ vô thời hạn)
+  const khongGH = card.is_khong_gioi_han || !card.ngay_het_han
+  const hetHan = !khongGH && card.ngay_het_han < todayISO()
   const hetBuoi = (card.so_buoi_con_lai ?? (card.so_buoi_tong - card.so_buoi_da_dung)) <= 0
   const hanText = khongGH
     ? 'HH: Không giới hạn'
-    : `HH: ${String(hanThuc).split('-').reverse().join('/')}${hetHan ? ' (đã hết hạn)' : ''}`
+    : `HH: ${String(card.ngay_het_han).split('-').reverse().join('/')}${hetHan ? ' (đã hết hạn)' : ''}`
 
   // ── Màu nền phân loại trạng thái (giống MySpa) ──
   //   Hết hạn → xám trầm · Có nợ → đỏ · Hoạt động → champagne
