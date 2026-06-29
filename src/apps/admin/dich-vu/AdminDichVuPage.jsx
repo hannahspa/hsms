@@ -86,7 +86,7 @@ function ServiceModal({ service, categories, onClose, onSaved }) {
         ten: form.ten.trim(),
         danh_muc: form.danh_muc.trim(),
         gia_co_ban: Number(form.gia_co_ban || 0),
-        ti_le_hoa_hong: Number(form.ti_le_hoa_hong || 0),
+        ti_le_hoa_hong: Math.round(Number(form.ti_le_hoa_hong || 0) * 100) / 100,
         thoi_gian_phut: Number(form.thoi_gian_phut || 0),
         thu_tu: Number(form.thu_tu || 999),
         is_active: !!form.is_active,
@@ -152,7 +152,7 @@ function ServiceModal({ service, categories, onClose, onSaved }) {
             </label>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1.5fr 0.9fr', gap: 12, marginBottom: 14 }}>
             <label style={{ display: 'grid', gap: 6 }}>
               <span style={labelStyle}>Danh mục</span>
               <input list="service-categories" value={form.danh_muc} onChange={e => set('danh_muc', e.target.value)} style={inputStyle} />
@@ -164,9 +164,25 @@ function ServiceModal({ service, categories, onClose, onSaved }) {
               <span style={labelStyle}>Giá bán</span>
               <input value={moneyInput(form.gia_co_ban)} onChange={e => set('gia_co_ban', parseMoney(e.target.value))} style={{ ...inputStyle, textAlign: 'right', fontWeight: 800 }} />
             </label>
+            {/* Tour: nhập TIỀN (đ) hoặc % — nhập 1 ô tự tính ô kia theo giá bán */}
             <label style={{ display: 'grid', gap: 6 }}>
-              <span style={labelStyle}>Tour %</span>
-              <input type="number" step="0.1" value={form.ti_le_hoa_hong} onChange={e => set('ti_le_hoa_hong', e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontWeight: 800 }} />
+              <span style={labelStyle}>Tour (đ / %)</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  value={moneyInput(Math.round(Number(form.gia_co_ban || 0) * Number(form.ti_le_hoa_hong || 0) / 100))}
+                  onChange={e => {
+                    const tien = parseMoney(e.target.value)
+                    const gia = Number(form.gia_co_ban || 0)
+                    // KHÔNG làm tròn ở đây (gõ dở bị tròn về 0 → reset ô). Tròn 2 chữ số khi LƯU.
+                    set('ti_le_hoa_hong', gia > 0 ? tien / gia * 100 : 0)
+                  }}
+                  style={{ ...inputStyle, textAlign: 'right', fontWeight: 800, flex: 1 }}
+                  title="Tiền tour mỗi lần (đ) — tự tính từ giá bán × %" placeholder="đ" />
+                <input type="number" step="0.1" value={form.ti_le_hoa_hong}
+                  onChange={e => set('ti_le_hoa_hong', e.target.value)}
+                  style={{ ...inputStyle, textAlign: 'center', fontWeight: 800, width: 62, flexShrink: 0 }}
+                  title="Tour %" placeholder="%" />
+              </div>
             </label>
             <label style={{ display: 'grid', gap: 6 }}>
               <span style={labelStyle}>Thời gian</span>
