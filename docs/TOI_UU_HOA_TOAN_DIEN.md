@@ -108,6 +108,35 @@ Mỗi GĐ = 1 chu trình: PHÂN TÍCH SÂU → chốt → BACKUP → SỬA → G
 | 30/06 | GĐ0-A | Soạn migration `129_bao_mat_lop1a_revoke_anon.sql` (REVOKE anon, giữ whitelist 13). CHỜ anh Nam duyệt → backup → chạy | (chưa) |
 | 01/07 | GĐ0-A | ✅ ĐÃ CHẠY 129 trên VPS (backup /tmp/schema_before_129.sql + rollback_grants_anon_129.sql). Verify: 13 whitelist đọc OK, bảng tiền anon bị chặn. Internet không còn truy cập DB tiền/khách/profiles | (migration only) |
 | 01/07 | GĐ0-A 1b-1 | ✅ ĐÃ CHẠY `130_checkin_rpc_secure.sql`: bảng checkin_session + login_attempt, cột selfie/gps trên cham_cong, 13 RPC SECURITY DEFINER (đăng nhập/me/home/lich/luong/thu_nhap/cham_cong+GPS server+selfie/bổ sung giờ ra/off/đổi pin/avatar). Test PASS: KTV chỉ thấy data mình, token rác bị từ chối, PIN sai khóa. GPS verify SERVER-SIDE. CHƯA revoke (app cũ vẫn chạy) | (migration only) |
+| 01/07 | GĐ0-A 1b-3 | ✅ 10/10 màn checkin → RPC + SelfieCapture. migration 131-134. Build+RPC test PASS. PUSH main (885efe5) → Vercel. CHỜ nhân viên test check-in ngày mai → rồi 1b-4 REVOKE | 885efe5 |
+| 01/07 | GĐ0-B | Xóa 3 dead code (DoiSoatNgay, NopTienMat, bao-cao/components/LichSuNopTienMat) — build PASS. Phát hiện: JS tokens ĐÃ hợp nhất (lux.js re-export colors.js); còn LỆCH GIÁ TRỊ JS↔CSS var (nền #FAF7F4 vs #f3ece1, chữ #1A1209 vs #2a201a). DESIGN_SYSTEM.md lỗi thời | (chưa commit) |
+
+## 6. GĐ0-B · CHUẨN HÓA MÀU (khuyến nghị của Claude — anh Nam giao tự quyết)
+**Chọn TÔNG ẤM (kem-espresso) làm chuẩn CHUNG.** Lý do: (1) hợp thương hiệu spa sang
+trọng ấm áp; (2) Admin (anh Nam xem nhiều từ Mỹ) đang tông ấm → không xáo trộn;
+(3) DESIGN_SYSTEM.md mô tả tông này → tài liệu khớp lại. Accent giữ champagne #c9a96e.
+
+**Bản đồ đồng bộ (chỉ sửa colors.js cho khớp hannah-admin.css :root):**
+| Token | Đổi C.* trong colors.js thành | (khớp CSS var) |
+|---|---|---|
+| bg | #f3ece1 | --bg |
+| surface | #fbf7ef | --surface |
+| card/surface2 | #ffffff | --surface2 |
+| text/ink | #2a201a | --ink |
+| textSub/ink2 | #5a4a3e | --ink2 |
+| textMute/ink3 | #8e7a68 | --ink3 |
+| border/line | #e8dcc8 | --line |
+| line2 | #d4c4ad | --line2 |
+| espresso | #3d2c20 (giữ, tách khỏi ink) | --espresso |
+→ Sau đổi: LUX/COLORS tự khớp (re-export). Internal/Checkin/POS đổi sang tông ấm = đồng bộ Admin.
+
+**QUAN TRỌNG — thực thi có kiểm tra thị giác:** đổi màu ảnh hưởng TOÀN giao diện.
+KHÔNG đổi "mù" rồi push. Cần: sửa colors.js → chạy dev/screenshot từng vùng
+(Admin/Internal/Checkin/POS/Menu) đối chiếu → chỉnh → mới push. Làm khi có thể xem UI.
+
+**Còn lại GĐ0-B:** viết DESIGN_SYSTEM.md v2 (khớp token thật + nguyên tắc 2026:
+khoảng trắng rộng, bo mềm, accent tiết chế, quy tắc mật độ nhiều/ít nội dung, mọi
+popup qua ui/Modal, mọi nút qua ui/Button); phủ ui/Modal+Button thay popup/nút inline.
 | | | ⚠️ Phát hiện: avatar_url lưu base64 khổng lồ trong nhan_vien → tối ưu sau (chuyển Storage URL). Không chặn tiến độ |
 
 ## 5. TRẠNG THÁI BẢO MẬT GĐ0-A
