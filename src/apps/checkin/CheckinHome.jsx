@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { checkinApi } from './checkinApi'
 import { LUX } from '../../constants/lux'
 import { todayISO, getNowVN } from '../../lib/utils'
 import { notify } from '../../components/ui/notify'
@@ -78,25 +78,19 @@ export default function CheckinHome({ nhanVien, onLogout }) {
     return () => clearInterval(timer)
   }, [])
 
-  useEffect(() => { loadChamCong(); loadHen() }, [])
+  useEffect(() => { loadHome() }, [])
 
-  const loadChamCong = async () => {
+  // 1 call RPC: chấm công hôm nay + lịch hẹn sắp tới (của chính NV)
+  const loadHome = async () => {
     setLoading(true)
-    const { data } = await supabase.from('cham_cong').select('*')
-      .eq('nhan_vien_id', nhanVien.id).eq('ngay', today).maybeSingle()
-    setChamCong(data || null)
+    try {
+      const d = await checkinApi.home()
+      setChamCong(d?.cham_cong_hom_nay || null)
+      setHenHomNay(d?.lich_hen || [])
+    } catch { /* phiên hết hạn */ }
     setLoading(false)
   }
-
-  const loadHen = async () => {
-    // Lịch hẹn CỦA CHÍNH KTV này — hôm nay + sắp tới (để chuẩn bị trước)
-    const { data } = await supabase.from('lich_hen').select('*')
-      .eq('nhan_vien_id', nhanVien.id)
-      .gte('ngay_hen', today)
-      .neq('trang_thai', 'huy')
-      .order('ngay_hen').order('gio_hen')
-    setHenHomNay(data || [])
-  }
+  const loadChamCong = loadHome  // giữ tên cũ cho các chỗ gọi lại sau thao tác
 
   const hh = String(time.getHours()).padStart(2, '0')
   const mm = String(time.getMinutes()).padStart(2, '0')

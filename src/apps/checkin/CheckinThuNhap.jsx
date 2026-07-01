@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../lib/supabase'
+import { checkinApi } from './checkinApi'
 import { LUX } from '../../constants/lux'
 import { formatCurrency, getNowVN } from '../../lib/utils'
 import './styles.css'
@@ -50,76 +50,36 @@ export default function CheckinThuNhap({ nhanVien, onBack }) {
   const [allSummary, setAllSummary] = useState(null) // tổng all-time
   const [loading, setLoading] = useState(true)
 
-  // Tải tổng all-time 1 lần
-  useEffect(() => {
-    supabase
-      .from('v_nhan_vien_thu_nhap')
-      .select('loai, so_tien')
-      .eq('nhan_vien_id', nhanVien.id)
-      .eq('is_test', false)
-      .then(({ data }) => {
-        if (!data) return
-        const tourTotal  = data.filter(r => r.loai === 'tour').reduce((s, r) => s + (r.so_tien || 0), 0)
-        const commTotal  = data.filter(r => r.loai === 'hoa_hong').reduce((s, r) => s + (r.so_tien || 0), 0)
-        setAllSummary({ tourTotal, commTotal, count: data.length })
-      })
-  }, [nhanVien.id])
-
+  // 1 call RPC: trả chi_tiet (tháng) + all_rows (toàn thời gian). Client tự tính tổng.
   const loadData = useCallback(async () => {
     setLoading(true)
-    const pad = n => String(n).padStart(2, '0')
+    try {
+      const d = await checkinApi.thuNhap(month, year)
+      const allRows = d?.all_rows || []
+      const tourAll = allRows.filter(r => r.loai === 'tour').reduce((s, r) => s + (r.so_tien || 0), 0)
+      const commAll = allRows.filter(r => r.loai === 'hoa_hong').reduce((s, r) => s + (r.so_tien || 0), 0)
+      setAllSummary({ tourTotal: tourAll, commTotal: commAll, count: allRows.length })
 
-    if (mode === 'month') {
-      // Theo tháng → đọc CHI TIẾT từng đơn (có tên dịch vụ + tên khách hàng) để NV biết đã làm gì
-      const daysInMonth = new Date(year, month, 0).getDate()
-      const sd = `${year}-${pad(month)}-01`
-      const ed = `${year}-${pad(month)}-${pad(daysInMonth)}`
-      const { data, error } = await supabase.from('don_hang_chi_tiet')
-        .select(`id, thanh_tien, tien_tour, tien_hoa_hong, ti_le_hoa_hong, loai_item,
-          dich_vu:dich_vu_id(ten), san_pham:san_pham_id(ten), the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu),
-          don_hang:don_hang_id!inner(ngay, ma_don, trang_thai, is_test, khach_hang:khach_hang_id(ho_ten))`)
-        .eq('nhan_vien_id', nhanVien.id)
-        .gte('don_hang.ngay', sd).lte('don_hang.ngay', ed)
-        .eq('don_hang.is_test', false).neq('don_hang.trang_thai', 'huy')
-      if (error) { setLoading(false); return }
-      const list = (data || [])
-        .filter(r => (r.tien_tour || 0) > 0 || (r.tien_hoa_hong || 0) > 0)
-        .map(r => ({
-          id: r.id,
-          ngay: r.don_hang?.ngay,
-          ten: r.dich_vu?.ten || r.san_pham?.ten || r.the_lieu_trinh?.ten_dich_vu || (r.loai_item === 'the_moi' ? 'Bán thẻ liệu trình' : 'Dịch vụ'),
-          khach: r.don_hang?.khach_hang?.ho_ten || 'Khách lẻ',
-          thanh_tien: r.thanh_tien || 0,
-          tien_tour: r.tien_tour || 0,
-          tien_hoa_hong: r.tien_hoa_hong || 0,
+      if (mode === 'month') {
+        const list = (d?.chi_tiet || []).map(r => ({
+          id: r.id, ngay: r.ngay,
+          ten: r.ten || (r.loai_item === 'the_moi' ? 'Bán thẻ liệu trình' : 'Dịch vụ'),
+          khach: r.khach || 'Khách lẻ',
+          thanh_tien: r.thanh_tien || 0, tien_tour: r.tien_tour || 0, tien_hoa_hong: r.tien_hoa_hong || 0,
         }))
-        .sort((a, b) => String(a.ngay).localeCompare(String(b.ngay)))
-      setSummary({
-        tourTotal: list.reduce((s, r) => s + r.tien_tour, 0),
-        commTotal: list.reduce((s, r) => s + r.tien_hoa_hong, 0),
-        count: list.length,
-      })
-      setRows(list)
-      setLoading(false)
-      return
-    }
-
-    // Toàn bộ → đọc view (nhẹ, gộp theo tháng)
-    const { data, error } = await supabase
-      .from('v_nhan_vien_thu_nhap')
-      .select('id,ngay,loai,so_tien,doanh_so_tinh,ti_le,ghi_chu,nguon')
-      .eq('nhan_vien_id', nhanVien.id)
-      .eq('is_test', false)
-      .order('ngay', { ascending: false })
-      .order('created_at', { ascending: false })
-    if (error) { setLoading(false); return }
-    const list = data || []
-    const tourTotal  = list.filter(r => r.loai === 'tour').reduce((s, r) => s + (r.so_tien || 0), 0)
-    const commTotal  = list.filter(r => r.loai === 'hoa_hong').reduce((s, r) => s + (r.so_tien || 0), 0)
-    setSummary({ tourTotal, commTotal, count: list.length })
-    setRows(list)
+        setSummary({
+          tourTotal: list.reduce((s, r) => s + r.tien_tour, 0),
+          commTotal: list.reduce((s, r) => s + r.tien_hoa_hong, 0),
+          count: list.length,
+        })
+        setRows(list)
+      } else {
+        setSummary({ tourTotal: tourAll, commTotal: commAll, count: allRows.length })
+        setRows(allRows)
+      }
+    } catch { /* phiên hết hạn */ }
     setLoading(false)
-  }, [nhanVien.id, mode, year, month])
+  }, [mode, year, month])
 
   useEffect(() => { loadData() }, [loadData])
 

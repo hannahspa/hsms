@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../../lib/supabase'
+import { checkinApi } from './checkinApi'
 import { LUX } from '../../constants/lux'
 import { getNowVN } from '../../lib/utils'
 import { tinhLuong, leTanCaInfo } from '../../lib/luong'
@@ -34,15 +34,11 @@ export default function CheckinLich({ nhanVien, onBack }) {
 
   const fetchData = async () => {
     setLoading(true)
-    const startDate = `${nam}-${String(thang).padStart(2, '0')}-01`
-    const lastDay = new Date(nam, thang, 0).getDate()
-    const endDate = `${nam}-${String(thang).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    const [ccRes, offRes] = await Promise.all([
-      supabase.from('cham_cong').select('*').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate).order('ngay'),
-      supabase.from('dang_ky_off').select('*').eq('nhan_vien_id', nhanVien.id).gte('ngay_off', startDate).lte('ngay_off', endDate).in('trang_thai', ['cho_duyet', 'duoc_duyet']),
-    ])
-    setChamCongData(ccRes.data || [])
-    setOffData(offRes.data || [])
+    try {
+      const d = await checkinApi.lich(thang, nam)
+      setChamCongData(d?.cham_cong || [])
+      setOffData((d?.dang_ky_off || []).filter(o => ['cho_duyet', 'duoc_duyet'].includes(o.trang_thai)))
+    } catch { /* phiên hết hạn → CheckinApp xử lý khi thao tác lại */ }
     setLoading(false)
   }
 

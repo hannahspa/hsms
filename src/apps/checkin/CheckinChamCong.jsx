@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../lib/supabase'
+import { checkinApi } from './checkinApi'
+import SelfieCapture from './SelfieCapture'
 import { LUX } from '../../constants/lux'
-import { todayISO, getNowVN } from '../../lib/utils'
+import { getNowVN } from '../../lib/utils'
 import { notify } from '../../components/ui/notify'
 import './styles.css'
 
@@ -98,18 +99,16 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
   const [suaItem, setSuaItem] = useState(null)   // bản ghi đang bổ sung giờ ra
   const [gioRaInput, setGioRaInput] = useState('')
   const [suaLoading, setSuaLoading] = useState(false)
+  // Selfie xác thực chấm công (chống check hộ)
+  const [showSelfie, setShowSelfie] = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)  // { action:'vao'|'ra', gio, lat, lng, lyDo }
 
   const loadQuenCheckout = useCallback(async () => {
-    const today = todayISO()
-    const d14 = new Date(getNowVN()); d14.setDate(d14.getDate() - 14)
-    const from = d14.toISOString().slice(0, 10)
-    const { data } = await supabase.from('cham_cong')
-      .select('id, ngay, gio_vao, gio_ra, loai')
-      .eq('nhan_vien_id', nhanVien.id).eq('loai', 'di_lam')
-      .gte('ngay', from).lt('ngay', today)
-      .is('gio_ra', null).order('ngay', { ascending: false })
-    setQuenList(data || [])
-  }, [nhanVien.id])
+    try {
+      const d = await checkinApi.home()   // server trả quen_checkout (14 ngày, thiếu giờ ra)
+      setQuenList(d?.quen_checkout || [])
+    } catch { /* phiên hết hạn */ }
+  }, [])
 
   useEffect(() => { loadQuenCheckout() }, [loadQuenCheckout])
 
@@ -120,10 +119,8 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
       const gioRa = gioRaInput.length === 5 ? gioRaInput + ':00' : gioRaInput
       const heSo = tinhHeSo(suaItem.gio_vao, gioRa)
       const tangCa = tinhTangCa(gioRa)
-      const { error } = await supabase.from('cham_cong')
-        .update({ gio_ra: gioRa, he_so: heSo, he_so_tam: heSo, tang_ca_gio: tangCa, trang_thai_tang_ca: tangCa > 0 ? 'cho_duyet' : 'khong_co' })
-        .eq('id', suaItem.id)
-      if (error) throw error
+      const res = await checkinApi.boSungGioRa({ chamCongId: suaItem.id, gioRa, heSo, tangCa })
+      if (res?.success === false) throw new Error(res.error || 'Không lưu được giờ ra')
       setShowResult({ type: 'checkout', icon: '✅', title: 'Đã bổ sung giờ ra!', color: LUX.sage, bg: '#eef2e7',
         rows: [{ label: 'Ngày', value: suaItem.ngay.split('-').reverse().join('/') }, { label: 'Giờ ra', value: gioRa.slice(0, 5) }, { label: 'Ngày công', value: heSo.toFixed(2) }],
         note: 'Cảm ơn bạn đã bổ sung. Ngày công đã được cập nhật chính xác.' })
@@ -136,55 +133,9 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
   }
 
-  const handleCheckin = async () => {
-    if (!navigator.geolocation) {
-      notify('Thiết bị của bạn không hỗ trợ định vị GPS!', 'error')
-      return
-    }
-    setLoading(true)
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      const dist = getDistance(pos.coords.latitude, pos.coords.longitude, SPA_COORD.lat, SPA_COORD.lng)
-      if (dist > MAX_DISTANCE_M) {
-        notify(`Vị trí cách Spa ${Math.round(dist)}m (tối đa ${MAX_DISTANCE_M}m). Hãy ra gần cửa sổ/ngoài, bật WiFi mạng Spa rồi thử lại.`, 'warn')
-        setLoading(false)
-        return
-      }
-      try {
-        const now = getNowVN()
-        const gioVao = toTimeStrVN(now)
-        const info = phanLoaiVao(gioVao)
-        const { error } = await supabase.from('cham_cong').insert({
-          nhan_vien_id: nhanVien.id, ngay: todayISO(), gio_vao: gioVao,
-          loai: 'di_lam', he_so: 0, he_so_tam: 0, tang_ca_gio: 0,
-          trang_thai_tang_ca: 'khong_co', nguoi_cham: nhanVien.ho_ten,
-        })
-        if (error) throw error
-        setShowResult({
-          type: 'checkin',
-          icon: info.cap === 'dung_gio' ? '✅' : '⚠️',
-          title: info.cap === 'dung_gio' ? 'Check-in thành công!' : 'Đã check-in — có trễ giờ',
-          color: info.color, bg: info.bg,
-          rows: [
-            { label: 'Giờ vào', value: gioVao.slice(0, 5) },
-            { label: 'Trạng thái', value: info.label },
-            { label: 'Ca chuẩn', value: '09:15 – 20:00' },
-          ],
-          note: info.cap !== 'dung_gio' ? 'Bạn vào trễ so với quy định. Ngày công sẽ được tính khi check-out.' : 'Chúc bạn làm việc hiệu quả!',
-        })
-        onUpdated()
-      } catch (e) { notify('Lỗi: ' + e.message, 'error') }
-      finally { setLoading(false) }
-    }, (err) => {
-      notify('Không thể lấy vị trí GPS: ' + err.message + '. Vui lòng bật Vị trí (Location) và cấp quyền cho trình duyệt.', 'error')
-      setLoading(false)
-    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 })
-  }
-
-  const handleCheckoutRequest = () => {
-    if (!navigator.geolocation) {
-      notify('Thiết bị của bạn không hỗ trợ định vị GPS!', 'error')
-      return
-    }
+  // Lấy GPS → nếu trong bán kính → mở màn chụp selfie (server sẽ verify lại GPS + selfie)
+  const layGpsRoiChup = (action, extra = {}) => {
+    if (!navigator.geolocation) { notify('Thiết bị của bạn không hỗ trợ định vị GPS!', 'error'); return }
     setLoading(true)
     navigator.geolocation.getCurrentPosition((pos) => {
       const dist = getDistance(pos.coords.latitude, pos.coords.longitude, SPA_COORD.lat, SPA_COORD.lng)
@@ -193,73 +144,102 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
         setLoading(false)
         return
       }
-      const now = getNowVN()
-      const gioRa = toTimeStrVN(now)
-      const info = phanLoaiRa(gioRa)
-      if (info.cap === 've_som_vua' || info.cap === 've_som_nhieu') {
-        setPendingRa(gioRa)
-        setShowVeSom(true)
-        setLoading(false)
-        return
-      }
-      confirmCheckout(gioRa, '')
+      const gio = toTimeStrVN(getNowVN())
+      setPendingAction({ action, gio, lat: pos.coords.latitude, lng: pos.coords.longitude, ...extra })
+      setLoading(false)
+      setShowSelfie(true)
     }, (err) => {
       notify('Không thể lấy vị trí GPS: ' + err.message + '. Vui lòng bật Vị trí (Location) và cấp quyền cho trình duyệt.', 'error')
       setLoading(false)
     }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 })
   }
 
-  const confirmCheckout = async (gioRa, lyDo) => {
+  const handleCheckin = () => layGpsRoiChup('vao')
+
+  const handleCheckoutRequest = () => {
+    if (!navigator.geolocation) { notify('Thiết bị của bạn không hỗ trợ định vị GPS!', 'error'); return }
     setLoading(true)
-    setShowVeSom(false)
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const dist = getDistance(pos.coords.latitude, pos.coords.longitude, SPA_COORD.lat, SPA_COORD.lng)
+      if (dist > MAX_DISTANCE_M) {
+        notify(`Vị trí cách Spa ${Math.round(dist)}m (tối đa ${MAX_DISTANCE_M}m). Hãy ra gần cửa sổ/ngoài, bật WiFi mạng Spa rồi thử lại.`, 'warn')
+        setLoading(false)
+        return
+      }
+      const gioRa = toTimeStrVN(getNowVN())
+      const info = phanLoaiRa(gioRa)
+      const geo = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+      // Về sớm nhiều → hỏi lý do TRƯỚC khi chụp selfie
+      if (info.cap === 've_som_vua' || info.cap === 've_som_nhieu') {
+        setPendingRa({ gio: gioRa, ...geo })
+        setShowVeSom(true)
+        setLoading(false)
+        return
+      }
+      setPendingAction({ action: 'ra', gio: gioRa, lyDo: '', ...geo })
+      setLoading(false)
+      setShowSelfie(true)
+    }, (err) => {
+      notify('Không thể lấy vị trí GPS: ' + err.message + '. Vui lòng bật Vị trí (Location) và cấp quyền cho trình duyệt.', 'error')
+      setLoading(false)
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 })
+  }
+
+  // Sau khi chụp selfie xong → gửi RPC (server verify GPS + selfie + token)
+  const onSelfieCapture = async (selfieUrl) => {
+    setShowSelfie(false)
+    const pa = pendingAction
+    if (!pa) return
+    setLoading(true)
     try {
-      const gioVao = chamCong.gio_vao
-      const heSo = tinhHeSo(gioVao, gioRa)
-      const tangCaGio = tinhTangCa(gioRa)
-      const gioLam = tinhGioLam(gioVao, gioRa)
-      const infoRa = phanLoaiRa(gioRa)
-      const infoVao = phanLoaiVao(gioVao)
-      const trangThaiTangCa = tangCaGio > 0 ? 'cho_duyet' : 'khong_co'
-
-      const { error } = await supabase.from('cham_cong').update({
-        gio_ra: gioRa, he_so: heSo, he_so_tam: heSo, tang_ca_gio: 0,
-        ly_do_ve_som: lyDo || null, trang_thai_tang_ca: trangThaiTangCa,
-      }).eq('id', chamCong.id)
-      if (error) throw error
-
-      if (tangCaGio > 0) {
-        await supabase.from('yeu_cau_chinh_sua').insert({
-          loai_bang: 'cham_cong', ban_ghi_id: chamCong.id,
-          loai_yeu_cau: 'duyet_tang_ca',
-          du_lieu_cu: { tang_ca_gio: 0 }, du_lieu_moi: { tang_ca_gio: tangCaGio },
-          ly_do: `${nhanVien.ho_ten} tăng ca ${tangCaGio}h — check-out lúc ${gioRa.slice(0, 5)}`,
-          nguoi_yeu_cau: nhanVien.ho_ten,
+      if (pa.action === 'vao') {
+        const res = await checkinApi.chamCong({ action: 'vao', gio: pa.gio, heSo: 0, tangCa: 0, selfieUrl, lat: pa.lat, lng: pa.lng })
+        if (res?.success === false) throw new Error(res.error || 'Không check-in được')
+        const info = phanLoaiVao(pa.gio)
+        setShowResult({
+          type: 'checkin',
+          icon: info.cap === 'dung_gio' ? '✅' : '⚠️',
+          title: info.cap === 'dung_gio' ? 'Check-in thành công!' : 'Đã check-in — có trễ giờ',
+          color: info.color, bg: info.bg,
+          rows: [
+            { label: 'Giờ vào', value: pa.gio.slice(0, 5) },
+            { label: 'Trạng thái', value: info.label },
+            { label: 'Ca chuẩn', value: '09:15 – 20:00' },
+          ],
+          note: info.cap !== 'dung_gio' ? 'Bạn vào trễ so với quy định. Ngày công sẽ được tính khi check-out.' : 'Chúc bạn làm việc hiệu quả!',
+        })
+      } else {
+        const gioVao = chamCong.gio_vao
+        const heSo = tinhHeSo(gioVao, pa.gio)
+        const tangCaGio = tinhTangCa(pa.gio)
+        const res = await checkinApi.chamCong({ action: 'ra', gio: pa.gio, heSo, tangCa: tangCaGio, lyDo: pa.lyDo || null, selfieUrl, lat: pa.lat, lng: pa.lng })
+        if (res?.success === false) throw new Error(res.error || 'Không check-out được')
+        const gioLam = tinhGioLam(gioVao, pa.gio)
+        const infoRa = phanLoaiRa(pa.gio)
+        const infoVao = phanLoaiVao(gioVao)
+        const rows = [
+          { label: 'Giờ vào', value: `${gioVao.slice(0, 5)} — ${infoVao.label}` },
+          { label: 'Giờ ra', value: `${pa.gio.slice(0, 5)} — ${infoRa.label}` },
+          { label: 'Giờ làm', value: gioLam },
+          { label: 'Ngày công', value: `${Math.round(heSo * 100)}%` },
+        ]
+        if (tangCaGio > 0) rows.push({ label: 'Tăng ca', value: `${tangCaGio}h — chờ Cao Quốc Nam duyệt` })
+        if (pa.lyDo) rows.push({ label: 'Lý do về sớm', value: pa.lyDo })
+        setShowResult({
+          type: 'checkout',
+          icon: heSo >= 1 ? '🎉' : heSo >= 0.75 ? '✅' : heSo >= 0.5 ? '⚠️' : '❌',
+          title: 'Check-out thành công!',
+          color: heSo >= 1 ? LUX.sage : heSo >= 0.75 ? '#8B6914' : '#C0392B',
+          bg: heSo >= 1 ? '#eef2e7' : heSo >= 0.75 ? '#FEF9E7' : '#FEF2F2',
+          rows,
+          note: heSo >= 1 && tangCaGio === 0 ? '100% ngày công — xuất sắc!'
+            : tangCaGio > 0 ? 'Yêu cầu tăng ca đã được gửi cho Cao Quốc Nam duyệt.'
+            : `Ngày công ${Math.round(heSo * 100)}% — vui lòng liên hệ quản lý nếu cần.`,
         })
       }
-
-      const rows = [
-        { label: 'Giờ vào', value: `${gioVao.slice(0, 5)} — ${infoVao.label}` },
-        { label: 'Giờ ra', value: `${gioRa.slice(0, 5)} — ${infoRa.label}` },
-        { label: 'Giờ làm', value: gioLam },
-        { label: 'Ngày công', value: `${Math.round(heSo * 100)}%` },
-      ]
-      if (tangCaGio > 0) rows.push({ label: 'Tăng ca', value: `${tangCaGio}h — chờ Cao Quốc Nam duyệt` })
-      if (lyDo) rows.push({ label: 'Lý do về sớm', value: lyDo })
-
-      setShowResult({
-        type: 'checkout',
-        icon: heSo >= 1 ? '🎉' : heSo >= 0.75 ? '✅' : heSo >= 0.5 ? '⚠️' : '❌',
-        title: 'Check-out thành công!',
-        color: heSo >= 1 ? LUX.sage : heSo >= 0.75 ? '#8B6914' : '#C0392B',
-        bg: heSo >= 1 ? '#eef2e7' : heSo >= 0.75 ? '#FEF9E7' : '#FEF2F2',
-        rows,
-        note: heSo >= 1 && tangCaGio === 0 ? '100% ngày công — xuất sắc!'
-          : tangCaGio > 0 ? 'Yêu cầu tăng ca đã được gửi cho Cao Quốc Nam duyệt.'
-          : `Ngày công ${Math.round(heSo * 100)}% — vui lòng liên hệ quản lý nếu cần.`,
-      })
       onUpdated()
-    } catch (e) { notify('Lỗi: ' + e.message, 'error') }
-    finally { setLoading(false) }
+    } catch (e) { notify('Lỗi: ' + (e.message || e), 'error') }
+    finally { setLoading(false); setPendingAction(null) }
   }
 
   const fmt = (t) => t?.slice(0, 5) || '--:--'
@@ -269,6 +249,15 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
 
   return (
     <div style={{ minHeight: '100vh', background: LUX.bg, fontFamily: LUX.fontSans }}>
+
+      {/* ── MÀN CHỤP SELFIE (xác thực chấm công) ── */}
+      {showSelfie && (
+        <SelfieCapture
+          title={pendingAction?.action === 'ra' ? 'Chụp ảnh check-out' : 'Chụp ảnh check-in'}
+          onCapture={onSelfieCapture}
+          onCancel={() => { setShowSelfie(false); setPendingAction(null); setLoading(false) }}
+        />
+      )}
 
       {/* ── POPUP KẾT QUẢ ── */}
       {showResult && (
@@ -317,7 +306,9 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
               </button>
               <button onClick={() => {
                 if (!lyDoVeSom.trim()) { notify('Vui lòng nhập lý do!', 'warn'); return }
-                confirmCheckout(pendingRa, lyDoVeSom)
+                setPendingAction({ action: 'ra', gio: pendingRa.gio, lat: pendingRa.lat, lng: pendingRa.lng, lyDo: lyDoVeSom })
+                setShowVeSom(false)
+                setShowSelfie(true)
               }} disabled={loading}
                 style={{ flex: 1, padding: 14, borderRadius: 14, background: `linear-gradient(135deg, ${LUX.champagne}, ${LUX.taupe})`, color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.7 : 1 }}>
                 Xác nhận

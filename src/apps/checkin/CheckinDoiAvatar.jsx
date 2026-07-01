@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import Cropper from 'react-easy-crop'
-import { supabase } from '../../lib/supabase'
+import { checkinApi } from './checkinApi'
 import { LUX } from '../../constants/lux'
 
 // ── Canvas helpers ────────────────────────────────────────────
@@ -93,9 +93,8 @@ export default function CheckinDoiAvatar({ nhanVien, onBack, onUpdated }) {
     try {
       const dataUrl = await getCroppedDataUrl(imageSrc, croppedAreaPixels)
 
-      const { error: dbErr } = await supabase
-        .from('nhan_vien').update({ avatar_url: dataUrl }).eq('id', nhanVien.id)
-      if (dbErr) throw dbErr
+      const res = await checkinApi.doiAvatar(dataUrl)
+      if (res?.success === false) throw new Error(res.error || 'Không lưu được ảnh')
 
       setCurrentUrl(dataUrl)
       setImageSrc(null)
@@ -110,7 +109,7 @@ export default function CheckinDoiAvatar({ nhanVien, onBack, onUpdated }) {
   }
 
   const handleRemove = async () => {
-    await supabase.from('nhan_vien').update({ avatar_url: null }).eq('id', nhanVien.id)
+    await checkinApi.doiAvatar(null)
     setCurrentUrl(null)
     showToast('Đã xóa ảnh đại diện')
     onUpdated?.(null)

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { checkinApi } from './checkinApi'
 import { LUX } from '../../constants/lux'
 import { todayISO, getNowVN } from '../../lib/utils'
 import './styles.css'
@@ -44,41 +44,34 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
   useEffect(() => { loadOffCungBoPhan() }, [calThang, calNam])
 
   const loadDanhSach = async () => {
-    const { data } = await supabase.from('dang_ky_off').select('*')
-      .eq('nhan_vien_id', nhanVien.id).order('ngay_off', { ascending: false }).limit(15)
-    setDanhSach(data || [])
+    try {
+      const d = await checkinApi.offData(calThang, calNam)
+      setDanhSach(d?.lich_su || [])
+    } catch { /* phiên hết hạn */ }
   }
 
   const loadOffCungBoPhan = async () => {
-    const startDate = `${calNam}-${String(calThang).padStart(2, '0')}-01`
-    const lastDay = new Date(calNam, calThang, 0).getDate()
-    const endDate = `${calNam}-${String(calThang).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    const { data: nvList } = await supabase.from('nhan_vien').select('id, ho_ten')
-      .eq('vi_tri', nhanVien.vi_tri).eq('trang_thai', 'dang_lam')
-    if (!nvList) return
+    try {
+      const d = await checkinApi.offData(calThang, calNam)
+      const nvList = d?.dong_nghiep || []
+      const map = {}
+      nvList.forEach(nv => {
+        const parts = String(nv.ho_ten || '').trim().split(' ')
+        map[nv.id] = parts.length >= 2 ? parts[parts.length - 2] + ' ' + parts[parts.length - 1] : parts[parts.length - 1]
+      })
+      setNvMap(map)
 
-    const map = {}
-    nvList.forEach(nv => {
-      const parts = nv.ho_ten.trim().split(' ')
-      map[nv.id] = parts.length >= 2 ? parts[parts.length - 2] + ' ' + parts[parts.length - 1] : parts[parts.length - 1]
-    })
-    setNvMap(map)
+      const offRows = d?.off_thang || []   // RPC đã lọc cho_duyet/duoc_duyet + cùng bộ phận
+      const myOffCount = offRows.filter(r => r.nhan_vien_id === nhanVien.id && r.loai_off === 'off_phep').length
+      setSoNgayDaOff(myOffCount)
 
-    const ids = nvList.map(nv => nv.id)
-    const { data: offData } = await supabase.from('dang_ky_off')
-      .select('ngay_off, nhan_vien_id, trang_thai, loai_off')
-      .in('nhan_vien_id', ids).gte('ngay_off', startDate).lte('ngay_off', endDate)
-      .in('trang_thai', ['cho_duyet', 'duoc_duyet'])
-
-    const myOffCount = (offData || []).filter(r => r.nhan_vien_id === nhanVien.id && r.loai_off === 'off_phep').length
-    setSoNgayDaOff(myOffCount)
-
-    const grouped = {}
-    ;(offData || []).forEach(r => {
-      if (!grouped[r.ngay_off]) grouped[r.ngay_off] = []
-      grouped[r.ngay_off].push({ id: r.nhan_vien_id, trang_thai: r.trang_thai })
-    })
-    setOffMap(grouped)
+      const grouped = {}
+      offRows.forEach(r => {
+        if (!grouped[r.ngay_off]) grouped[r.ngay_off] = []
+        grouped[r.ngay_off].push({ id: r.nhan_vien_id, trang_thai: r.trang_thai })
+      })
+      setOffMap(grouped)
+    } catch { /* phiên hết hạn */ }
   }
 
   const gioiHan = GIOI_HAN_OFF[nhanVien.vi_tri] || 1
@@ -119,13 +112,7 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
 
     setLoading(true)
     try {
-      const { error } = await supabase.rpc('insert_dang_ky_off', {
-        p_nhan_vien_id: nhanVien.id,
-        p_ngay_off: ngayOff,
-        p_loai_off: loaiOff,
-        p_ly_do: lyDo,
-      })
-      if (error) throw error
+      await checkinApi.dangKyOff({ ngayOff, loaiOff, lyDo })
       showToast('Đã gửi đơn — chờ Cao Quốc Nam duyệt!')
       setNgayOff(''); setLyDo('')
       loadDanhSach(); loadOffCungBoPhan()
@@ -146,17 +133,7 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
     if (ngayMoi < todayISO()) { showToast('Không đổi sang ngày quá khứ', 'error'); return }
     setDoiLoading(true)
     try {
-      const { error } = await supabase.from('yeu_cau_chinh_sua').insert({
-        loai_bang: 'dang_ky_off',
-        ban_ghi_id: doiItem.id,
-        loai_yeu_cau: 'sua',
-        trang_thai: 'cho_duyet',
-        du_lieu_cu: { ngay_off: doiItem.ngay_off, loai_off: doiItem.loai_off, nhan_vien_ten: nhanVien.ho_ten },
-        du_lieu_moi: { ngay_off: ngayMoi },
-        ly_do: `${nhanVien.ho_ten} xin đổi ngày OFF ${fmt(doiItem.ngay_off)} → ${fmt(ngayMoi)}`,
-        nguoi_yeu_cau: nhanVien.ho_ten,
-      })
-      if (error) throw error
+      await checkinApi.xinDoiNgayOff({ offId: doiItem.id, ngayCu: doiItem.ngay_off, loaiOff: doiItem.loai_off, ngayMoi })
       showToast('Đã gửi yêu cầu đổi ngày — chờ Cao Quốc Nam duyệt!')
       setDoiItem(null); setNgayMoi('')
       loadDanhSach()

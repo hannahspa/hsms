@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../lib/supabase'
+import { checkinApi } from './checkinApi'
 import { LUX } from '../../constants/lux'
 import { formatCurrency, getNowVN } from '../../lib/utils'
 import { tinhLuong, getDaysInMonth } from '../../lib/luong'
@@ -35,26 +35,21 @@ export default function CheckinLuong({ nhanVien, onBack }) {
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(getDaysInMonth(year, month)).padStart(2, '0')}`
 
     const isLeTanNv = nhanVien.vi_tri === 'le_tan'
-    const [ccRes, blRes, quyRes, thuNhapRes, detailRes, kdSumRes, leTanRes] = await Promise.all([
-      supabase.from('cham_cong').select('ngay,loai,tang_ca_gio,he_so,gio_vao,gio_ra').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate),
-      supabase.from('bang_luong').select('*').eq('nhan_vien_id', nhanVien.id).eq('thang', month).eq('nam', year).maybeSingle(),
-      supabase.from('quy_ngay_off').select('*').eq('nhan_vien_id', nhanVien.id).eq('nam', year).maybeSingle(),
-      // Real-time Kỳ 2 từ don_hang_chi_tiet (VIEW v_nhan_vien_thu_nhap)
-      supabase.from('v_nhan_vien_thu_nhap').select('loai,so_tien').eq('nhan_vien_id', nhanVien.id).gte('ngay', startDate).lte('ngay', endDate).eq('is_test', false),
-      // Chi tiết từng đơn (tour + hoa hồng) — bảng gốc để KTV xem mình đã làm gì
-      supabase.from('don_hang_chi_tiet')
-        .select(`id, thanh_tien, tien_tour, tien_hoa_hong, ti_le_hoa_hong, loai_item,
-          dich_vu:dich_vu_id(ten), san_pham:san_pham_id(ten), the_lieu_trinh:the_lieu_trinh_id(ten_dich_vu),
-          don_hang:don_hang_id!inner(ngay, ma_don, trang_thai, is_test, khach_hang:khach_hang_id(ho_ten))`)
-        .eq('nhan_vien_id', nhanVien.id)
-        .gte('don_hang.ngay', startDate).lte('don_hang.ngay', endDate)
-        .eq('don_hang.is_test', false).neq('don_hang.trang_thai', 'huy'),
-      // Lễ Tân: tổng hợp lương KD (RPC) + danh sách lễ tân để tính công thức doanh số
-      isLeTanNv ? supabase.rpc('luong_kd_summary', { p_thang: month, p_nam: year })
-                : Promise.resolve({ data: null }),
-      isLeTanNv ? supabase.from('nhan_vien').select('id').eq('vi_tri', 'le_tan').eq('trang_thai', 'dang_lam')
-                : Promise.resolve({ data: [] }),
-    ])
+    // 1 RPC an toàn: trả dữ liệu lương CỦA CHÍNH NV (server không lộ của người khác).
+    // Bọc lại thành các *Res.data để giữ nguyên toàn bộ logic tính lương phía dưới.
+    const _d = await checkinApi.luong(month, year)
+    const ccRes  = { data: _d?.cham_cong || [] }
+    const blRes  = { data: _d?.bang_luong || null }
+    const quyRes = { data: _d?.quy_ngay_off || null }
+    const thuNhapRes = { data: _d?.pos_thu_nhap || [] }
+    const detailRes  = { data: (_d?.chi_tiet || []).map(r => ({
+      id: r.id, thanh_tien: r.thanh_tien, tien_tour: r.tien_tour, tien_hoa_hong: r.tien_hoa_hong,
+      ti_le_hoa_hong: r.ti_le_hoa_hong, loai_item: r.loai_item,
+      dich_vu: r.ten ? { ten: r.ten } : null, san_pham: null, the_lieu_trinh: null,
+      don_hang: { ngay: r.ngay, ma_don: r.ma_don, trang_thai: r.trang_thai, khach_hang: { ho_ten: r.khach } },
+    })) }
+    const kdSumRes = { data: _d?.letan_kd || null }
+    const leTanRes = { data: _d?.letan_ids || [] }
     const kdDetail = (detailRes.data || [])
       .filter(r => (r.tien_tour || 0) > 0 || (r.tien_hoa_hong || 0) > 0)
       .sort((a, b) => String(a.don_hang?.ngay).localeCompare(String(b.don_hang?.ngay)))
@@ -141,20 +136,13 @@ export default function CheckinLuong({ nhanVien, onBack }) {
     if (soNgayMuonDung <= 0) return
 
     setRequesting(true)
-    const { error } = await supabase.from('yeu_cau_chinh_sua').insert({
-      loai_bang: 'quy_ngay_off',
-      ban_ghi_id: data.quyNgayOff?.id || null,
-      loai_yeu_cau: 'dung_ngay_le',
-      trang_thai: 'cho_duyet',
-      du_lieu_cu: { nhan_vien_id: nhanVien.id, nhan_vien_ten: nhanVien.ho_ten },
-      du_lieu_moi: { so_dung_thang_nay: soNgayMuonDung, thang: month, nam: year },
-      ly_do: `${nhanVien.ho_ten} yêu cầu dùng ${soNgayMuonDung} ngày lễ tích luỹ bù ${ovCanBu} ngày OV tháng ${month}/${year}`,
-      nguoi_yeu_cau: nhanVien.ho_ten,
-    })
-    if (!error) {
-      setRequestSent(true)
-      setTimeout(() => setRequestSent(false), 5000)
-    }
+    try {
+      const res = await checkinApi.xinDungNgayLe({ soNgay: soNgayMuonDung, ov: ovCanBu, thang: month, nam: year })
+      if (res?.success) {
+        setRequestSent(true)
+        setTimeout(() => setRequestSent(false), 5000)
+      }
+    } catch { /* phiên hết hạn */ }
     setRequesting(false)
   }
 

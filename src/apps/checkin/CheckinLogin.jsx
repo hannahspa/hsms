@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
 import { LUX } from '../../constants/lux'
-import { hashPin, getPinLockout, recordPinFailure, clearPinLockout } from '../../lib/utils'
+import { hashPin } from '../../lib/utils'
+import { checkinApi } from './checkinApi'
 import './styles.css'
 
 const VI_TRI_LABEL = { ktv: 'Kỹ Thuật Viên', le_tan: 'Lễ Tân', tap_vu: 'Tạp Vụ' }
@@ -53,10 +53,10 @@ export default function CheckinLogin({ onLogin }) {
   const [pinLoading, setPinLoading] = useState(false)
 
   useEffect(() => {
-    supabase.from('nhan_vien')
-      .select('id, ho_ten, vi_tri, avatar_url, trang_thai')
-      .eq('trang_thai', 'dang_lam').order('ho_ten')
-      .then(({ data }) => { setDanhSach(data || []); setLoading(false) })
+    // Đọc danh sách NV qua RPC (không lộ pin_hash/lương)
+    checkinApi.dsNhanVien()
+      .then(data => { setDanhSach(data || []); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
 
   const handleSelectNV = (nv) => { setSelected(nv); setPin(''); setError('') }
@@ -72,29 +72,12 @@ export default function CheckinLogin({ onLogin }) {
 
   const verifyPin = async (inputPin) => {
     setPinLoading(true); setError('')
-
-    const lockout = getPinLockout()
-    if (lockout.until > 0) {
-      const mins = Math.ceil((lockout.until - Date.now()) / 60000)
-      setError(`Quá nhiều lần thử. Vui lòng đợi ${mins} phút.`)
-      setPin(''); setPinLoading(false)
-      return
-    }
-
     try {
+      // Server tự hash-so-khớp + rate-limit (khóa 5 phút sau 5 lần sai) + cấp session_token
       const hashed = await hashPin(inputPin)
-      const { data } = await supabase.from('nhan_vien')
-        .select('*').eq('id', selected.id).eq('pin_hash', hashed).single()
-      if (data) { clearPinLockout(); onLogin(data) }
-      else {
-        const { attempts, until } = recordPinFailure()
-        if (until > 0) {
-          setError(`Sai PIN quá 5 lần. Vui lòng đợi 5 phút.`)
-        } else {
-          setError(`PIN không đúng, còn ${5 - attempts} lần thử!`)
-        }
-        setPin('')
-      }
+      const res = await checkinApi.dangNhap(selected.id, hashed)
+      if (res?.success) { onLogin(res.nhan_vien) }
+      else { setError(res?.error || 'PIN không đúng'); setPin('') }
     } catch { setError('Lỗi kết nối, thử lại!'); setPin('') }
     finally { setPinLoading(false) }
   }
