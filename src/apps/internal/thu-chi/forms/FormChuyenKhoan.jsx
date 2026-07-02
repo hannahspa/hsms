@@ -3,6 +3,7 @@ import { supabase } from '../../../../lib/supabase'
 import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 import I from '../../../../components/shared/Icons'
+import RightPanel from '../../../../components/shared/RightPanel'
 
 const S = {
   overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 500 },
@@ -136,27 +137,13 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
     )
   }
 
-  // ── Form chính ──
+  // ── Form chính (panel chuẩn RightPanel — đồng bộ cách xuất hiện toàn hệ thống) ──
   return (
-    <div style={S.panelOverlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    <RightPanel open onClose={onClose} title="Chuyển Khoản Nội Bộ" subtitle="Quẹt thẻ về MB hoặc rút tiền mặt"
+      bodyStyle={{ padding: '18px 16px 24px' }}
+      footer={<button onClick={handleSave} disabled={saving} style={S.saveBtn(saving)}>{saving ? 'Đang lưu...' : 'Lưu Chuyển Khoản'}</button>}>
       <DatePicker open={showLich} selectedDate={ngay} onClose={() => setShowLich(false)} onConfirm={d => { setNgay(d); setShowLich(false) }} />
-
-      <div style={S.sheet}>
-        <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
-        <div style={S.handle}><div style={S.handleBar} /></div>
-
-        <div style={S.header}>
-          <div style={S.headerLeft}>
-            <div style={S.iconBox('#F5F3FF')}><I.Bank style={{ width: 18, height: 18, color: '#6C3483' }} /></div>
-            <div>
-              <div style={S.title}>Chuyển Khoản Nội Bộ</div>
-              <div style={S.subtitle}>Quẹt thẻ về MB hoặc rút tiền mặt</div>
-            </div>
-          </div>
-          <button style={S.closeBtn} onClick={onClose}>&times;</button>
-        </div>
-
-        <div style={S.body}>
+      <div>
           {/* Số tiền */}
           <div style={S.amountCard}>
             <div style={S.amountLabel}>Số Tiền Chuyển</div>
@@ -220,12 +207,7 @@ export default function FormChuyenKhoan({ viList, user, onClose, onSaved }) {
             </div>
           </div>
 
-          {/* Lưu */}
-          <button onClick={handleSave} disabled={saving} style={S.saveBtn(saving)}>
-            {saving ? 'Đang lưu...' : 'Lưu Chuyển Khoản'}
-          </button>
-        </div>
       </div>
-    </div>
+    </RightPanel>
   )
 }
