@@ -186,8 +186,8 @@ export default function ExpenseEntryForm({
                         {products.map(p => <option key={p.id} value={p.id}>{p.ten}</option>)}
                       </select>
                       <input value={l.so_luong} onChange={e => setKhoLine(l.key, { so_luong: rawN(e.target.value) || '' })} placeholder={sp ? dvNhap : '0'} style={{ ...inpS, textAlign: 'center' }} />
-                      <input value={fmtN(rawN(l.gia_don_vi))} onChange={e => setKhoLine(l.key, { gia_don_vi: rawN(e.target.value) || '' })} placeholder={sp ? `đ/${dvNhap}` : '0đ'} style={{ ...inpS, textAlign: 'right' }} />
-                      <div style={{ textAlign: 'right', fontWeight: 700, fontSize: 12.5, color: thanh > 0 ? 'var(--ink)' : 'var(--ink3)', fontFamily: 'var(--sans)' }}>{thanh > 0 ? fmtN(thanh) + 'đ' : '—'}</div>
+                      <input value={fmtN(rawN(l.gia_don_vi))} onChange={e => setKhoLine(l.key, { gia_don_vi: rawN(e.target.value) || '' })} placeholder={sp ? `đ/${dvNhap}` : '0₫'} style={{ ...inpS, textAlign: 'right' }} />
+                      <div style={{ textAlign: 'right', fontWeight: 700, fontSize: 12.5, color: thanh > 0 ? 'var(--ink)' : 'var(--ink3)', fontFamily: 'var(--sans)' }}>{thanh > 0 ? fmtN(thanh) + '₫' : '—'}</div>
                       <button onClick={() => removeKhoLine(l.key)} title="Xoá" style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--line2)', background: 'var(--surface)', color: '#C0392B', cursor: 'pointer', fontSize: 12 }}>✕</button>
                     </div>
                     {sp && (
@@ -278,7 +278,7 @@ export default function ExpenseEntryForm({
           </Field>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: nf.loai === 'ban_khach' ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12 }}>
-          <Field label={`Giá nhập / 1 ${nf.don_vi_nhap || nf.don_vi}`} hint={qdNew > 1 ? `≈ ${fmtN(giaCoSoNew)}đ / ${nf.don_vi}` : ''}>
+          <Field label={`Giá nhập / 1 ${nf.don_vi_nhap || nf.don_vi}`} hint={qdNew > 1 ? `≈ ${fmtN(giaCoSoNew)}₫ / ${nf.don_vi}` : ''}>
             <Input value={fmtN(rawN(nf.giaNhap))} inputMode="numeric" onChange={e => setN('giaNhap', e.target.value.replace(/\D/g, ''))} placeholder="90.000" />
           </Field>
           {nf.loai === 'ban_khach' && (

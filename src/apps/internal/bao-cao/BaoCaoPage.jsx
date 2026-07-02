@@ -666,7 +666,7 @@ function SubCongNoKhachHang() {
     <div>
       <div className="strip" style={{gridTemplateColumns:'repeat(2,1fr)',marginBottom:16}}>
         <div className="it"><div className="l">TỔNG CÔNG NỢ</div><div className="v" style={{color:'#843a23'}}>{formatCurrency(data.tongNo)}</div><div className="d">{data.list.length} khách hàng</div></div>
-        <div className="it"><div className="l">NỢ TRUNG BÌNH</div><div className="v">{data.list.length>0?formatCurrency(Math.round(data.tongNo/data.list.length)):'0đ'}</div><div className="d">Trên mỗi khách hàng</div></div>
+        <div className="it"><div className="l">NỢ TRUNG BÌNH</div><div className="v">{data.list.length>0?formatCurrency(Math.round(data.tongNo/data.list.length)):'0₫'}</div><div className="d">Trên mỗi khách hàng</div></div>
       </div>
       <div className="card"><div className="card-h"><div className="card-t"><div className="arch-i"><I.Users style={{width:13,height:13,color:'#8a6a52'}}/></div><h3>Chi Tiết Công Nợ</h3><span className="sub">{data.list.length} khách</span></div></div>
         <div className="card-b" style={{padding:0}}>{data.list.length===0?<div style={{textAlign:'center',padding:30,color:'var(--ink3)'}}>Không có công nợ</div>:

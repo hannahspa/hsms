@@ -42,12 +42,12 @@ const HINH_THUC = [
 
 function fmt(n) {
   if (!n && n !== 0) return '—'
-  return new Intl.NumberFormat('vi-VN').format(n) + 'đ'
+  return new Intl.NumberFormat('vi-VN').format(n) + '₫'
 }
 // Hiển thị số tiền trong ô nhập: "712000" → "712.000đ" (lưu raw digits)
 const moneyFmt = (v) => {
   const d = String(v ?? '').replace(/\D/g, '')
-  return d ? new Intl.NumberFormat('vi-VN').format(+d) + 'đ' : ''
+  return d ? new Intl.NumberFormat('vi-VN').format(+d) + '₫' : ''
 }
 const moneyRaw = (s) => String(s ?? '').replace(/\D/g, '')
 function fmtMoneyShort(n) {
@@ -791,7 +791,7 @@ function FormSanPham({ initial, products, onSave, onClose }) {
           <div>
             <label style={lbl}>GIÁ NHẬP {Number(f.quy_doi) > 1 && f.don_vi_nhap ? `(/${f.don_vi_nhap})` : ''}</label>
             <input style={inp} type="text" inputMode="numeric" value={moneyFmt(f.gia_nhap)}
-              onChange={e => set('gia_nhap', moneyRaw(e.target.value))} placeholder="0đ" />
+              onChange={e => set('gia_nhap', moneyRaw(e.target.value))} placeholder="0₫" />
             <div style={{ fontSize: 11, color: COLORS.textMute, marginTop: 4 }}>Dùng để tính chi phí + giá trị tồn kho (mọi sản phẩm nên có).</div>
           </div>
 
@@ -811,12 +811,12 @@ function FormSanPham({ initial, products, onSave, onClose }) {
               <div>
                 <label style={lbl}>GIÁ BÁN</label>
                 <input style={inp} type="text" inputMode="numeric" value={moneyFmt(f.gia_ban)}
-                  onChange={e => set('gia_ban', moneyRaw(e.target.value))} placeholder="0đ" />
+                  onChange={e => set('gia_ban', moneyRaw(e.target.value))} placeholder="0₫" />
               </div>
               <div>
                 <label style={lbl}>GIÁ ƯU ĐÃI</label>
                 <input style={inp} type="text" inputMode="numeric" value={moneyFmt(f.gia_uu_dai)}
-                  onChange={e => set('gia_uu_dai', moneyRaw(e.target.value))} placeholder="0đ" />
+                  onChange={e => set('gia_uu_dai', moneyRaw(e.target.value))} placeholder="0₫" />
               </div>
             </div>
           )}
@@ -1296,7 +1296,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
             <div>
               <label style={lbl}>ĐƠN GIÁ {qd > 1 ? `(/${dvInput})` : ''}</label>
               <input style={inp} type="text" inputMode="numeric" value={moneyFmt(f.gia_don_vi)}
-                onChange={e => set('gia_don_vi', moneyRaw(e.target.value))} placeholder="0đ" />
+                onChange={e => set('gia_don_vi', moneyRaw(e.target.value))} placeholder="0₫" />
               {qd > 1 && +f.gia_don_vi > 0 && (
                 <div style={{ fontSize: '11px', color: COLORS.textMute, marginTop: '3px' }}>
                   ≈ {fmt(Math.round(+f.gia_don_vi / qd))}/{sp.don_vi}

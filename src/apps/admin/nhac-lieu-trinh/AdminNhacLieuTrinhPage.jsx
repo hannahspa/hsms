@@ -13,7 +13,7 @@ const fmtDate = (v) => {
   const [y, m, d] = String(v).slice(0, 10).split('-')
   return y && m && d ? `${d}/${m}/${y}` : String(v)
 }
-const fmtMoney = (n) => new Intl.NumberFormat('vi-VN').format(Number(n) || 0) + 'đ'
+const fmtMoney = (n) => new Intl.NumberFormat('vi-VN').format(Number(n) || 0) + '₫'
 
 const TT_LABEL = {
   theo_doi: { text: 'Đang theo dõi', tone: 'info' },

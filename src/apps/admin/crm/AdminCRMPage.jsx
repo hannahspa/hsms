@@ -32,7 +32,7 @@ function getInitials(name) {
 }
 
 function fmtCompact(n) {
-  if (!n) return '0đ'
+  if (!n) return '0₫'
   if (n >= 1e9) return (n / 1e9).toFixed(1) + ' tỷ'
   if (n >= 1e6) return Math.round(n / 1e6) + ' tr'
   return Math.round(n / 1e3) + 'k'

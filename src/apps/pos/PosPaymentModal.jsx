@@ -105,7 +105,7 @@ export default function PosPaymentModal({ tongHang, selectedCustomer, onConfirm,
               <input
                 value={giamGia > 0 ? fmtInput(giamGia) : ''}
                 onChange={e => setGiamGia(parseVND(e.target.value))}
-                placeholder="0đ"
+                placeholder="0₫"
                 style={{
                   width: '100%', boxSizing: 'border-box',
                   border: '1.5px solid var(--bord)', borderRadius: 7,

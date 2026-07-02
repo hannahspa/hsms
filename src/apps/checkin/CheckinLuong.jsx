@@ -321,8 +321,8 @@ export default function CheckinLuong({ nhanVien, onBack }) {
               </div>
               <div style={{ padding: '4px 18px' }}>
                 {[
-                  { icon: '📅', label: 'Lương cơ bản', note: `${nhanVien.luong_cung?.toLocaleString('vi-VN')}đ ÷ ${c.soNgayThang} × ${c.ngayCong.toFixed(1)} ngày`, value: showLC.luongCoBan, plus: true },
-                  { icon: '⏰', label: 'Tăng ca', note: `${c.tongTangCa.toFixed(2)} giờ × 25.000đ`, value: showLC.tienTangCa, plus: true, hide: !showLC.tienTangCa },
+                  { icon: '📅', label: 'Lương cơ bản', note: `${nhanVien.luong_cung?.toLocaleString('vi-VN')}₫ ÷ ${c.soNgayThang} × ${c.ngayCong.toFixed(1)} ngày`, value: showLC.luongCoBan, plus: true },
+                  { icon: '⏰', label: 'Tăng ca', note: `${c.tongTangCa.toFixed(2)} giờ × 25.000₫`, value: showLC.tienTangCa, plus: true, hide: !showLC.tienTangCa },
                   { icon: '⚠️', label: 'Phạt nghỉ T7/CN không phép', note: `${c.soPhamT7X} ngày × (T7: -300k, CN: -500k)`, value: showLC.tienPhat, plus: false, hide: !showLC.tienPhat },
                   { icon: '🔒', label: 'Trừ ký quỹ', note: nhanVien.ky_quy_trang_thai === 'dang_dong' ? 'Đang đóng (500k/tháng)' : 'Đã hoàn tất', value: showLC.truKyQuy, plus: false, hide: !showLC.truKyQuy },
                   { icon: '💳', label: 'Trừ ứng lương tháng trước', note: 'Hoàn trả ứng lương', value: showLC.truUngLuong, plus: false, hide: !showLC.truUngLuong },

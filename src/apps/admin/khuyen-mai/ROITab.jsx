@@ -4,7 +4,7 @@ import { COLORS } from '../../../constants/colors'
 
 function fmt(n) {
   if (!n && n !== 0) return '—'
-  return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + 'đ'
+  return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + '₫'
 }
 function fmtDate(d) {
   if (!d) return ''

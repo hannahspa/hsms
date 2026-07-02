@@ -43,7 +43,7 @@ export default function CashDepositPanel({ ngay, loading, data, saving, onDeposi
             <div style={{ background: data.phaiNop > 0 ? 'linear-gradient(135deg,#1a4f70,#0d3b5a)' : 'var(--bg2)', borderRadius: 14, padding: 20, textAlign: 'center', marginBottom: 16, color: data.phaiNop > 0 ? '#fff' : 'var(--ink3)' }}>
               <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.14em', fontWeight: 600, opacity: .7 }}>Cần Nộp Hôm Nay</div>
               <div style={{ fontFamily: 'var(--serif)', fontSize: 32, fontWeight: 700, marginTop: 4 }}>
-                {data.phaiNop > 0 ? formatCurrency(data.phaiNop) : '0đ — Không cần nộp'}
+                {data.phaiNop > 0 ? formatCurrency(data.phaiNop) : '0₫ — Không cần nộp'}
               </div>
             </div>
 

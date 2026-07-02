@@ -327,7 +327,7 @@ export default function TongQuanPage({ onOpenForm }) {
                       <td><span className={`tag ${tagClass}`}>{tagLabel}</span></td>
                       <td className="nm">{tx.dien_giai || tx.mo_ta || 'Giao dịch'}</td>
                       <td><span className={`method ${methodClass}`}>{methodLabel}</span></td>
-                      <td className={amtClass}>{amtPrefix}{formatCurrency(tx.so_tien)}đ</td>
+                      <td className={amtClass}>{amtPrefix}{formatCurrency(tx.so_tien)}</td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                         {tx.loai === 'doanh_thu' && tx.nguon === 'pos' && !isAdmin ? (
                           <span title="Doanh thu từ POS — chỉ Admin sửa/xoá qua đơn hàng"

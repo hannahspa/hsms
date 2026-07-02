@@ -1,7 +1,10 @@
 export const DAYS = ['CN','T2','T3','T4','T5','T6','T7']
 
+// Chuẩn tiền tệ VN: ngăn nghìn bằng dấu chấm + ký hiệu ₫ (U+20AB). VD: 1.000.000₫
+// LUÔN dùng hàm này để hiển thị tiền — KHÔNG tự nối 'đ'/'₫' bên ngoài.
+export const CUR = '₫'
 export const formatCurrency = (n) =>
-  new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ'
+  new Intl.NumberFormat('vi-VN').format(Math.round(n || 0)) + CUR
 
 export const parseVND = (s) => parseInt(String(s).replace(/\D/g, ''), 10) || 0
 

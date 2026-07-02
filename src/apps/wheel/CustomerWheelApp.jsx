@@ -8,7 +8,7 @@ import LuckyWheel from '../../components/shared/LuckyWheel'
 // ═══════════════════════════════════════════════════════════════════════
 
 const GOLD = '#C9A96E', PRIMARY = '#A0714F', ESP = '#7D5A3C', INK = '#1A1209'
-const fmt = (n) => new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ'
+const fmt = (n) => new Intl.NumberFormat('vi-VN').format(n || 0) + '₫'
 
 export default function CustomerWheelApp() {
   const [config, setConfig] = useState([])

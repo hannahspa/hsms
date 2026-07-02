@@ -327,7 +327,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
               onBlur={() => setTimeout(() => setShowDvList(false), 150)}
               placeholder="Gõ tên dịch vụ, vd: cổ vai, gội đầu..." />
             {form.the_lieu_trinh_id
-              ? <div style={{ fontSize: 11, color: '#2D7A4F', fontWeight: 700, marginTop: 4 }}>🟢 Dùng thẻ liệu trình — khi tạo đơn sẽ trừ thẻ này (0đ)</div>
+              ? <div style={{ fontSize: 11, color: '#2D7A4F', fontWeight: 700, marginTop: 4 }}>🟢 Dùng thẻ liệu trình — khi tạo đơn sẽ trừ thẻ này (0₫)</div>
               : form.dich_vu_id && <div style={{ fontSize: 11, color: '#2D7A4F', fontWeight: 700, marginTop: 4 }}>✓ Dịch vụ trong menu · {form.thoi_luong_phut} phút</div>}
             {showDvList && !form.the_lieu_trinh_id && dvFiltered.length > 0 && (
               <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, marginTop: 4, border: `1px solid ${C.line2}`, borderRadius: 10, background: '#fff', boxShadow: C.shadowLg, maxHeight: 240, overflowY: 'auto' }}>

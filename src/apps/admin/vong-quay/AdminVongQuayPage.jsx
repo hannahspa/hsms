@@ -112,7 +112,7 @@ export default function AdminVongQuayPage() {
               <span style={{ fontSize: 14, color: C.textSub }}>đ → <b style={{ color: C.primary }}>1 lượt quay</b></span>
             </div>
             <div style={{ fontSize: 11.5, color: C.textMute, marginTop: 8 }}>
-              VD ngưỡng {new Intl.NumberFormat('vi-VN').format(nguong)}đ: khách chi {new Intl.NumberFormat('vi-VN').format(nguong * 2)}đ trong ngày → <b>2 lượt</b>. Nhập SĐT, hệ thống tự tính chi tiêu hôm nay &amp; số lượt.
+              VD ngưỡng {new Intl.NumberFormat('vi-VN').format(nguong)}₫: khách chi {new Intl.NumberFormat('vi-VN').format(nguong * 2)}₫ trong ngày → <b>2 lượt</b>. Nhập SĐT, hệ thống tự tính chi tiêu hôm nay &amp; số lượt.
             </div>
           </div>
 

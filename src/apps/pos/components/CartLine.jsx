@@ -160,7 +160,7 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
         ) : isTheLT ? <div style={{ width: 62, flexShrink: 0 }} /> : null}
 
         <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--serif)', minWidth: 76, textAlign: 'right', flexShrink: 0, color: isTheLT ? 'var(--ink3)' : (isCard ? 'var(--champagne)' : 'var(--ink)') }}>
-          {isTheLT ? '0đ ✓' : formatCurrency(item.thanh_tien || 0)}
+          {isTheLT ? '0₫ ✓' : formatCurrency(item.thanh_tien || 0)}
         </div>
 
         {(isDichVu || isCard) && (
@@ -310,8 +310,8 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
 
           {/* Tóm tắt: giá gốc → giá bán × buổi = thành tiền (theo giá khách trả thật) */}
           <div style={{ marginBottom: 6, fontSize: 11.5, color: 'var(--ink2)' }}>
-            {cardEffPct > 0 && <span style={{ textDecoration: 'line-through', color: 'var(--ink3)', marginRight: 6 }}>{fmtInput(donGia)}đ</span>}
-            <span style={{ fontWeight: 800, color: C.champagne }}>{fmtInput(cardGiaBan)}đ</span>
+            {cardEffPct > 0 && <span style={{ textDecoration: 'line-through', color: 'var(--ink3)', marginRight: 6 }}>{fmtInput(donGia)}₫</span>}
+            <span style={{ fontWeight: 800, color: C.champagne }}>{fmtInput(cardGiaBan)}₫</span>
             <span style={{ color: 'var(--ink3)' }}> × {cardBuoiMua} buổi{cardBuoiTang > 0 ? ` (+${cardBuoiTang} tặng)` : ''} = </span>
             <span style={{ fontWeight: 800, color: 'var(--ink)' }}>{formatCurrency(cardThanhTien)}</span>
           </div>

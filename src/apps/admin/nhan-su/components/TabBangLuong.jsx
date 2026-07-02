@@ -915,7 +915,7 @@ export default function TabBangLuong({ fixedKy = null }) {
               </div>
               <div style={{ fontFamily: LUX.fontSans, fontSize: 11.5, color: LUX.taupe, fontWeight: 600 }}>
                 Tổng DT spa: <span style={{ fontFamily: LUX.fontMono, color: '#1A5276', fontWeight: 800 }}>{formatCurrency(tongDT)}</span>
-                {' · '}{soThuong > 0 ? `Đề xuất thưởng ${soThuong} bạn top × 500.000đ (nhập tay)` : 'Chưa đạt mốc 150tr — không đề xuất thưởng'}
+                {' · '}{soThuong > 0 ? `Đề xuất thưởng ${soThuong} bạn top × 500.000₫ (nhập tay)` : 'Chưa đạt mốc 150tr — không đề xuất thưởng'}
               </div>
             </div>
             <div style={{ fontFamily: LUX.fontSans, fontSize: 10.5, color: LUX.ink3, marginBottom: 12 }}>
@@ -1272,7 +1272,7 @@ export default function TabBangLuong({ fixedKy = null }) {
                         {formatCurrency(selected.luong_cung)} ÷ {ld.soNgayThang} ngày × {ld.ngayCong} ngày công
                       </div>
                       <MoneyInput label="Lương cơ bản (tự động)" value={ld.luongCoBan} onChange={()=>{}} readOnly color={LUX.taupe} />
-                      <MoneyInput label={`Tăng ca (${ld.tongTangCa}h × ${DON_GIA_TANG_CA.toLocaleString('vi-VN')}đ)`} value={ld.tienTangCa} onChange={()=>{}} readOnly color="#6a4a8a" />
+                      <MoneyInput label={`Tăng ca (${ld.tongTangCa}h × ${DON_GIA_TANG_CA.toLocaleString('vi-VN')}₫)`} value={ld.tienTangCa} onChange={()=>{}} readOnly color="#6a4a8a" />
                       {ld.tienPhat > 0 && <MoneyInput label={`Phạt T7/CN (${ld.soPhamT7X} lần)`} value={-ld.tienPhat} onChange={()=>{}} readOnly color={LUX.danger} />}
                       {ld.truKyQuy > 0 && <MoneyInput label="Trừ ký quỹ tháng này" value={-ld.truKyQuy} onChange={()=>{}} readOnly color={LUX.danger} />}
                     </BLSection>

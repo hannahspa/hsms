@@ -177,7 +177,7 @@ function ServiceModal({ service, categories, onClose, onSaved }) {
                     set('ti_le_hoa_hong', gia > 0 ? tien / gia * 100 : 0)
                   }}
                   style={{ ...inputStyle, textAlign: 'right', fontWeight: 800, flex: 1 }}
-                  title="Tiền tour mỗi lần (đ) — tự tính từ giá bán × %" placeholder="đ" />
+                  title="Tiền tour mỗi lần (₫) — tự tính từ giá bán × %" placeholder="₫" />
                 <input type="number" step="0.1" value={form.ti_le_hoa_hong}
                   onChange={e => set('ti_le_hoa_hong', e.target.value)}
                   style={{ ...inputStyle, textAlign: 'center', fontWeight: 800, width: 62, flexShrink: 0 }}

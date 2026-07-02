@@ -1684,7 +1684,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                 <button onClick={() => setGiamMode(m => m === 'pct' ? 'vnd' : 'pct')} style={{
                   padding: '3px 7px', border: '1px solid var(--bord)', borderLeft: 'none', borderRadius: '0 5px 5px 0',
                   background: C.bg, cursor: 'pointer', fontSize: 11, color: C.ink2, fontWeight: 700,
-                }}>{giamMode === 'pct' ? '%' : 'đ'}</button>
+                }}>{giamMode === 'pct' ? '%' : '₫'}</button>
                 <span style={{ fontWeight: 700, color: C.chi, minWidth: 60, textAlign: 'right', fontFamily: FONT.serif, fontSize: 12 }}>
                   {giamDVAmt > 0 ? `−${formatCurrency(giamDVAmt)}` : '—'}
                 </span>

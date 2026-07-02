@@ -547,7 +547,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
                     {/* Giảm giá thật của cả đơn (giam_gia), không phải mức theo dòng */}
                     <td className="amount">
                       <div style={{ fontSize: 12, color: realDiscount > 0 ? '#C0392B' : 'var(--ink3)', fontWeight: realDiscount > 0 ? 700 : 500 }}>
-                        {realDiscount > 0 ? `−${formatCurrency(realDiscount)}` : '0đ'}
+                        {realDiscount > 0 ? `−${formatCurrency(realDiscount)}` : '0₫'}
                       </div>
                     </td>
 

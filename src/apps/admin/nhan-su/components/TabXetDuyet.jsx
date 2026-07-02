@@ -363,12 +363,12 @@ export default function TabXetDuyet({ onUpdate }) {
                             <TD muted>{bangLabel}</TD>
                             <TD align="right">
                               <span style={{ fontFamily: LUX.fontMono, color: '#C0392B' }}>
-                                {isNgay ? fmtNgay(yc.du_lieu_cu?.ngay_off || yc.du_lieu_cu?.ngay_het_han) : (yc.du_lieu_cu?.so_tien ? Number(yc.du_lieu_cu.so_tien).toLocaleString('vi-VN') + 'đ' : '—')}
+                                {isNgay ? fmtNgay(yc.du_lieu_cu?.ngay_off || yc.du_lieu_cu?.ngay_het_han) : (yc.du_lieu_cu?.so_tien ? Number(yc.du_lieu_cu.so_tien).toLocaleString('vi-VN') + '₫' : '—')}
                               </span>
                             </TD>
                             <TD align="right">
                               {isSua
-                                ? <span style={{ fontFamily: LUX.fontMono, color: '#2D7A4F' }}>{isNgay ? fmtNgay(yc.du_lieu_moi?.ngay_off || yc.du_lieu_moi?.ngay_het_han) : (yc.du_lieu_moi?.so_tien ? Number(yc.du_lieu_moi.so_tien).toLocaleString('vi-VN') + 'đ' : '—')}</span>
+                                ? <span style={{ fontFamily: LUX.fontMono, color: '#2D7A4F' }}>{isNgay ? fmtNgay(yc.du_lieu_moi?.ngay_off || yc.du_lieu_moi?.ngay_het_han) : (yc.du_lieu_moi?.so_tien ? Number(yc.du_lieu_moi.so_tien).toLocaleString('vi-VN') + '₫' : '—')}</span>
                                 : <span style={{ color: LUX.ink3, fontSize: 12 }}>Xóa bản ghi</span>
                               }
                             </TD>

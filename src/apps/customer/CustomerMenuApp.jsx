@@ -37,7 +37,7 @@ const NHOM_ICON = {
 
 function fmt(n) {
   if (!n) return 'Liên hệ'
-  return new Intl.NumberFormat('vi-VN').format(n) + 'đ'
+  return new Intl.NumberFormat('vi-VN').format(n) + '₫'
 }
 
 // ── Clock realtime ─────────────────────────────────────────────────────────────

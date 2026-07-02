@@ -14,7 +14,7 @@ const STATUS_COLOR = {
 
 function fmt(n) {
   if (!n) return '—'
-  return new Intl.NumberFormat('vi-VN').format(n) + 'đ'
+  return new Intl.NumberFormat('vi-VN').format(n) + '₫'
 }
 function fmtDate(d) {
   if (!d) return ''
