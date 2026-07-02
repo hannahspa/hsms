@@ -59,8 +59,10 @@ export default function SelfieCapture({ onCapture, onCancel, title = 'Chụp ả
         </div>
       ) : (
         <>
-          <div style={{ width: 260, height: 260, borderRadius: '50%', overflow: 'hidden', border: '3px solid rgba(212,165,116,0.6)', boxShadow: '0 8px 40px rgba(0,0,0,0.5)', background: '#000' }}>
-            <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+          <div style={{ position: 'relative', width: 260, height: 260, borderRadius: '50%', overflow: 'hidden', border: '3px solid rgba(212,165,116,0.6)', boxShadow: '0 8px 40px rgba(0,0,0,0.5)', background: '#000' }}>
+            {/* Video phủ đầy khung tròn + căn giữa (min 100% + translate) — chắc chắn không bị nửa đen/lệch trên iPhone */}
+            <video ref={videoRef} playsInline autoPlay muted
+              style={{ position: 'absolute', top: '50%', left: '50%', minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto', transform: 'translate(-50%, -50%) scaleX(-1)', objectFit: 'cover' }} />
           </div>
           <div style={{ color: 'rgba(245,237,224,0.7)', fontSize: 12.5, margin: '16px 0 22px' }}>Đưa khuôn mặt vào khung tròn</div>
           <div style={{ display: 'flex', gap: 14 }}>
