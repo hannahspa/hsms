@@ -30,6 +30,12 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
   const [saving, setSaving] = useState(false)
   const [loadingRate, setLoadingRate] = useState(isTheLT && !item.ti_le_hoa_hong)
 
+  // ── Chia tiền tour cho nhiều KTV (chỉ dịch vụ/thẻ liệu trình, không áp hoa hồng bán) ──
+  const [splits, setSplits] = useState(() =>
+    (item.meta?.tourSplits || []).map(s => ({ nvId: s.nvId, ho_ten: s.ho_ten, tien: Number(s.tien_tour || 0) }))
+  )
+  const [addingSplit, setAddingSplit] = useState(false)
+
   useEffect(() => {
     if (!isTheLT) return
     const tenDV = comboService?.ten_dich_vu || comboService?.ten || item.the_lieu_trinh?.ten_dich_vu
@@ -70,6 +76,20 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
         ? manualTourAmount
         : pctTour
   const incomeLabel = isSaleCommission ? 'Hoa hồng bán' : 'Tiền Tour'
+  // Chia tour: chỉ cho dịch vụ/thẻ LT (có tiền tour), không cho gói bảo hành 0đ / bán thẻ-SP
+  const canSplit = !isSaleCommission && !isFreeWarrantyTour
+  const splitSum = splits.reduce((s, r) => s + Math.round(Number(r.tien) || 0), 0)
+  const ktv1Net = Math.max(0, tienTour - splitSum)
+  const splitOver = splitSum > tienTour
+  const availableForSplit = ktvList.filter(k =>
+    k.id !== selectedKtv?.id && !splits.some(s => s.nvId === k.id)
+  )
+  const addSplit = (k) => {
+    setSplits(prev => [...prev, { nvId: k.id, ho_ten: k.ho_ten, tien: 0 }])
+    setAddingSplit(false)
+  }
+  const updateSplit = (nvId, tien) => setSplits(prev => prev.map(s => s.nvId === nvId ? { ...s, tien } : s))
+  const removeSplit = (nvId) => setSplits(prev => prev.filter(s => s.nvId !== nvId))
   const allowedStaffIds = Array.isArray(treatmentPolicy?.allowedStaffIds) ? treatmentPolicy.allowedStaffIds : []
   const restrictWarrantyStaff = isFreeWarrantyTour && allowedStaffIds.length > 0
   const filtered = ktvList.filter(k => {
@@ -83,13 +103,23 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
       notify('Gói bảo hành này chỉ được chọn nhân viên đã nhận tiền tour trong 10 buổi đầu.', 'warn')
       return
     }
+    if (canSplit && splitOver) {
+      notify('Tổng tiền chia cho các KTV vượt quá tiền tour của dịch vụ.', 'warn')
+      return
+    }
+    const cleanSplits = canSplit
+      ? splits.filter(s => s.nvId && Math.round(Number(s.tien) || 0) > 0)
+          .map(s => ({ nvId: s.nvId, ho_ten: s.ho_ten, tien_tour: Math.round(Number(s.tien) || 0) }))
+      : []
     setSaving(true)
-    await onAssign(item, selectedKtv, tiLe, tienTour, {
+    // KTV chính nhận phần còn lại (tổng tour − các phần chia). Không chia → nhận trọn.
+    await onAssign(item, selectedKtv, tiLe, cleanSplits.length ? ktv1Net : tienTour, {
       tourMode: isFreeWarrantyTour ? 'free_warranty' : (tourLocked ? 'amount' : tourMode),
       manualTourAmount,
       pctTour,
       baseTienTour,
       treatmentPolicy,
+      tourSplits: cleanSplits.length ? cleanSplits : null,
     })
     setSaving(false)
   }
@@ -212,17 +242,72 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
                 <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--champagne)' }}>{formatCurrency(tienTour)}</div>
               </div>
             </div>
+
+            {/* ── Chia tiền tour cho KTV khác (nhiều KTV cùng làm 1 dịch vụ) ── */}
+            {canSplit && (
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px dashed var(--bord)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink2)' }}>Chia tour cho KTV khác</span>
+                  <span style={{ fontSize: 11, color: 'var(--ink3)' }}>Tổng tour: {formatCurrency(tienTour)}</span>
+                </div>
+
+                {/* KTV chính nhận phần còn lại */}
+                {splits.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 8, background: 'rgba(201,169,110,.10)', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)' }}>{shortName(selectedKtv.ho_ten)} <span style={{ fontWeight: 400, color: 'var(--ink3)' }}>(chính)</span></span>
+                    <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--serif)', color: splitOver ? '#C0392B' : 'var(--champagne)' }}>{formatCurrency(ktv1Net)}</span>
+                  </div>
+                )}
+
+                {splits.map(s => (
+                  <div key={s.nvId} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortName(s.ho_ten)}</span>
+                    <input
+                      value={s.tien ? fmtInput(s.tien) : ''}
+                      onChange={e => updateSplit(s.nvId, parseVND(e.target.value))}
+                      placeholder="0"
+                      style={{ width: 100, border: '1px solid var(--bord)', borderRadius: 6, padding: '4px 6px', fontSize: 13, fontWeight: 700, textAlign: 'right', outline: 'none' }}
+                    />
+                    <span style={{ fontSize: 12, color: 'var(--ink3)' }}>đ</span>
+                    <button type="button" onClick={() => removeSplit(s.nvId)} style={{ background: 'none', border: 'none', color: '#C0392B', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '0 2px' }}>×</button>
+                  </div>
+                ))}
+
+                {splitOver && (
+                  <div style={{ fontSize: 11, color: '#C0392B', fontWeight: 600, marginBottom: 6 }}>
+                    ⚠️ Tổng chia ({formatCurrency(splitSum)}) vượt tiền tour ({formatCurrency(tienTour)}).
+                  </div>
+                )}
+
+                {addingSplit ? (
+                  <div style={{ border: '1px solid var(--bord)', borderRadius: 8, background: '#fff', maxHeight: 160, overflowY: 'auto' }}>
+                    {availableForSplit.length === 0 && <div style={{ padding: 10, fontSize: 12, color: 'var(--ink3)', textAlign: 'center' }}>Không còn KTV để thêm</div>}
+                    {availableForSplit.map(k => (
+                      <div key={k.id} onClick={() => addSplit(k)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid var(--line)' }}>
+                        <NvAvatar nv={k} size={28} />
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>{shortName(k.ho_ten)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setAddingSplit(true)}
+                    style={{ width: '100%', border: '1px dashed var(--champagne)', borderRadius: 8, background: 'transparent', color: 'var(--champagne)', cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: '7px 0', fontFamily: 'var(--sans)' }}>
+                    + Thêm KTV cùng làm
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', display: 'flex', gap: 8, flexShrink: 0 }}>
           <button onClick={onClose} style={{ flex: 1, height: 40, border: '1px solid var(--bord)', borderRadius: 8, background: '#fff', color: 'var(--ink2)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--sans)' }}>Đóng</button>
           {selectedKtv && (
-            <button onClick={handleSave} disabled={saving || loadingRate} style={{
+            <button onClick={handleSave} disabled={saving || loadingRate || (canSplit && splitOver)} style={{
               flex: 2, height: 40, border: 'none', borderRadius: 8,
-              background: loadingRate ? C.line2 : 'var(--champagne)',
-              color: loadingRate ? C.ink3 : '#2a1d14',
-              cursor: (saving || loadingRate) ? 'not-allowed' : 'pointer',
+              background: (loadingRate || (canSplit && splitOver)) ? C.line2 : 'var(--champagne)',
+              color: (loadingRate || (canSplit && splitOver)) ? C.ink3 : '#2a1d14',
+              cursor: (saving || loadingRate || (canSplit && splitOver)) ? 'not-allowed' : 'pointer',
               fontSize: 13, fontWeight: 700, fontFamily: 'var(--sans)',
             }}>
               {saving ? 'Đang lưu...' : loadingRate ? 'Đang tải...' : 'Lưu'}

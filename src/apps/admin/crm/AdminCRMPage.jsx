@@ -3,6 +3,8 @@ import { supabase } from '../../../lib/supabase'
 import { formatCurrency, getNowVN } from '../../../lib/utils'
 import { posService } from '../../../services/posService'
 import I from '../../../components/shared/Icons'
+import { useAuth } from '../../../context/AuthContext'
+import CardActionsModals from './CardActionsModals'
 
 const SEG = {
   vip: { l: 'VIP', cls: 'vip' },
@@ -162,9 +164,10 @@ function getCardRemain(card) {
 }
 
 function getCardWorkflowStatus(card) {
+  if (card.bi_dong) return 'frozen'   // thẻ bị Admin đóng (băng) — mở lại được
   const status = normalizeText(card.trang_thai)
   const note = normalizeText(card.ghi_chu)
-  if (['tat_toan', 'tat toan', 'chuyen_doi', 'chuyen doi', 'xoa', 'huy'].some(key => status.includes(key) || note.includes(key))) {
+  if (['tat_toan', 'tat toan', 'chuyen_doi', 'chuyen doi', 'hoan_tien', 'hoan tien', 'xoa', 'huy'].some(key => status.includes(key) || note.includes(key))) {
     return 'settled'
   }
   if (status.includes('het_buoi') || getCardRemain(card) <= 0) return 'usedUp'
@@ -175,32 +178,34 @@ function getCardWorkflowStatus(card) {
 
 const CARD_STATUS_META = {
   active: { title: 'Liệu trình đang sử dụng', label: 'Đang sử dụng' },
+  frozen: { title: 'Thẻ đã đóng (băng)', label: 'Đã đóng' },
   usedUp: { title: 'Đã sử dụng hết', label: 'Đã dùng hết' },
   expired: { title: 'Hết hạn thời gian', label: 'Hết hạn' },
-  settled: { title: 'Tất toán / chuyển đổi / xoá nghiệp vụ', label: 'Đã tất toán' },
+  settled: { title: 'Tất toán / chuyển đổi / hoàn tiền', label: 'Đã tất toán' },
   other: { title: 'Trạng thái khác', label: 'Khác' },
 }
 
-function CardSection({ title, cards, statusKey }) {
+function CardSection({ title, cards, statusKey, isAdmin = false, onAction }) {
   if (!cards.length) return null
-  const ended = statusKey !== 'active'
+  const ended = statusKey !== 'active' && statusKey !== 'frozen'
   const label = CARD_STATUS_META[statusKey]?.label
   return (
     <div style={{ marginTop: 24 }}>
       <h4 style={{ margin: '0 0 10px', color: 'var(--ink)' }}>{title}</h4>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
-        {cards.map(card => <TreatmentCard key={card.id} card={card} ended={ended} statusLabel={label} />)}
+        {cards.map(card => <TreatmentCard key={card.id} card={card} ended={ended} statusLabel={label} isAdmin={isAdmin} onAction={onAction} />)}
       </div>
     </div>
   )
 }
 
-function TreatmentCard({ card, ended = false, statusLabel = null }) {
+function TreatmentCard({ card, ended = false, statusLabel = null, isAdmin = false, onAction }) {
   const total = Math.max(1, card.so_buoi_tong || 1)
   const used = card.so_buoi_da_dung || 0
   const remain = getCardRemain(card)
   const pct = Math.min(100, Math.round((used / total) * 100))
   const usedValue = Math.round((card.gia_tri_the || 0) * (used / total))
+  const isSettled = getCardWorkflowStatus(card) === 'settled'
 
   return (
     <div style={{
@@ -232,18 +237,44 @@ function TreatmentCard({ card, ended = false, statusLabel = null }) {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 12, fontSize: 12, fontWeight: 800 }}>
         <span style={{ color: remain > 0 ? 'var(--thu)' : 'var(--ink3)' }}>Còn {remain} buổi</span>
-        <span style={{ color: ended ? 'var(--ink3)' : 'var(--champagne)' }}>{ended ? 'Đã kết thúc' : 'Đang sử dụng'}</span>
+        <span style={{ color: card.bi_dong ? '#C0392B' : (ended ? 'var(--ink3)' : 'var(--champagne)') }}>{statusLabel || (ended ? 'Đã kết thúc' : 'Đang sử dụng')}</span>
       </div>
+
+      {isAdmin && !isSettled && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+          <CardActBtn onClick={() => onAction('toggleFreeze', card)}>{card.bi_dong ? '🔓 Mở' : '🔒 Đóng'}</CardActBtn>
+          {remain > 0 && !card.bi_dong && <CardActBtn onClick={() => onAction('convert', card)}>🔄 Chuyển đổi</CardActBtn>}
+          {remain > 0 && !card.bi_dong && <CardActBtn onClick={() => onAction('refund', card)}>💵 Hoàn tiền</CardActBtn>}
+          <CardActBtn danger onClick={() => onAction('delete', card)}>🗑️ Xoá</CardActBtn>
+        </div>
+      )}
     </div>
   )
 }
 
+function CardActBtn({ children, onClick, danger = false }) {
+  return (
+    <button type="button" onClick={onClick} style={{
+      border: `1px solid ${danger ? 'rgba(192,57,43,.35)' : 'var(--bord)'}`,
+      background: danger ? 'rgba(192,57,43,.06)' : 'var(--surface)',
+      color: danger ? '#C0392B' : 'var(--ink2)',
+      borderRadius: 8, padding: '5px 10px', fontSize: 11.5, fontWeight: 700,
+      cursor: 'pointer', fontFamily: 'var(--sans)',
+    }}>{children}</button>
+  )
+}
+
 function AdminCRMDetailPage({ customerId }) {
+  const { user } = useAuth()
+  const isAdmin = user?.vai_tro === 'admin'
   const [snapshot, setSnapshot] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('info')
   const [expandedOrderId, setExpandedOrderId] = useState(null)
   const [prepaidHistory, setPrepaidHistory] = useState([])
+  const [cardAction, setCardAction] = useState(null)   // { type, card } — hành động Admin trên thẻ
+  const [reloadKey, setReloadKey] = useState(0)
+  const reloadSnapshot = () => setReloadKey(k => k + 1)
 
   useEffect(() => {
     let cancelled = false
@@ -256,7 +287,7 @@ function AdminCRMDetailPage({ customerId }) {
       .then(rows => { if (!cancelled) setPrepaidHistory(rows || []) })
       .catch(() => { if (!cancelled) setPrepaidHistory([]) })
     return () => { cancelled = true }
-  }, [customerId])
+  }, [customerId, reloadKey])
 
   if (loading) {
     return <div style={{ padding: 60, textAlign: 'center', color: 'var(--ink3)' }}>Đang tải hồ sơ khách hàng...</div>
@@ -309,7 +340,7 @@ function AdminCRMDetailPage({ customerId }) {
     const key = getCardWorkflowStatus(card)
     acc[key].push(card)
     return acc
-  }, { active: [], usedUp: [], expired: [], settled: [], other: [] })
+  }, { active: [], frozen: [], usedUp: [], expired: [], settled: [], other: [] })
   const activeTreatmentCards = treatmentCardGroups.active
   const endedTreatmentCards = treatmentCardGroups.usedUp
   const cardTotalValue = cards.reduce((sum, card) => sum + (card.gia_tri_the || 0), 0)
@@ -330,6 +361,15 @@ function AdminCRMDetailPage({ customerId }) {
 
   return (
     <div>
+      {isAdmin && (
+        <CardActionsModals
+          action={cardAction}
+          onClose={() => setCardAction(null)}
+          onDone={reloadSnapshot}
+          user={user}
+          customer={customer}
+        />
+      )}
       <div className="mod-head" style={{ marginBottom: 18 }}>
         <div>
           <button className="btn ghost" onClick={() => { window.location.href = '/admin/crm' }} style={{ marginBottom: 12 }}>
@@ -619,15 +659,17 @@ function AdminCRMDetailPage({ customerId }) {
                 <>
                   <h4 style={{ margin: '18px 0 10px', color: 'var(--ink)' }}>Liệu trình đang sử dụng</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
-                    {activeTreatmentCards.map(card => <TreatmentCard key={card.id} card={card} />)}
+                    {activeTreatmentCards.map(card => <TreatmentCard key={card.id} card={card} isAdmin={isAdmin} onAction={(t, c) => setCardAction({ type: t, card: c })} />)}
                   </div>
+                  {activeTreatmentCards.length === 0 && <div style={{ color: 'var(--ink3)', fontSize: 13, padding: '4px 0 8px' }}>Không có liệu trình đang sử dụng.</div>}
+                  <CardSection title={CARD_STATUS_META.frozen.title} cards={treatmentCardGroups.frozen} statusKey="frozen" isAdmin={isAdmin} onAction={(t, c) => setCardAction({ type: t, card: c })} />
                   <h4 style={{ margin: '24px 0 10px', color: 'var(--ink)' }}>Liệu trình đã kết thúc</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
-                    {endedTreatmentCards.map(card => <TreatmentCard key={card.id} card={card} ended />)}
+                    {endedTreatmentCards.map(card => <TreatmentCard key={card.id} card={card} ended isAdmin={isAdmin} onAction={(t, c) => setCardAction({ type: t, card: c })} />)}
                   </div>
-                  <CardSection title={CARD_STATUS_META.expired.title} cards={treatmentCardGroups.expired} statusKey="expired" />
-                  <CardSection title={CARD_STATUS_META.settled.title} cards={treatmentCardGroups.settled} statusKey="settled" />
-                  <CardSection title={CARD_STATUS_META.other.title} cards={treatmentCardGroups.other} statusKey="other" />
+                  <CardSection title={CARD_STATUS_META.expired.title} cards={treatmentCardGroups.expired} statusKey="expired" isAdmin={isAdmin} onAction={(t, c) => setCardAction({ type: t, card: c })} />
+                  <CardSection title={CARD_STATUS_META.settled.title} cards={treatmentCardGroups.settled} statusKey="settled" isAdmin={isAdmin} onAction={(t, c) => setCardAction({ type: t, card: c })} />
+                  <CardSection title={CARD_STATUS_META.other.title} cards={treatmentCardGroups.other} statusKey="other" isAdmin={isAdmin} onAction={(t, c) => setCardAction({ type: t, card: c })} />
                 </>
               ) : <CRMEmpty>Khách chưa có thẻ dịch vụ/thẻ liệu trình.</CRMEmpty>}
             </div>

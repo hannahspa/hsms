@@ -247,10 +247,10 @@ export const posService = {
       try {
         const { data: exact } = await supabase
           .from('the_lieu_trinh')
-          .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai')
+          .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai, bi_dong, da_xoa')
           .eq('id', appointment.the_lieu_trinh_id)
           .maybeSingle()
-        if (exact && exact.trang_thai === 'active' && (exact.so_buoi_con_lai || 0) > 0) matchedCard = exact
+        if (exact && exact.trang_thai === 'active' && (exact.so_buoi_con_lai || 0) > 0 && !exact.bi_dong && !exact.da_xoa) matchedCard = exact
       } catch { matchedCard = null }
     }
     if (!matchedCard && khachHangId && serviceName) {
@@ -260,6 +260,8 @@ export const posService = {
           .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai')
           .eq('khach_hang_id', khachHangId)
           .eq('trang_thai', 'active')
+          .eq('bi_dong', false)
+          .eq('da_xoa', false)
         const target = norm(serviceName)
         matchedCard = (cards || []).find((c) => {
           if ((c.so_buoi_con_lai || 0) <= 0) return false
@@ -694,6 +696,7 @@ export const posService = {
         .from('the_lieu_trinh')
         .select(TREATMENT_CARD_SELECT)
         .eq('khach_hang_id', khachHangId)
+        .eq('da_xoa', false)   // ẩn thẻ đã xoá mềm khỏi CRM (giữ trong DB để đối soát)
         .order('created_at', { ascending: false })
         .limit(cardLimit),
       supabase
@@ -799,7 +802,7 @@ export const posService = {
             const nvNames = [...new Set(ct.map(c => c.nhan_vien?.ho_ten).filter(Boolean))].join(', ')
             zns.znsHoaDon({
               ten_khach: tenKhach, sdt, ma_don: dh.ma_don, tong_tien: dh.thuc_thu,
-              trang_thai: (dh.con_no > 0 ? `Còn nợ ${dh.con_no}đ` : 'Đã thanh toán'), dich_vu: dvNames,
+              trang_thai: (dh.con_no > 0 ? `Còn nợ ${dh.con_no}₫` : 'Đã thanh toán'), dich_vu: dvNames,
               nhan_vien: nvNames,
             })
           }
@@ -999,6 +1002,8 @@ export const posService = {
       .eq('khach_hang_id', khachHangId)
       .in('trang_thai', ['active', 'het_han'])
       .gt('so_buoi_con_lai', 0)
+      .eq('bi_dong', false)   // thẻ bị đóng không dùng được ở POS
+      .eq('da_xoa', false)    // thẻ đã ẩn mềm
       .order('ngay_het_han', { ascending: true })
     if (error) throw error
     return data || []
@@ -1296,5 +1301,100 @@ export const posService = {
       .single()
     if (error) throw error
     return data
+  },
+
+  // ── Admin: Đóng/Mở thẻ liệu trình (băng thẻ — không dùng ở POS, mở lại được) ──
+  async setCardFrozen(cardId, frozen, { nguoiId = null, cardSnapshot = null } = {}) {
+    const { error } = await supabase
+      .from('the_lieu_trinh')
+      .update({ bi_dong: !!frozen })
+      .eq('id', cardId)
+    if (error) throw error
+    try {
+      await supabase.from('nhat_ky_hoat_dong').insert({
+        nguoi_dung_id: nguoiId,
+        hanh_dong: frozen ? 'dong_the_lieu_trinh' : 'mo_the_lieu_trinh',
+        bang: 'the_lieu_trinh',
+        du_lieu_cu: cardSnapshot || { id: cardId },
+        du_lieu_moi: { id: cardId, bi_dong: !!frozen },
+      })
+    } catch (_) {}
+  },
+
+  // ── Admin: Tính giá trị quy đổi còn lại của thẻ (bỏ khuyến mãi/buổi tặng) ──
+  // giá trị còn lại = gia_tri_the − (buổi đã dùng × đơn giá gốc/buổi)
+  computeCardConvertValue(card) {
+    const giaTri = Number(card?.gia_tri_the || 0)
+    const daDung = Number(card?.so_buoi_da_dung || 0)
+    let donGiaGoc = Math.round(Number(card?.meta?.giaBanBuoi || 0))
+    let nguon = 'giá bán/buổi đã lưu'
+    if (!donGiaGoc) {
+      const soBuoiMua = Number(card?.meta?.soBuoiMua || 0)
+      if (soBuoiMua > 0) {
+        donGiaGoc = Math.round(giaTri / soBuoiMua)
+        nguon = 'giá trị ÷ số buổi mua'
+      } else {
+        donGiaGoc = Math.round(giaTri / Math.max(1, Number(card?.so_buoi_tong || 1)))
+        nguon = 'giá trị ÷ tổng buổi (gồm buổi tặng — nên kiểm tra lại)'
+      }
+    }
+    const giaTriConLai = Math.max(0, Math.round(giaTri - daDung * donGiaGoc))
+    return { donGiaGoc, giaTriConLai, nguon, giaTri, daDung }
+  },
+
+  // ── Admin: Hoàn tiền thẻ (ghi Sổ Chi, trừ ví) → RPC transactional ──
+  async refundCard(cardId, { soTien, hinhThuc, lyDo = '', nguoi = null, nguoiId = null, ngay = null } = {}) {
+    const { data, error } = await supabase.rpc('hoan_tien_the', {
+      p_the_id: cardId,
+      p_so_tien: Math.round(Number(soTien) || 0),
+      p_hinh_thuc: hinhThuc,
+      p_ly_do: lyDo || null,
+      p_nguoi: nguoi || null,
+      p_nguoi_id: nguoiId || null,
+      p_ngay: ngay || null,
+    })
+    if (error) throw error
+    return data
+  },
+
+  // ── Admin: Chuyển đổi thẻ A → B (bù tiền, tạo đơn, đóng thẻ cũ) → RPC transactional ──
+  async convertCard(theCuId, {
+    giaTriQuyDoi, tenDichVu, dichVuId = null, soBuoiMua, soBuoiTang = 0,
+    giaTriThe, ngayHetHan = null, nhanVienBanId = null, payments = [], nguoi = null, nguoiId = null,
+  } = {}) {
+    const { data, error } = await supabase.rpc('chuyen_doi_the', {
+      p_the_cu_id: theCuId,
+      p_gia_tri_quy_doi: Math.round(Number(giaTriQuyDoi) || 0),
+      p_ten_dich_vu: tenDichVu,
+      p_dich_vu_id: dichVuId || null,
+      p_so_buoi_mua: Math.round(Number(soBuoiMua) || 0),
+      p_so_buoi_tang: Math.round(Number(soBuoiTang) || 0),
+      p_gia_tri_the: Math.round(Number(giaTriThe) || 0),
+      p_ngay_het_han: ngayHetHan || null,
+      p_nhan_vien_ban_id: nhanVienBanId || null,
+      p_payments: payments || [],
+      p_nguoi: nguoi || null,
+      p_nguoi_id: nguoiId || null,
+    })
+    if (error) throw error
+    return data
+  },
+
+  // ── Admin: Xoá mềm thẻ (ẩn khỏi mọi danh sách/POS, GIỮ dữ liệu để đối soát) ──
+  async softDeleteCard(cardId, { nguoiId = null, lyDo = '', cardSnapshot = null } = {}) {
+    const { error } = await supabase
+      .from('the_lieu_trinh')
+      .update({ da_xoa: true })
+      .eq('id', cardId)
+    if (error) throw error
+    try {
+      await supabase.from('nhat_ky_hoat_dong').insert({
+        nguoi_dung_id: nguoiId,
+        hanh_dong: 'xoa_mem_the_lieu_trinh',
+        bang: 'the_lieu_trinh',
+        du_lieu_cu: cardSnapshot || { id: cardId },   // snapshot đầy đủ để khôi phục/đối soát
+        du_lieu_moi: { id: cardId, da_xoa: true, ly_do: lyDo },
+      })
+    } catch (_) {}
   },
 }

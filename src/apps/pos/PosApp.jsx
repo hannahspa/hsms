@@ -231,8 +231,11 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       // KHÔNG hiển thị như dòng hàng → khôi phục vào panel Hoa Hồng NV bán thay vì.
       const isDongTuVan = i => i.loai_item === 'san_pham'
         && (i.meta?.dongTuVanThe || (!i.san_pham_id && (i.thanh_tien || 0) === 0 && i.nhan_vien_id))
+      // Dòng phụ chia tour (KTV phụ): dữ liệu thật nằm ở meta.tourSplits của dòng chính → ẩn khỏi giỏ
+      const isTourSplit = i => i.meta?.tourSplit === true
+        && (i.loai_item === 'dich_vu' || i.loai_item === 'the_lieu_trinh') && (i.thanh_tien || 0) === 0
       const phuLines = allItems.filter(isDongTuVan)
-      const visibleItems = allItems.filter(i => !isDongTuVan(i))
+      const visibleItems = allItems.filter(i => !isDongTuVan(i) && !isTourSplit(i))
 
       if (editMode) {
         // Local: bỏ id DB để được xử lý như dòng mới khi ghi lại lúc Cập Nhật
@@ -461,11 +464,14 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     setLineItems(prev => prev.filter(i => i._lid !== _lid))
   }
 
+  // Tổng tiền tour đã chia cho KTV phụ (giữ bất biến: tour chính + chia ≤ tour gốc)
+  const tourSplitSum = (item) => (item?.meta?.tourSplits || []).reduce((a, s) => a + Math.round(Number(s.tien_tour) || 0), 0)
+
   const handleQtyChange = async (_lid, qty, donGia) => {
     const item = lineItems.find(i => i._lid === _lid)
     const nextThanhTien = qty * donGia
     const nextTour = item?.loai_item === 'dich_vu'
-      ? calcNextTour(item, nextThanhTien, qty)
+      ? Math.max(0, calcNextTour(item, nextThanhTien, qty) - tourSplitSum(item))
       : (item?.tien_tour || 0)
     const updatePayload = item?.loai_item === 'dich_vu'
       ? { so_luong: qty, thanh_tien: nextThanhTien, tien_tour: nextTour, tien_hoa_hong: item?.meta?.upsale?.tien_upsale || 0 }
@@ -484,7 +490,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     const item = lineItems.find(i => i._lid === _lid)
     const qty = Number(item?.so_luong || 1)
     const nextTour = item?.loai_item === 'dich_vu'
-      ? calcNextTour(item, newThanhTien, qty)
+      ? Math.max(0, calcNextTour(item, newThanhTien, qty) - tourSplitSum(item))
       : (item?.tien_tour || 0)
     const updatePayload = item?.loai_item === 'dich_vu'
       ? { thanh_tien: newThanhTien, tien_tour: nextTour, tien_hoa_hong: item?.meta?.upsale?.tien_upsale || 0 }
@@ -522,6 +528,8 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         pctTour: tourMeta.pctTour ?? null,
         baseTienTour: tourMeta.baseTienTour ?? null,
         treatmentPolicy: tourMeta.treatmentPolicy || updatedMeta?.treatmentPolicy || null,
+        // Chia tour cho KTV khác: mảng { nvId, ho_ten, tien_tour } (KTV chính giữ phần còn lại)
+        tourSplits: tourMeta.tourSplits || null,
       }
     }
     if (item.loai_item === 'the_moi' && item.meta) {
@@ -1033,6 +1041,40 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
           }
         }
       } catch (e) { console.warn('Đồng tư vấn thẻ:', e) }
+
+      // ── Chia tiền tour: 1 dịch vụ do nhiều KTV làm → ghi dòng phụ thanh_tien=0 cho KTV phụ ──
+      // KTV chính giữ tien_tour phần mình; mỗi KTV phụ có 1 dòng dich_vu/thẻ LT riêng (thanh_tien=0)
+      // → doanh thu KHÔNG đội (thanh_tien=0), view v_nhan_vien_thu_nhap cộng tour cho từng KTV.
+      try {
+        // Dọn dòng phụ tour cũ (idempotent khi thanh toán lại / sửa đơn)
+        await supabase.from('don_hang_chi_tiet').delete()
+          .eq('don_hang_id', oid).contains('meta', { tourSplit: true })
+        const splitRows = []
+        for (const it of preparedItems) {
+          const arr = it.meta?.tourSplits
+          if (!Array.isArray(arr) || arr.length === 0) continue
+          if (it.loai_item !== 'dich_vu' && it.loai_item !== 'the_lieu_trinh') continue
+          for (const sp of arr) {
+            if (!sp?.nvId || Math.round(Number(sp.tien_tour) || 0) <= 0) continue
+            splitRows.push({
+              don_hang_id: oid,
+              loai_item: it.loai_item,
+              dich_vu_id: it.dich_vu_id || null,
+              the_lieu_trinh_id: null,   // KHÔNG gắn thẻ ở dòng phụ → không trừ buổi lại
+              nhan_vien_id: sp.nvId,
+              so_luong: 1, don_gia: 0, thanh_tien: 0,
+              ti_le_hoa_hong: null,
+              tien_tour: Math.round(Number(sp.tien_tour) || 0),
+              tien_hoa_hong: 0,
+              ghi_chu: `Chia tour cùng làm: ${it.dich_vu?.ten || it.the_lieu_trinh?.ten_dich_vu || 'dịch vụ'}`,
+              meta: { tourSplit: true, tourSplitParentDichVuId: it.dich_vu_id || null },
+            })
+          }
+        }
+        if (splitRows.length > 0) {
+          await supabase.from('don_hang_chi_tiet').insert(splitRows)
+        }
+      } catch (e) { console.warn('Chia tour KTV:', e) }
 
       // Admin duyệt yêu cầu sửa đơn của Lễ tân → đánh dấu đã duyệt + về danh sách
       if (reviewYc) {

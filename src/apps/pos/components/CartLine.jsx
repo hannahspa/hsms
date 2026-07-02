@@ -375,6 +375,15 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
               + Chọn KTV {isSanPham ? 'bán SP' : 'làm dịch vụ'}
             </button>
           )}
+          {Array.isArray(item.meta?.tourSplits) && item.meta.tourSplits.length > 0 && (
+            <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {item.meta.tourSplits.map((s, idx) => (
+                <span key={s.nvId || idx} style={{ fontSize: 10.5, color: '#6C3483', fontWeight: 700, background: 'rgba(108,52,131,.08)', borderRadius: 5, padding: '2px 7px' }}>
+                  + {shortName(s.ho_ten || '')} · tour {formatCurrency(s.tien_tour || 0)}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
