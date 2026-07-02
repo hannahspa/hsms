@@ -6,7 +6,7 @@ import { notify } from '../../../components/ui/notify'
 import { C } from '../../../constants/colors'
 import { fmtInput, NvAvatar, parseVND, shortName } from '../posShared'
 
-export default function KtvPopup({ item, ktvList, onAssign, onClose }) {
+export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = false }) {
   const isTheLT = item.loai_item === 'the_lieu_trinh'
   const isSaleCommission = item.loai_item === 'the_moi' || item.loai_item === 'san_pham'
   const name = item.dich_vu?.ten || item.san_pham?.ten || item.the_lieu_trinh?.ten_dich_vu || '-'
@@ -60,9 +60,11 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose }) {
   const pctTour = Math.round(baseTienTour * tiLe / 100)
   const manualTourAmount = parseVND(manualTourInput)
   const absoluteRuleTour = Math.round(Number(fixedKtvRule?.amount || 0) * Math.max(1, Number(item.so_luong || 1)))
+  // Admin: được sửa tự do tiền tour (bỏ khóa quy tắc cố định). Giữ khóa gói bảo hành 0đ.
+  const tourLocked = !isAdmin && !!fixedKtvRule
   const tienTour = isFreeWarrantyTour
     ? 0
-    : fixedKtvRule && !isSaleCommission
+    : (tourLocked && !isSaleCommission)
       ? absoluteRuleTour
       : tourMode === 'amount'
         ? manualTourAmount
@@ -83,7 +85,7 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose }) {
     }
     setSaving(true)
     await onAssign(item, selectedKtv, tiLe, tienTour, {
-      tourMode: isFreeWarrantyTour ? 'free_warranty' : (fixedKtvRule ? 'amount' : tourMode),
+      tourMode: isFreeWarrantyTour ? 'free_warranty' : (tourLocked ? 'amount' : tourMode),
       manualTourAmount,
       pctTour,
       baseTienTour,
@@ -160,8 +162,8 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose }) {
                   <button
                     key={mode}
                     type="button"
-                    onClick={() => !fixedKtvRule && !isFreeWarrantyTour && setTourMode(mode)}
-                    disabled={!!fixedKtvRule || isFreeWarrantyTour}
+                    onClick={() => !tourLocked && !isFreeWarrantyTour && setTourMode(mode)}
+                    disabled={tourLocked || isFreeWarrantyTour}
                     style={{
                       flex: 1,
                       height: 30,
@@ -169,7 +171,7 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose }) {
                       border: `1px solid ${active ? 'var(--champagne)' : 'var(--bord)'}`,
                       background: active ? 'rgba(201,169,110,.16)' : '#fff',
                       color: active ? 'var(--ink)' : 'var(--ink3)',
-                      cursor: fixedKtvRule || isFreeWarrantyTour ? 'not-allowed' : 'pointer',
+                      cursor: tourLocked || isFreeWarrantyTour ? 'not-allowed' : 'pointer',
                       fontSize: 12,
                       fontWeight: 700,
                       fontFamily: 'var(--sans)',
@@ -186,14 +188,14 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose }) {
               </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {tourMode === 'amount' || fixedKtvRule || isFreeWarrantyTour ? (
+              {tourMode === 'amount' || tourLocked || isFreeWarrantyTour ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
                   <span style={{ fontSize: 12, color: 'var(--ink3)' }}>Số tiền</span>
                   <input
-                    value={isFreeWarrantyTour ? '0' : fixedKtvRule ? fmtInput(absoluteRuleTour) : manualTourInput}
+                    value={isFreeWarrantyTour ? '0' : tourLocked ? fmtInput(absoluteRuleTour) : manualTourInput}
                     onChange={e => setManualTourInput(fmtInput(parseVND(e.target.value)))}
-                    disabled={!!fixedKtvRule || isFreeWarrantyTour}
-                    style={{ width: 110, border: '1px solid var(--bord)', borderRadius: 6, padding: '4px 6px', fontSize: 13, fontWeight: 700, textAlign: 'right', outline: 'none', background: fixedKtvRule || isFreeWarrantyTour ? 'rgba(0,0,0,.04)' : '#fff' }}
+                    disabled={tourLocked || isFreeWarrantyTour}
+                    style={{ width: 110, border: '1px solid var(--bord)', borderRadius: 6, padding: '4px 6px', fontSize: 13, fontWeight: 700, textAlign: 'right', outline: 'none', background: tourLocked || isFreeWarrantyTour ? 'rgba(0,0,0,.04)' : '#fff' }}
                   />
                   <span style={{ fontSize: 12, color: 'var(--ink3)' }}>đ</span>
                 </div>

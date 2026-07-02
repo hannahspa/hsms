@@ -1890,7 +1890,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
 
     {/* KTV Popup */}
     {ktvPopup && (
-      <KtvPopupComponent item={ktvPopup} ktvList={ktvList} onAssign={handleAssignKTV} onClose={() => setKtvPopup(null)} />
+      <KtvPopupComponent item={ktvPopup} ktvList={ktvList} onAssign={handleAssignKTV} onClose={() => setKtvPopup(null)} isAdmin={user?.vai_tro === 'admin'} />
     )}
 
     <DebtPaymentModal
