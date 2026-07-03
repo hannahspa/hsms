@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../context/AuthContext'
 import { COLORS } from '../../../constants/colors'
 import { confirmDialog } from '../../../components/ui/notify'
+import { todayISO, getNowVN } from '../../../lib/utils'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const DON_VI_LIST = ['cái', 'chai', 'lọ', 'hộp', 'gói', 'thùng', 'túi', 'cuộn',
@@ -76,10 +77,7 @@ function fmtTonQD(p) {
 }
 // Đơn giá theo đơn vị cơ sở (gia_nhap đã lưu = giá / đơn vị cơ sở)
 function donGiaCoSo(p) { return Number(p?.gia_nhap) || 0 }
-function todayISO() {
-  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-    .toISOString().slice(0, 10)
-}
+// todayISO: dùng bản chuẩn từ lib/utils (đã import ở đầu file)
 // Ảnh thu nhỏ — bấm vào để phóng to (lightbox)
 function ZoomImg({ src, size = 42, radius = 9, alt = '' }) {
   const [open, setOpen] = useState(false)
@@ -1422,8 +1420,8 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
   const spMap = Object.fromEntries(products.map(p => [p.id, p]))
 
   const getDateRange = () => {
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-    const today = now.toISOString().slice(0, 10)
+    const now = getNowVN()
+    const today = todayISO()
     if (filterDate === 'today')  return { from: today, to: today }
     if (filterDate === 'week') {
       const d = new Date(now); d.setDate(d.getDate() - 6)
@@ -1983,7 +1981,7 @@ function TabChietRot({ products, transactions, userId, onReload, showToast }) {
 // TAB 5: BÁO CÁO TIÊU THỤ
 // ══════════════════════════════════════════════════════════════════════════════
 function TabBaoCao({ products }) {
-  const nowVN = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+  const nowVN = getNowVN()
   const [month, setMonth] = useState(nowVN.getMonth() + 1)
   const [year,  setYear]  = useState(nowVN.getFullYear())
   const [data,  setData]  = useState([])

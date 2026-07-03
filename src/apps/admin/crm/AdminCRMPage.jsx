@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { formatCurrency, getNowVN } from '../../../lib/utils'
+import { formatCurrency, getNowVN, todayISO } from '../../../lib/utils'
 import { posService } from '../../../services/posService'
 import I from '../../../components/shared/Icons'
 import { useAuth } from '../../../context/AuthContext'
@@ -1304,7 +1304,8 @@ function AdminCRMListPage() {
                   {cards.slice(0, 6).map(card => {
                     const pct = card.so_buoi_tong > 0 ? Math.round((card.so_buoi_da_dung / card.so_buoi_tong) * 100) : 0
                     const con = (card.so_buoi_tong || 0) - (card.so_buoi_da_dung || 0)
-                    const expired = card.ngay_het_han && new Date(card.ngay_het_han) < new Date()
+                    // So theo NGÀY VN (chuỗi ISO) — new Date() theo giờ máy làm admin ở Mỹ thấy lệch 1 ngày
+                    const expired = card.ngay_het_han && String(card.ngay_het_han).slice(0, 10) < todayISO()
                     return (
                       <div key={card.id} style={{
                         background: expired ? 'var(--bg)' : 'linear-gradient(135deg,rgba(201,169,110,.08),rgba(160,113,79,.04))',

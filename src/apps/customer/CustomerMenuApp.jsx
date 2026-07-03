@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
-import { kmBadge } from '../../lib/utils'
+import { kmBadge, getNowVN, todayISO } from '../../lib/utils'
 
 // ── Thứ tự và nhãn các nhóm hiển thị ─────────────────────────────────────────
 const NHOM_ORDER = [
@@ -45,7 +45,7 @@ function useClock() {
   const [time, setTime] = useState('')
   useEffect(() => {
     const tick = () => {
-      const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+      const now = getNowVN()
       const h = String(now.getHours()).padStart(2, '0')
       const m = String(now.getMinutes()).padStart(2, '0')
       setTime(`${h}:${m}`)
@@ -58,7 +58,7 @@ function useClock() {
 }
 
 function isOpen() {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
+  const now = getNowVN()
   const h = now.getHours(), m = now.getMinutes()
   const total = h * 60 + m
   return total >= 9 * 60 + 15 && total < 20 * 60
@@ -231,10 +231,6 @@ function ServiceModal({ service, km, onClose }) {
   )
 }
 
-function todayISO() {
-  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-    .toISOString().slice(0, 10)
-}
 
 // ── Main App ───────────────────────────────────────────────────────────────────
 export default function CustomerMenuApp() {

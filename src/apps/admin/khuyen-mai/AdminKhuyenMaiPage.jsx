@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { COLORS } from '../../../constants/colors'
 import { confirmDialog } from '../../../components/ui/notify'
-import { kmBadge } from '../../../lib/utils'
+import { kmBadge, todayISO } from '../../../lib/utils'
+import DatePicker from '../../../components/shared/DatePicker'
 import ROITab from './ROITab'
 
 const STATUS_LABEL = { active: 'Đang chạy', draft: 'Nháp', expired: 'Hết hạn' }
@@ -20,10 +21,6 @@ function fmtDate(d) {
   if (!d) return ''
   const [y, m, day] = d.split('-')
   return `${day}/${m}/${y}`
-}
-function todayISO() {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }))
-  return now.toISOString().slice(0, 10)
 }
 
 // ── Form tạo / sửa KM ─────────────────────────────────────────────────────────
@@ -48,6 +45,8 @@ function KMForm({ initial, dichVuList, comboList = [], onSave, onCancel }) {
   })
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState('')
+  const [showLichBD, setShowLichBD] = useState(false)   // DatePicker ngày bắt đầu
+  const [showLichKT, setShowLichKT] = useState(false)   // DatePicker ngày kết thúc
   const [phamVi, setPhamVi] = useState(
     initial?.combo_id ? 'combo' : initial?.nhom_ap_dung ? 'nhom' : initial?.dich_vu_id ? 'dich_vu' : (initial ? 'none' : 'dich_vu')
   )
@@ -326,13 +325,23 @@ function KMForm({ initial, dichVuList, comboList = [], onSave, onCancel }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={labelStyle}>NGÀY BẮT ĐẦU *</label>
-              <input style={inputStyle} type="date" value={form.ngay_bat_dau}
-                onChange={e => set('ngay_bat_dau', e.target.value)} />
+              <button type="button" style={{ ...inputStyle, cursor: 'pointer', textAlign: 'left' }}
+                onClick={() => setShowLichBD(true)}>
+                {fmtDate(form.ngay_bat_dau) || 'Chọn ngày'}
+              </button>
+              <DatePicker open={showLichBD} selectedDate={form.ngay_bat_dau}
+                onClose={() => setShowLichBD(false)}
+                onConfirm={d => { set('ngay_bat_dau', d); setShowLichBD(false) }} />
             </div>
             <div>
               <label style={labelStyle}>NGÀY KẾT THÚC *</label>
-              <input style={inputStyle} type="date" value={form.ngay_ket_thuc}
-                onChange={e => set('ngay_ket_thuc', e.target.value)} />
+              <button type="button" style={{ ...inputStyle, cursor: 'pointer', textAlign: 'left' }}
+                onClick={() => setShowLichKT(true)}>
+                {fmtDate(form.ngay_ket_thuc) || 'Chọn ngày'}
+              </button>
+              <DatePicker open={showLichKT} selectedDate={form.ngay_ket_thuc}
+                onClose={() => setShowLichKT(false)}
+                onConfirm={d => { set('ngay_ket_thuc', d); setShowLichKT(false) }} />
             </div>
           </div>
 

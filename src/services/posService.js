@@ -1318,7 +1318,7 @@ export const posService = {
         du_lieu_cu: cardSnapshot || { id: cardId },
         du_lieu_moi: { id: cardId, bi_dong: !!frozen },
       })
-    } catch (_) {}
+    } catch (e) { console.warn('Ghi nhật ký đóng/mở thẻ thất bại (thẻ đã đổi trạng thái):', e) }
   },
 
   // ── Admin: Tính giá trị quy đổi còn lại của thẻ (bỏ khuyến mãi/buổi tặng) ──
@@ -1395,6 +1395,6 @@ export const posService = {
         du_lieu_cu: cardSnapshot || { id: cardId },   // snapshot đầy đủ để khôi phục/đối soát
         du_lieu_moi: { id: cardId, da_xoa: true, ly_do: lyDo },
       })
-    } catch (_) {}
+    } catch (e) { console.warn('Ghi nhật ký xoá mềm thẻ thất bại (thẻ đã ẩn):', e) }
   },
 }

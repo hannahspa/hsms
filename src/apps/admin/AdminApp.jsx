@@ -50,6 +50,10 @@ function useStats() {
         tongTS,
         offPending: rOff.count || 0,
       })
+    }).catch(e => {
+      // Lỗi mạng/DB: hiện 0 thay vì treo "..." vĩnh viễn
+      console.error('Lỗi tải thống kê trang chủ Admin:', e)
+      setStats({ doanhThu: 0, checkinHom: 0, tongNV: 0, tongTS: 0, offPending: 0 })
     })
   }, [])
   return stats

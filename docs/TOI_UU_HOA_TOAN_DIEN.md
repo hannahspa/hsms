@@ -110,6 +110,12 @@ Mỗi GĐ = 1 chu trình: PHÂN TÍCH SÂU → chốt → BACKUP → SỬA → G
 | 01/07 | GĐ0-A 1b-1 | ✅ ĐÃ CHẠY `130_checkin_rpc_secure.sql`: bảng checkin_session + login_attempt, cột selfie/gps trên cham_cong, 13 RPC SECURITY DEFINER (đăng nhập/me/home/lich/luong/thu_nhap/cham_cong+GPS server+selfie/bổ sung giờ ra/off/đổi pin/avatar). Test PASS: KTV chỉ thấy data mình, token rác bị từ chối, PIN sai khóa. GPS verify SERVER-SIDE. CHƯA revoke (app cũ vẫn chạy) | (migration only) |
 | 01/07 | GĐ0-A 1b-3 | ✅ 10/10 màn checkin → RPC + SelfieCapture. migration 131-134. Build+RPC test PASS. PUSH main (885efe5) → Vercel. CHỜ nhân viên test check-in ngày mai → rồi 1b-4 REVOKE | 885efe5 |
 | 01/07 | GĐ0-B | Xóa 3 dead code (DoiSoatNgay, NopTienMat, bao-cao/components/LichSuNopTienMat) — build PASS. Phát hiện: JS tokens ĐÃ hợp nhất (lux.js re-export colors.js); còn LỆCH GIÁ TRỊ JS↔CSS var (nền #FAF7F4 vs #f3ece1, chữ #1A1209 vs #2a201a). DESIGN_SYSTEM.md lỗi thời | (chưa commit) |
+| 02/07 | GĐ0-B Lô2 Nhóm1 | ✅ FormDoanhThu + FormChiPhi + EditTransactionModal → RightPanel chuẩn (bỏ overlay/sheet/header tự vẽ, nút Lưu vào footer). ExpenseEntryForm = card nhúng inline (không phải popup, đã dùng ui/Modal) → giữ nguyên. Build PASS. Xác minh chrome-devtools: FormChiPhi + FormDoanhThu render đúng (header gradient, footer cố định, sub-picker OK) | (chưa commit) |
+| 02/07 | F1-POS | ✅ QUY TẮC MỚI (anh Nam): chốt đơn POS CHẶN CỨNG khi (a) dòng dịch vụ/dùng thẻ chưa gán KTV, (b) chưa STICK TIỀN TOUR — thông báo nêu ĐÍCH DANH tên dịch vụ còn thiếu. PHỤ THU được quyền gán hoặc không gán tour (0đ hợp lệ); bảo hành free_warranty = 0đ chính thức. Chống sót tiền tour KTV. Vá 21 catch nuốt lỗi POS: update tiền (qty/giảm giá/gán KTV/toggle thẻ/upsale) nay CHECK error + báo + không lệch UI/DB; voidOrder fail → dừng báo ngay; update khách/ngày đơn fail → THROW dừng chốt; còn lại console.warn. PosApp/posService/PosOrderHistory/PosProductCatalog/PosCustomerSelect | checkpoint |
+| 02/07 | F2-Lương | ✅ B1 VÀO CODE: tinhLuong đọc ngay_bat_dau — NV vào giữa tháng không bị no-show/không công ngày trước khi vào (trả về ngayTruocVaoLam); TabBangLuong select thêm ngay_bat_dau; thiếu cột (RPC cũ) → hành xử như cũ. Hợp nhất tinhHeSo/tinhTangCa (2 bản copy CheckinChamCong + AdminSuaChamCong) → lib/luong.js exports tinhHeSoChamCong/tinhTangCaChamCong/toPhut/CA_*_CHUAN | checkpoint |
+| 02/07 | F3-Vệ sinh | ✅ zns.js sai NGÀY UTC (tin gửi 0h–7h sáng ghi ngày hôm trước) → todayISO(); CRM so hạn thẻ theo giờ máy → so chuỗi ISO với todayISO(); CustomerMenuApp/KhoHang bỏ 5 bản convert-VN tự viết → dùng lib/utils; VongQuay giờ lịch sử thêm timeZone VN. AdminApp useStats bắt lỗi (hết treo "..."); App.jsx so path Lễ Tân theo ĐOẠN (chặn /admin/crm-xyz lọt). KhuyenMai form: 2 input type=date → DatePicker chuẩn + bỏ todayISO local. KHÔNG đụng AdminMarketingPage/MarketingModulePage (session khác đang dở) | checkpoint |
+| 02/07 | F4-Test | ✅ Bộ test lương ĐẦU TIÊN: scripts/test_luong.mjs — 15 case (full công/OFF hạn/vượt/T7 ×2/no-show/B1 ×3/về sớm/tăng ca/ký quỹ/Lễ Tân Ca A/hệ số chung/todayRef) → 15 PASS. Lệnh `npm run test:luong` (bundle rolldown). QUY TẮC: sửa luong.js phải chạy lại | checkpoint |
+| 02/07 | F3b-CÒN LẠI | ⏳ input type=date còn: KhoHang (4 form + 2 filter), CRM (ngày sinh — cân nhắc DatePicker khó lùi năm xa), Checkin mobile (GIỮ native — mobile picker tốt hơn). Làm ở Lô 4 UI kèm screenshot. Tăng ca 2 nguồn chân lý (tinhLuong tự tính từ gio_ra, bỏ qua trang_thai_tang_ca duyệt) — CẦN ANH NAM CHỐT nghiệp vụ trước khi sửa (đổi là đổi tiền lương) | — |
 
 ## 6. GĐ0-B · CHUẨN HÓA MÀU (khuyến nghị của Claude — anh Nam giao tự quyết)
 **Chọn TÔNG ẤM (kem-espresso) làm chuẩn CHUNG.** Lý do: (1) hợp thương hiệu spa sang
@@ -137,6 +143,33 @@ KHÔNG đổi "mù" rồi push. Cần: sửa colors.js → chạy dev/screenshot
 **Còn lại GĐ0-B:** viết DESIGN_SYSTEM.md v2 (khớp token thật + nguyên tắc 2026:
 khoảng trắng rộng, bo mềm, accent tiết chế, quy tắc mật độ nhiều/ít nội dung, mọi
 popup qua ui/Modal, mọi nút qua ui/Button); phủ ui/Modal+Button thay popup/nút inline.
+
+## 7. GĐ0-B · CHUẨN HÓA "THỐNG NHẤT" (anh Nam chỉ ra 01/07 — VẤN ĐỀ CHÍNH)
+Anh Nam: các trang NGOÀI đã đẹp, nhưng ĐI SÂU thì "mỗi popup một kiểu", tiền tệ
+"đ đ" 2 chữ / số dài bị cắt-ẩn — "không có sự thống nhất nào hết". Đã đo:
+
+### 7.1 Tiền tệ (gốc: nhiều hàm format lẫn lộn)
+- `formatCurrency(n)` (utils) = ĐÃ kèm "đ". Chỗ thêm "đ" nữa → "đđ" (đã fix TongQuanPage:330).
+- `fmt` local ở mỗi file KHÁC nhau: printReceipt=không đ; wheel/AdminNhacLieuTrinh=có đ;
+  CheckinChamCong `fmt`=GIỜ; CheckinDangKyOff `fmt`=NGÀY → nhập nhằng nghĩa.
+- `fmtInput`/`fmtNumber` (posShared/marketing) = không đ → phải thêm "đ" tay.
+- Số dài bị cắt: ô tiền có `whiteSpace:nowrap`+overflow/ellipsis hoặc width hẹp.
+- **CHUẨN:** tiền LUÔN dùng `formatCurrency` (có đ). Cấm định nghĩa fmt-tiền local.
+  Đổi tên fmt giờ→`fmtGio`, ngày→`fmtNgay`. Ô tiền: `nowrap` + đủ rộng + `tabular-nums`,
+  KHÔNG ellipsis. Cân nhắc component `<Money value/>` dùng chung.
+
+### 7.2 Popup (76 overlay `position:fixed;inset:0` ở 52 file, chỉ 1 dùng ui/Modal)
+- Mỗi popup tự viết: overlay bg (rgba .5/.6/.42...), radius (16/20/28), animation có/không,
+  header/footer/nút đóng mỗi kiểu → KHÔNG đồng bộ.
+- **CHUẨN:** mọi popup qua `components/ui/Modal` (overlay+blur+animation+ESC+size sm/md/lg/xl
+  + header icon/title/subtitle + footer nút). Nút trong modal qua `ui/Button`.
+
+### 7.3 Thực thi theo LÔ (làm khi context tươi, mỗi lô 1 lượt, build+screenshot mỗi lô)
+- Lô 1: Tiền tệ toàn hệ thống (rà + fix double/thiếu/cắt + chuẩn formatCurrency).
+- Lô 2: Popup Internal (thu-chi forms, cai-dat, tong-quan).
+- Lô 3: Popup POS (payment, cartline, ktv, debt, naptra).
+- Lô 4: Popup Admin (nhan-su, the-lieu-trinh, crm, kho).
+- Lô 5: Popup Checkin (mobile) — ChamCong/DangKyOff/... về ui/Modal (bản mobile).
 | | | ⚠️ Phát hiện: avatar_url lưu base64 khổng lồ trong nhan_vien → tối ưu sau (chuyển Storage URL). Không chặn tiến độ |
 
 ## 5. TRẠNG THÁI BẢO MẬT GĐ0-A
@@ -161,3 +194,21 @@ popup qua ui/Modal, mọi nút qua ui/Button); phủ ui/Modal+Button thay popup/
 Catalog công khai: `dich_vu, khuyen_mai, homepage_config, danh_gia`
 Checkin (tạm, gỡ ở 1b): `nhan_vien, cham_cong, dang_ky_off, yeu_cau_chinh_sua, lich_hen, bang_luong, quy_ngay_off, don_hang_chi_tiet, v_nhan_vien_thu_nhap`
 Vòng quay: 3 RPC (không cần grant bảng)
+
+## 8. GĐ0-B LÔ 2 — MẪU CHUẨN (bắt đầu 02/07)
+2 primitive chuẩn ĐÃ CÓ: `components/shared/RightPanel` (panel form trượt phải) +
+`components/ui/Modal` (hộp giữa cho popup ngắn/xác nhận). Vấn đề: nhiều form tự vẽ
+overlay/sheet/header riêng (object `S`) → lệch. CHUẨN HÓA = thay bằng 2 primitive này.
+
+**MẪU chuyển form → RightPanel** (đã làm FormChuyenKhoan, commit local, build PASS):
+- import RightPanel; bỏ S.panelOverlay/sheet/handle/header/closeBtn tự vẽ.
+- `return (<RightPanel open onClose title subtitle bodyStyle footer={<nút Lưu/>}> <DatePicker/> <div>...nội dung...</div> </RightPanel>)`
+- Nút Lưu chuyển vào prop `footer`. Sub-picker (chọn ví) tạm giữ; sau chuyển ui/Modal.
+
+**Thứ tự Lô 2 còn lại (mỗi nhóm 1 lượt PHIÊN MỚI cho rẻ token):**
+- Nhóm 1 (Internal thu-chi): FormDoanhThu, FormChiPhi (theo mẫu FormChuyenKhoan) + ExpenseEntryForm + EditTransactionModal.
+- Nhóm 2: cai-dat/* (QuanLyVi, QuanLyDanhMuc, HoSoNhanVien, DoiMatKhau, PheDuyetThuChi...).
+- Nhóm 3: POS (PosPaymentModal, DebtPaymentModal, NapTraTruocModal, KtvPopup → RightPanel).
+- Nhóm 4: Admin (nhan-su Tabs, the-lieu-trinh modals, crm, kho).
+- Nhóm 5: Checkin mobile (ChamCong/DangKyOff popup — bản mobile riêng, cân nhắc giữ).
+CÁCH XÁC MINH: dev server + chrome-devtools chụp trước/sau mỗi nhóm.

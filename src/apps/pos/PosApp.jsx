@@ -164,7 +164,8 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
           nguoi_dung_id: user?.id || null, hanh_dong: 'gia_han_the', bang: 'the_lieu_trinh',
           du_lieu_cu: { id: giaHanCard.id, ten_dich_vu: giaHanCard.ten_dich_vu, ngay_het_han: giaHanCard.ngay_het_han },
           du_lieu_moi: { ngay_het_han: giaHanNgay },
-        }).then(() => {}, () => {})
+        }).then(({ error }) => { if (error) console.warn('Ghi nhật ký gia hạn thẻ:', error) },
+                e => console.warn('Ghi nhật ký gia hạn thẻ:', e))
         notify('✓ Đã gia hạn thẻ đến ' + ngayMoiVi)
         setGiaHanCard(null)
         if (selectedCustomer?.id) {
@@ -271,7 +272,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
           addStaff(first.meta?.nhanVienTuVanLtId, first.meta?.tiLeCommLt)
           phuLines.forEach(p => addStaff(p.nhan_vien_id, p.ti_le_hoa_hong))
           if (staff.length) setOrderStaff(staff)
-        } catch (_) {}
+        } catch (e) { console.warn('Khôi phục panel hoa hồng NV bán:', e) }
       }
     }).catch(err => { notify('Lỗi tải đơn: ' + err.message) })
   }, [resumeOrderId, editMode, ycId])
@@ -393,7 +394,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     let policy = null
     try {
       policy = await posService.getTreatmentCardTourPolicy(card)
-    } catch (_) {}
+    } catch (e) { console.warn('Không đọc được chính sách tour thẻ (tour gợi ý = 0):', e) }
 
     handleAddItem({
       loai_item:         'the_lieu_trinh',
@@ -477,9 +478,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       ? { so_luong: qty, thanh_tien: nextThanhTien, tien_tour: nextTour, tien_hoa_hong: item?.meta?.upsale?.tien_upsale || 0 }
       : { so_luong: qty, thanh_tien: nextThanhTien }
     if (savedOrderId && item?.id) {
-      try {
-        await supabase.from('don_hang_chi_tiet').update(updatePayload).eq('id', item.id)
-      } catch (_) {}
+      // KHÔNG nuốt lỗi: ghi DB thất bại → giữ nguyên UI + báo, tránh UI/DB lệch tiền
+      const { error } = await supabase.from('don_hang_chi_tiet').update(updatePayload).eq('id', item.id)
+      if (error) { notify('Lỗi cập nhật số lượng (chưa lưu): ' + error.message); return }
     }
     setLineItems(prev => prev.map(i => i._lid === _lid
       ? { ...i, ...updatePayload }
@@ -496,9 +497,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       ? { thanh_tien: newThanhTien, tien_tour: nextTour, tien_hoa_hong: item?.meta?.upsale?.tien_upsale || 0 }
       : { thanh_tien: newThanhTien }
     if (savedOrderId && item?.id) {
-      try {
-        await supabase.from('don_hang_chi_tiet').update(updatePayload).eq('id', item.id)
-      } catch (_) {}
+      // KHÔNG nuốt lỗi: ghi DB thất bại → giữ nguyên UI + báo, tránh UI/DB lệch tiền
+      const { error } = await supabase.from('don_hang_chi_tiet').update(updatePayload).eq('id', item.id)
+      if (error) { notify('Lỗi cập nhật giảm giá (chưa lưu): ' + error.message); return }
     }
     setLineItems(prev => prev.map(i => i._lid === _lid
       ? { ...i, ...updatePayload }
@@ -545,17 +546,17 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     }
 
     if (savedOrderId && item?.id) {
-      try {
-        await supabase.from('don_hang_chi_tiet')
-          .update({
-            nhan_vien_id:    ktv?.id || null,
-            ti_le_hoa_hong:  finalTiLe,
-            tien_tour:       tienTour,
-            tien_hoa_hong: tienCommission,
-            ...(updatedMeta !== item.meta ? { meta: updatedMeta } : {}),
-          })
-          .eq('id', item.id)
-      } catch (_) {}
+      // KHÔNG nuốt lỗi: gán KTV/tour thất bại → giữ popup mở + báo, tránh lệch lương KTV
+      const { error } = await supabase.from('don_hang_chi_tiet')
+        .update({
+          nhan_vien_id:    ktv?.id || null,
+          ti_le_hoa_hong:  finalTiLe,
+          tien_tour:       tienTour,
+          tien_hoa_hong: tienCommission,
+          ...(updatedMeta !== item.meta ? { meta: updatedMeta } : {}),
+        })
+        .eq('id', item.id)
+      if (error) { notify('Lỗi lưu KTV/tiền tour (chưa lưu): ' + error.message); return }
     }
     setLineItems(prev => prev.map(i => i._lid === item._lid ? {
       ...i,
@@ -613,7 +614,10 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
           dich_vu_id: next.dich_vu_id, don_gia: next.don_gia, thanh_tien: next.thanh_tien,
           ti_le_hoa_hong: next.ti_le_hoa_hong, tien_hoa_hong: next.tien_hoa_hong,
           tien_tour: next.tien_tour, meta: next.meta,
-        }).eq('id', i.id).then(() => {}, () => {})
+        }).eq('id', i.id).then(
+          ({ error }) => { if (error) notify('Lỗi lưu upsale vào đơn: ' + error.message) },
+          (e) => notify('Lỗi lưu upsale vào đơn: ' + e.message),
+        )
       }
       return next
     }))
@@ -694,7 +698,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     if (lineItems.length === 0 && !savedOrderId) return
     if (!(await confirmDialog({ title: 'Huỷ đơn', message: 'Hủy đơn hiện tại?', danger: true, confirmLabel: 'Huỷ đơn' }))) return
     if (savedOrderId) {
-      try { await posService.voidOrder(savedOrderId) } catch (_) {}
+      // KHÔNG nuốt lỗi: huỷ DB thất bại → đơn vẫn sống, phải dừng lại báo ngay
+      try { await posService.voidOrder(savedOrderId) }
+      catch (err) { notify('Lỗi huỷ đơn — đơn CHƯA được huỷ: ' + err.message); return }
     }
     setSavedOrderId(null)
     resetCreateForm()
@@ -858,13 +864,13 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     } : null
 
     if (savedOrderId && item?.id) {
-      try {
-        await supabase.from('don_hang_chi_tiet')
-          .update(toCard
-            ? { loai_item: 'the_moi', so_luong: soBuoiMua, thanh_tien: thanhTien, tien_tour: 0, tien_hoa_hong: 0, meta: metaData }
-            : { loai_item: 'dich_vu', so_luong: 1, thanh_tien: donGia, tien_tour: item?.tien_tour || 0, tien_hoa_hong: 0, meta: null })
-          .eq('id', item.id)
-      } catch (_) {}
+      // KHÔNG nuốt lỗi: đổi dòng thẻ/dịch vụ thất bại → giữ nguyên UI + báo
+      const { error } = await supabase.from('don_hang_chi_tiet')
+        .update(toCard
+          ? { loai_item: 'the_moi', so_luong: soBuoiMua, thanh_tien: thanhTien, tien_tour: 0, tien_hoa_hong: 0, meta: metaData }
+          : { loai_item: 'dich_vu', so_luong: 1, thanh_tien: donGia, tien_tour: item?.tien_tour || 0, tien_hoa_hong: 0, meta: null })
+        .eq('id', item.id)
+      if (error) { notify('Lỗi chuyển thẻ/dịch vụ (chưa lưu): ' + error.message); return }
     }
     setLineItems(prev => prev.map(i => i._lid === _lid ? {
       ...i,
@@ -879,6 +885,30 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     if (lineItems.length === 0) return
     // ── QUY TẮC: KHÔNG gộp BÁN THẺ MỚI và LÀM DỊCH VỤ/DÙNG THẺ trong cùng 1 đơn ──
     if (!checkKhongGopBanTheVaDichVu()) return
+    // ── QUY TẮC (anh Nam 02/07): mọi dòng DỊCH VỤ / DÙNG THẺ phải gán KTV làm
+    // + STICK TIỀN TOUR rồi mới được thanh toán — chống sót tiền tour của KTV.
+    // PHỤ THU: vẫn gán người làm, tour ĐƯỢC QUYỀN gán hoặc không (0đ hợp lệ).
+    // Bảo hành (free_warranty): tour 0đ là chế độ chính thức đã chọn qua popup KTV.
+    const tenDong = (i) => i.dich_vu?.ten || i.the_lieu_trinh?.ten_dich_vu || 'Dịch vụ'
+    const laPhuThu = (i) => /ph[uụ] thu/i.test(`${i.dich_vu?.ten || ''} ${i.dich_vu?.danh_muc || ''}`)
+    const laDongDichVu = (i) => i.loai_item === 'dich_vu' || i.loai_item === 'the_lieu_trinh'
+
+    const dongThieuKtv = lineItems.filter(i => laDongDichVu(i) && !i.nhan_vien_id)
+    if (dongThieuKtv.length > 0) {
+      notify(`⚠ Chưa chọn KTV làm cho: ${dongThieuKtv.map(tenDong).join(' · ')}.\nHãy chọn KTV cho từng dịch vụ rồi mới được thanh toán.`)
+      return
+    }
+    // CHẶN CỨNG: dịch vụ chưa stick tiền tour (tour ≤ 0, không phải phụ thu/bảo hành)
+    const dongChuaTour = lineItems.filter(i => {
+      if (!laDongDichVu(i)) return false
+      if (laPhuThu(i)) return false                            // phụ thu: tour tự do
+      if (i.meta?.tourMode === 'free_warranty') return false   // bảo hành: 0đ chính thức
+      return ((i.tien_tour || 0) + tourSplitSum(i)) <= 0
+    })
+    if (dongChuaTour.length > 0) {
+      notify(`⚠ Dịch vụ "${dongChuaTour.map(tenDong).join('" · "')}" CHƯA STICK TIỀN TOUR.\nHãy stick tiền tour cho dịch vụ này rồi mới được thanh toán.\n(Chỉ dịch vụ PHỤ THU mới được để tour 0đ.)`)
+      return
+    }
     if (!selectedCustomer?.id) {
       notify('Vui long chon khach hang truoc khi chot don de CRM va doi soat du lieu duoc ghi nhan day du.')
       return
@@ -967,11 +997,12 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       // Cập nhật khách hàng + ngày + giờ tạo đơn — TRƯỚC finalize.
       // khach_hang_id phải cập nhật ở đây vì đơn nháp có thể tạo lúc CHƯA chọn khách
       // (khách lẻ) rồi mới gán/tạo khách sau → nếu không update sẽ mất liên kết CRM.
-      try {
-        await supabase.from('don_hang')
-          .update({ khach_hang_id: selectedCustomer?.id || null, ngay: orderNgay, created_at: `${orderNgay}T${(orderGio || '00:00')}:00+07:00` })
-          .eq('id', oid)
-      } catch (_) {}
+      // Lỗi cập nhật khách/ngày → THROW dừng chốt (mất liên kết CRM + sai ngày đối soát).
+      // Payments idempotent (xoá ghi lại) nên bấm chốt lại là an toàn.
+      const { error: eUpdDon } = await supabase.from('don_hang')
+        .update({ khach_hang_id: selectedCustomer?.id || null, ngay: orderNgay, created_at: `${orderNgay}T${(orderGio || '00:00')}:00+07:00` })
+        .eq('id', oid)
+      if (eUpdDon) throw new Error('Không cập nhật được khách hàng/ngày của đơn: ' + eUpdDon.message)
 
       // Xoá dòng phụ "đồng tư vấn thẻ" cũ TRƯỚC finalize: nó là san_pham giá 0 (san_pham_id=null)
       // → RPC finalize tưởng là bán sản phẩm và báo "không đủ tồn kho". Sẽ được tạo lại từ
@@ -979,7 +1010,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       try {
         await supabase.from('don_hang_chi_tiet').delete()
           .eq('don_hang_id', oid).contains('meta', { dongTuVanThe: true })
-      } catch (_) {}
+      } catch (e) { console.warn('Dọn dòng đồng tư vấn trước finalize:', e) }
 
       // 4. Finalize — RPC xử lý kho, thẻ LT dùng, thẻ mới, công nợ, doanh_thu
       const result = await posService.finalizeOrder(oid, { giamGia: giamDVAmt, vat: vatAmt, conNo, ghiChu: ghiChuDon })
@@ -1006,7 +1037,8 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
 
       // Đánh dấu voucher đã dùng (đơn đã chốt thành công) — ghi đơn + số tiền giảm để đo hiệu quả
       if (voucher?.code && voucherGiam > 0) {
-        try { await supabase.rpc('voucher_ap_dung', { p_code: voucher.code, p_don_hang_id: oid, p_gia_tri_giam: voucherGiam }) } catch (_) {}
+        try { await supabase.rpc('voucher_ap_dung', { p_code: voucher.code, p_don_hang_id: oid, p_gia_tri_giam: voucherGiam }) }
+        catch (e) { console.warn('Đánh dấu voucher đã dùng thất bại (đơn vẫn chốt):', e) }
       }
 
       const comboItems = preparedItems.filter(i => i.loai_item === 'the_moi' && i.meta?.loai === 'combo_lieu_trinh')
@@ -1078,11 +1110,11 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
 
       // Admin duyệt yêu cầu sửa đơn của Lễ tân → đánh dấu đã duyệt + về danh sách
       if (reviewYc) {
-        try {
-          await supabase.from('yeu_cau_chinh_sua')
-            .update({ trang_thai: 'da_duyet', nguoi_duyet: user?.ho_ten || 'Admin' })
-            .eq('id', reviewYc.id)
-        } catch (_) {}
+        const { error: eYc } = await supabase.from('yeu_cau_chinh_sua')
+          .update({ trang_thai: 'da_duyet', nguoi_duyet: user?.ho_ten || 'Admin' })
+          .eq('id', reviewYc.id)
+        // Đơn ĐÃ cập nhật nhưng chưa đánh dấu duyệt → cảnh báo để tránh duyệt lần 2 (nhân đôi)
+        if (eYc) notify('⚠ Đơn đã cập nhật nhưng CHƯA đánh dấu yêu cầu là đã duyệt — vào Xét Duyệt từ chối tay yêu cầu này, KHÔNG duyệt lại: ' + eYc.message)
         setLoading(false)
         notify('Đã duyệt & cập nhật đơn ' + maDonEdit + ' theo đề xuất của Lễ tân.')
         window.location.href = '/pos/danh-sach'
@@ -1100,7 +1132,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         try {
           await posService.removePayments(insertedPaymentIds)
           paymentsInserted.current = false
-        } catch (_) {}
+        } catch (e) { console.warn('Dọn payments sau lỗi chốt đơn thất bại (sẽ tự dọn ở lần chốt sau):', e) }
       }
       notify('Lỗi thanh toán: ' + err.message)
     }

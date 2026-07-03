@@ -59,7 +59,7 @@ export default function AdminVongQuayPage() {
 
   const onResult = useCallback((item) => {
     setKetqua(item)
-    setLichSu(ls => [{ ...item, luc: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) }, ...ls].slice(0, 8))
+    setLichSu(ls => [{ ...item, luc: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }) }, ...ls].slice(0, 8))
   }, [])
 
   const setO = (i, k, v) => setItems(arr => arr.map((it, j) => j === i ? { ...it, [k]: v } : it))

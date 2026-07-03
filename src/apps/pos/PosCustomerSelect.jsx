@@ -86,7 +86,7 @@ export default function PosCustomerSelect({ selected, onChange }) {
         const r = await posService.searchCustomers(val)
         setResults(r)
         setShowDropdown(true)
-      } catch (_) {}
+      } catch (e) { console.error('Lỗi tìm khách hàng:', e) }
     }, 300)
   }
 

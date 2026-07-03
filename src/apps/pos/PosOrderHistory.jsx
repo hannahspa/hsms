@@ -98,7 +98,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
       setOrders(result.orders)
       setTotalOrders(result.total)
       setCurrentPage(page)
-    } catch (_) {} finally { setLoading(false) }
+    } catch (e) { console.error('Lỗi tải danh sách đơn:', e) } finally { setLoading(false) }
   }, [computeRange, activeSearch, statusTab, cardSaleOnly])
 
   useEffect(() => { load() }, [load])
@@ -166,7 +166,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
       setOrders(result.orders)
       setTotalOrders(result.total)
       setCurrentPage(1)
-    } catch (_) {} finally { setLoading(false) }
+    } catch (e) { console.error('Lỗi tải danh sách đơn:', e) } finally { setLoading(false) }
   }
 
   const resetAdvancedSearch = () => {

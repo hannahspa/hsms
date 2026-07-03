@@ -1,6 +1,7 @@
 // Helper gửi ZNS (Zalo Notification Service) qua edge function zalo-zns.
 // Luôn bọc an toàn: lỗi/thiếu SĐT KHÔNG chặn luồng nghiệp vụ chính.
 import { supabase } from './supabase'
+import { todayISO } from './utils'
 
 const SPA_ADDRESS = '39 Nam Kỳ Khởi Nghĩa, Ninh Kiều, Cần Thơ'
 
@@ -54,7 +55,7 @@ export function znsNhacLich({ ten_khach, ma_lich, gio_hen, ngay_hen, dich_vu, sd
 export function znsHoaDon({ ten_khach, ma_don, ngay, tong_tien, trang_thai, dich_vu, nhan_vien, sdt }) {
   return guiZNS('hoa_don', sdt, {
     order_code: ma_don || '—',
-    date: dmy(ngay) || dmy(new Date().toISOString()),
+    date: dmy(ngay) || dmy(todayISO()),
     cost: String(tong_tien ?? 0),
     payment_status: trang_thai || 'Đã thanh toán',
     customer_name: ten_khach || 'Quý khách',
@@ -72,7 +73,7 @@ export function znsMuaLieuTrinh({ ten_khach, ten_the, ma_the, dich_vu, gia_tri, 
     services: dich_vu || ten_the || 'Dịch vụ tại Hannah Spa',
     cost: String(gia_tri ?? 0),
     expiry_date: ngay_het_han ? dmy(ngay_het_han) : 'Không giới hạn',
-    date: dmy(ngay) || dmy(new Date().toISOString()),
+    date: dmy(ngay) || dmy(todayISO()),
     order_code: ma_don || '—',
   })
 }
@@ -86,7 +87,7 @@ export function znsTheLieuTrinh({ ten_khach, ma_the, dich_vu, tong_buoi, da_dung
     times: String(tong_buoi ?? ''),
     used_time: String(da_dung ?? ''),
     remain_time: String(con_lai ?? ''),
-    date: dmy(ngay) || dmy(new Date().toISOString()),
+    date: dmy(ngay) || dmy(todayISO()),
     order_code: ma_don || '—',
   })
 }

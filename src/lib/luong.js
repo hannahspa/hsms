@@ -81,6 +81,30 @@ export function leTanCaInfo(viTri, ngay, gioVao, gioRa) {
   return { ca: ra < LT_CA_MOC ? 'A' : 'B', heSo: +heSo.toFixed(2) }
 }
 
+// ─── CA CHUẨN & HỆ SỐ CHẤM CÔNG — nguồn DUY NHẤT ────────────────────────────
+// Dùng chung CheckinChamCong (KTV tự chấm) + AdminSuaChamCong (admin sửa hộ).
+// KHÔNG copy các hàm này vào file khác — sửa 1 nơi quên 1 nơi là lệch chấm công.
+export const CA_VAO_CHUAN  = { h: 9, m: 15 }
+export const CA_RA_CHUAN   = { h: 20, m: 0 }
+export const PHUT_CA_CHUAN = (CA_RA_CHUAN.h * 60 + CA_RA_CHUAN.m) - (CA_VAO_CHUAN.h * 60 + CA_VAO_CHUAN.m)
+
+export function toPhut(timeStr) {
+  const [h, m] = (timeStr || '0:0').split(':').map(Number)
+  return h * 60 + m
+}
+
+export function tinhHeSoChamCong(gioVao, gioRa) {
+  const lam = Math.max(0, toPhut(gioRa) - toPhut(gioVao))
+  const pct = Math.min(100, (lam / PHUT_CA_CHUAN) * 100)
+  return Math.round(pct) / 100
+}
+
+export function tinhTangCaChamCong(gioRa) {
+  const diff = toPhut(gioRa) - (CA_RA_CHUAN.h * 60 + CA_RA_CHUAN.m)
+  if (diff < 15) return 0
+  return Math.round(diff / 60 * 100) / 100
+}
+
 /**
  * Tinh toan luong cho 1 nhan vien trong 1 thang
  *
@@ -101,6 +125,19 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   const soNgayThang = todayRef ? Math.min(todayRef, soNgayThangFull) : soNgayThangFull
   const gioiHanOff  = nv.gioi_han_off_thang || 3
 
+  // ── B1 (anh Nam chốt 30/06): NV vào làm GIỮA THÁNG → chỉ tính công từ ngay_bat_dau.
+  // "Đi làm bao nhiêu ngày trả bấy nhiêu ngày": ngày TRƯỚC khi vào làm KHÔNG tính
+  // no-show (không phạt) và KHÔNG tính ngày công (không trả lương).
+  // nv thiếu ngay_bat_dau (RPC cũ) → firstDay=1, hành xử như trước (an toàn).
+  const nbd = nv?.ngay_bat_dau ? String(nv.ngay_bat_dau).slice(0, 10) : null
+  const thangKey = `${year}-${String(month).padStart(2, '0')}`
+  let firstDay = 1
+  if (nbd) {
+    if (nbd.slice(0, 7) > thangKey) firstDay = soNgayThangFull + 1        // vào làm SAU tháng này → 0 công
+    else if (nbd.slice(0, 7) === thangKey) firstDay = parseInt(nbd.slice(8, 10), 10) || 1
+  }
+  const ngayTruocVaoLam = Math.min(firstDay - 1, soNgayThang)
+
   // ═══════════════════════════════════════════
   // PASS 1: Collect all OFF records sorted by date
   // Nguồn duy nhất: cham_cong thực tế (loai != 'di_lam')
@@ -112,10 +149,9 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   chamCongList.forEach(r => {
     if (!r.ngay) return
     const day = r.ngay.substring(0, 10)
-    if (todayRef) {
-      const d = parseInt(day.substring(8, 10))
-      if (d > todayRef) return  // skip future days in current month
-    }
+    const dNum = parseInt(day.substring(8, 10))
+    if (todayRef && dNum > todayRef) return  // skip future days in current month
+    if (dNum < firstDay) return              // B1: bỏ bản ghi trước ngày vào làm
     if (r.loai !== 'di_lam') {
       allOff.push({ ngay: day, loai: r.loai, source: 'cham_cong' })
     }
@@ -135,7 +171,8 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   })
   const lastPastDay = todayRef ? todayRef - 1 : soNgayThangFull
   const noShowDates = []
-  for (let d = 1; d <= lastPastDay; d++) {
+  // B1: no-show chỉ đếm TỪ ngày vào làm (firstDay), không phạt ngày trước khi vào
+  for (let d = firstDay; d <= lastPastDay; d++) {
     if (!recordedDays.has(d)) noShowDates.push(`${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`)
   }
   const soNgayKhongCheckin = noShowDates.length
@@ -255,7 +292,8 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   // ═══════════════════════════════════════════
   // PASS 5: Salary components
   // ═══════════════════════════════════════════
-  const ngayCong    = Math.max(0, soNgayThang - ngayKhongLuong)
+  // B1: trừ thêm số ngày TRƯỚC khi vào làm (không công, không phạt)
+  const ngayCong    = Math.max(0, soNgayThang - ngayTruocVaoLam - ngayKhongLuong)
   // luongCoBan always uses FULL month as denominator for daily rate
   const luongCoBan  = Math.round((nv.luong_cung / soNgayThangFull) * ngayCong)
   const tienTangCa  = Math.round(tongTangCa * DON_GIA_TANG_CA)
@@ -287,6 +325,7 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
     // Raw month info (soNgayThang = capped for current month, full for past months)
     soNgayThang: todayRef ? soNgayThangFull : soNgayThang,
     ngayCong: +ngayCong.toFixed(2),
+    ngayTruocVaoLam,                             // B1: số ngày trước khi vào làm (0 nếu vào từ đầu tháng)
 
     // OFF detail
     soNgayKhongCheckin,                          // ngày đã qua không check-in (= nghỉ)

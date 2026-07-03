@@ -59,8 +59,11 @@ function RequireAuth({ children, requireAdmin }) {
 
   // Lễ Tân được phép vào một số /admin/* nhất định (CRM, Thẻ Liệu Trình)
   // Nhưng KHÔNG được vào /admin/the-lieu-trinh/bao-cao (chỉ Admin)
-  const isLeTanBlocked = LETAN_BLOCKED_ADMIN.some(p => path.startsWith(p))
-  const isLeTanAllowedAdminPath = !isLeTanBlocked && LETAN_ALLOWED_ADMIN.some(p => path.startsWith(p))
+  // So khớp theo ĐOẠN path (đúng path hoặc con của nó) — startsWith trần khiến
+  // "/admin/crm-xyz" cũng lọt qua vì trùng tiền tố chuỗi
+  const matchSeg = (p) => path === p || path.startsWith(p + '/')
+  const isLeTanBlocked = LETAN_BLOCKED_ADMIN.some(matchSeg)
+  const isLeTanAllowedAdminPath = !isLeTanBlocked && LETAN_ALLOWED_ADMIN.some(matchSeg)
 
   // Không phải admin cố vào /admin (trừ các path được cho phép riêng)
   if (requireAdmin && user.vai_tro !== 'admin' && !isLeTanAllowedAdminPath) {

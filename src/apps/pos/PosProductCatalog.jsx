@@ -46,11 +46,12 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
       const svc = await posService.getServices(search, cat === 'all' ? '' : cat)
       setServices(svc)
       if (!allCats.length) setAllCats(await posService.getServiceCategories())
-    } catch (_) {}
+    } catch (e) { console.error('Lỗi tải danh sách dịch vụ POS:', e) }
   }, [search, cat, allCats.length])
 
   const loadProducts = useCallback(async () => {
-    try { setProducts(await posService.getSellableProducts(search)) } catch (_) {}
+    try { setProducts(await posService.getSellableProducts(search)) }
+    catch (e) { console.error('Lỗi tải sản phẩm POS:', e) }
   }, [search])
 
   const loadCards = useCallback(async () => {
@@ -138,7 +139,7 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
     let policy = null
     try {
       policy = await posService.getTreatmentCardTourPolicy(the)
-    } catch (_) {}
+    } catch (e) { console.warn('Không đọc được chính sách tour thẻ (tour gợi ý = 0):', e) }
 
     onAddItem({
       loai_item: 'the_lieu_trinh',

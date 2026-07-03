@@ -110,7 +110,7 @@ export default function TabBangLuong({ fixedKy = null }) {
 
       const [resNv, resChamCong, resOff, resBangLuong, resQuyOff, resThuNhap, resKD] = await Promise.all([
         supabase.from('nhan_vien')
-          .select('id, ho_ten, vi_tri, luong_cung, avatar_url, trang_thai, gioi_han_off_thang, ky_quy_trang_thai, ky_quy_so_thang')
+          .select('id, ho_ten, vi_tri, luong_cung, avatar_url, trang_thai, gioi_han_off_thang, ky_quy_trang_thai, ky_quy_so_thang, ngay_bat_dau')
           .in('trang_thai', ['dang_lam', 'dac_biet']).order('vi_tri').order('ho_ten'),
         supabase.from('cham_cong')
           .select('nhan_vien_id, ngay, loai, gio_vao, gio_ra, he_so, tang_ca_gio, trang_thai_tang_ca')

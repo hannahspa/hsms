@@ -3,29 +3,12 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
 import { getNowVN } from '../../../../lib/utils'
-import { leTanCaInfo } from '../../../../lib/luong'
+// Hệ số/tăng ca chấm công: dùng bản CHUẨN duy nhất từ lib/luong (không copy local)
+import {
+  leTanCaInfo,
+  tinhHeSoChamCong as tinhHeSo, tinhTangCaChamCong as tinhTangCa,
+} from '../../../../lib/luong'
 import ConfirmDialog from '../../../../components/shared/ConfirmDialog'
-
-const CA_VAO_CHUAN = { h: 9, m: 15 }
-const CA_RA_CHUAN = { h: 20, m: 0 }
-const PHUT_CA_CHUAN = (CA_RA_CHUAN.h * 60 + CA_RA_CHUAN.m) - (CA_VAO_CHUAN.h * 60 + CA_VAO_CHUAN.m)
-
-function toPhut(timeStr) {
-  const [h, m] = (timeStr || '0:0').split(':').map(Number)
-  return h * 60 + m
-}
-
-function tinhHeSo(gioVao, gioRa) {
-  const lam = Math.max(0, toPhut(gioRa) - toPhut(gioVao))
-  const pct = Math.min(100, (lam / PHUT_CA_CHUAN) * 100)
-  return Math.round(pct) / 100
-}
-
-function tinhTangCa(gioRa) {
-  const diff = toPhut(gioRa) - (CA_RA_CHUAN.h * 60 + CA_RA_CHUAN.m)
-  if (diff < 15) return 0
-  return Math.round(diff / 60 * 100) / 100
-}
 
 function getDaysInMonth(year, month) {
   return new Date(year, month, 0).getDate()
