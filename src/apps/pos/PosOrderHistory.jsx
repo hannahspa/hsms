@@ -89,11 +89,14 @@ export default function PosOrderHistory({ onResumeOrder }) {
     setLoading(true)
     setDetailOrder(null)
     try {
+      // TÌM KIẾM THÔNG MINH (anh Nam 03/07): đang gõ từ khóa → tìm trong TOÀN BỘ
+      // đơn hàng, BỎ giới hạn khoảng ngày (trước đây tìm mã đơn/tên/SĐT mà đơn
+      // nằm ngoài ngày đang chọn là không ra — rất khó thao tác).
       const result = await posService.getOrdersPage({
         page, pageSize: PAGE_SIZE, search: activeSearch,
         status: statusTab !== 'all' ? statusTab : null,   // lọc trạng thái server-side (đơn draft quá ngày hiện đủ)
         cardSaleOnly,                                      // lọc chỉ đơn bán thẻ
-        ...computeRange(),
+        ...(activeSearch.trim() ? {} : computeRange()),
       })
       setOrders(result.orders)
       setTotalOrders(result.total)
@@ -249,7 +252,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
           <div className="ttl">Danh Sách Đơn Hàng</div>
           <div className="sub">
             {activeSearch.trim()
-              ? `Tìm "${activeSearch}" · ${totalOrders.toLocaleString('vi-VN')} kết quả`
+              ? `Tìm "${activeSearch}" trong TOÀN BỘ đơn hàng (bỏ lọc ngày) · ${totalOrders.toLocaleString('vi-VN')} kết quả`
               : `${labelDate} · ${totalOrders.toLocaleString('vi-VN')} đơn`}
           </div>
         </div>
