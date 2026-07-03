@@ -1126,8 +1126,14 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         return
       }
 
-      // 5. Reset
+      // 5. Xong
       paymentsInserted.current = false
+      // SỬA ĐƠN (admin "Lưu Thay Đổi"): về Danh Sách Đơn Hàng — không ở lại form trống
+      if (editMode || editOrderId) {
+        window.location.href = '/pos/danh-sach'
+        return
+      }
+      // Đơn mới: reset form để bán tiếp
       setSavedOrderId(null)
       resetCreateForm()
       const stats = await posService.getTodayStats()
