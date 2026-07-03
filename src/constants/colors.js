@@ -5,18 +5,20 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ── COLOR TOKENS ────────────────────────────────────────────────────────────────
+// 03/07/2026 — GĐ0-B đồng bộ TÔNG ẤM kem-espresso theo hannah-admin.css :root
+// (bảng mục 6 docs/TOI_UU_HOA_TOAN_DIEN.md). LUX/COLORS re-export nên tự khớp.
 export const C = {
   // Background
-  bg:           '#FAF7F4',
+  bg:           '#f3ece1',
   card:         '#FFFFFF',
   sidebarBg:    '#1A1209',
   sidebarHover: '#2A2018',
   sidebarActive:'rgba(201,169,110,0.12)',
 
   // Text
-  text:         '#1A1209',
-  textSub:      '#8B7355',
-  textMute:     '#B8A898',
+  text:         '#2a201a',
+  textSub:      '#5a4a3e',
+  textMute:     '#8e7a68',
   textInverse:  '#F5EDE0',
 
   // Accent
@@ -37,21 +39,21 @@ export const C = {
   danger:       '#E74C3C',
 
   // Border & Shadow
-  border:       'rgba(160,113,79,0.12)',
-  borderLight:  'rgba(160,113,79,0.06)',
+  border:       '#e8dcc8',
+  borderLight:  '#f0e9db',
   shadowSm:     '0 2px 8px rgba(139,94,60,0.06)',
   shadow:       '0 4px 24px rgba(139,94,60,0.10)',
   shadowLg:     '0 12px 40px rgba(139,94,60,0.15)',
 
   // ── LUX Aliases (tương thích ngược code cũ chưa migrate) ─────────────────────
-  ink:          '#1A1209',
-  ink2:         '#8B7355',
-  ink3:         '#B8A898',
-  surface:      '#FAF7F4',
+  ink:          '#2a201a',
+  ink2:         '#5a4a3e',
+  ink3:         '#8e7a68',
+  surface:      '#fbf7ef',
   surface2:     '#FFFFFF',
-  line:         'rgba(160,113,79,0.12)',
-  line2:        'rgba(160,113,79,0.20)',
-  espresso:     '#1A1209',
+  line:         '#e8dcc8',
+  line2:        '#d4c4ad',
+  espresso:     '#3d2c20',
   espresso2:    '#2A1A0F',
   taupe:        '#A0714F',
   champagne:    '#C9A96E',
@@ -146,7 +148,7 @@ export const TABLE = {
     color: C.textSub,
     textTransform: 'uppercase',
     letterSpacing: '0.04em',
-    background: '#FAF8F5',
+    background: '#fbf7ef',
     borderBottom: `1px solid ${C.border}`,
   },
   bodyCell: {

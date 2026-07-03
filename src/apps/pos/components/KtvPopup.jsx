@@ -4,6 +4,7 @@ import { formatCurrency } from '../../../lib/utils'
 import { getCardComboService } from '../../../lib/treatmentCardPolicy'
 import { notify } from '../../../components/ui/notify'
 import { C } from '../../../constants/colors'
+import RightPanel from '../../../components/shared/RightPanel'
 import { fmtInput, NvAvatar, parseVND, shortName } from '../posShared'
 
 export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = false }) {
@@ -132,26 +133,25 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 999,
-      background: 'rgba(0,0,0,.45)',
-    }} onClick={onClose}>
-      <div style={{
-        position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw',
-        background: C.surface2,
-        display: 'flex', flexDirection: 'column', boxShadow: '-6px 0 40px rgba(0,0,0,.25)', animation: 'rpSlideIn .22s ease',
-      }} onClick={e => e.stopPropagation()}>
-        <div style={{
-          padding: '16px 20px 12px', borderBottom: '1px solid var(--line)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
-        }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--ink)' }}>Chọn Kỹ Thuật Viên</div>
-            <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 2 }}>{name}</div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--ink3)', lineHeight: 1 }}>x</button>
+    <RightPanel open onClose={onClose} zIndex={999}
+      title="Chọn Kỹ Thuật Viên" subtitle={name}
+      bodyStyle={{ padding: 0, display: 'flex', flexDirection: 'column', overflowY: 'hidden' }}
+      footer={
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, height: 40, border: '1px solid var(--bord)', borderRadius: 8, background: '#fff', color: 'var(--ink2)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--sans)' }}>Đóng</button>
+          {selectedKtv && (
+            <button onClick={handleSave} disabled={saving || loadingRate || (canSplit && splitOver)} style={{
+              flex: 2, height: 40, border: 'none', borderRadius: 8,
+              background: (loadingRate || (canSplit && splitOver)) ? C.line2 : 'var(--champagne)',
+              color: (loadingRate || (canSplit && splitOver)) ? C.ink3 : '#2a1d14',
+              cursor: (saving || loadingRate || (canSplit && splitOver)) ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 700, fontFamily: 'var(--sans)',
+            }}>
+              {saving ? 'Đang lưu...' : loadingRate ? 'Đang tải...' : 'Lưu'}
+            </button>
+          )}
         </div>
-
+      }>
         <div style={{ padding: '12px 20px 0', flexShrink: 0 }}>
           <input placeholder="Tìm nhân viên..." value={ktvSearch} onChange={e => setKtvSearch(e.target.value)}
             style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--bord)', borderRadius: 8, padding: '8px 12px', fontSize: 13, outline: 'none', fontFamily: 'var(--sans)' }}
@@ -307,21 +307,6 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
           </div>
         )}
 
-        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', display: 'flex', gap: 8, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ flex: 1, height: 40, border: '1px solid var(--bord)', borderRadius: 8, background: '#fff', color: 'var(--ink2)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--sans)' }}>Đóng</button>
-          {selectedKtv && (
-            <button onClick={handleSave} disabled={saving || loadingRate || (canSplit && splitOver)} style={{
-              flex: 2, height: 40, border: 'none', borderRadius: 8,
-              background: (loadingRate || (canSplit && splitOver)) ? C.line2 : 'var(--champagne)',
-              color: (loadingRate || (canSplit && splitOver)) ? C.ink3 : '#2a1d14',
-              cursor: (saving || loadingRate || (canSplit && splitOver)) ? 'not-allowed' : 'pointer',
-              fontSize: 13, fontWeight: 700, fontFamily: 'var(--sans)',
-            }}>
-              {saving ? 'Đang lưu...' : loadingRate ? 'Đang tải...' : 'Lưu'}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    </RightPanel>
   )
 }

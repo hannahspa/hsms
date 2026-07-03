@@ -5,6 +5,7 @@ import { useAuth } from '../../../context/AuthContext'
 import { COLORS } from '../../../constants/colors'
 import { confirmDialog } from '../../../components/ui/notify'
 import { todayISO, getNowVN } from '../../../lib/utils'
+import DatePicker from '../../../components/shared/DatePicker'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const DON_VI_LIST = ['cái', 'chai', 'lọ', 'hộp', 'gói', 'thùng', 'túi', 'cuộn',
@@ -170,6 +171,27 @@ const inp = {
 const lbl = {
   fontSize: '11px', fontWeight: '700', color: COLORS.textSub, marginBottom: '5px',
   display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em',
+}
+
+// Ô chọn ngày chuẩn (GĐ0-B): nút hiển thị dd/mm/yyyy + DatePicker dùng chung
+function fmtNgayVN(iso) {
+  if (!iso) return ''
+  const [y, m, d] = String(iso).split('-')
+  return d && m && y ? `${d}/${m}/${y}` : iso
+}
+function DateField({ value, onChange, placeholder = 'Chọn ngày' }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button type="button" style={{ ...inp, cursor: 'pointer', textAlign: 'left' }}
+        onClick={() => setOpen(true)}>
+        {value ? `📅 ${fmtNgayVN(value)}` : placeholder}
+      </button>
+      <DatePicker open={open} selectedDate={value}
+        onClose={() => setOpen(false)}
+        onConfirm={d => { onChange(d); setOpen(false) }} />
+    </>
+  )
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1374,7 +1396,7 @@ function FormGiaoDich({ products, userId, danhMucKho, onSave, onClose }) {
 
           <div>
             <label style={lbl}>NGÀY</label>
-            <input style={inp} type="date" value={f.ngay} onChange={e => set('ngay', e.target.value)} />
+            <DateField value={f.ngay} onChange={d => set('ngay', d)} />
           </div>
 
           <div>
@@ -1580,8 +1602,8 @@ function TabGiaoDich({ transactions, products, userId, danhMucKho, onReload, sho
       </div>
       {filterDate === 'custom' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
-          <input style={inp} type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
-          <input style={inp} type="date" value={customTo}   onChange={e => setCustomTo(e.target.value)} />
+          <DateField value={customFrom} onChange={setCustomFrom} placeholder="Từ ngày" />
+          <DateField value={customTo}   onChange={setCustomTo}   placeholder="Đến ngày" />
         </div>
       )}
 
@@ -1743,7 +1765,7 @@ function SuaGiaoDichModal({ gd, sp, onSave, onClose }) {
           )}
           <div>
             <label style={lbl}>NGÀY</label>
-            <input style={inp} type="date" value={form.ngay} onChange={e => set('ngay', e.target.value)} />
+            <DateField value={form.ngay} onChange={d => set('ngay', d)} />
           </div>
           <div>
             <label style={lbl}>GHI CHÚ</label>
@@ -1914,7 +1936,7 @@ function TabChietRot({ products, transactions, userId, onReload, showToast }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label style={lbl}>NGÀY</label>
-                <input style={inp} type="date" value={f.ngay} onChange={e => set('ngay', e.target.value)} />
+                <DateField value={f.ngay} onChange={d => set('ngay', d)} />
               </div>
               <div>
                 <label style={lbl}>GHI CHÚ</label>
