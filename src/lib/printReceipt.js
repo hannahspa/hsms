@@ -46,7 +46,7 @@ export function printReceipt({ order, items = [], payments = [], customer = null
       <tr class="item">
         <td class="l">${esc(ten)}</td>
         <td class="c">${sl}</td>
-        <td class="r">${disc > 0 ? fmt(disc) + 'đ' : '0đ'}</td>
+        <td class="r">${disc > 0 ? fmt(disc) + '₫' : '0₫'}</td>
         <td class="r">${fmt(it.thanh_tien || 0)}</td>
       </tr>
       <tr class="sub"><td colspan="4">${fmt(it.don_gia || 0)}${nvth ? ` · NVTH: ${esc(nvth)}` : ''}</td></tr>`

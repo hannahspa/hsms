@@ -5,6 +5,7 @@ import { HINH_THUC_THU } from '../../../../constants/enums'
 import DatePicker from '../../../../components/shared/DatePicker'
 import ImageUpload from '../../../../components/shared/ImageUpload'
 import I from '../../../../components/shared/Icons'
+import RightPanel from '../../../../components/shared/RightPanel'
 
 const S = {
   overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.55)', zIndex: 500 },
@@ -97,25 +98,14 @@ export default function FormDoanhThu({ user, onClose, onSaved, viList = [], init
   }
 
   return (
-    <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    <RightPanel open onClose={onClose}
+      title={isEdit ? 'Sửa Doanh Thu' : 'Doanh Thu'}
+      subtitle={isEdit ? 'Chỉnh sửa doanh thu' : 'Nhập doanh thu mới'}
+      bodyStyle={{ padding: '18px 16px 24px' }}
+      footer={<button onClick={handleSave} disabled={saving} style={S.saveBtn(saving)}>{saving ? 'Đang lưu...' : (isEdit ? 'Cập Nhật' : 'Lưu Doanh Thu')}</button>}>
       <DatePicker open={showLich} selectedDate={ngay} onClose={() => setShowLich(false)} onConfirm={(d) => { setNgay(d); setShowLich(false) }} />
 
-      <div style={S.sheet}>
-        <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
-        <div style={S.handle}><div style={S.handleBar} /></div>
-
-        <div style={S.header}>
-          <div style={S.headerLeft}>
-            <div style={S.iconBox('#F0FDF4')}><I.Coin style={{ width: 18, height: 18, color: '#2D7A4F' }} /></div>
-            <div>
-              <div style={S.title}>{isEdit ? 'Sửa Doanh Thu' : 'Doanh Thu'}</div>
-              <div style={S.subtitle}>{isEdit ? 'Chỉnh sửa doanh thu' : 'Nhập doanh thu mới'}</div>
-            </div>
-          </div>
-          <button style={S.closeBtn} onClick={onClose}>&times;</button>
-        </div>
-
-        <div style={S.body}>
+      <div>
           <div style={S.amountCard}>
             <div style={S.amountLabel}>Số Tiền</div>
             <input type="number" placeholder="0" value={soTien} onChange={e => setSoTien(e.target.value.replace(/\D/g, ''))} style={S.amountInput(!!soTien)} />
@@ -164,12 +154,7 @@ export default function FormDoanhThu({ user, onClose, onSaved, viList = [], init
           </div>
 
           <ImageUpload onUploaded={(url) => setChungTuUrl(url)} onRemove={() => setChungTuUrl(null)} />
-
-          <button onClick={handleSave} disabled={saving} style={S.saveBtn(saving)}>
-            {saving ? 'Đang lưu...' : (isEdit ? 'Cập Nhật' : 'Lưu Doanh Thu')}
-          </button>
-        </div>
       </div>
-    </div>
+    </RightPanel>
   )
 }

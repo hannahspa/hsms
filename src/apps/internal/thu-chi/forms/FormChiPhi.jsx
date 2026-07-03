@@ -4,6 +4,7 @@ import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils
 import DatePicker from '../../../../components/shared/DatePicker'
 import ImageUpload from '../../../../components/shared/ImageUpload'
 import I from '../../../../components/shared/Icons'
+import RightPanel from '../../../../components/shared/RightPanel'
 
 const S = {
   overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(42,32,26,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 500 },
@@ -363,25 +364,14 @@ export default function FormChiPhi({ viList, user, onClose, onSaved, initialData
 
   // ── Form chính ──
   return (
-    <div style={S.panelOverlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    <RightPanel open onClose={onClose}
+      title={isEdit ? 'Sửa Chi Phí' : 'Chi Phí'}
+      subtitle={isEdit ? 'Chỉnh sửa chi phí' : 'Nhập chi phí'}
+      bodyStyle={{ padding: '18px 16px 24px' }}
+      footer={<button onClick={handleSave} disabled={saving} style={S.saveBtn(saving)}>{saving ? 'Đang lưu...' : (isEdit ? 'Cập Nhật' : 'Lưu Chi Phí')}</button>}>
       <DatePicker open={showLich} selectedDate={ngay} onClose={() => setShowLich(false)} onConfirm={(d) => { setNgay(d); setShowLich(false) }} />
 
-      <div style={S.sheet}>
-        <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
-        <div style={S.handle}><div style={S.handleBar} /></div>
-
-        <div style={S.header}>
-          <div style={S.headerLeft}>
-            <div style={S.iconBox('#FEF2F2')}><I.Receipt style={{ width: 18, height: 18, color: '#C0392B' }} /></div>
-            <div>
-              <div style={S.title}>{isEdit ? 'Sửa Chi Phí' : 'Chi Phí'}</div>
-              <div style={S.subtitle}>{isEdit ? 'Chỉnh sửa chi phí' : 'Nhập chi phí'}</div>
-            </div>
-          </div>
-          <button style={S.closeBtn} onClick={onClose}>&times;</button>
-        </div>
-
-        <div style={S.body}>
+      <div>
           <div style={S.amountCard}>
             <div style={S.amountLabel}>{isKho ? 'Tổng Tiền (tự tính từ sản phẩm)' : 'Số Tiền'}</div>
             <input type="number" placeholder="0" value={soTien} readOnly={isKho}
@@ -505,12 +495,7 @@ export default function FormChiPhi({ viList, user, onClose, onSaved, initialData
           </div>
 
           <ImageUpload onUploaded={(url) => setChungTuUrl(url)} onRemove={() => setChungTuUrl(null)} />
-
-          <button onClick={handleSave} disabled={saving} style={S.saveBtn(saving)}>
-            {saving ? 'Đang lưu...' : (isEdit ? 'Cập Nhật' : 'Lưu Chi Phí')}
-          </button>
-        </div>
       </div>
-    </div>
+    </RightPanel>
   )
 }

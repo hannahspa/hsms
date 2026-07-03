@@ -6,7 +6,7 @@ import DatePicker from '../../../components/shared/DatePicker'
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function fmt(n) {
   if (!n && n !== 0) return '—'
-  return new Intl.NumberFormat('vi-VN').format(n) + 'đ'
+  return new Intl.NumberFormat('vi-VN').format(n) + '₫'
 }
 function fmtShort(n) {
   if (!n) return '0'

@@ -1,4 +1,5 @@
 import { formatDateInput } from '../../../../lib/utils'
+import RightPanel from '../../../../components/shared/RightPanel'
 
 export default function EditTransactionModal({
   item,
@@ -26,13 +27,15 @@ export default function EditTransactionModal({
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 999 }} onClick={event => { if (event.target === event.currentTarget) onClose() }}>
-      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'var(--surface2)', padding: '24px 28px', overflowY: 'auto', boxShadow: '-6px 0 40px rgba(0,0,0,.28)', animation: 'rpSlideIn .22s ease' }} onClick={event => event.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}>
-          <h3 style={{ fontFamily: 'var(--serif)', fontSize: 18, fontWeight: 700 }}>{isAdmin ? 'Sửa Giao Dịch' : 'Yêu Cầu Sửa'}</h3>
-          <button onClick={onClose} className="icon-btn" style={{ width: 32, height: 32 }}>x</button>
+    <RightPanel open onClose={onClose}
+      title={isAdmin ? 'Sửa Giao Dịch' : 'Yêu Cầu Sửa'}
+      subtitle={isAdmin ? 'Chỉnh sửa trực tiếp giao dịch' : 'Gửi yêu cầu — Admin sẽ duyệt trước khi có hiệu lực'}
+      footer={
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} className="btn" style={{ flex: 1, justifyContent: 'center' }}>Hủy</button>
+          <button onClick={onSave} className="btn gold" style={{ flex: 1, justifyContent: 'center' }}>{isAdmin ? 'Lưu Ngay' : 'Gửi Yêu Cầu'}</button>
         </div>
-
+      }>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Field label="Ngày">
             <input
@@ -124,15 +127,9 @@ export default function EditTransactionModal({
             />
           </Field>
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button onClick={onClose} className="btn" style={{ flex: 1, justifyContent: 'center' }}>Hủy</button>
-            <button onClick={onSave} className="btn gold" style={{ flex: 1, justifyContent: 'center' }}>{isAdmin ? 'Lưu Ngay' : 'Gửi Yêu Cầu'}</button>
-          </div>
-
           {!isAdmin && <div style={{ fontSize: 10, color: 'var(--ink3)', textAlign: 'center' }}>Admin sẽ duyệt trước khi có hiệu lực</div>}
         </div>
-      </div>
-    </div>
+    </RightPanel>
   )
 }
 

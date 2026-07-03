@@ -151,7 +151,7 @@ function fmtNumber(value) {
 }
 
 function fmtMoney(value) {
-  return `${fmtNumber(value)}đ`
+  return `${fmtNumber(value)}₫`
 }
 
 function fmtCompactMoney(value) {
