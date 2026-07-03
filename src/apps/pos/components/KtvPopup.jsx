@@ -17,7 +17,14 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
   const isFreeWarrantyTour = !!treatmentPolicy?.isFreeWarrantySession
   const initManualTour = Math.round(Number(item.tien_tour || treatmentPolicy?.suggestedTour || 0))
 
-  const [selectedKtv, setSelectedKtv] = useState(item.nhan_vien || null)
+  // PHÒNG THỦ (bug mất tour 02/07): item.nhan_vien join từ DB từng THIẾU id →
+  // lưu popup làm nhan_vien_id thành null (KTV mất tour âm thầm dù chip vẫn hiện tên).
+  // Bổ sung id từ item.nhan_vien_id nếu object thiếu.
+  const [selectedKtv, setSelectedKtv] = useState(
+    item.nhan_vien
+      ? { ...item.nhan_vien, id: item.nhan_vien.id ?? item.nhan_vien_id ?? null }
+      : null
+  )
   const [tiLe, setTiLe] = useState(initTiLe)
   const [tourMode, setTourMode] = useState(item.meta?.tourMode || (initManualTour > 0 || fixedKtvRule ? 'amount' : 'pct'))
   const [manualTourInput, setManualTourInput] = useState(fmtInput(initManualTour))

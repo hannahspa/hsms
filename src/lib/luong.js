@@ -263,8 +263,11 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
   // ═══════════════════════════════════════════
   // PASS 4: Tăng ca & Phạt (only up to todayRef)
   // ═══════════════════════════════════════════
-  // Tăng ca TỰ ĐỘNG: giờ ra sau 20:00 → block 15 phút (mỗi block 0.25h × 25k).
-  // < 15 phút không tính. Vd ra 20:50 → 50' → 3 block = 0.75h.
+  // NGUỒN CHUẨN (anh Nam chốt 02/07): tăng ca đọc từ CỘT tang_ca_gio trên bản ghi
+  // chấm công (0 = không làm/chưa duyệt — app checkin ghi 0 + trang_thai cho_duyet,
+  // admin duyệt bằng cách điền số thật qua Sửa Chấm Công). KHÔNG tự suy từ gio_ra
+  // nữa — giờ ra trễ có thể là nấn ná ra về hoặc QUÊN CHECK-OUT, trả tiền là ảo.
+  // Fallback tự tính từ gio_ra CHỈ khi bản ghi không mang cột này (nguồn dữ liệu cũ).
   const otHoursFromGioRa = (gioRa) => {
     if (!gioRa) return 0
     const p = String(gioRa).split(':')
@@ -282,7 +285,9 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
       }
       return true
     })
-    .reduce((s, r) => s + otHoursFromGioRa(r.gio_ra), 0)
+    .reduce((s, r) => s + (r.tang_ca_gio !== undefined && r.tang_ca_gio !== null
+      ? Number(r.tang_ca_gio) || 0
+      : otHoursFromGioRa(r.gio_ra)), 0)
 
   const tienPhat = offT7XList.reduce((sum, o) => {
     const dow = getDayOfWeek(o.ngay)

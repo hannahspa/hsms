@@ -506,7 +506,12 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       : i))
   }
 
-  const handleAssignKTV = async (item, ktv, tiLe, tienTourFromPopup, tourMeta = null) => {
+  const handleAssignKTV = async (item, ktvArg, tiLe, tienTourFromPopup, tourMeta = null) => {
+    // PHÒNG THỦ (bug mất tour 02/07): ktv object thiếu id (join cũ không select id)
+    // → giữ nhan_vien_id hiện tại của dòng, KHÔNG ghi đè thành null.
+    const ktv = ktvArg && !ktvArg.id && item.nhan_vien_id
+      ? { ...ktvArg, id: item.nhan_vien_id }
+      : ktvArg
     const isSaleCommission = item.loai_item === 'the_moi' || item.loai_item === 'san_pham'
     const baseTT = item.loai_item === 'the_lieu_trinh' && item.the_lieu_trinh
       ? Math.round((item.the_lieu_trinh.gia_tri_the || 0) / Math.max(1, item.the_lieu_trinh.so_buoi_tong || 1)) * (item.so_luong || 1)

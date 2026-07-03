@@ -130,15 +130,29 @@ t('KTV về sớm he_so=0.79: trừ 0.21 ngày công', () => {
   assert.equal(r.ngayCong, +(DAYS - 0.21).toFixed(2))
 })
 
-// ── 8. Tăng ca tự động từ giờ ra ─────────────────────────────────────────────
-t('Tăng ca: ra 20:50 → 0.75h = 18.750đ; ra 20:10 (<15p) → 0', () => {
+// ── 8. Tăng ca — NGUỒN CHUẨN tang_ca_gio (chốt 02/07: thực làm mới tính) ─────
+t('Tăng ca: tang_ca_gio=0 dù ra 20:50 (chưa duyệt/quên checkout) → KHÔNG tính', () => {
+  const d = weekdays[0]
+  const r = tinhLuong(NV, fullMonth({
+    [d]: { loai: 'di_lam', gio_vao: '09:15:00', gio_ra: '20:50:00', he_so: 1, tang_ca_gio: 0 },
+  }), [], null, YEAR, MONTH)
+  assert.equal(r.tongTangCa, 0)
+})
+t('Tăng ca: tang_ca_gio=0.75 đã duyệt → 18.750đ', () => {
+  const d = weekdays[0]
+  const r = tinhLuong(NV, fullMonth({
+    [d]: { loai: 'di_lam', gio_vao: '09:15:00', gio_ra: '20:50:00', he_so: 1, tang_ca_gio: 0.75 },
+  }), [], null, YEAR, MONTH)
+  assert.equal(r.tongTangCa, 0.75)
+  assert.equal(r.tienTangCa, Math.round(0.75 * DON_GIA_TANG_CA))
+})
+t('Tăng ca fallback (bản ghi cũ KHÔNG có cột tang_ca_gio): tự tính từ gio_ra', () => {
   const [d1, d2] = weekdays
   const r = tinhLuong(NV, fullMonth({
     [d1]: { loai: 'di_lam', gio_vao: '09:15:00', gio_ra: '20:50:00', he_so: 1 },
     [d2]: { loai: 'di_lam', gio_vao: '09:15:00', gio_ra: '20:10:00', he_so: 1 },
   }), [], null, YEAR, MONTH)
   assert.equal(r.tongTangCa, 0.75)
-  assert.equal(r.tienTangCa, Math.round(0.75 * DON_GIA_TANG_CA))
 })
 
 // ── 9. Ký quỹ chỉ trừ khi đang đóng ──────────────────────────────────────────

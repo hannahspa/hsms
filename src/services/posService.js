@@ -444,7 +444,7 @@ export const posService = {
             dich_vu:dich_vu_id(ten, danh_muc),
             san_pham:san_pham_id(ten, don_vi),
             the_lieu_trinh:the_lieu_trinh_id(${LINE_TREATMENT_SELECT}),
-            nhan_vien:nhan_vien_id(ho_ten, avatar_url)
+            nhan_vien:nhan_vien_id(id, ho_ten, avatar_url)
           `)
           .in('don_hang_id', orderIds)
           .order('created_at', { ascending: true }),
@@ -591,7 +591,7 @@ export const posService = {
         dich_vu:dich_vu_id(ten, danh_muc),
         san_pham:san_pham_id(ten, don_vi),
         the_lieu_trinh:the_lieu_trinh_id(${LINE_TREATMENT_SELECT}),
-        nhan_vien:nhan_vien_id(ho_ten, avatar_url)
+        nhan_vien:nhan_vien_id(id, ho_ten, avatar_url)
       `)
       .eq('don_hang_id', orderId)
       .order('created_at', { ascending: true })
