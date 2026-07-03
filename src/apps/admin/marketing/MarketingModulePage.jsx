@@ -4,6 +4,7 @@ import { C, FONT } from '../../../constants/colors'
 import { supabase } from '../../../lib/supabase'
 import { todayISO } from '../../../lib/utils'
 import { notify } from '../../../components/ui/notify'
+import { CampaignOpsPanel, AiActionsPanel, LeadOpsPage } from './MarketingOps'
 
 const MARKETING_ROUTES = [
   {
@@ -432,10 +433,10 @@ function Header({ route }) {
         </div>
         <div style={{ marginTop: 6, fontSize: 12, color: C.textSub }}>{route.owner}</div>
         <a
-          href="/admin/marketing/ban-cu"
+          href="/admin/marketing/khach-tiem-nang"
           style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: C.primary, textDecoration: 'none', borderTop: `1px dashed ${C.border}`, paddingTop: 8 }}
         >
-          ⚙️ Bản đầy đủ (sync Fanpage · chiến dịch · duyệt AI)
+          👥 Khách tiềm năng · đặt hẹn từ lead
         </a>
       </div>
     </div>
@@ -732,16 +733,13 @@ function CampaignsPage({ route }) {
         { label: 'Khách nên gọi lại', value: fmtNumber(data.reactivation.length), sub: `${remainingCard} khách còn buổi`, tone: C.taiSan },
       ]} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(360px, .9fr)', gap: 14, marginBottom: 14 }}>
+      {/* CRUD chiến dịch + ý tưởng nội dung — port từ bản cũ (03/07) */}
+      <CampaignOpsPanel />
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(360px, .9fr)', gap: 14, marginBottom: 14, marginTop: 14 }}>
         <Panel
           title="Hiệu quả chiến dịch"
           eyebrow="ROI & chuyển đổi"
-          action={(
-            <a href="/admin/marketing/ban-cu" style={{
-              fontSize: 12, fontWeight: 800, color: C.primary, textDecoration: 'none',
-              border: `1px solid ${C.border}`, borderRadius: 8, padding: '6px 11px',
-            }}>＋ Tạo / Quản lý chiến dịch</a>
-          )}
         >
           <table style={tableStyle}>
             <thead>
@@ -2185,6 +2183,8 @@ function TrainingPage() {
           }}>{label}</button>
         ))}
       </div>
+      {/* Duyệt hành động AI (marketing_ai_actions) — port từ bản cũ (03/07) */}
+      <AiActionsPanel />
       {tab === 'playbook' && <PlaybookEditor />}
       {tab === 'examples' && <GoldExamples />}
       {tab === 'promo' && <PromoLink />}
@@ -2773,12 +2773,18 @@ function KhachLePage() {
 
 export default function MarketingModulePage() {
   const path = window.location.pathname
-  // URL cũ đã gỡ khỏi menu → điều hướng về đúng chỗ
-  if (path.startsWith('/admin/marketing/khach-tiem-nang')) { go('/admin/marketing/khach-remarketing'); return null }
+  // Khách tiềm năng (lead + đặt hẹn) — port từ bản cũ (03/07), Lễ tân vào được
+  if (path.startsWith('/admin/marketing/khach-tiem-nang')) return <LeadOpsPage />
   if (
     path.startsWith('/admin/marketing/nhac-lich-lieu-trinh') ||
     path.startsWith('/admin/marketing/bao-cao-nhan-vien')
   ) { go('/admin/cham-soc-khach'); return null }
+
+  // Chiến dịch: PHẢI check TRƯỚC overview — /chien-dich không nằm trong MARKETING_ROUTES
+  // nên getRoute() trả overview và nuốt mất trang này (bug cũ, fix 03/07)
+  if (path.startsWith('/admin/marketing/chien-dich')) {
+    return <CampaignsPage route={MARKETING_ROUTES.find(r => r.key === 'fanpage')} />
+  }
 
   const route = getRoute()
 
@@ -2792,10 +2798,6 @@ export default function MarketingModulePage() {
   if (route.key === 'fanpage') return <FanpageContentPage route={route} />
   if (route.key === 'training') return <TrainingPage />
   if (route.key === 'settings') return <ChannelSettingsPage route={route} />
-  // Chiến dịch: truy cập trực tiếp (gộp trong Fanpage & Chiến Dịch)
-  if (path.startsWith('/admin/marketing/chien-dich')) {
-    return <CampaignsPage route={MARKETING_ROUTES.find(r => r.key === 'fanpage')} />
-  }
 
   return <Overview />
 }

@@ -10,7 +10,6 @@ const AdminHomepagePage = lazy(() => import('./trang-chu/AdminHomepagePage'))
 const AdminKhoHangPage = lazy(() => import('./kho-hang/AdminKhoHangPage'))
 const AdminCRMPage = lazy(() => import('./crm/AdminCRMPage'))
 const MarketingModulePage = lazy(() => import('./marketing/MarketingModulePage'))
-const AdminMarketingPageLegacy = lazy(() => import('./marketing/AdminMarketingPage'))
 const AdminDashboardPage = lazy(() => import('./dashboard/AdminDashboardPage'))
 const AdminLichSuNopTienMat = lazy(() => import('./bao-cao/AdminLichSuNopTienMat'))
 const AdminTheLieuTrinhPage = lazy(() => import('./the-lieu-trinh/AdminTheLieuTrinhPage'))
@@ -104,8 +103,7 @@ export default function AdminApp() {
   if (path.startsWith('/admin/nhac-lieu-trinh')) return <AdminRoute><AdminNhacLieuTrinhPage /></AdminRoute>
   if (path.startsWith('/admin/cham-soc-khach')) return <AdminRoute><AdminChamSocKhachPage /></AdminRoute>
   if (path.startsWith('/admin/crm'))        return <AdminRoute><AdminCRMPage /></AdminRoute>
-  // Bản đầy đủ cũ — giữ tạm trong lúc port nút vận hành sang module mới (sync Fanpage, đặt hẹn từ lead, duyệt AI, CRUD chiến dịch)
-  if (path.startsWith('/admin/marketing/ban-cu')) return <AdminRoute><AdminMarketingPageLegacy /></AdminRoute>
+  // 03/07: đã port đủ 5 cụm vận hành (chiến dịch/lead/đặt hẹn/nội dung/duyệt AI) → xóa bản cũ + route /ban-cu
   if (path.startsWith('/admin/marketing'))  return <AdminRoute><MarketingModulePage /></AdminRoute>
   if (path.startsWith('/admin/dashboard'))  return <AdminRoute><AdminDashboardPage /></AdminRoute>
   if (path.startsWith('/admin/lich-su-nop-tien-mat')) return <AdminRoute><AdminLichSuNopTienMat /></AdminRoute>
