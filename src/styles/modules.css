@@ -841,4 +841,8 @@
 
   /* Donut + legend xuống dòng */
   .donut-wrap { flex-wrap: wrap; justify-content: center; }
+
+  /* Danh sách CRM: cuộn ngang trong khung — hết cắt cột Tổng Chi Tiêu */
+  .crm-list { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .crm-list .crm-row { min-width: 760px; }
 }

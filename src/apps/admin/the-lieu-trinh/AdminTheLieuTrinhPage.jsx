@@ -512,7 +512,8 @@ export default function AdminTheLieuTrinhPage() {
 
             <div style={{ padding: 22, overflowY: 'auto', flex: 1 }}>
               {/* 2 cột lớn: trái = thông tin thẻ · phải = lịch sử (tận dụng panel rộng) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 5fr) minmax(0, 8fr)', gap: 22, alignItems: 'start' }}>
+              {/* auto-fit: desktop 2 cột, mobile tự dồn 1 cột */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(420px, 100%), 1fr))', gap: 22, alignItems: 'start' }}>
               <div style={{ minWidth: 0 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18, marginBottom: 18 }}>
                 <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, background: '#fff' }}>

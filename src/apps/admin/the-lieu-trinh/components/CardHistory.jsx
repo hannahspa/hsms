@@ -171,7 +171,7 @@ export default function CardHistory({ card }) {
           </div>
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0, borderBottom: '1px solid var(--line)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 0, borderBottom: '1px solid var(--line)' }}>
               {[
                 ['Đơn mua', buyOrder.ma_don + ' · ' + fmtD(buyOrder.ngay)],
                 ['Thực thu đơn', formatCurrency(buyOrder.thuc_thu ?? Math.max(0, (buyOrder.tong_tien_hang || 0) - (buyOrder.giam_gia || 0)))],
