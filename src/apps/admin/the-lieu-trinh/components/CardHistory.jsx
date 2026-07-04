@@ -47,7 +47,7 @@ export default function CardHistory({ card }) {
       try {
         // 1. Lượt dùng buổi từ đơn POS (kể cả đơn đã hủy — hiện mờ để truy vết)
         const { data: uses } = await supabase.from('don_hang_chi_tiet')
-          .select('id, so_luong, tien_tour, created_at, nhan_vien:nhan_vien_id(id, ho_ten, avatar_url), don_hang:don_hang_id(id, ma_don, ngay, trang_thai)')
+          .select('id, so_luong, tien_tour, created_at, nhan_vien:nhan_vien_id(id, ho_ten, avatar_url, vi_tri), don_hang:don_hang_id(id, ma_don, ngay, trang_thai)')
           .eq('the_lieu_trinh_id', card.id).eq('loai_item', 'the_lieu_trinh')
 
         // 1b. Lượt dùng ghi tay (nút "Dùng 1 buổi" admin / đồng bộ lịch sử cũ)
@@ -55,12 +55,20 @@ export default function CardHistory({ card }) {
           .select('id, ngay, nguoi_thuc_hien, don_hang_id, created_at')
           .eq('the_lieu_trinh_id', card.id)
 
-        // 2. Đơn MUA thẻ + các lần thanh toán
+        // 2. Đơn MUA thẻ + các lần thanh toán.
+        // Fallback: thẻ cũ không gắn don_hang_id → tìm qua dòng bán thẻ (the_moi)
+        let buyOrderId = card.don_hang_id
+        if (!buyOrderId) {
+          const { data: buyLine } = await supabase.from('don_hang_chi_tiet')
+            .select('don_hang_id').eq('the_lieu_trinh_id', card.id)
+            .eq('loai_item', 'the_moi').limit(1).maybeSingle()
+          buyOrderId = buyLine?.don_hang_id || null
+        }
         let buyOrder = null, payments = [], sellerIncome = []
-        if (card.don_hang_id) {
+        if (buyOrderId) {
           const { data: dh } = await supabase.from('don_hang')
             .select('id, ma_don, ngay, trang_thai, tong_tien_hang, thuc_thu, con_no, giam_gia')
-            .eq('id', card.don_hang_id).maybeSingle()
+            .eq('id', buyOrderId).maybeSingle()
           buyOrder = dh
           if (dh) {
             const { data: tt } = await supabase.from('thanh_toan')
@@ -133,24 +141,28 @@ export default function CardHistory({ card }) {
         {rows.length === 0 ? (
           <div style={{ padding: 16, fontSize: 12.5, color: 'var(--ink3)' }}>Chưa có lượt sử dụng nào được ghi nhận trên HSMS.</div>
         ) : (
-          <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 430, overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead><tr>
-                <th style={th}>Ngày</th><th style={th}>Mã đơn</th><th style={th}>KTV thực hiện</th>
+                <th style={th}>Ngày</th><th style={th}>Nhân viên thực hiện</th>
+                <th style={th}>Mã đơn</th>
                 <th style={{ ...th, textAlign: 'center' }}>Buổi</th><th style={{ ...th, textAlign: 'right' }}>Tiền tour</th>
               </tr></thead>
               <tbody>
                 {rows.map(r => (
                   <tr key={r.key} style={{ opacity: r.huy ? 0.45 : 1 }}>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtD(r.ngay)}</td>
+                    <td style={td}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        {r.nv?.id && <StaffAvatar nv={r.nv} size={26} />}
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ display: 'block', fontWeight: 600, color: r.nv ? 'var(--ink)' : 'var(--danger)', whiteSpace: 'nowrap' }}>{r.nv?.ho_ten || '— chưa gán —'}</span>
+                          {r.nv && <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ink3)' }}>{r.nv.vi_tri === 'le_tan' ? 'Lễ Tân' : r.nv.vi_tri ? 'Kỹ Thuật Viên' : ''}</span>}
+                        </span>
+                      </span>
+                    </td>
                     <td style={{ ...td, fontWeight: 700, color: 'var(--champagne)', whiteSpace: 'nowrap' }}>
                       {r.maDon}{r.huy ? ' (đã hủy)' : ''}
-                    </td>
-                    <td style={td}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                        {r.nv?.id && <StaffAvatar nv={r.nv} size={22} />}
-                        <span style={{ fontWeight: 600, color: r.nv ? 'var(--ink)' : 'var(--danger)' }}>{r.nv?.ho_ten || '— chưa gán —'}</span>
-                      </span>
                     </td>
                     <td style={{ ...td, textAlign: 'center', fontWeight: 700 }}>{r.soBuoi}</td>
                     <td style={{ ...td, textAlign: 'right', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>

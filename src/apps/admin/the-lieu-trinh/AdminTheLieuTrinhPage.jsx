@@ -450,21 +450,24 @@ export default function AdminTheLieuTrinhPage() {
       {selected && tab === 'cards' && createPortal((
         <>
           <div onClick={() => setSelected(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(26,22,18,.46)', zIndex: 880 }} />
+          {/* PANEL TRƯỢT PHẢI full chiều cao (GĐ0-B) — thông tin thẻ nhiều,
+              hộp giữa nhỏ gây mất cân xứng (anh Nam góp ý 04/07) */}
+          <style>{'@keyframes rpSlideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}'}</style>
           <section style={{
             position: 'fixed',
             zIndex: 881,
-            top: 64,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'min(980px, 94vw)',
-            maxHeight: 'calc(100vh - 96px)',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: 'calc(100vw - var(--side-w, 248px))',
+            maxWidth: '100vw',
             background: 'var(--surface)',
-            border: '1px solid var(--bord)',
-            borderRadius: 12,
-            boxShadow: '0 28px 90px rgba(0,0,0,.32)',
+            borderLeft: '1px solid var(--bord)',
+            boxShadow: '-12px 0 60px rgba(0,0,0,.3)',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
+            animation: 'rpSlideIn .22s ease',
           }}>
             <div style={{
               padding: '18px 22px',
@@ -507,8 +510,11 @@ export default function AdminTheLieuTrinhPage() {
               <button className="icon-btn" style={{ width: 34, height: 34 }} onClick={() => setSelected(null)}>×</button>
             </div>
 
-            <div style={{ padding: 22, overflowY: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.15fr .85fr', gap: 18, marginBottom: 18 }}>
+            <div style={{ padding: 22, overflowY: 'auto', flex: 1 }}>
+              {/* 2 cột lớn: trái = thông tin thẻ · phải = lịch sử (tận dụng panel rộng) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 5fr) minmax(0, 8fr)', gap: 22, alignItems: 'start' }}>
+              <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18, marginBottom: 18 }}>
                 <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, background: '#fff' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                     <span style={{ fontSize: 12, color: 'var(--ink3)', fontWeight: 900, textTransform: 'uppercase' }}>Tiến độ sử dụng</span>
@@ -571,9 +577,14 @@ export default function AdminTheLieuTrinhPage() {
                 ))}
               </div>
 
-              {/* Lịch sử đầy đủ như MySpa: lượt dùng buổi + tour KTV, thanh toán
-                  & công nợ, nhân viên bán & hoa hồng (anh Nam yêu cầu 04/07) */}
-              <CardHistory card={selected} />
+              </div>
+
+              {/* Cột phải: lịch sử đầy đủ như MySpa — lượt dùng buổi + tour KTV,
+                  thanh toán & công nợ, nhân viên bán & hoa hồng */}
+              <div style={{ minWidth: 0 }}>
+                <CardHistory card={selected} />
+              </div>
+              </div>
 
               {needsReview(selected) && (
                 <div style={{ border: '1px solid rgba(230,126,34,.25)', background: 'rgba(230,126,34,.06)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
