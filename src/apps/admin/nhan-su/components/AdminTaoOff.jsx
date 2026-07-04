@@ -4,6 +4,7 @@ import { COLORS } from '../../../../constants/colors'
 import { todayISO, getNowVN } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 import { useAuth } from '../../../../context/AuthContext'
+import Modal from '../../../../components/ui/Modal'
 
 const LOAI_OFF = [
   { value: 'off_phep', label: 'OFF Phép',            desc: 'Có lương, trừ vào giới hạn tháng',   color: '#DBEAFE', textColor: '#1E40AF' },
@@ -144,32 +145,11 @@ export default function AdminTaoOff({ open, onClose, onSuccess }) {
         </div>
       )}
 
-      {/* Overlay */}
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
-        onClick={onClose}>
-
-        {/* Sheet */}
-        <div style={{ background: COLORS.bg, borderRadius: '20px', width: '100%', maxWidth: '520px', margin: '0 auto', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(42,32,26,0.35)' }}
-          onClick={e => e.stopPropagation()}>
-
-          {/* Handle */}
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-            <div style={{ width: '40px', height: '4px', borderRadius: '2px', background: COLORS.border }} />
-          </div>
-
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px 12px' }}>
-            <div>
-              <div style={{ fontWeight: '800', fontSize: '18px', color: COLORS.text }}>Tạo OFF Cho Nhân Viên</div>
-              <div style={{ fontSize: '12px', color: COLORS.textMute, marginTop: '2px' }}>Duyệt ngay, không cần NV gửi đơn</div>
-            </div>
-            <button onClick={onClose}
-              style={{ width: '36px', height: '36px', borderRadius: '50%', border: `1px solid ${COLORS.border}`, background: COLORS.card, fontSize: '18px', cursor: 'pointer', color: COLORS.textMute, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              ✕
-            </button>
-          </div>
-
-          <div style={{ padding: '0 16px' }}>
+      {/* GĐ0-B Lô 4: khung chuẩn ui/Modal thay overlay/sheet/handle tự vẽ */}
+      <Modal open onClose={onClose} size="md" icon="🗓️"
+        title="Tạo OFF Cho Nhân Viên"
+        subtitle="Duyệt ngay, không cần NV gửi đơn">
+          <div>
 
             {/* Chọn nhân viên */}
             <div style={{ background: COLORS.card, borderRadius: '20px', padding: '16px', marginBottom: '12px', border: `1px solid ${COLORS.border}` }}>
@@ -301,8 +281,7 @@ export default function AdminTaoOff({ open, onClose, onSuccess }) {
             </button>
 
           </div>
-        </div>
-      </div>
+      </Modal>
 
       {/* DatePicker */}
       <DatePicker
