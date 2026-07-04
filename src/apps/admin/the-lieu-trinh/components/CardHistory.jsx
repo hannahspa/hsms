@@ -37,64 +37,42 @@ const headTxt = { fontSize: 12, color: 'var(--ink3)', fontWeight: 900, textTrans
 const th = { textAlign: 'left', padding: '8px 12px', fontSize: 10.5, fontWeight: 800, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.05em', background: 'var(--bg)', whiteSpace: 'nowrap' }
 const td = { padding: '9px 12px', fontSize: 12.5, color: 'var(--ink)', borderTop: '1px solid var(--line)', verticalAlign: 'middle' }
 
+// Cache 60s theo thẻ: mở lại thẻ vừa xem = hiện tức thì, không gọi mạng
+const _histCache = new Map()
+const CACHE_TTL = 60 * 1000
+
 export default function CardHistory({ card }) {
   const [data, setData] = useState(null)
 
   useEffect(() => {
     if (!card?.id) return
     let dead = false
+    const cached = _histCache.get(card.id)
+    if (cached && Date.now() - cached.t < CACHE_TTL) {
+      setData(cached.data)
+      return
+    }
     ;(async () => {
-      try {
-        // 1. Lượt dùng buổi từ đơn POS (kể cả đơn đã hủy — hiện mờ để truy vết)
-        const { data: uses } = await supabase.from('don_hang_chi_tiet')
-          .select('id, so_luong, tien_tour, created_at, nhan_vien:nhan_vien_id(id, ho_ten, avatar_url, vi_tri), don_hang:don_hang_id(id, ma_don, ngay, trang_thai)')
-          .eq('the_lieu_trinh_id', card.id).eq('loai_item', 'the_lieu_trinh')
-
-        // 1b. Lượt dùng ghi tay (nút "Dùng 1 buổi" admin / đồng bộ lịch sử cũ)
-        const { data: manualUses } = await supabase.from('lich_su_dung_the')
-          .select('id, ngay, nguoi_thuc_hien, don_hang_id, created_at')
-          .eq('the_lieu_trinh_id', card.id)
-
-        // 2. Đơn MUA thẻ + các lần thanh toán.
-        // Fallback: thẻ cũ không gắn don_hang_id → tìm qua dòng bán thẻ (the_moi)
-        let buyOrderId = card.don_hang_id
-        if (!buyOrderId) {
-          const { data: buyLine } = await supabase.from('don_hang_chi_tiet')
-            .select('don_hang_id').eq('the_lieu_trinh_id', card.id)
-            .eq('loai_item', 'the_moi').limit(1).maybeSingle()
-          buyOrderId = buyLine?.don_hang_id || null
-        }
-        let buyOrder = null, payments = [], sellerIncome = []
-        if (buyOrderId) {
-          const { data: dh } = await supabase.from('don_hang')
-            .select('id, ma_don, ngay, trang_thai, tong_tien_hang, thuc_thu, con_no, giam_gia')
-            .eq('id', buyOrderId).maybeSingle()
-          buyOrder = dh
-          if (dh) {
-            const { data: tt } = await supabase.from('thanh_toan')
-              .select('id, hinh_thuc, so_tien, created_at, ghi_chu')
-              .eq('don_hang_id', dh.id).order('created_at')
-            payments = tt || []
-            const { data: hh } = await supabase.from('nhan_vien_thu_nhap')
-              .select('id, loai, so_tien, ti_le, nhan_vien:nhan_vien_id(id, ho_ten, avatar_url)')
-              .eq('don_hang_id', dh.id)
-            sellerIncome = (hh || []).filter(r => (r.loai || '').includes('hoa_hong'))
-          }
-        }
-
-        // 3. Người bán trên thẻ (nếu có cột)
-        let seller = null
-        if (card.nhan_vien_ban_id) {
-          const { data: nv } = await supabase.from('nhan_vien')
-            .select('id, ho_ten, avatar_url').eq('id', card.nhan_vien_ban_id).maybeSingle()
-          seller = nv
-        }
-
-        if (!dead) setData({ uses: uses || [], manualUses: manualUses || [], buyOrder, payments, sellerIncome, seller })
-      } catch (e) {
-        console.warn('Lỗi tải lịch sử thẻ:', e)
+      // 1 RPC duy nhất thay 7 query nối tiếp (migration 143) — quan trọng khi
+      // xem từ xa (Mỹ↔VPS ~350ms/round-trip); avatar mỗi NV chỉ tải 1 lần.
+      const { data: r, error } = await supabase.rpc('the_lieu_trinh_lich_su', { p_the_id: card.id })
+      if (error || !r || r.error) {
+        console.warn('Lỗi tải lịch sử thẻ:', error || r?.error)
         if (!dead) setData({ uses: [], manualUses: [], buyOrder: null, payments: [], sellerIncome: [], seller: null })
+        return
       }
+      const staff = r.staff || {}
+      const nvOf = (id) => (id && staff[id]) || null
+      const parsed = {
+        uses: (r.uses || []).map(u => ({ ...u, nhan_vien: nvOf(u.nhan_vien_id) })),
+        manualUses: (r.manual_uses || []).map(m => ({ ...m, nguoi_thuc_hien: m.nguoi_thuc_hien })),
+        buyOrder: r.buy_order || null,
+        payments: r.payments || [],
+        sellerIncome: (r.seller_income || []).map(s => ({ ...s, nhan_vien: nvOf(s.nhan_vien_id) })),
+        seller: nvOf(r.seller_id),
+      }
+      _histCache.set(card.id, { t: Date.now(), data: parsed })
+      if (!dead) setData(parsed)
     })()
     return () => { dead = true }
   }, [card?.id])
