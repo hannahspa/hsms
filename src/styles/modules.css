@@ -814,3 +814,31 @@
 }
 .toggle.on .tr { background: var(--success); }
 .toggle.on .tr::after { left: 18px; }
+
+/* ═══════════════ RESPONSIVE MODULES — GĐ Mobile 04/07/2026 ═══════════════ */
+@media (max-width: 768px) {
+  /* Thẻ ví: cuộn ngang kiểu app ngân hàng, mỗi thẻ ~78% màn, snap từng thẻ */
+  .wallets {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 10px;
+    padding-bottom: 4px;
+    margin-left: -12px; margin-right: -12px;
+    padding-left: 12px; padding-right: 12px;
+  }
+  .wallets::-webkit-scrollbar { display: none; }
+  .wallet {
+    flex: 0 0 78%;
+    scroll-snap-align: start;
+    min-width: 0;
+  }
+  .wallet .vl { font-size: 20px; overflow-wrap: anywhere; }
+
+  /* Booking calendar 3 cột → 1 cột dọc */
+  .bk { grid-template-columns: 1fr; }
+
+  /* Donut + legend xuống dòng */
+  .donut-wrap { flex-wrap: wrap; justify-content: center; }
+}

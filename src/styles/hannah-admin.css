@@ -1417,10 +1417,44 @@ body, html {
   .side.open { display: flex; position: fixed; inset: 0; z-index: 200; }
   .topbar { padding: 12px 16px; }
   .search { display: none; }
-  .page { padding: 16px; }
+  .page { padding: 14px 12px; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .hero { flex-direction: column; }
   .hero-text { max-width: 100%; }
   .hero h2 { font-size: 24px; }
+
+  /* ── GĐ Mobile 04/07/2026 — chuẩn hóa mọi trang module trên điện thoại ── */
+  /* Header module: tiêu đề full hàng, nút hành động xuống hàng dưới (hết bóp dọc) */
+  .mod-head { flex-wrap: wrap; row-gap: 10px; }
+  .mod-head .ttl { font-size: 22px; line-height: 1.15; }
+  .mod-head > div:first-child { flex: 1 1 100%; min-width: 0; }
+  .mod-head .acts { flex-wrap: wrap; }
+
+  /* Strip KPI: 5→2 cột, số co lại để không tràn */
+  .strip { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+  .strip .it { padding: 12px 12px; min-width: 0; }
+  .strip .v { font-size: 17px; overflow-wrap: anywhere; }
+
+  /* Card/KPI: chặn tràn ngang do số tiền dài */
+  .kpi-card, .card, .strip .it { min-width: 0; }
+  .kpi-card .val { font-size: 20px; overflow-wrap: anywhere; }
+  .kpi-value { font-size: clamp(16px, 5.4vw, 24px) !important; overflow-wrap: anywhere; }
+
+  /* Bảng rộng: cuộn ngang trong khung, không phá layout trang */
+  .page table, .card table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Chips/subtabs: cho phép xuống dòng, chạm dễ hơn */
+  .subtabs { flex-wrap: wrap; width: 100%; }
+  .subtabs .st { padding: 8px 12px; }
+
+  /* Nút chạm tối thiểu 40px cho mọi button trong page */
+  .page .btn { min-height: 40px; }
+}
+
+/* Màn rất nhỏ (<400px): strip giữ 2 cột nhưng chữ nhỏ hơn chút */
+@media (max-width: 400px) {
+  .strip .v { font-size: 15.5px; }
+  .mod-head .ttl { font-size: 20px; }
 }

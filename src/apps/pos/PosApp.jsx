@@ -122,6 +122,15 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   const [ktvList, setKtvList]   = useState([])
   const [ktvPopup, setKtvPopup] = useState(null)
 
+  // Mobile: 1 cột — panel đơn hàng mở bằng nút giỏ nổi
+  const [isMobilePos, setIsMobilePos] = useState(window.innerWidth < 768)
+  const [showCartMobile, setShowCartMobile] = useState(false)
+  useEffect(() => {
+    const onRz = () => setIsMobilePos(window.innerWidth < 768)
+    window.addEventListener('resize', onRz)
+    return () => window.removeEventListener('resize', onRz)
+  }, [])
+
   const custTimer = useRef(null)
 
   // CTKM tự nhận biết: map dich_vu_id → km active khớp (gồm KM theo nhóm)
@@ -1622,13 +1631,24 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         />
       </div>
 
-      {/* ═══ RIGHT PANEL (40%) ═══ */}
-      <aside style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column', background: C.surface2, overflow: 'hidden' }}>
+      {/* ═══ RIGHT PANEL (40%) — mobile: overlay toàn màn mở bằng nút giỏ ═══ */}
+      <aside style={isMobilePos ? {
+        position: 'fixed', inset: 0, zIndex: 300,
+        display: showCartMobile ? 'flex' : 'none', flexDirection: 'column',
+        background: C.surface2, overflow: 'hidden',
+      } : { flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column', background: C.surface2, overflow: 'hidden' }}>
 
         {/* Right header */}
         <div style={{ flexShrink: 0, borderBottom: `1px solid ${C.line}`, background: C.surface2 }}>
           <div style={{ height: 40, display: 'flex', alignItems: 'center', padding: '0 16px', background: C.grad, color: C.espresso, fontSize: 13, fontWeight: 700, letterSpacing: '.02em', fontFamily: FONT.serif }}>
-            Thông tin đơn hàng
+            <span style={{ flex: 1 }}>Thông tin đơn hàng</span>
+            {isMobilePos && (
+              <button onClick={() => setShowCartMobile(false)} style={{
+                border: 'none', background: 'rgba(0,0,0,.15)', color: C.espresso,
+                width: 28, height: 28, borderRadius: 8, cursor: 'pointer',
+                fontSize: 15, fontWeight: 700, lineHeight: 1,
+              }}>×</button>
+            )}
           </div>
           <div style={{ display: 'flex', borderBottom: `1px solid ${C.line}`, background: C.surface2 }}>
             {[['don_hang', 'Đơn hàng'], ['vat_tu', 'Vật tư tiêu hao']].map(([k, lbl]) => (
@@ -1690,7 +1710,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
             <div style={{ padding: lineItems.length === 0 ? '32px 14px' : '0 14px', borderBottom: '1px solid var(--line)', minHeight: 126 }}>
               {lineItems.length === 0 ? (
                 <div style={{ textAlign: 'center', color: 'var(--ink3)', fontSize: 13 }}>
-                  Chọn dịch vụ bên trái để thêm vào đơn
+                  {isMobilePos ? 'Chọn dịch vụ ở màn hình menu để thêm vào đơn' : 'Chọn dịch vụ bên trái để thêm vào đơn'}
                 </div>
               ) : lineItems.map(item => (
                 <CartLine
@@ -1971,6 +1991,20 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
           </div>
         )}
       </aside>
+
+      {/* Mobile: nút giỏ hàng nổi — mở panel đơn hàng */}
+      {isMobilePos && !showCartMobile && (
+        <button onClick={() => setShowCartMobile(true)} style={{
+          position: 'fixed', right: 14, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 78px)',
+          zIndex: 290, height: 52, padding: '0 18px', borderRadius: 999, border: 'none',
+          background: 'linear-gradient(135deg,#C9A96E 0%,#A0714F 45%,#7D5A3C 100%)',
+          color: '#fff', fontFamily: FONT.sans, fontWeight: 800, fontSize: 14,
+          boxShadow: '0 10px 28px rgba(61,44,32,.4)', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          🛒 {lineItems.length > 0 ? `${lineItems.length} · ${formatCurrency(tongCuoi)}` : 'Đơn hàng'}
+        </button>
+      )}
     </div>
 
     {/* KTV Popup */}

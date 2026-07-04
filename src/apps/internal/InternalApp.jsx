@@ -2,7 +2,7 @@
 import { useVi } from '../../hooks/useVi'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
-import BottomNav from '../../components/layout/BottomNav'
+import FABMenu from '../../components/shared/FABMenu'
 import Toast from '../../components/ui/Toast'
 import TongQuanPage from './tong-quan/TongQuanPage'
 import NhapLieuPage from './thu-chi/NhapLieuPage'
@@ -137,10 +137,8 @@ export default function InternalApp() {
         .hsms-stagger > *:nth-child(9) { animation-delay: 0.52s; }
         .hsms-stagger > *:nth-child(10){ animation-delay: 0.58s; }
 
-        /* BottomNav chỉ hiển thị trên mobile — desktop dùng sidebar */
-        @media (min-width: 769px) {
-          .bottom-nav-wrapper { display: none; }
-        }
+        /* Dải tab mobile Sổ Thu Chi: cuộn ngang, ẩn scrollbar */
+        .stc-mobile-tabs::-webkit-scrollbar { display: none; }
       `}</style>
 
       <div style={{
@@ -151,6 +149,30 @@ export default function InternalApp() {
         overflowX: 'hidden',
       }}>
         {toast  && <Toast msg={toast.msg} type={toast.type} onClose={() => showToast(null)} />}
+
+        {/* Mobile: dải tab cuộn ngang thay BottomNav cũ (nav dưới cùng do MobileShell
+            của AdminShell đảm nhiệm — trước đây 2 thanh chồng nhau) */}
+        {!isDesktop && (
+          <div className="stc-mobile-tabs" style={{
+            display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+            padding: '10px 12px 8px', background: 'var(--bg)',
+            borderBottom: '1px solid var(--line)', scrollbarWidth: 'none',
+          }}>
+            {(isLeTan
+              ? [['doi-soat','Đối Soát'],['nhap-lieu','Nhập Liệu'],['danh-sach','Danh Sách'],['chot-ngay','Chốt Ngày'],['nhat-ky-ngay','Nhật Ký'],['lich-hen','Lịch Hẹn'],['cai-dat','Cài Đặt']]
+              : [['tong-quan','Tổng Quan'],['nhap-lieu','Nhập Liệu'],['danh-sach','Danh Sách'],['doi-soat','Đối Soát'],['chot-ngay','Chốt Ngày'],['bao-cao','Báo Cáo'],['kiem-soat-chi','Kiểm Soát Chi'],['nhat-ky-ngay','Nhật Ký'],['lich-hen','Lịch Hẹn'],['cai-dat','Cài Đặt']]
+            ).map(([k, l]) => (
+              <button key={k} onClick={() => setTabAndUrl(k)} style={{
+                flexShrink: 0, padding: '8px 14px', borderRadius: 999,
+                cursor: 'pointer', fontSize: 12.5, fontFamily: 'var(--sans)',
+                fontWeight: effectiveTab === k ? 700 : 500,
+                background: effectiveTab === k ? 'var(--grad-gold, linear-gradient(135deg,#C9A96E,#A0714F))' : 'var(--surface2)',
+                color: effectiveTab === k ? '#fff' : 'var(--ink2)',
+                border: effectiveTab === k ? 'none' : '1px solid var(--line)',
+              }}>{l}</button>
+            ))}
+          </div>
+        )}
 
         {form === 'thu' && <FormDoanhThu  viList={viList} user={user} onClose={closeForm} onSaved={handleSaved} />}
         {form === 'chi' && <FormChiPhi    viList={viList} user={user} onClose={closeForm} onSaved={handleSaved} />}
@@ -189,9 +211,12 @@ export default function InternalApp() {
           )}
         </div>
 
-        {<div className="bottom-nav-wrapper">
-          <BottomNav active={effectiveTab} onChange={setTabAndUrl} onOpenForm={handleOpenForm} user={user} />
-        </div>}
+        {/* Mobile: FAB nhập nhanh Thu/Chi/CK nổi góc phải, trên bottom nav MobileShell */}
+        {!isDesktop && (
+          <div style={{ position: 'fixed', right: 14, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 78px)', zIndex: 90 }}>
+            <FABMenu onSelect={handleOpenForm} />
+          </div>
+        )}
       </div>
     </>
   )

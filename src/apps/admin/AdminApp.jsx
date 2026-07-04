@@ -164,7 +164,7 @@ export default function AdminApp() {
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.12em', marginBottom: 12 }}>
           Dành Cho Khách Hàng
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
           {khModules.map((m, i) => (
             <button key={i} onClick={() => m.href && !m.soon && (window.location.href = m.href)}
               disabled={m.soon}
@@ -199,7 +199,7 @@ export default function AdminApp() {
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.12em', marginBottom: 12 }}>
           Quản Lý Nội Bộ
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12 }}>
           {nbModules.map((m, i) => (
             <button key={i} onClick={() => m.href && !m.soon && (window.location.href = m.href)}
               disabled={m.soon}
