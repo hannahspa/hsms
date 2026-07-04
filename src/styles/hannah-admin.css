@@ -16,6 +16,9 @@
   --ink4:      #b5a594;
   --line:      #e8dcc8;
   --line2:     #d4c4ad;
+  /* --bord: viền input/khung — 16 file đang dùng var(--bord) nhưng biến chưa
+     từng được định nghĩa (input không viền từ trước). Fix 04/07/2026 */
+  --bord:      #d4c4ad;
 
   /* Brand */
   --espresso:  #3d2c20;

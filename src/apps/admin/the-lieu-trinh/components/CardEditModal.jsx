@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { getNowVN } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
+import RightPanel from '../../../../components/shared/RightPanel'
 import { moneyInput, parseMoney } from '../theLieuTrinhUtils'
 
 function fmtDate(iso) {
@@ -102,32 +103,17 @@ export default function CardEditModal({ card, onClose, onSaved }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.36)', zIndex: 930 }} />
-      <div style={{
-        position: 'fixed',
-        zIndex: 931,
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: 'calc(100vw - var(--side-w, 248px))',
-        maxWidth: '100vw',
-        overflow: 'hidden',
-        background: 'var(--surface)',
-        borderLeft: '1px solid var(--bord)',
-        boxShadow: '-6px 0 40px rgba(0,0,0,.28)',
-        animation: 'rpSlideIn .22s ease',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontFamily: 'var(--serif)', fontSize: 18, fontWeight: 900, color: 'var(--ink)', whiteSpace: 'nowrap' }}>Sửa thẻ liệu trình</div>
-            <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 3 }}>{card.khach_hang?.ho_ten || 'Khách hàng'} · {card.khach_hang?.so_dien_thoai || '-'}</div>
+      <RightPanel open onClose={onClose} zIndex={931}
+        title="Sửa thẻ liệu trình"
+        subtitle={`${card.khach_hang?.ho_ten || 'Khách hàng'} · ${card.khach_hang?.so_dien_thoai || '-'}`}
+        bodyStyle={{ background: '#fff' }}
+        footer={
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button className="btn ghost" onClick={onClose}>Đóng</button>
+            <button className="btn gold" onClick={save} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
           </div>
-          <button className="icon-btn" onClick={onClose}>×</button>
-        </div>
-
-        <div style={{ padding: 20, overflowY: 'auto' }}>
+        }>
+        <div>
           {err && (
             <div style={{ marginBottom: 14, padding: 12, borderRadius: 8, background: 'rgba(192,57,43,.08)', border: '1px solid rgba(192,57,43,.2)', color: '#C0392B', fontSize: 13, fontWeight: 800 }}>
               {err}
@@ -230,12 +216,7 @@ export default function CardEditModal({ card, onClose, onSaved }) {
             </label>
           </div>
         </div>
-
-        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--line)', display: 'flex', gap: 10, justifyContent: 'flex-end', background: 'var(--bg)' }}>
-          <button className="btn ghost" onClick={onClose}>Đóng</button>
-          <button className="btn gold" onClick={save} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
-        </div>
-      </div>
+      </RightPanel>
       <DatePicker
         open={showNgayMua}
         selectedDate={form.ngay_mua || ''}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { todayISO } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
+import Modal from '../../../../components/ui/Modal'
 
 const ACTION_META = {
   close_expired: { title: 'Đóng thẻ hết hạn', hint: 'Thẻ sẽ chuyển sang trạng thái hết hạn và không còn nằm trong danh sách cần rà.' },
@@ -50,29 +51,16 @@ export default function CardReviewModal({ card, action, onClose, onSaved }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.36)', zIndex: 920 }} />
-      <div style={{
-        position: 'fixed',
-        zIndex: 921,
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: 'calc(100vw - var(--side-w, 248px))',
-        maxWidth: '100vw',
-        background: 'var(--surface)',
-        borderLeft: '1px solid var(--bord)',
-        boxShadow: '-6px 0 40px rgba(0,0,0,.28)',
-        animation: 'rpSlideIn .22s ease',
-        overflowY: 'auto',
-      }}>
-        <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-          <div>
-            <div style={{ fontFamily: 'var(--serif)', fontSize: 18, fontWeight: 900, color: 'var(--ink)' }}>{actionMeta.title}</div>
-            <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 3 }}>{card.ma_the} · {card.khach_hang?.ho_ten || 'Khách hàng'}</div>
-          </div>
-          <button className="icon-btn" onClick={onClose}>×</button>
-        </div>
-        <div style={{ padding: 18 }}>
+      <Modal open onClose={onClose} size="md"
+        title={actionMeta.title}
+        subtitle={`${card.ma_the} · ${card.khach_hang?.ho_ten || 'Khách hàng'}`}
+        footer={
+          <>
+            <button className="btn ghost" onClick={onClose}>Đóng</button>
+            <button className="btn gold" onClick={save} disabled={saving}>{saving ? 'Đang lưu...' : 'Xác nhận'}</button>
+          </>
+        }>
+        <div>
           <div style={{ padding: 12, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--line)', fontSize: 12, color: 'var(--ink2)', marginBottom: 14 }}>
             {actionMeta.hint}
           </div>
@@ -113,11 +101,7 @@ export default function CardReviewModal({ card, action, onClose, onSaved }) {
               style={{ border: '1px solid var(--bord)', borderRadius: 8, padding: 12, outline: 'none', resize: 'vertical', fontFamily: 'var(--sans)' }} />
           </label>
         </div>
-        <div style={{ padding: '14px 18px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--bg)' }}>
-          <button className="btn ghost" onClick={onClose}>Đóng</button>
-          <button className="btn gold" onClick={save} disabled={saving}>{saving ? 'Đang lưu...' : 'Xác nhận'}</button>
-        </div>
-      </div>
+      </Modal>
     </>
   )
 }
