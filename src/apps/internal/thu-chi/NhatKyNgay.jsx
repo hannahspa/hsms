@@ -23,7 +23,7 @@ export default function NhatKyNgay({ user }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [rDT, rCP, rDM, rDH, rKho, rChot, rSP] = await Promise.all([
+      const [rDT, rCP, rDM, rDH, rKho, rChot, rSP, rCC, rNV, rOffNgay, rOffCho, rYcCho, rNo, rKhoCanh] = await Promise.all([
         supabase.from('doanh_thu').select('hinh_thuc, so_tien, nguon').eq('ngay', ngay),
         supabase.from('chi_phi').select('so_tien, danh_muc_id, dien_giai, hinh_thuc_thanh_toan').eq('ngay', ngay),
         supabase.from('danh_muc_chi_phi').select('id, ten'),
@@ -31,6 +31,14 @@ export default function NhatKyNgay({ user }) {
         supabase.from('kho_giao_dich').select('loai, so_luong, gia_don_vi, san_pham_id, khach_hang_id').eq('ngay', ngay),
         supabase.from('so_thu_chi_chot_ngay').select('trang_thai, nguoi_chot, chot_luc').eq('ngay', ngay).maybeSingle(),
         supabase.from('kho_san_pham').select('id, ten, don_vi'),
+        // ── Nhân sự + cảnh báo (báo cáo tổng — anh Nam đọc 1 trang biết hết) ──
+        supabase.from('cham_cong').select('nhan_vien_id, gio_vao, gio_ra, loai').eq('ngay', ngay),
+        supabase.from('nhan_vien').select('id, ho_ten, vi_tri, avatar_url, trang_thai').eq('trang_thai', 'dang_lam'),
+        supabase.from('dang_ky_off').select('nhan_vien_id, trang_thai').eq('ngay_off', ngay).eq('trang_thai', 'duoc_duyet'),
+        supabase.from('dang_ky_off').select('id', { count: 'exact', head: true }).eq('trang_thai', 'cho_duyet'),
+        supabase.from('yeu_cau_chinh_sua').select('id', { count: 'exact', head: true }).eq('trang_thai', 'cho_duyet'),
+        supabase.from('don_hang').select('ma_don, con_no, ngay').gt('con_no', 0).eq('is_test', false).neq('trang_thai', 'huy').order('ngay', { ascending: false }).limit(20),
+        supabase.from('kho_san_pham').select('ten, ton_kho, canh_bao_ton, don_vi').eq('is_active', true),
       ])
       const dt = rDT.data || [], cp = rCP.data || [], dh = rDH.data || [], kho = rKho.data || []
       const dmMap = {}; (rDM.data || []).forEach(d => { dmMap[d.id] = d.ten })
@@ -85,6 +93,26 @@ export default function NhatKyNgay({ user }) {
       })
       const khachList = Object.values(khachByDh).sort((a, b) => b.chiTieu - a.chiTieu)
 
+      // ── Nhân sự trong ngày ──
+      const nvList = rNV.data || []
+      const ccByNv = {}; (rCC.data || []).forEach(c => { ccByNv[c.nhan_vien_id] = c })
+      const offNvIds = new Set((rOffNgay.data || []).map(o => o.nhan_vien_id))
+      const nhanSu = nvList.map(nv => {
+        const cc = ccByNv[nv.id]
+        return {
+          ...nv,
+          gioVao: cc?.gio_vao ? String(cc.gio_vao).slice(0, 5) : null,
+          gioRa: cc?.gio_ra ? String(cc.gio_ra).slice(0, 5) : null,
+          off: offNvIds.has(nv.id),
+        }
+      }).sort((a, b) => (a.gioVao || '99') < (b.gioVao || '99') ? -1 : 1)
+      const soCheckin = nhanSu.filter(n => n.gioVao).length
+
+      // ── Cảnh báo / việc cần làm ──
+      const khoCan = (rKhoCanh.data || []).filter(s => Number(s.ton_kho) <= Number(s.canh_bao_ton || 0))
+      const donNo = rNo.data || []
+      const tongNo = donNo.reduce((s, d) => s + (d.con_no || 0), 0)
+
       setData({
         dtByPttt, tongDoanhThu, tongChi,
         loiNhuan: tongDoanhThu - tongChi,
@@ -95,6 +123,10 @@ export default function NhatKyNgay({ user }) {
         theBanList, tongGiaTriThe,
         khachList,
         chot: rChot.data || null,
+        nhanSu, soCheckin,
+        offChoDuyet: rOffCho.count || 0,
+        ycChoDuyet: rYcCho.count || 0,
+        khoCan, donNo, tongNo,
       })
     } catch (e) { console.error('NhatKyNgay:', e) }
     finally { setLoading(false) }
@@ -132,12 +164,58 @@ export default function NhatKyNgay({ user }) {
         <div style={{ textAlign: 'center', padding: 80, color: C.textMute }}>Đang tổng hợp...</div>
       ) : data && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Cần chú ý — việc đang chờ xử lý (hiện trạng, chỉ hiện khi xem hôm nay) */}
+          {ngay === today && (data.offChoDuyet > 0 || data.ycChoDuyet > 0 || data.khoCan.length > 0 || data.donNo.length > 0) && (
+            <Card title="Cần Chú Ý" icon="🔔">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {data.offChoDuyet > 0 && (
+                  <AlertRow color="#a8741a" bg="#fdf3e0" text={`${data.offChoDuyet} đơn OFF đang chờ duyệt`}
+                    action="Duyệt ngay →" href="/admin/nhan-su/xet-duyet" />
+                )}
+                {data.ycChoDuyet > 0 && (
+                  <AlertRow color="#6C3483" bg="rgba(108,52,131,.07)" text={`${data.ycChoDuyet} yêu cầu sửa/xóa của Lễ Tân chờ duyệt`}
+                    action="Xem →" href="/admin/nhan-su/xet-duyet" />
+                )}
+                {data.donNo.length > 0 && (
+                  <AlertRow color="#C0392B" bg="rgba(192,57,43,.06)"
+                    text={`${data.donNo.length} đơn còn nợ · tổng ${formatCurrency(data.tongNo)} (${data.donNo.slice(0, 3).map(d => d.ma_don).join(', ')}${data.donNo.length > 3 ? '…' : ''})`}
+                    action="Xem đơn nợ →" href="/pos/danh-sach" />
+                )}
+                {data.khoCan.length > 0 && (
+                  <AlertRow color="#1A5276" bg="rgba(26,82,118,.06)"
+                    text={`${data.khoCan.length} sản phẩm sắp hết: ${data.khoCan.slice(0, 3).map(s => `${s.ten} (còn ${s.ton_kho} ${s.don_vi || ''})`).join(', ')}${data.khoCan.length > 3 ? '…' : ''}`}
+                    action="Nhập kho →" href="/admin/kho-hang" />
+                )}
+              </div>
+            </Card>
+          )}
+
           {/* Hero 3 chỉ số */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
             <HeroStat label="Doanh Thu (thực thu)" value={data.tongDoanhThu} color="#2D7A4F" icon="📈" />
             <HeroStat label="Tổng Chi" value={data.tongChi} color="#C0392B" icon="📉" />
             <HeroStat label="Lợi Nhuận" value={data.loiNhuan} color={data.loiNhuan >= 0 ? '#1A5276' : '#C0392B'} icon="💎" />
           </div>
+
+          {/* Nhân sự trong ngày */}
+          <Card title={`Nhân Sự (${data.soCheckin}/${data.nhanSu.length} check-in)`} icon="🧑‍💼">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {data.nhanSu.map(nv => (
+                <span key={nv.id} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '5px 12px 5px 6px', borderRadius: 999,
+                  background: nv.gioVao ? 'rgba(45,122,79,.08)' : nv.off ? 'rgba(108,52,131,.07)' : 'rgba(192,57,43,.06)',
+                  border: `1px solid ${nv.gioVao ? 'rgba(45,122,79,.25)' : nv.off ? 'rgba(108,52,131,.2)' : 'rgba(192,57,43,.18)'}`,
+                }}>
+                  {nv.avatar_url && <img src={nv.avatar_url} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} />}
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{nv.ho_ten.split(' ').slice(-2).join(' ')}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: nv.gioVao ? '#2D7A4F' : nv.off ? '#6C3483' : '#C0392B' }}>
+                    {nv.gioVao ? `${nv.gioVao}${nv.gioRa ? `–${nv.gioRa}` : ''}` : nv.off ? 'OFF' : 'chưa vào'}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </Card>
 
           {/* Doanh thu theo PTTT */}
           <Card title="Doanh Thu Theo Hình Thức" icon="💰">
@@ -248,6 +326,15 @@ function HeroStat({ label, value, color, icon }) {
     <div style={{ background: C.card, borderRadius: 16, padding: '18px 20px', border: `1px solid ${C.border}`, boxShadow: C.shadowSm }}>
       <div style={{ fontSize: 11, color: C.textSub, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>{icon} {label}</div>
       <div style={{ fontFamily: FONT.serif, fontSize: 24, fontWeight: 800, color, marginTop: 6 }}>{formatCurrency(value)}</div>
+    </div>
+  )
+}
+
+function AlertRow({ color, bg, text, action, href }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderRadius: 10, background: bg, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color, minWidth: 0 }}>{text}</span>
+      <a href={href} style={{ fontSize: 12.5, fontWeight: 800, color, textDecoration: 'none', whiteSpace: 'nowrap' }}>{action}</a>
     </div>
   )
 }
