@@ -120,7 +120,7 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
     finally { setLoading(false) }
   }
 
-  const fmt = (iso) => {
+  const fmtNgay = (iso) => {
     if (!iso) return ''
     const [y, m, d] = iso.split('-')
     return `${d}/${m}/${y}`
@@ -176,7 +176,7 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
               return (
                 <>
                   <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, color: LUX.espresso, marginBottom: 4 }}>
-                    {fmt(showInfo)} {isWk && <span style={{ color: LUX.rose, fontSize: 13, marginLeft: 6 }}>(Cuối tuần)</span>}
+                    {fmtNgay(showInfo)} {isWk && <span style={{ color: LUX.rose, fontSize: 13, marginLeft: 6 }}>(Cuối tuần)</span>}
                   </div>
                   <div style={{ fontSize: 12, color: LUX.ink3, marginBottom: 16 }}>
                     {nhanVien.vi_tri === 'le_tan' ? 'Lễ Tân' : 'KTV'} — Giới hạn: {gioiHan} người/ngày
@@ -240,7 +240,7 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
                       setLoaiOff(isWe ? 'off_t7' : (soNgayDaOff >= limit ? 'off_ov' : 'off_phep'))
                       setShowInfo(null)
                     }} style={{ width: '100%', padding: 14, borderRadius: 14, background: LUX.goldGrad, color: '#fff', border: 'none', fontFamily: 'inherit', fontWeight: 700, fontSize: 14, cursor: 'pointer', marginBottom: 8 }}>
-                      Chọn ngày {fmt(showInfo)}
+                      Chọn ngày {fmtNgay(showInfo)}
                     </button>
                   )}
 
@@ -263,7 +263,7 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
 
             <div style={{ background: LUX.surface2, border: `1px solid ${LUX.line}`, borderRadius: 12, padding: '12px 14px', marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 12, color: LUX.ink3, fontWeight: 600 }}>Ngày OFF hiện tại</span>
-              <span style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 700, color: LUX.taupe }}>{fmt(doiItem.ngay_off)}</span>
+              <span style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 700, color: LUX.taupe }}>{fmtNgay(doiItem.ngay_off)}</span>
             </div>
 
             <div style={{ fontSize: 12, color: LUX.ink3, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>Đổi sang ngày mới <span style={{ color: LUX.danger }}>*</span></div>
@@ -272,7 +272,7 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
 
             <button onClick={handleDoiNgay} disabled={doiLoading || !ngayMoi}
               style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', cursor: ngayMoi ? 'pointer' : 'not-allowed', background: ngayMoi ? LUX.goldGrad : '#E5E7EB', color: ngayMoi ? '#fff' : LUX.ink3, fontFamily: LUX.fontSerif, fontWeight: 600, fontSize: 15, marginBottom: 8 }}>
-              {doiLoading ? 'Đang gửi...' : ngayMoi ? `Gửi yêu cầu đổi → ${fmt(ngayMoi)}` : 'Chọn ngày mới'}
+              {doiLoading ? 'Đang gửi...' : ngayMoi ? `Gửi yêu cầu đổi → ${fmtNgay(ngayMoi)}` : 'Chọn ngày mới'}
             </button>
             <button onClick={() => setDoiItem(null)} style={{ width: '100%', padding: 12, borderRadius: 14, background: LUX.surface2, border: `1px solid ${LUX.line}`, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: LUX.ink }}>Đóng</button>
           </div>
@@ -399,7 +399,7 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
           <div style={{ marginTop: 12, background: 'linear-gradient(180deg,#fdf3e0,#f9ead0)', borderRadius: LUX.radius, padding: '12px 16px', border: '1px solid #ecd9b3', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: LUX.ink2 }}>Ngày OFF đã chọn:</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 600, color: LUX.taupe }}>{fmt(ngayOff)}</span>
+              <span style={{ fontFamily: LUX.fontSerif, fontSize: 16, fontWeight: 600, color: LUX.taupe }}>{fmtNgay(ngayOff)}</span>
               <button onClick={() => setNgayOff('')} style={{ background: 'none', border: 'none', color: LUX.ink3, fontSize: 16, cursor: 'pointer' }}>×</button>
             </div>
           </div>
@@ -467,7 +467,7 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
               letterSpacing: '0.04em', transition: 'all 0.2s',
               boxShadow: ngayOff ? '0 8px 24px -8px rgba(160,122,74,0.45)' : 'none',
             }}>
-            {loading ? 'Đang gửi...' : ngayOff ? `Gửi Đơn OFF ${fmt(ngayOff)}` : 'Chọn ngày trước'}
+            {loading ? 'Đang gửi...' : ngayOff ? `Gửi Đơn OFF ${fmtNgay(ngayOff)}` : 'Chọn ngày trước'}
           </button>
         </div>
 
@@ -482,7 +482,7 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
                 <div key={item.id} style={{ padding: '12px 0', borderBottom: i < danhSach.length - 1 ? `1px solid ${LUX.line}` : 'none' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: LUX.espresso }}>{fmt(item.ngay_off)}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: LUX.espresso }}>{fmtNgay(item.ngay_off)}</div>
                       <div style={{ fontSize: 11, color: LUX.ink3, marginTop: 2 }}>{loai?.label || item.loai_off}</div>
                       <div style={{ fontSize: 11, color: LUX.ink2, marginTop: 2, fontStyle: 'italic' }}>{item.ly_do}</div>
                     </div>

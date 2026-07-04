@@ -34,6 +34,19 @@ export const ADMIN_NAV = [
   ]},
 
   { id: 'crm', icon: '💝', label: 'CRM Khách Hàng', path: '/admin/crm' },
+
+  // T1 (05/07): GOM 5+ cửa chăm sóc khách về 1 nhóm duy nhất — trước đây rải
+  // trong Marketing + launcher khiến không biết vào đâu, khách dễ bị nhắn trùng
+  { id: 'chamsoc', icon: '💗', label: 'Chăm Sóc Khách', children: [
+    { id: 'cs-homnay',   label: 'Hôm Nay Cần Chạm',        path: '/admin/cham-soc-khach' },
+    { id: 'cs-saudv',    label: 'Sau Dịch Vụ (tự động)',    path: '/admin/marketing/cham-soc-sau-dich-vu' },
+    { id: 'cs-nhaclich', label: 'Nhắc Lịch Liệu Trình',     path: '/admin/marketing/nhac-lich-lieu-trinh' },
+    { id: 'cs-chamlai',  label: 'Chăm Sóc Lại (Thẻ LT)',    path: '/admin/marketing/cham-soc-lai' },
+    { id: 'cs-winback',  label: 'Win-back Khách Lạnh',      path: '/admin/marketing/win-back' },
+    { id: 'cs-khachle',  label: 'Mời Khách Lẻ Quay Lại',    path: '/admin/marketing/khach-le' },
+    { id: 'cs-soantay',  label: 'Soạn Tay AI (Nhắc Thẻ)',   path: '/admin/nhac-lieu-trinh' },
+  ]},
+
   { id: 'dichvu', icon: '💎', label: 'Dịch Vụ', children: [
     { id: 'dv-danhsach', label: 'Danh Sách Dịch Vụ', path: '/admin/dich-vu' },
     { id: 'dv-danhmuc', label: 'Danh Mục Dịch Vụ', path: '/admin/dich-vu/danh-muc' },
@@ -63,10 +76,6 @@ export const ADMIN_NAV = [
     { id: 'mkt-dashboard', label: 'Tổng Quan', path: '/admin/marketing' },
     { id: 'mkt-inbox', label: 'Hộp Thư', path: '/admin/marketing/hop-thu' },
     { id: 'mkt-remarketing', label: 'Khách & Remarketing', path: '/admin/marketing/khach-remarketing' },
-    { id: 'mkt-aftercare', label: 'Chăm Sóc Sau Dịch Vụ', path: '/admin/marketing/cham-soc-sau-dich-vu' },
-    { id: 'mkt-chamsoclai', label: 'Chăm Sóc Lại (Thẻ LT)', path: '/admin/marketing/cham-soc-lai' },
-    { id: 'mkt-winback', label: 'Win-back Khách Lạnh', path: '/admin/marketing/win-back' },
-    { id: 'mkt-khachle', label: 'Mời Khách Lẻ Quay Lại', path: '/admin/marketing/khach-le' },
     { id: 'mkt-fanpage', label: 'Fanpage & Chiến Dịch', path: '/admin/marketing/fanpage-noi-dung' },
     { id: 'mkt-training', label: 'Huấn Luyện AI', path: '/admin/marketing/huan-luyen' },
     { id: 'mkt-cauhinh', label: 'Cấu Hình Kênh', path: '/admin/marketing/cau-hinh-kenh' },
@@ -103,7 +112,12 @@ export const LETAN_NAV = [
   { sec: 'Khách Hàng' },
   { id: 'crm',          icon: '💝', label: 'CRM Khách Hàng',  path: '/admin/crm' },
   { id: 'mkt-inbox',    icon: '💬', label: 'Hộp Thư', path: '/admin/marketing/hop-thu' },
-  { id: 'chamsockhach', icon: '💗', label: 'Chăm Sóc Khách', path: '/admin/cham-soc-khach' },
+  { id: 'chamsoc', icon: '💗', label: 'Chăm Sóc Khách', children: [
+    { id: 'cs-homnay',   label: 'Hôm Nay Cần Chạm',     path: '/admin/cham-soc-khach' },
+    { id: 'cs-saudv',    label: 'Sau Dịch Vụ',           path: '/admin/marketing/cham-soc-sau-dich-vu' },
+    { id: 'cs-nhaclich', label: 'Nhắc Lịch Liệu Trình',  path: '/admin/marketing/nhac-lich-lieu-trinh' },
+    { id: 'cs-soantay',  label: 'Soạn Tay AI (Nhắc Thẻ)', path: '/admin/nhac-lieu-trinh' },
+  ]},
   { id: 'the-lieu-trinh', icon: '🎫', label: 'Thẻ Liệu Trình', path: '/admin/the-lieu-trinh' },
 ]
 

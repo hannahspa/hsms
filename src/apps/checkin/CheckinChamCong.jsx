@@ -226,7 +226,7 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
     finally { setLoading(false); setPendingAction(null) }
   }
 
-  const fmt = (t) => t?.slice(0, 5) || '--:--'
+  const fmtGio = (t) => t?.slice(0, 5) || '--:--'
   const isCheckedIn = chamCong?.gio_vao && !chamCong?.gio_ra
   const isCheckedOut = chamCong?.gio_vao && chamCong?.gio_ra
   const gioLamHom = isCheckedOut ? tinhGioLam(chamCong.gio_vao, chamCong.gio_ra) : null
@@ -403,7 +403,7 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: LUX.ink3, fontWeight: 600 }}>Giờ vào</div>
             <div style={{ fontFamily: LUX.fontSerif, fontSize: 32, fontWeight: 600, color: chamCong?.gio_vao ? LUX.sage : LUX.ink4, marginTop: 8 }}>
-              {fmt(chamCong?.gio_vao)}
+              {fmtGio(chamCong?.gio_vao)}
             </div>
             {chamCong?.gio_vao && (
               <div style={{ fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 6, marginTop: 4, display: 'inline-block', background: phanLoaiVao(chamCong.gio_vao).bg, color: phanLoaiVao(chamCong.gio_vao).color }}>
@@ -415,7 +415,7 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: LUX.ink3, fontWeight: 600 }}>Giờ ra</div>
             <div style={{ fontFamily: LUX.fontSerif, fontSize: 32, fontWeight: 600, color: chamCong?.gio_ra ? LUX.taupe : LUX.ink4, marginTop: 8 }}>
-              {fmt(chamCong?.gio_ra)}
+              {fmtGio(chamCong?.gio_ra)}
             </div>
             {chamCong?.gio_ra && (
               <div style={{ fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 6, marginTop: 4, display: 'inline-block', background: phanLoaiRa(chamCong.gio_ra).bg, color: phanLoaiRa(chamCong.gio_ra).color }}>
