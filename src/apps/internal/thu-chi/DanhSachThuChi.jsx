@@ -120,6 +120,8 @@ export default function DanhSachThuChi({ user }) {
         _table: 'chuyen_khoan_noi_bo', loai: 'ck', id: r.id, ngay: r.ngay, so_tien: r.so_tien || 0,
         dien_giai: r.dien_giai || `${vm[r.tu_vi_id] || '?'} → ${vm[r.den_vi_id] || '?'}`,
         hinh_thuc: null, danh_muc: null, nguoi: r.nguoi_thuc_hien, nguon: null, created_at: r.created_at,
+        // Nộp két: Tiền Mặt → MB Bank (thay trang /admin/lich-su-nop-tien-mat đã bỏ)
+        nopKet: (vm[r.tu_vi_id] || '').toLowerCase().includes('tiền mặt') && (vm[r.den_vi_id] || '').toLowerCase().includes('mb'),
       }))
       // Sắp xếp: ngày giảm dần, rồi created_at giảm dần
       all.sort((a, b) => (b.ngay || '').localeCompare(a.ngay || '') || String(b.created_at || '').localeCompare(String(a.created_at || '')))
@@ -132,7 +134,8 @@ export default function DanhSachThuChi({ user }) {
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase()
     return rows.filter(r => {
-      if (loaiFilter !== 'all' && r.loai !== loaiFilter) return false
+      if (loaiFilter === 'nop_ket') { if (!r.nopKet) return false }
+      else if (loaiFilter !== 'all' && r.loai !== loaiFilter) return false
       if (kw && !(`${r.dien_giai} ${r.danh_muc || ''} ${r.nguoi || ''}`.toLowerCase().includes(kw))) return false
       return true
     })
@@ -197,7 +200,7 @@ export default function DanhSachThuChi({ user }) {
       {/* FILTER BAR */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 4, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 10, padding: 3 }}>
-          {[['all', 'Tất cả'], ['thu', 'Thu'], ['chi', 'Chi'], ['ck', 'Chuyển Khoản']].map(([k, l]) => (
+          {[['all', 'Tất cả'], ['thu', 'Thu'], ['chi', 'Chi'], ['ck', 'Chuyển Khoản'], ['nop_ket', '🏦 Nộp TM→MB']].map(([k, l]) => (
             <button key={k} onClick={() => { setLoaiFilter(k); setPage(1) }}
               style={{
                 padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',

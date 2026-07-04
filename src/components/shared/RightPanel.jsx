@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { LUX } from '../../constants/lux'
 
@@ -31,6 +32,14 @@ export default function RightPanel({
   open, onClose, title, subtitle, headerGrad, headerExtra, header, footer,
   bodyStyle, zIndex = 10000, children,
 }) {
+  // ESC đóng panel — đồng bộ hành vi với ui/Modal (chuẩn macOS-like)
+  useEffect(() => {
+    if (!open) return undefined
+    const onEsc = (e) => { if (e.key === 'Escape') onClose?.() }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [open, onClose])
+
   if (!open) return null
   ensureKf()
   return createPortal(

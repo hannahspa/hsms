@@ -77,6 +77,10 @@ export const FONT = {
 // ── SPACING ─────────────────────────────────────────────────────────────────────
 export const SPACE = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 }
 
+// ── MOTION (chuẩn chuyển động duy nhất toàn hệ — 05/07/2026) ───────────────────
+// Dùng: style={{ transition: TRANSITION }} — KHÔNG tự chế .15s/.22s/.24s nữa
+export const TRANSITION = 'all .2s cubic-bezier(.22,.61,.36,1)'
+
 // ── BORDER RADIUS ───────────────────────────────────────────────────────────────
 export const RADIUS = { sm: 8, md: 12, lg: 16, xl: 24, full: 9999 }
 

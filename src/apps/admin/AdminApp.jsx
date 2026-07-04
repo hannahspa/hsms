@@ -11,7 +11,6 @@ const AdminKhoHangPage = lazy(() => import('./kho-hang/AdminKhoHangPage'))
 const AdminCRMPage = lazy(() => import('./crm/AdminCRMPage'))
 const MarketingModulePage = lazy(() => import('./marketing/MarketingModulePage'))
 const AdminDashboardPage = lazy(() => import('./dashboard/AdminDashboardPage'))
-const AdminLichSuNopTienMat = lazy(() => import('./bao-cao/AdminLichSuNopTienMat'))
 const AdminTheLieuTrinhPage = lazy(() => import('./the-lieu-trinh/AdminTheLieuTrinhPage'))
 const AdminBaoCaoTheLieuTrinh = lazy(() => import('./the-lieu-trinh/AdminBaoCaoTheLieuTrinh'))
 const AdminDichVuPage = lazy(() => import('./dich-vu/AdminDichVuPage'))
@@ -80,7 +79,6 @@ const MODULES = [
   { icon: '📣', label: 'Marketing',       href: '/admin/marketing',       badge: null,    group: 'nb',  color: '#e67e22', desc: 'Chiến dịch · Phân tích kênh' },
   { icon: '🌐', label: 'Nội Dung Web',    href: '/admin/trang-chu',       badge: null,    group: 'nb',  color: '#1a5276', desc: 'Hero · FAQ · Đánh giá · Liên hệ' },
   { icon: '📱', label: 'Checkin NV',      href: '/checkin',               badge: null,    group: 'nb',  color: '#6c3483', desc: 'Xem màn hình checkin NV' },
-  { icon: '🏦', label: 'Lịch Sử Nộp TM', href: '/admin/lich-su-nop-tien-mat', badge: null, group: 'nb', color: '#1a5276', desc: 'Theo dõi nộp tiền mặt MB Bank' },
 ]
 
 // ── Main AdminApp ──────────────────────────────────────────────────────────────
@@ -88,6 +86,13 @@ export default function AdminApp() {
   const path = window.location.pathname
   const { user, logout } = useAuth()
   const stats = useStats()
+
+  // T2 (05/07): /admin vào thẳng Dashboard — lưới module là di sản thời chưa có
+  // sidebar (3 màn tổng quan chồng nhau). Trang cũ vẫn xem được ở /admin/home.
+  if (path === '/admin' || path === '/admin/') {
+    window.location.replace('/admin/dashboard')
+    return null
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -106,7 +111,6 @@ export default function AdminApp() {
   // 03/07: đã port đủ 5 cụm vận hành (chiến dịch/lead/đặt hẹn/nội dung/duyệt AI) → xóa bản cũ + route /ban-cu
   if (path.startsWith('/admin/marketing'))  return <AdminRoute><MarketingModulePage /></AdminRoute>
   if (path.startsWith('/admin/dashboard'))  return <AdminRoute><AdminDashboardPage /></AdminRoute>
-  if (path.startsWith('/admin/lich-su-nop-tien-mat')) return <AdminRoute><AdminLichSuNopTienMat /></AdminRoute>
   if (path.startsWith('/admin/the-lieu-trinh/bao-cao')) return <AdminRoute><AdminBaoCaoTheLieuTrinh /></AdminRoute>
   if (path.startsWith('/admin/the-lieu-trinh'))         return <AdminRoute><AdminTheLieuTrinhPage /></AdminRoute>
   if (path.startsWith('/admin/dich-vu'))             return <AdminRoute><AdminDichVuPage /></AdminRoute>
