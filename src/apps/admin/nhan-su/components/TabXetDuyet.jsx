@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
+import Modal from '../../../../components/ui/Modal'
 import { LUX } from '../../../../constants/lux'
 import { getNowVN } from '../../../../lib/utils'
 
@@ -536,19 +537,12 @@ export default function TabXetDuyet({ onUpdate }) {
 
       {/* ── Reject Modal ── */}
       {rejectModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={closeRejectModal}>
-          <div style={{ background: LUX.surface, borderRadius: LUX.radiusLg, width: 480, padding: '28px 28px 24px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 700, color: LUX.ink, marginBottom: 4 }}>Lý do từ chối</div>
-            <div style={{ fontFamily: LUX.fontSans, fontSize: 12, color: LUX.ink3, marginBottom: 16 }}>Nhân viên sẽ thấy lý do này</div>
-            <textarea
-              value={rejectLyDo} onChange={e => setRejectLyDo(e.target.value)} rows={3} autoFocus
-              style={{ width: '100%', padding: '12px', borderRadius: 10, border: `1px solid ${LUX.line}`, fontSize: 13, outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: LUX.fontSans, marginBottom: 16 }}
-            />
-            <div style={{ display: 'flex', gap: 10 }}>
+        <Modal open onClose={closeRejectModal} size="sm" icon="✕"
+          title="Lý do từ chối" subtitle="Nhân viên sẽ thấy lý do này"
+          footer={
+            <>
               <button onClick={closeRejectModal}
-                style={{ flex: 1, padding: 12, borderRadius: LUX.radius, background: LUX.bg, border: `1px solid ${LUX.line}`, color: LUX.ink2, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                style={{ padding: '10px 18px', borderRadius: LUX.radius, background: LUX.bg, border: `1px solid ${LUX.line}`, color: LUX.ink2, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans }}>
                 Hủy
               </button>
               <button onClick={() => {
@@ -558,41 +552,40 @@ export default function TabXetDuyet({ onUpdate }) {
                 else executeRejectLe(rejectModal.id, lyDo)
                 closeRejectModal()
               }}
-                style={{ flex: 1, padding: 12, borderRadius: LUX.radius, background: '#C0392B', border: 'none', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                style={{ padding: '10px 18px', borderRadius: LUX.radius, background: '#C0392B', border: 'none', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans }}>
                 Xác Nhận Từ Chối
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }>
+          <textarea
+            value={rejectLyDo} onChange={e => setRejectLyDo(e.target.value)} rows={3} autoFocus
+            style={{ width: '100%', padding: '12px', borderRadius: 10, border: `1px solid ${LUX.line}`, fontSize: 13, outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: LUX.fontSans }}
+          />
+        </Modal>
       )}
 
       {/* ── Xóa OFF Confirm Modal ── */}
       {deleteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setDeleteConfirm(null)}>
-          <div style={{ background: LUX.surface, borderRadius: LUX.radiusLg, width: 420, padding: '28px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 36, marginBottom: 12, textAlign: 'center' }}>🗑️</div>
-            <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 700, color: LUX.espresso, textAlign: 'center', marginBottom: 8 }}>
-              Xóa Đăng Ký OFF
-            </div>
-            <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3, textAlign: 'center', marginBottom: 18, lineHeight: 1.6 }}>
-              Xóa đăng ký OFF ngày <strong style={{ color: LUX.espresso }}>{fmtDate(deleteConfirm.ngay_off)}</strong> của{' '}
-              <strong style={{ color: LUX.espresso }}>{nvMap[deleteConfirm.nhan_vien_id]?.ten || 'Không rõ'}</strong>?<br/>
-              <span style={{ color: '#C0392B', fontSize: 12 }}>Hành động này không thể hoàn tác.</span>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
+        <Modal open onClose={() => setDeleteConfirm(null)} size="sm" icon="🗑️"
+          title="Xóa Đăng Ký OFF"
+          footer={
+            <>
               <button onClick={() => setDeleteConfirm(null)}
-                style={{ flex: 1, padding: 12, borderRadius: LUX.radius, background: LUX.bg, border: `1px solid ${LUX.line}`, color: LUX.ink2, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                style={{ padding: '10px 18px', borderRadius: LUX.radius, background: LUX.bg, border: `1px solid ${LUX.line}`, color: LUX.ink2, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans }}>
                 Hủy
               </button>
               <button onClick={() => handleDeleteOff(deleteConfirm)}
-                style={{ flex: 1, padding: 12, borderRadius: LUX.radius, background: '#C0392B', border: 'none', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                style={{ padding: '10px 18px', borderRadius: LUX.radius, background: '#C0392B', border: 'none', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: LUX.fontSans }}>
                 Xóa Ngay
               </button>
-            </div>
+            </>
+          }>
+          <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3, lineHeight: 1.6 }}>
+            Xóa đăng ký OFF ngày <strong style={{ color: LUX.espresso }}>{fmtDate(deleteConfirm.ngay_off)}</strong> của{' '}
+            <strong style={{ color: LUX.espresso }}>{nvMap[deleteConfirm.nhan_vien_id]?.ten || 'Không rõ'}</strong>?<br/>
+            <span style={{ color: '#C0392B', fontSize: 12 }}>Hành động này không thể hoàn tác.</span>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

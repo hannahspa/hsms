@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../../lib/supabase'
+import Modal from '../../../../components/ui/Modal'
 import { LUX } from '../../../../constants/lux'
 import { getNowVN } from '../../../../lib/utils'
 
@@ -458,12 +459,19 @@ export default function TabQuyNgayLe() {
           MODAL — Tích Lũy Ngày Lễ
       ════════════════════════════════════════════ */}
       {modalLeNgay && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: 460, maxWidth: '95vw', boxShadow: LUX.shadowLg }}>
-            <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, color: LUX.espresso, marginBottom: 4 }}>Tích Lũy Ngày Lễ</div>
-            <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3, marginBottom: 20 }}>
-              {modalLeNgay.ten} — {fmtDate(modalLeNgay.date)}
-            </div>
+        <Modal open onClose={() => setModalLeNgay(null)} size="sm" icon="🎉"
+          title="Tích Lũy Ngày Lễ"
+          subtitle={`${modalLeNgay.ten} — ${fmtDate(modalLeNgay.date)}`}
+          footer={
+            <>
+              <button onClick={() => setModalLeNgay(null)} style={{ padding: '8px 18px', borderRadius: 8, border: `1px solid ${LUX.line}`, background: '#fff', fontFamily: LUX.fontSans, fontSize: 13, cursor: 'pointer', color: LUX.ink2 }}>Huỷ</button>
+              <button onClick={handleSaveLe} disabled={saving || selNvIds.length === 0}
+                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#fff', fontFamily: LUX.fontSans, fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                {saving ? 'Đang lưu...' : `Tích Lũy ${selNvIds.length} NV`}
+              </button>
+            </>
+          }>
+          <div>
 
             {/* Danh sách NV đi làm */}
             <div style={{ marginBottom: 16 }}>
@@ -504,15 +512,8 @@ export default function TabQuyNgayLe() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setModalLeNgay(null)} style={{ padding: '8px 18px', borderRadius: 8, border: `1px solid ${LUX.line}`, background: '#fff', fontFamily: LUX.fontSans, fontSize: 13, cursor: 'pointer', color: LUX.ink2 }}>Huỷ</button>
-              <button onClick={handleSaveLe} disabled={saving || selNvIds.length === 0}
-                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#C9A96E,#A0714F)', color: '#fff', fontFamily: LUX.fontSans, fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Đang lưu...' : `Tích Lũy ${selNvIds.length} NV`}
-              </button>
-            </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ════════════════════════════════════════════
@@ -522,10 +523,19 @@ export default function TabQuyNgayLe() {
         const q = quyMap[modalSuDung.id]
         const conLai = q ? Math.max(0, (q.so_ngay_tich || 0) - (q.so_ngay_da_dung || 0)) : 0
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: 440, maxWidth: '95vw', boxShadow: LUX.shadowLg }}>
-              <div style={{ fontFamily: LUX.fontSerif, fontSize: 18, fontWeight: 600, color: '#1a5276', marginBottom: 4 }}>Sử Dụng Quỹ Ngày Lễ</div>
-              <div style={{ fontFamily: LUX.fontSans, fontSize: 13, color: LUX.ink3, marginBottom: 6 }}>{modalSuDung.ho_ten}</div>
+          <Modal open onClose={() => setModalSuDung(null)} size="sm" icon="📅"
+            title="Sử Dụng Quỹ Ngày Lễ"
+            subtitle={modalSuDung.ho_ten}
+            footer={
+              <>
+                <button onClick={() => setModalSuDung(null)} style={{ padding: '8px 18px', borderRadius: 8, border: `1px solid ${LUX.line}`, background: '#fff', fontFamily: LUX.fontSans, fontSize: 13, cursor: 'pointer', color: LUX.ink2 }}>Huỷ</button>
+                <button onClick={handleSaveSuDung} disabled={saving}
+                  style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#1A5276,#154360)', color: '#fff', fontFamily: LUX.fontSans, fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                  {saving ? 'Đang lưu...' : 'Xác Nhận Sử Dụng'}
+                </button>
+              </>
+            }>
+              <div>
               <div style={{ background: '#eaf2fc', borderRadius: 8, padding: '8px 12px', marginBottom: 18, fontFamily: LUX.fontSans, fontSize: 12.5, color: '#1a5276' }}>
                 Quỹ còn lại: <strong>{conLai} ngày</strong> — dùng để bù vào ngày OFF vượt, NV được tính lương ngày đó.
               </div>
@@ -552,15 +562,8 @@ export default function TabQuyNgayLe() {
                 <div style={{ fontFamily: LUX.fontSans, fontSize: 11, color: LUX.ink3, marginTop: 5 }}>Nhập các ngày cách nhau dấu phẩy (để ghi lịch sử rõ ràng).</div>
               </div>
 
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button onClick={() => setModalSuDung(null)} style={{ padding: '8px 18px', borderRadius: 8, border: `1px solid ${LUX.line}`, background: '#fff', fontFamily: LUX.fontSans, fontSize: 13, cursor: 'pointer', color: LUX.ink2 }}>Huỷ</button>
-                <button onClick={handleSaveSuDung} disabled={saving}
-                  style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#1A5276,#154360)', color: '#fff', fontFamily: LUX.fontSans, fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                  {saving ? 'Đang lưu...' : 'Xác Nhận Sử Dụng'}
-                </button>
               </div>
-            </div>
-          </div>
+          </Modal>
         )
       })()}
 
