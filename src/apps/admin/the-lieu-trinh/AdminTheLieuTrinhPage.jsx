@@ -8,6 +8,7 @@ import { ComboStatus, StatusBadge } from './components/StatusBadges'
 import CardReviewModal from './components/CardReviewModal'
 import CardEditModal from './components/CardEditModal'
 import ComboEditModal from './components/ComboEditModal'
+import CardHistory from './components/CardHistory'
 import { theLieuTrinhService } from '../../../services/theLieuTrinhService'
 import {
   displayConLai,
@@ -569,6 +570,10 @@ export default function AdminTheLieuTrinhPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Lịch sử đầy đủ như MySpa: lượt dùng buổi + tour KTV, thanh toán
+                  & công nợ, nhân viên bán & hoa hồng (anh Nam yêu cầu 04/07) */}
+              <CardHistory card={selected} />
 
               {needsReview(selected) && (
                 <div style={{ border: '1px solid rgba(230,126,34,.25)', background: 'rgba(230,126,34,.06)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
