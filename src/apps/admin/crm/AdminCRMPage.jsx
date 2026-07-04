@@ -5,6 +5,8 @@ import { posService } from '../../../services/posService'
 import I from '../../../components/shared/Icons'
 import { useAuth } from '../../../context/AuthContext'
 import CardActionsModals from './CardActionsModals'
+import Modal from '../../../components/ui/Modal'
+import CardHistory from '../the-lieu-trinh/components/CardHistory'
 
 const SEG = {
   vip: { l: 'VIP', cls: 'vip' },
@@ -240,14 +242,16 @@ function TreatmentCard({ card, ended = false, statusLabel = null, isAdmin = fals
         <span style={{ color: card.bi_dong ? '#C0392B' : (ended ? 'var(--ink3)' : 'var(--champagne)') }}>{statusLabel || (ended ? 'Đã kết thúc' : 'Đang sử dụng')}</span>
       </div>
 
-      {isAdmin && !isSettled && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+      {/* Lịch sử dùng chung component với trang Thẻ Liệu Trình (T5 — 1 nguồn hiển thị) */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+        <CardActBtn onClick={() => onAction('history', card)}>📜 Lịch sử buổi & thanh toán</CardActBtn>
+        {isAdmin && !isSettled && (<>
           <CardActBtn onClick={() => onAction('toggleFreeze', card)}>{card.bi_dong ? '🔓 Mở' : '🔒 Đóng'}</CardActBtn>
           {remain > 0 && !card.bi_dong && <CardActBtn onClick={() => onAction('convert', card)}>🔄 Chuyển đổi</CardActBtn>}
           {remain > 0 && !card.bi_dong && <CardActBtn onClick={() => onAction('refund', card)}>💵 Hoàn tiền</CardActBtn>}
           <CardActBtn danger onClick={() => onAction('delete', card)}>🗑️ Xoá</CardActBtn>
-        </div>
-      )}
+        </>)}
+      </div>
     </div>
   )
 }
@@ -361,7 +365,15 @@ function AdminCRMDetailPage({ customerId }) {
 
   return (
     <div>
-      {isAdmin && (
+      {/* Lịch sử thẻ — dùng chung CardHistory với trang Thẻ Liệu Trình */}
+      {cardAction?.type === 'history' && (
+        <Modal open onClose={() => setCardAction(null)} size="xl" icon="📜"
+          title={`Lịch sử thẻ ${cardAction.card.ma_the || ''}`}
+          subtitle={`${cardAction.card.ten_dich_vu || ''} · ${customer?.ho_ten || ''}`}>
+          <CardHistory card={cardAction.card} />
+        </Modal>
+      )}
+      {isAdmin && cardAction?.type !== 'history' && (
         <CardActionsModals
           action={cardAction}
           onClose={() => setCardAction(null)}
