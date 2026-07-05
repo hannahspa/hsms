@@ -129,7 +129,8 @@ export default function CheckinLuong({ nhanVien, onBack }) {
 
   const handleRequestDungNgayLe = async () => {
     if (requesting || requestSent || !data) return
-    const ovCanBu = (data.calc.soOffPhepVuot + data.calc.soOffOV) - data.calc.soNgayLeDungThangNay
+    // ovCanBu = TỔNG TRỌNG SỐ ngày OFF vượt chưa bù (T7/CN tính 2) → đúng số quỹ cần
+    const ovCanBu = (data.calc.ngayVuotChuaBu || []).reduce((s, x) => s + (x.trong_so || 0), 0)
     const conLai = data.calc.soNgayLeTichLuy - data.calc.soNgayLeDaDung
     const soNgayMuonDung = Math.min(ovCanBu, conLai)
 
@@ -298,13 +299,16 @@ export default function CheckinLuong({ nhanVien, onBack }) {
 
                 {/* Xin dùng quỹ ngày lễ bù OFF vượt → tạo yêu cầu, admin duyệt */}
                 {(() => {
-                  const ovCanBu = (c.soOffPhepVuot + c.soOffOV) - c.soNgayLeDungThangNay
+                  // ovCanBu = TỔNG TRỌNG SỐ ngày OFF vượt chưa bù (T7/CN = 2 quỹ/ngày)
+                  const ovCanBu = (c.ngayVuotChuaBu || []).reduce((s, x) => s + (x.trong_so || 0), 0)
+                  const coT7CN = (c.ngayVuotChuaBu || []).some(x => (x.trong_so || 0) >= 2)
                   const conLai = c.soNgayLeTichLuy - c.soNgayLeDaDung
                   const soNgayMuonDung = Math.min(ovCanBu, conLai)
                   if (soNgayMuonDung <= 0) return null
                   return (
                     <div style={{ marginTop: 10, padding: '12px 14px', borderRadius: 10, background: '#fff', border: '1px dashed #C9A96E', fontFamily: LUX.fontSans, fontSize: 12, color: '#7a5520', lineHeight: 1.45 }}>
-                      💬 Bạn còn <b>{conLai}</b> ngày quỹ lễ & có <b>{ovCanBu}</b> ngày OFF vượt tháng này.
+                      💬 Bạn còn <b>{conLai}</b> ngày quỹ lễ & cần <b>{ovCanBu}</b> ngày quỹ để bù OFF vượt tháng này.
+                      {coT7CN && <span style={{ display: 'block', marginTop: 4, color: '#a83c28', fontWeight: 600 }}>⚠️ Có ngày OFF T7/CN — mỗi ngày tốn 2 ngày quỹ để bù.</span>}
                       Gửi yêu cầu dùng <b>{soNgayMuonDung}</b> ngày quỹ để bù — quản lý sẽ duyệt.
                       {requestSent ? (
                         <div style={{ marginTop: 10, padding: '9px 12px', borderRadius: 9, background: '#DCFCE7', color: '#166534', fontWeight: 600, textAlign: 'center' }}>

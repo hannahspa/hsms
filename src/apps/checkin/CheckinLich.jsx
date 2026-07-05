@@ -28,6 +28,7 @@ export default function CheckinLich({ nhanVien, onBack }) {
   const [nam, setNam] = useState(now.getFullYear())
   const [chamCongData, setChamCongData] = useState([])
   const [offData, setOffData] = useState([])
+  const [quyData, setQuyData] = useState(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => { fetchData() }, [thang, nam])
@@ -35,12 +36,29 @@ export default function CheckinLich({ nhanVien, onBack }) {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const d = await checkinApi.lich(thang, nam)
+      const [d, l] = await Promise.all([
+        checkinApi.lich(thang, nam),
+        checkinApi.luong(thang, nam),   // để lấy quỹ ngày lễ → tô ngày Bù Lễ
+      ])
       setChamCongData(d?.cham_cong || [])
       setOffData((d?.dang_ky_off || []).filter(o => ['cho_duyet', 'duoc_duyet'].includes(o.trang_thai)))
+      setQuyData(l?.quy_ngay_off || null)
     } catch { /* phiên hết hạn → CheckinApp xử lý khi thao tác lại */ }
     setLoading(false)
   }
+
+  // Ngày được BÙ bằng quỹ ngày lễ (tính chuẩn theo trọng số — T7/CN tốn 2 quỹ)
+  const buDates = useMemo(() => {
+    const nowRef = getNowVN()
+    const isCurrent = thang === nowRef.getMonth() + 1 && nam === nowRef.getFullYear()
+    const todayRef = isCurrent ? nowRef.getDate() : null
+    const calc = tinhLuong(nhanVien, chamCongData, offData, null, nam, thang, {
+      so_da_tich_luy: quyData?.so_ngay_tich || 0,
+      so_da_dung: quyData?.so_ngay_da_dung || 0,
+      lich_su_dung: quyData?.lich_su_dung || [],
+    }, todayRef)
+    return new Set(calc.ngayLeBuDates || [])
+  }, [chamCongData, offData, quyData, nhanVien, nam, thang])
 
   const daysInMonth = new Date(nam, thang, 0).getDate()
   const firstDayOfWeek = new Date(nam, thang - 1, 1).getDay()
@@ -67,7 +85,11 @@ export default function CheckinLich({ nhanVien, onBack }) {
     const nowRef = getNowVN()
     const isCurrent = thang === nowRef.getMonth() + 1 && nam === nowRef.getFullYear()
     const todayRef = isCurrent ? nowRef.getDate() : null
-    const calc = tinhLuong(nhanVien, chamCongData, offData, null, nam, thang, null, todayRef)
+    const calc = tinhLuong(nhanVien, chamCongData, offData, null, nam, thang, {
+      so_da_tich_luy: quyData?.so_ngay_tich || 0,
+      so_da_dung: quyData?.so_ngay_da_dung || 0,
+      lich_su_dung: quyData?.lich_su_dung || [],
+    }, todayRef)
     return {
       ngayCong: calc.ngayCong,
       tangCa: calc.tongTangCa,
@@ -77,7 +99,7 @@ export default function CheckinLich({ nhanVien, onBack }) {
       viPham: calc.soPhamT7X,
       soNgayDiLam: calc.soNgayDiLam,
     }
-  }, [chamCongData, offData, nhanVien, nam, thang])
+  }, [chamCongData, offData, quyData, nhanVien, nam, thang])
 
   const getDayStyle = (day) => {
     const cc = chamCongMap[day] || offMap[day]
@@ -89,6 +111,13 @@ export default function CheckinLich({ nhanVien, onBack }) {
     if (isFuture) return {
       bg: 'transparent', textColor: LUX.ink4, numColor: LUX.ink4,
       label: '', subLabel: '', border: `1px solid ${LUX.line}`, isMuted: true,
+    }
+
+    // Ngày OFF vượt được BÙ bằng quỹ ngày lễ → phục hồi "có công" + icon 🎁
+    const dateStr = `${nam}-${String(thang).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    if (buDates.has(dateStr)) return {
+      bg: 'rgba(201,169,110,0.20)', textColor: '#8a6a35', numColor: '#8a6a35',
+      label: '🎁 Bù Lễ', subLabel: 'Có công', border: '2px solid #c9a96e', isMuted: false,
     }
 
     if (!cc) return {
@@ -284,6 +313,7 @@ export default function CheckinLich({ nhanVien, onBack }) {
               { swatch: 'rgba(122,138,106,0.25)', border: '1px solid rgba(122,138,106,0.4)', text: 'Đúng giờ 100%' },
               { swatch: 'rgba(212,146,74,0.25)', border: '1px solid rgba(212,146,74,0.4)', text: 'Trễ / về sớm' },
               { swatch: 'rgba(184,122,106,0.25)', border: '1px solid rgba(184,122,106,0.4)', text: 'OFF có lương' },
+              { swatch: 'rgba(201,169,110,0.20)', border: '2px solid #c9a96e', text: '🎁 Bù Ngày Lễ' },
               { swatch: 'rgba(212,165,116,0.15)', border: `2px solid ${LUX.gold}`, text: 'Hôm nay' },
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: LUX.surface, padding: '8px 10px', borderRadius: 10, fontSize: 12, color: LUX.ink2 }}>

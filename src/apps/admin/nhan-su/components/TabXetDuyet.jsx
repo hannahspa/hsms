@@ -48,6 +48,7 @@ export default function TabXetDuyet({ onUpdate }) {
   const [dungLeList,  setDungLeList]  = useState([])
   const [suaXoaList,  setSuaXoaList]  = useState([])
   const [suaDonList,  setSuaDonList]  = useState([])   // yêu cầu sửa ĐƠN HÀNG (Lễ tân đề xuất)
+  const [tangCaList,  setTangCaList]  = useState([])   // yêu cầu duyệt TĂNG CA (NV check-out muộn)
   const [nvMap,       setNvMap]       = useState({})
   const [loading,     setLoading]     = useState(true)
 
@@ -84,16 +85,18 @@ export default function TabXetDuyet({ onUpdate }) {
       })
       setNvMap(map)
 
-      const [offRes, leRes, sxRes, donRes] = await Promise.all([
+      const [offRes, leRes, sxRes, donRes, tcRes] = await Promise.all([
         supabase.from('dang_ky_off').select('*').eq('trang_thai', 'cho_duyet').order('ngay_off'),
         supabase.from('yeu_cau_chinh_sua').select('*').eq('loai_yeu_cau', 'dung_ngay_le').eq('trang_thai', 'cho_duyet').order('created_at', { ascending: false }),
         supabase.from('yeu_cau_chinh_sua').select('*').in('loai_yeu_cau', ['sua', 'xoa']).eq('trang_thai', 'cho_duyet').neq('loai_bang', 'don_hang').order('created_at', { ascending: false }),
         supabase.from('yeu_cau_chinh_sua').select('*').eq('loai_yeu_cau', 'sua').eq('loai_bang', 'don_hang').eq('trang_thai', 'cho_duyet').order('created_at', { ascending: false }),
+        supabase.from('yeu_cau_chinh_sua').select('*').eq('loai_yeu_cau', 'duyet_tang_ca').eq('trang_thai', 'cho_duyet').order('created_at', { ascending: false }),
       ])
       setDanhSachCho(offRes.data || [])
       setDungLeList(leRes.data || [])
       setSuaXoaList(sxRes.data || [])
       setSuaDonList(donRes.data || [])
+      setTangCaList(tcRes.data || [])
     } catch (e) { console.error('TabXetDuyet:', e) }
     finally { setLoading(false) }
   }
@@ -193,6 +196,30 @@ export default function TabXetDuyet({ onUpdate }) {
     fetchData(); onUpdate?.()
   }
 
+  // ── Actions Duyệt Tăng Ca ──
+  // NV check-out muộn → RPC ghi tang_ca_gio=0 tạm + tạo YC. Admin duyệt → ghi số
+  // giờ thật vào cham_cong (lịch hiện + lương cộng tiền). Từ chối → giữ 0.
+  const handleDuyetTangCa = async (yc, duyet) => {
+    const gio = Number(yc.du_lieu_moi?.tang_ca_gio) || 0
+    if (duyet) {
+      if (yc.ban_ghi_id) await supabase.from('cham_cong').update({ tang_ca_gio: gio, trang_thai_tang_ca: 'duyet' }).eq('id', yc.ban_ghi_id)
+      await supabase.from('yeu_cau_chinh_sua').update({ trang_thai: 'da_duyet', nguoi_duyet: 'Admin' }).eq('id', yc.id)
+    } else {
+      if (yc.ban_ghi_id) await supabase.from('cham_cong').update({ tang_ca_gio: 0, trang_thai_tang_ca: 'khong_co' }).eq('id', yc.ban_ghi_id)
+      await supabase.from('yeu_cau_chinh_sua').update({ trang_thai: 'tu_choi', nguoi_duyet: 'Admin' }).eq('id', yc.id)
+    }
+    fetchData(); onUpdate?.()
+  }
+
+  const handleDuyetTatCaTangCa = async () => {
+    for (const yc of tangCaList) {
+      const gio = Number(yc.du_lieu_moi?.tang_ca_gio) || 0
+      if (yc.ban_ghi_id) await supabase.from('cham_cong').update({ tang_ca_gio: gio, trang_thai_tang_ca: 'duyet' }).eq('id', yc.ban_ghi_id)
+      await supabase.from('yeu_cau_chinh_sua').update({ trang_thai: 'da_duyet', nguoi_duyet: 'Admin' }).eq('id', yc.id)
+    }
+    fetchData(); onUpdate?.()
+  }
+
   // ── Actions Sửa/Xóa ──
   const handleDuyetSuaXoa = async (ycId, duyet) => {
     if (!duyet) { openRejectModal('sx', ycId, 'Không đủ thông tin hoặc sai số liệu'); return }
@@ -226,7 +253,7 @@ export default function TabXetDuyet({ onUpdate }) {
     const tt = o.trang_thai; acc[tt] = (acc[tt] || 0) + 1; return acc
   }, {})
 
-  const pendingTotal = danhSachCho.length + dungLeList.length + suaXoaList.length + suaDonList.length
+  const pendingTotal = danhSachCho.length + dungLeList.length + suaXoaList.length + suaDonList.length + tangCaList.length
 
   // ─────────────────────────────────────
   return (
@@ -354,6 +381,62 @@ export default function TabXetDuyet({ onUpdate }) {
                                   Từ Chối
                                 </button>
                                 <button onClick={() => handleDuyetDungLe(yc.id, true)}
+                                  style={{ padding: '6px 14px', borderRadius: 8, background: LUX.goldGrad, color: 'white', border: 'none', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                                  Duyệt
+                                </button>
+                              </div>
+                            </TD>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ── 1b2. Duyệt Tăng Ca ── */}
+            {tangCaList.length > 0 && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontFamily: LUX.fontSans, fontSize: 12, fontWeight: 700, color: LUX.ink3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    ⏰ Duyệt Tăng Ca ({tangCaList.length})
+                  </div>
+                  <button onClick={handleDuyetTatCaTangCa}
+                    style={{ padding: '6px 14px', borderRadius: 8, background: LUX.goldGrad, color: 'white', border: 'none', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                    ✓ Duyệt Tất Cả
+                  </button>
+                </div>
+                <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        <TH>Nhân Viên</TH>
+                        <TH w={80} align="center">Số Giờ</TH>
+                        <TH w={100} align="right">Thành Tiền</TH>
+                        <TH>Chi Tiết</TH>
+                        <TH w={120} align="center">Nộp lúc</TH>
+                        <TH w={160} align="center">Hành Động</TH>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tangCaList.map((yc, i) => {
+                        const gio = Number(yc.du_lieu_moi?.tang_ca_gio) || 0
+                        const tien = Math.round(gio * 25000)
+                        return (
+                          <tr key={yc.id} style={{ borderTop: i > 0 ? `1px solid ${LUX.line}` : 'none', background: i % 2 === 0 ? 'white' : LUX.bg }}>
+                            <TD><span style={{ fontWeight: 600, color: LUX.espresso }}>{yc.nguoi_yeu_cau || '—'}</span></TD>
+                            <TD align="center"><Badge bg="#ede9f8" color="#6a4a8a" label={`${gio.toFixed(2)}h`} /></TD>
+                            <TD align="right"><span style={{ fontFamily: LUX.fontMono, color: '#2D7A4F', fontWeight: 600 }}>{tien.toLocaleString('vi-VN')}₫</span></TD>
+                            <TD><span style={{ color: LUX.ink3, fontStyle: 'italic', fontSize: 12 }}>{yc.ly_do}</span></TD>
+                            <TD align="center" muted><span style={{ fontSize: 11 }}>{fmtTime(yc.created_at)}</span></TD>
+                            <TD align="center">
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                                <button onClick={() => handleDuyetTangCa(yc, false)}
+                                  style={{ padding: '6px 14px', borderRadius: 8, background: '#fff', color: '#C0392B', border: '1px solid #C0392B40', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: LUX.fontSans }}>
+                                  Từ Chối
+                                </button>
+                                <button onClick={() => handleDuyetTangCa(yc, true)}
                                   style={{ padding: '6px 14px', borderRadius: 8, background: LUX.goldGrad, color: 'white', border: 'none', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: LUX.fontSans }}>
                                   Duyệt
                                 </button>
