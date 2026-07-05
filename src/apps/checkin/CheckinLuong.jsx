@@ -296,14 +296,33 @@ export default function CheckinLuong({ nhanVien, onBack }) {
                   </div>
                 )}
 
-                {/* Muốn dùng quỹ bù OV → nhắn quản lý (admin trừ thủ công, kiểm soát chặt) */}
+                {/* Xin dùng quỹ ngày lễ bù OFF vượt → tạo yêu cầu, admin duyệt */}
                 {(() => {
                   const ovCanBu = (c.soOffPhepVuot + c.soOffOV) - c.soNgayLeDungThangNay
                   const conLai = c.soNgayLeTichLuy - c.soNgayLeDaDung
-                  if (Math.min(ovCanBu, conLai) <= 0) return null
+                  const soNgayMuonDung = Math.min(ovCanBu, conLai)
+                  if (soNgayMuonDung <= 0) return null
                   return (
-                    <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: '#fff', border: '1px dashed #C9A96E', fontFamily: LUX.fontSans, fontSize: 12, color: '#7a5520', lineHeight: 1.45 }}>
-                      💬 Bạn còn <b>{conLai}</b> ngày quỹ lễ & có <b>{ovCanBu}</b> ngày OFF vượt tháng này. Nhắn quản lý nếu muốn dùng quỹ bù — quản lý sẽ trừ giúp bạn.
+                    <div style={{ marginTop: 10, padding: '12px 14px', borderRadius: 10, background: '#fff', border: '1px dashed #C9A96E', fontFamily: LUX.fontSans, fontSize: 12, color: '#7a5520', lineHeight: 1.45 }}>
+                      💬 Bạn còn <b>{conLai}</b> ngày quỹ lễ & có <b>{ovCanBu}</b> ngày OFF vượt tháng này.
+                      Gửi yêu cầu dùng <b>{soNgayMuonDung}</b> ngày quỹ để bù — quản lý sẽ duyệt.
+                      {requestSent ? (
+                        <div style={{ marginTop: 10, padding: '9px 12px', borderRadius: 9, background: '#DCFCE7', color: '#166534', fontWeight: 600, textAlign: 'center' }}>
+                          ✓ Đã gửi yêu cầu — chờ quản lý duyệt
+                        </div>
+                      ) : (
+                        <button
+                          onClick={handleRequestDungNgayLe}
+                          disabled={requesting}
+                          style={{
+                            marginTop: 10, width: '100%', padding: '11px 16px', borderRadius: 10, border: 'none',
+                            background: requesting ? '#d8c3a0' : 'linear-gradient(135deg,#c9a96e,#a87f4f)',
+                            color: '#fff', fontFamily: LUX.fontSans, fontSize: 13, fontWeight: 700,
+                            cursor: requesting ? 'default' : 'pointer', letterSpacing: '0.02em',
+                          }}>
+                          {requesting ? 'Đang gửi...' : `Xin dùng ${soNgayMuonDung} ngày quỹ lễ bù OFF vượt`}
+                        </button>
+                      )}
                     </div>
                   )
                 })()}
