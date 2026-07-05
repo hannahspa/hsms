@@ -891,13 +891,17 @@ function AdminCRMListPage() {
     <>
     {/* ── Modal Khách Mới ── */}
     {showNew && (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,.55)', zIndex: 1000 }}
-        onClick={() => setShowNew(false)}>
-        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'var(--surface)', padding: 28, overflowY: 'auto', boxShadow: '-6px 0 40px rgba(26,18,9,.3)', animation: 'rpSlideIn .22s ease' }}
-          onClick={e => e.stopPropagation()}>
-          <div style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>Thêm Khách Hàng</div>
-          <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 22 }}>Nhập thông tin để tạo hồ sơ mới</div>
-
+      <Modal open onClose={() => setShowNew(false)} size="md" icon="👤"
+        title="Thêm Khách Hàng" subtitle="Nhập thông tin để tạo hồ sơ mới"
+        footer={
+          <>
+            <button onClick={() => setShowNew(false)} className="btn ghost">Hủy</button>
+            <button onClick={handleCreate} disabled={saving || !newForm.ho_ten.trim() || !newForm.so_dien_thoai.trim()}
+              className="btn gold" style={{ opacity: saving ? .7 : 1 }}>
+              {saving ? 'Đang lưu...' : 'Tạo Hồ Sơ'}
+            </button>
+          </>
+        }>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 5 }}>Họ Tên *</div>
@@ -923,15 +927,7 @@ function AdminCRMListPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-            <button onClick={() => setShowNew(false)} className="btn ghost" style={{ flex: 1, justifyContent: 'center' }}>Hủy</button>
-            <button onClick={handleCreate} disabled={saving || !newForm.ho_ten.trim() || !newForm.so_dien_thoai.trim()}
-              className="btn gold" style={{ flex: 2, justifyContent: 'center', opacity: saving ? .7 : 1 }}>
-              {saving ? 'Đang lưu...' : 'Tạo Hồ Sơ'}
-            </button>
-          </div>
-        </div>
-      </div>
+      </Modal>
     )}
 
     <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>

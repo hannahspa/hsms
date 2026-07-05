@@ -4,6 +4,8 @@ import { formatCurrency } from '../../../lib/utils'
 import { getMyspaCommissionRule } from '../../../lib/serviceCommission'
 import I from '../../../components/shared/Icons'
 import { notify } from '../../../components/ui/notify'
+import RightPanel from '../../../components/shared/RightPanel'
+import Modal from '../../../components/ui/Modal'
 
 const PAGE_SIZE = 20
 
@@ -111,35 +113,17 @@ function ServiceModal({ service, categories, onClose, onSaved }) {
   }
 
   return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(26,22,18,.46)', zIndex: 940 }} />
-      <div style={{
-        position: 'fixed',
-        zIndex: 941,
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: 'calc(100vw - var(--side-w, 248px))',
-        maxWidth: '100vw',
-        background: 'var(--surface)',
-        borderLeft: '1px solid var(--bord)',
-        boxShadow: '-6px 0 40px rgba(0,0,0,.32)',
-        animation: 'rpSlideIn .22s ease',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', gap: 14 }}>
-          <div>
-            <div style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 900, color: 'var(--ink)', whiteSpace: 'nowrap' }}>
-              {isNew ? 'Thêm dịch vụ' : 'Sửa dịch vụ'}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 3 }}>Đồng bộ danh mục dịch vụ cho POS, CRM và thẻ liệu trình</div>
-          </div>
-          <button className="icon-btn" onClick={onClose}>×</button>
+    <RightPanel open onClose={onClose} zIndex={941}
+      title={isNew ? 'Thêm dịch vụ' : 'Sửa dịch vụ'}
+      subtitle="Đồng bộ danh mục dịch vụ cho POS, CRM và thẻ liệu trình"
+      bodyStyle={{ background: '#fff' }}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button className="btn ghost" onClick={onClose}>Đóng</button>
+          <button className="btn gold" onClick={save} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu dịch vụ'}</button>
         </div>
-
-        <div style={{ padding: 20, overflowY: 'auto' }}>
+      }>
+        <div>
           {err && <div style={{ marginBottom: 14, color: 'var(--danger)', fontWeight: 800, fontSize: 13 }}>{err}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 12, marginBottom: 14 }}>
             <label style={{ display: 'grid', gap: 6 }}>
@@ -212,13 +196,7 @@ function ServiceModal({ service, categories, onClose, onSaved }) {
             </label>
           </div>
         </div>
-
-        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--line)', background: 'var(--bg)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button className="btn ghost" onClick={onClose}>Đóng</button>
-          <button className="btn gold" onClick={save} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu dịch vụ'}</button>
-        </div>
-      </div>
-    </>
+    </RightPanel>
   )
 }
 
@@ -473,17 +451,15 @@ export default function AdminDichVuPage() {
       )}
 
       {renaming && (
-        <>
-          <div onClick={() => setRenaming(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(26,22,18,.46)', zIndex: 950 }} />
-          <div style={{ position: 'fixed', zIndex: 951, top: 120, left: '50%', transform: 'translateX(-50%)', width: 'min(460px, 92vw)', background: 'var(--surface)', border: '1px solid var(--bord)', borderRadius: 12, boxShadow: '0 24px 80px rgba(0,0,0,.28)', padding: 20 }}>
-            <div style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 900, color: 'var(--ink)', marginBottom: 14 }}>Đổi tên danh mục</div>
-            <input value={newName} onChange={e => setNewName(e.target.value)} style={{ ...inputStyle, width: '100%', marginBottom: 14 }} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <Modal open onClose={() => setRenaming(null)} size="sm" title="Đổi tên danh mục"
+          footer={
+            <>
               <button className="btn ghost" onClick={() => setRenaming(null)}>Đóng</button>
               <button className="btn gold" onClick={renameCategory}>Lưu</button>
-            </div>
-          </div>
-        </>
+            </>
+          }>
+          <input value={newName} onChange={e => setNewName(e.target.value)} style={{ ...inputStyle, width: '100%' }} autoFocus />
+        </Modal>
       )}
     </div>
   )

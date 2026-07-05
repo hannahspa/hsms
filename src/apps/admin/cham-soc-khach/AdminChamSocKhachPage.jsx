@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { formatCurrency, todayISO } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
+import RightPanel from '../../../components/shared/RightPanel'
 import I from '../../../components/shared/Icons'
 import { useAuth } from '../../../context/AuthContext'
 
@@ -346,21 +347,17 @@ function VisitForm({ open, initialDate, initialData, currentUser, onClose, onSav
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(42,32,26,.48)', zIndex: 500 }}>
-      <div style={{
-        position: 'absolute', right: 0, top: 0, bottom: 0, width: 620,
-        maxWidth: '100vw', background: 'var(--surface2)', boxShadow: '-8px 0 34px rgba(42,32,26,.18)',
-        overflow: 'auto',
-      }}>
-        <div style={{ padding: 18, borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 800, color: 'var(--ink)' }}>Nhật ký khách đến</div>
-            <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 3 }}>Thay form báo cáo rời rạc, dùng làm dữ liệu tư vấn/upsell.</div>
-          </div>
-          <button className="btn ghost" onClick={onClose}>Đóng</button>
+    <RightPanel open onClose={onClose} zIndex={500}
+      title="Nhật ký khách đến"
+      subtitle="Thay form báo cáo rời rạc, dùng làm dữ liệu tư vấn/upsell."
+      bodyStyle={{ background: 'var(--surface2)' }}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button className="btn ghost" onClick={onClose}>Hủy</button>
+          <button className="btn gold" onClick={save} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu báo cáo'}</button>
         </div>
-
-        <div style={{ padding: 18, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      }>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {isFanpageSource && (
             <div style={S.formContext}>
               <div>
@@ -422,16 +419,10 @@ function VisitForm({ open, initialDate, initialData, currentUser, onClose, onSav
           </label>
 
           {err && <div style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontWeight: 800, fontSize: 13 }}>{err}</div>}
-
-          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <button className="btn ghost" onClick={onClose}>Hủy</button>
-            <button className="btn gold" onClick={save} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu báo cáo'}</button>
-          </div>
         </div>
 
         <DatePicker open={showDate} selectedDate={form.ngay} onClose={() => setShowDate(false)} onConfirm={(d) => { set('ngay', d); setShowDate(false) }} />
-      </div>
-    </div>
+    </RightPanel>
   )
 }
 

@@ -6,6 +6,7 @@ import { COLORS } from '../../../constants/colors'
 import { confirmDialog } from '../../../components/ui/notify'
 import { todayISO, getNowVN } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
+import Modal from '../../../components/ui/Modal'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const DON_VI_LIST = ['cái', 'chai', 'lọ', 'hộp', 'gói', 'thùng', 'túi', 'cuộn',
@@ -1733,14 +1734,16 @@ function SuaGiaoDichModal({ gd, sp, onSave, onClose }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.55)', zIndex: 300,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px,94vw)', background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-        <div style={{ background: COLORS.grad, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ color: 'white', fontWeight: 800, fontSize: '15px' }}>✏️ Sửa Giao Dịch Kho</div>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer' }}>✕</button>
+    <Modal open onClose={onClose} size="sm" icon="✏️" title="Sửa Giao Dịch Kho"
+      footer={
+        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: 12, background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', color: COLORS.textSub }}>Hủy</button>
+          <button onClick={submit} disabled={saving} style={{ flex: 2, padding: 12, background: COLORS.grad, color: 'white', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Đang lưu...' : '💾 Lưu thay đổi'}
+          </button>
         </div>
-        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      }>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>
             {loaiGD.icon} {sp?.ten || '—'} <span style={{ color: COLORS.textMute, fontWeight: 500 }}>· {loaiGD.label}</span>
           </div>
@@ -1774,15 +1777,8 @@ function SuaGiaoDichModal({ gd, sp, onSave, onClose }) {
           <div style={{ fontSize: 11.5, color: '#9C6A12', background: '#FFF6E9', border: '1px solid #F0C674', borderRadius: 8, padding: '8px 10px', lineHeight: 1.4 }}>
             ⚠️ Đổi số lượng sẽ tự điều chỉnh <b>tồn kho</b>{isNhap ? ' và số tiền phiếu chi (nếu có)' : ''} theo chênh lệch.
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={onClose} style={{ flex: 1, padding: 12, background: 'white', border: `1px solid ${COLORS.border}`, borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', color: COLORS.textSub }}>Hủy</button>
-            <button onClick={submit} disabled={saving} style={{ flex: 2, padding: 12, background: COLORS.grad, color: 'white', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
-              {saving ? 'Đang lưu...' : '💾 Lưu thay đổi'}
-            </button>
-          </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

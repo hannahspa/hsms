@@ -4,6 +4,7 @@ import { COLORS } from '../../../constants/colors'
 import { confirmDialog } from '../../../components/ui/notify'
 import { kmBadge, todayISO } from '../../../lib/utils'
 import DatePicker from '../../../components/shared/DatePicker'
+import RightPanel from '../../../components/shared/RightPanel'
 import ROITab from './ROITab'
 
 const STATUS_LABEL = { active: 'Đang chạy', draft: 'Nháp', expired: 'Hết hạn' }
@@ -140,25 +141,27 @@ function KMForm({ initial, dichVuList, comboList = [], onSave, onCancel }) {
   const labelStyle = { fontSize: '12px', fontWeight: '700', color: COLORS.textSub, marginBottom: '6px', display: 'block' }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,18,9,0.55)', zIndex: 200 }}>
-      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 'calc(100vw - var(--side-w, 248px))', maxWidth: '100vw', background: 'white',
-        overflow: 'auto', boxShadow: '-6px 0 40px rgba(0,0,0,0.28)', animation: 'rpSlideIn .22s ease' }}>
-
-        {/* Header */}
-        <div style={{ background: COLORS.grad, padding: '20px 24px', borderRadius: '20px 20px 0 0',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ color: 'white', fontWeight: '800', fontSize: '17px' }}>
-            {isEdit ? '✏️ Sửa Khuyến Mãi' : '➕ Tạo Khuyến Mãi Mới'}
-          </div>
+    <RightPanel open onClose={onCancel} zIndex={200}
+      headerGrad={COLORS.grad}
+      title={isEdit ? 'Sửa Khuyến Mãi' : 'Tạo Khuyến Mãi Mới'}
+      bodyStyle={{ background: '#fff' }}
+      footer={
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={onCancel}
-            style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white',
-              width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontSize: '14px' }}>
-            ✕
+            style={{ flex: 1, padding: '13px', background: 'white', border: `1px solid ${COLORS.border}`,
+              borderRadius: '12px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', color: COLORS.textSub }}>
+            Hủy
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            style={{ flex: 2, padding: '13px', background: COLORS.grad, color: 'white',
+              border: 'none', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: 'pointer',
+              opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Đang lưu...' : isEdit ? '💾 Lưu thay đổi' : '✅ Tạo khuyến mãi'}
           </button>
         </div>
-
+      }>
         {/* Body */}
-        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           {/* Tên KM */}
           <div>
@@ -371,23 +374,8 @@ function KMForm({ initial, dichVuList, comboList = [], onSave, onCancel }) {
             </div>
           )}
 
-          {/* Buttons */}
-          <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
-            <button onClick={onCancel}
-              style={{ flex: 1, padding: '13px', background: 'white', border: `1px solid ${COLORS.border}`,
-                borderRadius: '12px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', color: COLORS.textSub }}>
-              Hủy
-            </button>
-            <button onClick={handleSave} disabled={saving}
-              style={{ flex: 2, padding: '13px', background: COLORS.grad, color: 'white',
-                border: 'none', borderRadius: '12px', fontWeight: '800', fontSize: '14px', cursor: 'pointer',
-                opacity: saving ? 0.7 : 1 }}>
-              {saving ? 'Đang lưu...' : isEdit ? '💾 Lưu thay đổi' : '✅ Tạo khuyến mãi'}
-            </button>
-          </div>
         </div>
-      </div>
-    </div>
+    </RightPanel>
   )
 }
 
