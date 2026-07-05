@@ -14,7 +14,7 @@ cũng gặp cùng một "chất".
 | Tiêu chí | Hiện trạng đo được | Điểm |
 |---|---|---|
 | Tông màu & token | ĐÃ đồng bộ kem-espresso 4 vùng (03/07); nhưng còn **60 chỗ hard-code #C9A96E/#A0714F** trong JSX thay vì token | 8/10 |
-| Popup/Panel | 16 file đã dùng primitive chuẩn (Modal/RightPanel); còn **54 overlay tự vẽ** (admin 20 · internal 20 · pos 8 · checkin 6) | 5/10 |
+| Popup/Panel | ~27 file dùng primitive chuẩn; overlay tự vẽ giảm còn **~45** (admin 9 · internal 22 · pos 8 · checkin 6). Đã chuẩn hóa 11 popup 05/07. Còn lại chủ yếu: panel NS lương/chấm công (đã đúng thị giác) + internal cai-dat + POS | 6.5/10 (↑ từ 5) |
 | Tiền tệ | formatCurrency phủ chính; còn **7 file fmt local** (kho, khuyến mãi ×2, checkin ×2 — thực chất là fmt GIỜ/NGÀY đặt tên nhầm, menu, wheel) | 7/10 |
 | DatePicker | Chỉ còn **2 input type=date** (CRM ngày sinh — chủ ý; checkin mobile — chủ ý) | 9/10 |
 | Chuyển động | Lệch nhịp: transition .15s/.2s/.22s/.24s trộn lẫn; RightPanel **chưa có phím ESC** (Modal có) | 6/10 |
