@@ -3,6 +3,7 @@ import { supabase } from '../../../../lib/supabase'
 import Modal from '../../../../components/ui/Modal'
 import { LUX } from '../../../../constants/lux'
 import { getNowVN } from '../../../../lib/utils'
+import { tinhLuong, getDaysInMonth } from '../../../../lib/luong'
 
 // ── helpers ──
 const fmtDate = (iso) => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}` }
@@ -143,12 +144,50 @@ export default function TabXetDuyet({ onUpdate }) {
     if (!duyet) { openRejectModal('le', yeuCauId, 'Chưa đủ điều kiện'); return }
     const yc = dungLeList.find(d => d.id === yeuCauId)
     if (!yc) return
-    const { so_dung_thang_nay, nam } = yc.du_lieu_moi || {}
+    const { so_dung_thang_nay, thang, nam } = yc.du_lieu_moi || {}
     const nvId = yc.du_lieu_cu?.nhan_vien_id
     if (!nvId || !so_dung_thang_nay) return
-    const { data: quyData } = await supabase.from('quy_ngay_off').select('id, so_ngay_da_dung, so_dung_thang_nay').eq('nhan_vien_id', nvId).eq('nam', nam || now.getFullYear()).maybeSingle()
+    const thangEff = thang || (now.getMonth() + 1)
+    const namEff = nam || now.getFullYear()
+
+    // Xác định NGÀY OFF vượt (không lương) cụ thể để gắn cac_ngay_bu → lịch hiện
+    // icon 🎁 + lương tính theo ngày (nhất quán với TabQuyNgayLe & AdminSuaChamCong).
+    const startDate = `${namEff}-${String(thangEff).padStart(2, '0')}-01`
+    const endDate = `${namEff}-${String(thangEff).padStart(2, '0')}-${String(getDaysInMonth(namEff, thangEff)).padStart(2, '0')}`
+    const [nvRes, ccRes, offRes, quyRes] = await Promise.all([
+      supabase.from('nhan_vien').select('id, ho_ten, vi_tri, luong_cung, gioi_han_off_thang, ngay_bat_dau, ky_quy_trang_thai').eq('id', nvId).maybeSingle(),
+      supabase.from('cham_cong').select('ngay, loai, gio_vao, gio_ra, he_so, tang_ca_gio').eq('nhan_vien_id', nvId).gte('ngay', startDate).lte('ngay', endDate),
+      supabase.from('dang_ky_off').select('ngay_off, loai_off, trang_thai').eq('nhan_vien_id', nvId).eq('trang_thai', 'duoc_duyet').gte('ngay_off', startDate).lte('ngay_off', endDate),
+      supabase.from('quy_ngay_off').select('id, so_ngay_da_dung, so_dung_thang_nay, lich_su_dung').eq('nhan_vien_id', nvId).eq('nam', namEff).maybeSingle(),
+    ])
+    const quyData = quyRes.data
+    const lsCu = Array.isArray(quyData?.lich_su_dung) ? quyData.lich_su_dung : []
+
+    const nowRef = getNowVN()
+    const isCurrent = thangEff === nowRef.getMonth() + 1 && namEff === nowRef.getFullYear()
+    const todayRef = isCurrent ? nowRef.getDate() : null
+    const calc = tinhLuong(nvRes.data || {}, ccRes.data || [], offRes.data || [], null, namEff, thangEff,
+      { lich_su_dung: lsCu }, todayRef)
+
+    // Chọn ngày OFF vượt chưa bù, cộng dồn trọng số cho đủ số quỹ được duyệt
+    // (T7/CN tốn 2 quỹ). Bỏ qua ngày mà trọng số > quỹ còn lại để không âm quỹ.
+    const cacNgayBu = []
+    let conLai = so_dung_thang_nay
+    for (const item of (calc.ngayVuotChuaBu || [])) {
+      if (conLai <= 0) break
+      if (item.trong_so <= conLai) { cacNgayBu.push(item.ngay); conLai -= item.trong_so }
+    }
+
     if (quyData) {
-      await supabase.from('quy_ngay_off').update({ so_dung_thang_nay: (quyData.so_dung_thang_nay || 0) + so_dung_thang_nay, so_ngay_da_dung: (quyData.so_ngay_da_dung || 0) + so_dung_thang_nay }).eq('id', quyData.id)
+      const entry = {
+        nam: namEff, thang: thangEff, so_ngay: so_dung_thang_nay, cac_ngay_bu: cacNgayBu,
+        ghi_chu: `Bù off vượt T${thangEff}/${namEff} (duyệt yêu cầu NV)`, ts: new Date().toISOString(),
+      }
+      await supabase.from('quy_ngay_off').update({
+        lich_su_dung: [...lsCu, entry],
+        so_dung_thang_nay: (quyData.so_dung_thang_nay || 0) + so_dung_thang_nay,
+        so_ngay_da_dung: (quyData.so_ngay_da_dung || 0) + so_dung_thang_nay,
+      }).eq('id', quyData.id)
     }
     await supabase.from('yeu_cau_chinh_sua').update({ trang_thai: 'da_duyet', nguoi_duyet: 'Admin' }).eq('id', yeuCauId)
     fetchData(); onUpdate?.()

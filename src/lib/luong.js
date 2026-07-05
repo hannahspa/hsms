@@ -244,6 +244,13 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
     ngayKhongLuong = totalVuot - soNgayLeBuOV
   }
 
+  // Danh sách ngày OFF vượt (không lương) CHƯA được bù — dùng để admin duyệt
+  // "xin dùng ngày lễ" tự gắn cac_ngay_bu (mỗi phần tử: ngày ISO + trọng số quỹ).
+  const ngayVuotChuaBu = Object.entries(vuotByDay)
+    .filter(([ds]) => !buDates.has(ds))
+    .map(([ds, w]) => ({ ngay: ds, trong_so: w }))
+    .sort((a, b) => a.ngay.localeCompare(b.ngay))
+
   // Partial day deductions (he_so < 1) — only up to todayRef
   chamCongList.filter(r => {
     if (r.loai !== 'di_lam' || !r.gio_ra) return false
@@ -346,6 +353,7 @@ export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRo
     soNgayLeDungThangNay,
     soNgayLeBuOV,
     ngayLeBuDates: ngayDuocBu,   // ngày off vượt được quỹ lễ bù (ISO) → hiển thị "có công"
+    ngayVuotChuaBu,              // [{ngay, trong_so}] ngày off vượt CHƯA bù → duyệt quỹ tự gắn
 
     // Attendance
     tongTangCa: +tongTangCa.toFixed(2),
