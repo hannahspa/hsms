@@ -4,7 +4,7 @@ import { posService } from '../../services/posService'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, getNowVN, todayISO } from '../../lib/utils'
 import { addDurationISO } from '../../lib/dateMath'
-import { calcCommissionRates } from '../../lib/serviceCommission'
+import { calcCommissionRates, getMyspaCommissionRule } from '../../lib/serviceCommission'
 import { getCardComboService, getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
 import { useAuth } from '../../context/AuthContext'
 import { confirmDialog } from '../../components/ui/notify'
@@ -591,10 +591,11 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       const u = i.meta?.upsale || null
       let next
       if (!dvB) {
-        // Bỏ upsale → khôi phục dịch vụ gốc
+        // Bỏ upsale → khôi phục dịch vụ gốc (kể cả rule tour myspaCommission của DV gốc)
         if (!u) return i
         const qty = i.so_luong || 1
         const meta = { ...(i.meta || {}) }; delete meta.upsale
+        if ('myspa_goc' in u) meta.myspaCommission = u.myspa_goc
         next = {
           ...i, dich_vu_id: u.dich_vu_goc_id,
           dich_vu: { ...(i.dich_vu || {}), ten: u.ten_goc },
@@ -608,18 +609,29 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
         const tenGoc = u?.ten_goc ?? (i.dich_vu?.ten || '')
         const dvGocId = u?.dich_vu_goc_id ?? i.dich_vu_id
         const tiLeGoc = u?.ti_le_goc ?? i.ti_le_hoa_hong
+        // Rule tour gốc: đã upsale trước đó thì lấy từ upsale cũ, chưa thì lấy từ meta hiện tại
+        const myspaGoc = u && 'myspa_goc' in u ? u.myspa_goc : (i.meta?.myspaCommission || null)
         const giaB = dvB.gia_co_ban || 0
         const qty = i.so_luong || 1
         const chenh = Math.max(0, giaB - giaGoc)
         const tienUpsale = Math.round(chenh * 0.10)
-        const upMeta = { dich_vu_goc_id: dvGocId, ten_goc: tenGoc, gia_goc: giaGoc, ti_le_goc: tiLeGoc, ten_moi: dvB.ten, gia_moi: giaB, chenh, tien_upsale: tienUpsale }
+        const upMeta = { dich_vu_goc_id: dvGocId, ten_goc: tenGoc, gia_goc: giaGoc, ti_le_goc: tiLeGoc, ten_moi: dvB.ten, gia_moi: giaB, chenh, tien_upsale: tienUpsale, myspa_goc: myspaGoc }
         next = {
           ...i, dich_vu_id: dvB.id,
           dich_vu: { ...(i.dich_vu || {}), ten: dvB.ten, danh_muc: dvB.danh_muc },
           don_gia: giaB, thanh_tien: giaB * qty,
           ti_le_hoa_hong: Number(dvB.ti_le_hoa_hong || 0),
           tien_hoa_hong: tienUpsale,
-          meta: { ...(i.meta || {}), upsale: upMeta },
+          meta: {
+            ...(i.meta || {}),
+            upsale: upMeta,
+            // FIX: tour phải theo DV MỚI (dvB) — trước đây giữ rule DV gốc nên
+            // tour tuyệt đối vẫn lấy của DV cũ (vd CVG 45p 20k thay vì Body 60p 30k)
+            myspaCommission: {
+              ktv: getMyspaCommissionRule(dvB, 'ktv'),
+              le_tan: getMyspaCommissionRule(dvB, 'le_tan'),
+            },
+          },
         }
         next.tien_tour = i.nhan_vien_id ? calcNextTour(next, next.thanh_tien, qty) : 0
       }

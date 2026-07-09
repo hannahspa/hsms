@@ -102,7 +102,9 @@ export function Toggle({ on, onChange, label }) {
 export function LieuTrinhCard({ card, onUse, onGiaHan }) {
   const pct = card.so_buoi_tong > 0 ? (card.so_buoi_da_dung / card.so_buoi_tong) * 100 : 0
   const displayValue = getTreatmentCardDisplayValue(card)
-  const originalValue = Number(card.gia_tri_the_goc ?? card.gia_tri_the ?? 0)
+  // Nợ tính trên GIÁ BÁN THỰC (gia_ban_thuc — sau KM), không phải giá gốc/mệnh giá.
+  // Thẻ cũ chưa có gia_ban_thuc → fallback gia_tri_the như trước (migration 146).
+  const originalValue = Number(card.gia_ban_thuc ?? card.gia_tri_the_goc ?? card.gia_tri_the ?? 0)
   const paidValue = Number(card.da_thanh_toan ?? originalValue)
   const conNo = Math.max(0, originalValue - paidValue)
   const du30pct = paidValue >= Math.round(originalValue * 0.30)
