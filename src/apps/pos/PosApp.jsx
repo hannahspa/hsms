@@ -19,6 +19,8 @@ import PaymentLines from './components/PaymentLines'
 import StaffCommissionPanel from './components/StaffCommissionPanel'
 import DatePicker from '../../components/shared/DatePicker'
 import { parseVND, fmtDate, getInitials, LieuTrinhCard } from './posShared'
+import { printReceipt } from '../../lib/printReceipt'
+import { orderItemName, itemStaffName } from './orderHistoryUtils'
 import { HINH_THUC_THU } from '../../constants/enums'
 import { C, FONT } from '../../constants/colors'
 
@@ -907,7 +909,34 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   }, [selectedCustomer, lineItems, savedOrderId])
 
   // ── Chốt đơn — tạo DB record chỉ tại đây ───────────────────────────────────
-  const handleConfirmOrder = async () => {
+  // In hóa đơn của đơn vừa chốt (oid). Lỗi in KHÔNG được làm hỏng luồng thanh
+  // toán — bọc try/catch, chỉ báo nhẹ để NV in lại từ Danh Sách.
+  const inHoaDonSauChot = async (oid) => {
+    try {
+      const [ordFull, items, payments, snap] = await Promise.all([
+        posService.getOrder(oid),
+        posService.getLineItems(oid),
+        posService.getPayments(oid),
+        selectedCustomer?.id ? posService.getCustomerSnapshot(selectedCustomer.id) : Promise.resolve(null),
+      ])
+      if (!ordFull) return
+      printReceipt({
+        order: ordFull,
+        items: (items || []).map(it => ({
+          ten: orderItemName(it), so_luong: it.so_luong, don_gia: it.don_gia,
+          thanh_tien: it.thanh_tien, staffName: itemStaffName(it),
+        })),
+        payments: payments || [],
+        customer: snap?.customer || selectedCustomer,
+        thuNgan: user?.ho_ten || '',
+      })
+    } catch (e) {
+      console.warn('In hóa đơn sau thanh toán lỗi (đơn đã chốt OK):', e)
+      notify('Đơn đã thanh toán xong. In tự động lỗi — vào Danh Sách Đơn bấm In lại nhé.', 'warn')
+    }
+  }
+
+  const handleConfirmOrder = async (shouldPrint = false) => {
     if (lineItems.length === 0) return
     // ── QUY TẮC: KHÔNG gộp BÁN THẺ MỚI và LÀM DỊCH VỤ/DÙNG THẺ trong cùng 1 đơn ──
     if (!checkKhongGopBanTheVaDichVu()) return
@@ -1149,6 +1178,14 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
 
       // 5. Xong
       paymentsInserted.current = false
+
+      // IN HÓA ĐƠN nếu bấm "Thanh Toán & In" — in TRƯỚC khi reset/điều hướng
+      // (in dùng iframe ẩn, không bị popup blocker). Fix 09/07: trước đây hàm
+      // không nhận shouldPrint nên nút "Thanh Toán & In" không hề in.
+      if (shouldPrint) {
+        await inHoaDonSauChot(oid)
+      }
+
       // SỬA ĐƠN (admin "Lưu Thay Đổi"): về Danh Sách Đơn Hàng — không ở lại form trống
       if (editMode || editOrderId) {
         window.location.href = '/pos/danh-sach'
