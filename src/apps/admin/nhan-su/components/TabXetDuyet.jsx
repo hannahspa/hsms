@@ -36,8 +36,8 @@ const TH = ({ children, w, align = 'left' }) => (
     {children}
   </th>
 )
-const TD = ({ children, align = 'left', muted }) => (
-  <td style={{ padding: '11px 14px', fontSize: 13, fontFamily: LUX.fontSans, textAlign: align, color: muted ? LUX.ink3 : LUX.ink2, verticalAlign: 'middle' }}>
+const TD = ({ children, align = 'left', muted, label, act }) => (
+  <td data-label={label} className={act ? 'act' : undefined} style={{ padding: '11px 14px', fontSize: 13, fontFamily: LUX.fontSans, textAlign: align, color: muted ? LUX.ink3 : LUX.ink2, verticalAlign: 'middle' }}>
     {children}
   </td>
 )
@@ -293,7 +293,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   📋 Đơn Xin OFF ({danhSachCho.length})
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <TH>Nhân Viên</TH>
@@ -316,7 +316,7 @@ export default function TabXetDuyet({ onUpdate }) {
                             <TD>
                               <div style={{ fontWeight: 600, color: LUX.espresso }}>{nv.ten}</div>
                             </TD>
-                            <TD muted>{nv.vi_tri}</TD>
+                            <TD label="Vị trí" muted>{nv.vi_tri}</TD>
                             <TD>
                               <span style={{ fontFamily: LUX.fontMono, fontWeight: 600, color: isWeekend ? '#C0392B' : LUX.ink }}>
                                 {dayLabel} {fmtDate(don.ngay_off)}
@@ -325,8 +325,8 @@ export default function TabXetDuyet({ onUpdate }) {
                             </TD>
                             <TD><Badge {...lcfg} /></TD>
                             <TD><span style={{ color: LUX.ink3, fontStyle: 'italic', fontSize: 12 }}>{don.ly_do}</span></TD>
-                            <TD align="center" muted><span style={{ fontSize: 11 }}>{fmtTime(don.created_at)}</span></TD>
-                            <TD align="center">
+                            <TD label="Nộp lúc" align="center" muted><span style={{ fontSize: 11 }}>{fmtTime(don.created_at)}</span></TD>
+                            <TD act align="center">
                               <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                                 <button onClick={() => handleDuyet(don.id, 'tu_choi')}
                                   style={{ padding: '6px 14px', borderRadius: 8, background: '#fff', color: '#C0392B', border: '1px solid #C0392B40', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: LUX.fontSans }}>
@@ -354,7 +354,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   🎌 Dùng Ngày Lễ Bù OV ({dungLeList.length})
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <TH>Nhân Viên</TH>
@@ -373,8 +373,8 @@ export default function TabXetDuyet({ onUpdate }) {
                             <TD><span style={{ fontWeight: 600, color: LUX.espresso }}>{nv.ten}</span></TD>
                             <TD><Badge bg="#fdf3e0" color={LUX.taupe} label={`${yc.du_lieu_moi?.so_dung_thang_nay || 0} ngày`} /></TD>
                             <TD><span style={{ color: LUX.ink3, fontStyle: 'italic', fontSize: 12 }}>{yc.ly_do}</span></TD>
-                            <TD align="center" muted><span style={{ fontSize: 11 }}>{fmtTime(yc.created_at)}</span></TD>
-                            <TD align="center">
+                            <TD label="Nộp lúc" align="center" muted><span style={{ fontSize: 11 }}>{fmtTime(yc.created_at)}</span></TD>
+                            <TD act align="center">
                               <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                                 <button onClick={() => handleDuyetDungLe(yc.id, false)}
                                   style={{ padding: '6px 14px', borderRadius: 8, background: '#fff', color: '#C0392B', border: '1px solid #C0392B40', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: LUX.fontSans }}>
@@ -408,7 +408,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   </button>
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <TH>Nhân Viên</TH>
@@ -429,8 +429,8 @@ export default function TabXetDuyet({ onUpdate }) {
                             <TD align="center"><Badge bg="#ede9f8" color="#6a4a8a" label={`${gio.toFixed(2)}h`} /></TD>
                             <TD align="right"><span style={{ fontFamily: LUX.fontMono, color: '#2D7A4F', fontWeight: 600 }}>{tien.toLocaleString('vi-VN')}₫</span></TD>
                             <TD><span style={{ color: LUX.ink3, fontStyle: 'italic', fontSize: 12 }}>{yc.ly_do}</span></TD>
-                            <TD align="center" muted><span style={{ fontSize: 11 }}>{fmtTime(yc.created_at)}</span></TD>
-                            <TD align="center">
+                            <TD label="Nộp lúc" align="center" muted><span style={{ fontSize: 11 }}>{fmtTime(yc.created_at)}</span></TD>
+                            <TD act align="center">
                               <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                                 <button onClick={() => handleDuyetTangCa(yc, false)}
                                   style={{ padding: '6px 14px', borderRadius: 8, background: '#fff', color: '#C0392B', border: '1px solid #C0392B40', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: LUX.fontSans }}>
@@ -458,7 +458,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   ✏️ Yêu Cầu Sửa / Xóa / Gia Hạn Thẻ ({suaXoaList.length})
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <TH>Loại YC</TH>
@@ -496,8 +496,8 @@ export default function TabXetDuyet({ onUpdate }) {
                               }
                             </TD>
                             <TD><span style={{ color: LUX.ink3, fontStyle: 'italic', fontSize: 12 }}>{yc.ly_do}</span></TD>
-                            <TD align="center" muted><span style={{ fontSize: 12 }}>{yc.nguoi_yeu_cau || '—'}</span></TD>
-                            <TD align="center">
+                            <TD label="Người YC" align="center" muted><span style={{ fontSize: 12 }}>{yc.nguoi_yeu_cau || '—'}</span></TD>
+                            <TD act align="center">
                               <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                                 <button onClick={() => handleDuyetSuaXoa(yc.id, false)}
                                   style={{ padding: '6px 14px', borderRadius: 8, background: '#fff', color: '#C0392B', border: '1px solid #C0392B40', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: LUX.fontSans }}>
@@ -525,7 +525,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   🧾 Yêu Cầu Sửa Đơn Hàng ({suaDonList.length})
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <TH>Mã Đơn</TH>
@@ -540,9 +540,9 @@ export default function TabXetDuyet({ onUpdate }) {
                         <tr key={yc.id} style={{ borderTop: i > 0 ? `1px solid ${LUX.line}` : 'none', background: i % 2 === 0 ? 'white' : LUX.bg }}>
                           <TD><span style={{ fontWeight: 700, color: LUX.espresso, fontFamily: LUX.fontMono }}>{yc.du_lieu_cu?.ma_don || '—'}</span></TD>
                           <TD><span style={{ color: LUX.ink3, fontStyle: 'italic', fontSize: 12 }}>{yc.ly_do}</span></TD>
-                          <TD align="center" muted><span style={{ fontSize: 12 }}>{yc.nguoi_yeu_cau || '—'}</span></TD>
-                          <TD align="center" muted><span style={{ fontSize: 11 }}>{fmtTime(yc.created_at)}</span></TD>
-                          <TD align="center">
+                          <TD label="Người YC" align="center" muted><span style={{ fontSize: 12 }}>{yc.nguoi_yeu_cau || '—'}</span></TD>
+                          <TD label="Nộp lúc" align="center" muted><span style={{ fontSize: 11 }}>{fmtTime(yc.created_at)}</span></TD>
+                          <TD act align="center">
                             <button onClick={() => { window.location.href = `/pos?resume=${yc.ban_ghi_id}&yc=${yc.id}` }}
                               style={{ padding: '6px 14px', borderRadius: 8, background: LUX.goldGrad, color: 'white', border: 'none', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: LUX.fontSans }}>
                               Xem &amp; Duyệt →
@@ -603,7 +603,7 @@ export default function TabXetDuyet({ onUpdate }) {
           </div>
         ) : (
           <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <TH>Nhân Viên</TH>
@@ -626,7 +626,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   return (
                     <tr key={off.id} style={{ borderTop: i > 0 ? `1px solid ${LUX.line}` : 'none', background: i % 2 === 0 ? 'white' : LUX.bg }}>
                       <TD><span style={{ fontWeight: 600, color: LUX.espresso }}>{nv.ten}</span></TD>
-                      <TD muted>{nv.vi_tri}</TD>
+                      <TD label="Vị trí" muted>{nv.vi_tri}</TD>
                       <TD>
                         <span style={{ fontFamily: LUX.fontMono, fontWeight: 600, fontSize: 13, color: isWeekend ? '#C0392B' : LUX.ink }}>
                           {dayLabel} {fmtDate(off.ngay_off)}
