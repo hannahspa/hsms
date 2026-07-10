@@ -293,7 +293,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   📋 Đơn Xin OFF ({danhSachCho.length})
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-                  <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="m-card-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <TH>Nhân Viên</TH>
@@ -354,7 +354,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   🎌 Dùng Ngày Lễ Bù OV ({dungLeList.length})
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-                  <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="m-card-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <TH>Nhân Viên</TH>
@@ -408,7 +408,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   </button>
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-                  <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="m-card-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <TH>Nhân Viên</TH>
@@ -458,7 +458,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   ✏️ Yêu Cầu Sửa / Xóa / Gia Hạn Thẻ ({suaXoaList.length})
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-                  <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="m-card-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <TH>Loại YC</TH>
@@ -525,7 +525,7 @@ export default function TabXetDuyet({ onUpdate }) {
                   🧾 Yêu Cầu Sửa Đơn Hàng ({suaDonList.length})
                 </div>
                 <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-                  <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="m-card-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         <TH>Mã Đơn</TH>
@@ -603,7 +603,7 @@ export default function TabXetDuyet({ onUpdate }) {
           </div>
         ) : (
           <div style={{ border: `1px solid ${LUX.line}`, borderRadius: LUX.radius, overflow: 'hidden', background: LUX.surface }}>
-            <table className="duyet-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="m-card-tbl" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <TH>Nhân Viên</TH>

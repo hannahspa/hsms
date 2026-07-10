@@ -947,7 +947,7 @@ export default function TabBangLuong({ fixedKy = null }) {
       ) : ky === 1 ? (
         /* ── KỲ 1 · Lương Cứng — BẢNG DESKTOP ── */
         <div style={{ background: LUX.surface, borderRadius: LUX.radius, border: `1px solid ${LUX.line}`, boxShadow: LUX.shadowSm, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: LUX.fontSans, minWidth: '720px' }}>
+          <table className="m-card-tbl" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: LUX.fontSans, minWidth: '720px' }}>
             <thead>
               <tr style={{ background: LUX.bg, color: LUX.ink3, fontSize: '10.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 <th style={{ textAlign: 'left', padding: '11px 14px' }}>Nhân viên</th>
@@ -983,14 +983,14 @@ export default function TabBangLuong({ fixedKy = null }) {
                       </div>
                     </td>
                     {/* Lương cứng (hợp đồng) */}
-                    <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: LUX.taupe, fontWeight: 600 }}>{formatCurrency(nv.luong_cung)}</td>
+                    <td data-label="Lương cứng" style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: LUX.taupe, fontWeight: 600 }}>{formatCurrency(nv.luong_cung)}</td>
                     {/* Ngày công */}
-                    <td style={{ textAlign: 'center', padding: '10px 8px' }}>
+                    <td data-label="Ngày công" style={{ textAlign: 'center', padding: '10px 8px' }}>
                       <span style={{ fontFamily: LUX.fontSerif, fontSize: '17px', fontWeight: 700, color: LUX.espresso }}>{ld.ngayCong}</span>
                       <span style={{ fontSize: '11px', color: LUX.ink3 }}> /{ld.soNgayThang}</span>
                     </td>
                     {/* OFF */}
-                    <td style={{ textAlign: 'center', padding: '10px 8px', fontSize: '12px' }}>
+                    <td data-label="OFF (phép/vượt/T7)" style={{ textAlign: 'center', padding: '10px 8px', fontSize: '12px' }}>
                       <span style={{ color: LUX.sage, fontWeight: 600 }}>{ld.soOffCoLuong}</span>
                       <span style={{ color: LUX.ink3 }}> / </span>
                       <span style={{ color: offKhongLuong > 0 ? LUX.danger : LUX.ink3, fontWeight: offKhongLuong > 0 ? 700 : 400 }}>{offKhongLuong}</span>
@@ -998,20 +998,20 @@ export default function TabBangLuong({ fixedKy = null }) {
                       <span style={{ color: ld.soOffT7CN > 0 ? LUX.danger : LUX.ink3, fontWeight: ld.soOffT7CN > 0 ? 700 : 400 }}>{ld.soOffT7CN}</span>
                     </td>
                     {/* Tăng ca */}
-                    <td style={{ textAlign: 'center', padding: '10px 8px', fontSize: '12px' }}>
+                    <td data-label="Tăng ca" style={{ textAlign: 'center', padding: '10px 8px', fontSize: '12px' }}>
                       {ld.tongTangCa > 0 ? <span style={{ color: '#6a4a8a', fontWeight: 600 }}>{ld.tongTangCa}h</span> : <span style={{ color: LUX.ink4 }}>—</span>}
                     </td>
                     {/* Lương cơ bản */}
-                    <td style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono }}>{formatCurrency(ld.luongCoBan)}</td>
+                    <td data-label="Lương cơ bản" style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono }}>{formatCurrency(ld.luongCoBan)}</td>
                     {/* Khấu trừ (phạt + ký quỹ + ứng) — chi tiết trong panel */}
                     {(() => { const khauTru = ld.tienPhat + ld.truKyQuy + ld.truUngLuong; return (
                       <td title={`Phạt ${formatCurrency(ld.tienPhat)} · Ký quỹ ${formatCurrency(ld.truKyQuy)} · Ứng ${formatCurrency(ld.truUngLuong)}`}
-                        style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: khauTru > 0 ? LUX.danger : LUX.ink4 }}>{khauTru > 0 ? '−' + formatCurrency(khauTru) : '—'}</td>
+                        data-label="Khấu trừ" style={{ textAlign: 'right', padding: '10px 10px', fontFamily: LUX.fontMono, color: khauTru > 0 ? LUX.danger : LUX.ink4 }}>{khauTru > 0 ? '−' + formatCurrency(khauTru) : '—'}</td>
                     ) })()}
                     {/* Thực lĩnh */}
-                    <td style={{ textAlign: 'right', padding: '10px 14px', fontFamily: LUX.fontMono, fontSize: '14px', fontWeight: 700, color: LUX.espresso }}>{formatCurrency(thucLinh)}</td>
+                    <td data-label="Thực lĩnh" style={{ textAlign: 'right', padding: '10px 14px', fontFamily: LUX.fontMono, fontSize: '14px', fontWeight: 700, color: LUX.espresso }}>{formatCurrency(thucLinh)}</td>
                     {/* Trạng thái */}
-                    <td style={{ textAlign: 'center', padding: '10px 10px' }}><TrangThaiBadge tt={ld.trangThaiLC} /></td>
+                    <td data-label="Trạng thái" style={{ textAlign: 'center', padding: '10px 10px' }}><TrangThaiBadge tt={ld.trangThaiLC} /></td>
                   </tr>
                 )
               })}

@@ -1459,29 +1459,31 @@ body, html {
      Anh Nam quản lý từ xa: bảng duyệt trên mobile bị ép, nút Duyệt/Từ Chối
      đẩy ra ngoài màn → không bấm được. Biến mỗi dòng thành 1 THẺ, nút to
      full-width dễ chạm. Ẩn tiêu đề cột, mỗi ô 1 hàng có nhãn phía trước. */
-  .duyet-tbl { display: block !important; overflow: visible !important; }
-  .duyet-tbl thead { display: none; }
-  .duyet-tbl tbody, .duyet-tbl tr, .duyet-tbl td { display: block; width: 100%; box-sizing: border-box; }
-  .duyet-tbl tr {
+  .m-card-tbl { display: block !important; overflow: visible !important; min-width: 0 !important; }
+  .m-card-tbl thead { display: none; }
+  /* dòng bấm được (mở chi tiết) hiện con trỏ tay */
+  .m-card-tbl tr[onclick], .m-card-tbl tr[style*="cursor"] { cursor: pointer; }
+  .m-card-tbl tbody, .m-card-tbl tr, .m-card-tbl td { display: block; width: 100%; box-sizing: border-box; }
+  .m-card-tbl tr {
     padding: 12px 6px 14px; border-top: 8px solid var(--bg) !important;
     background: #fff !important;
   }
-  .duyet-tbl tr:first-child { border-top: none !important; }
-  .duyet-tbl td {
+  .m-card-tbl tr:first-child { border-top: none !important; }
+  .m-card-tbl td {
     text-align: left !important; padding: 5px 14px !important;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
   }
   /* nhãn cột phía trước mỗi ô (lấy từ data-label) */
-  .duyet-tbl td[data-label]::before {
+  .m-card-tbl td[data-label]::before {
     content: attr(data-label); flex-shrink: 0;
     font-size: 11px; font-weight: 700; color: var(--ink3);
     text-transform: uppercase; letter-spacing: .03em;
   }
   /* ô hành động: nút chiếm nguyên hàng, to, dễ chạm */
-  .duyet-tbl td.act { display: block; padding-top: 12px !important; }
-  .duyet-tbl td.act::before { display: none; }
-  .duyet-tbl td.act > div { display: flex !important; gap: 10px !important; justify-content: stretch !important; }
-  .duyet-tbl td.act button { flex: 1; padding: 13px 8px !important; font-size: 14px !important; min-height: 46px; }
+  .m-card-tbl td.act { display: block; padding-top: 12px !important; }
+  .m-card-tbl td.act::before { display: none; }
+  .m-card-tbl td.act > div { display: flex !important; gap: 10px !important; justify-content: stretch !important; }
+  .m-card-tbl td.act button { flex: 1; padding: 13px 8px !important; font-size: 14px !important; min-height: 46px; }
 }
 
 /* Màn rất nhỏ (<400px): strip giữ 2 cột nhưng chữ nhỏ hơn chút */
