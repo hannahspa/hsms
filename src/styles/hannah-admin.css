@@ -1460,7 +1460,9 @@ body, html {
      đẩy ra ngoài màn → không bấm được. Biến mỗi dòng thành 1 THẺ, nút to
      full-width dễ chạm. Ẩn tiêu đề cột, mỗi ô 1 hàng có nhãn phía trước. */
   .m-card-tbl { display: block !important; overflow: visible !important; min-width: 0 !important; }
-  .m-card-tbl thead { display: none; }
+  .m-card-tbl thead, .m-card-tbl tfoot { display: none; }
+  /* ô đánh dấu ẩn trên mobile (STT, cột phụ không cần trên thẻ) */
+  .m-card-tbl td.m-hide { display: none !important; }
   /* dòng bấm được (mở chi tiết) hiện con trỏ tay */
   .m-card-tbl tr[onclick], .m-card-tbl tr[style*="cursor"] { cursor: pointer; }
   .m-card-tbl tbody, .m-card-tbl tr, .m-card-tbl td { display: block; width: 100%; box-sizing: border-box; }

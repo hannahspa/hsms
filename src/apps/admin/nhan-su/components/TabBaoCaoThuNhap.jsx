@@ -147,7 +147,7 @@ export default function TabBaoCaoThuNhap() {
           </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table className="ledger" style={{ minWidth: 760 }}>
+          <table className="ledger m-card-tbl" style={{ minWidth: 760 }}>
             <thead>
               <tr>
                 <th style={{ width: 40 }}>#</th>
@@ -163,19 +163,19 @@ export default function TabBaoCaoThuNhap() {
             <tbody>
               {rows.map((r, i) => (
                 <tr key={r.nv.id} onClick={() => setSelected(r.nv)} style={{ cursor: 'pointer' }}>
-                  <td style={{ color: LUX.ink3, fontWeight: 700 }}>{i + 1}</td>
+                  <td className="m-hide" style={{ color: LUX.ink3, fontWeight: 700 }}>{i + 1}</td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
                       <StaffAvatar nv={r.nv} size={34} radius={10} />
                       <span style={{ fontFamily: LUX.fontSerif, fontSize: 16.5, fontWeight: 600, color: LUX.ink, letterSpacing: '.005em' }}>{r.nv.ho_ten}</span>
                     </div>
                   </td>
-                  <td><span className="tag sv">{ROLE_LABEL[r.nv.vi_tri] || r.nv.vi_tri}</span></td>
-                  <td className="r" style={{ color: LUX.ink3 }}>{r.luotTour || '—'}</td>
-                  <td className="r" style={{ fontWeight: 700, color: LUX.taupe }}>{r.tour ? formatCurrency(r.tour) : '—'}</td>
-                  <td className="r" style={{ color: LUX.ink3 }}>{r.luotHH || '—'}</td>
-                  <td className="r" style={{ fontWeight: 700, color: '#8a6a35' }}>{r.hoaHong ? formatCurrency(r.hoaHong) : '—'}</td>
-                  <td className="r" style={{ fontWeight: 800, color: LUX.champagne, fontFamily: LUX.fontSerif }}>{formatCurrency(r.tong)}</td>
+                  <td data-label="Vị trí"><span className="tag sv">{ROLE_LABEL[r.nv.vi_tri] || r.nv.vi_tri}</span></td>
+                  <td data-label="Lượt Tour" className="r" style={{ color: LUX.ink3 }}>{r.luotTour || '—'}</td>
+                  <td data-label="Tiền Tour" className="r" style={{ fontWeight: 700, color: LUX.taupe }}>{r.tour ? formatCurrency(r.tour) : '—'}</td>
+                  <td data-label="Lượt Bán" className="r" style={{ color: LUX.ink3 }}>{r.luotHH || '—'}</td>
+                  <td data-label="Hoa Hồng" className="r" style={{ fontWeight: 700, color: '#8a6a35' }}>{r.hoaHong ? formatCurrency(r.hoaHong) : '—'}</td>
+                  <td data-label="Tổng KD" className="r" style={{ fontWeight: 800, color: LUX.champagne, fontFamily: LUX.fontSerif }}>{formatCurrency(r.tong)}</td>
                 </tr>
               ))}
               {!loading && rows.length === 0 && (
