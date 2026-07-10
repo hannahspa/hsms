@@ -139,10 +139,9 @@ export default function CheckinLuong({ nhanVien, onBack }) {
     setRequesting(true)
     try {
       const res = await checkinApi.xinDungNgayLe({ soNgay: soNgayMuonDung, ov: ovCanBu, thang: month, nam: year })
-      if (res?.success) {
-        setRequestSent(true)
-        setTimeout(() => setRequestSent(false), 5000)
-      }
+      // success = true cho cả tạo mới lẫn 'already' (đã gửi trước đó) — giữ
+      // trạng thái "đã gửi" BỀN, không reset sau 5s để NV không bấm lại tạo trùng.
+      if (res?.success) setRequestSent(true)
     } catch { /* phiên hết hạn */ }
     setRequesting(false)
   }

@@ -133,8 +133,8 @@ export default function CheckinDangKyOff({ nhanVien, onBack }) {
     if (ngayMoi < todayISO()) { showToast('Không đổi sang ngày quá khứ', 'error'); return }
     setDoiLoading(true)
     try {
-      await checkinApi.xinDoiNgayOff({ offId: doiItem.id, ngayCu: doiItem.ngay_off, loaiOff: doiItem.loai_off, ngayMoi })
-      showToast('Đã gửi yêu cầu đổi ngày — chờ Cao Quốc Nam duyệt!')
+      const res = await checkinApi.xinDoiNgayOff({ offId: doiItem.id, ngayCu: doiItem.ngay_off, loaiOff: doiItem.loai_off, ngayMoi })
+      showToast(res?.already ? (res.message || 'Bạn đã gửi yêu cầu này rồi, đang chờ duyệt.') : 'Đã gửi yêu cầu đổi ngày — chờ Cao Quốc Nam duyệt!')
       setDoiItem(null); setNgayMoi('')
       loadDanhSach()
     } catch (e) { showToast('Lỗi: ' + e.message, 'error') }
