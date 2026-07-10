@@ -353,7 +353,14 @@ export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,.9)' }}>
                   {the.is_khong_gioi_han ? 'Không giới hạn' : `Còn ${the.so_buoi_con_lai}/${the.so_buoi_tong} buổi`}
                 </div>
-                {the.ngay_het_han && <div style={{ fontSize: 10, color: 'rgba(255,255,255,.65)', marginTop: 2 }}>HH: {the.ngay_het_han}</div>}
+                {/* Ngày hết hạn — hiện rõ như MySpa; quá hạn tô đỏ để NV dễ nhận */}
+                {the.ngay_het_han
+                  ? (() => { const hetHan = the.ngay_het_han < todayISO(); return (
+                      <div style={{ fontSize: 10, fontWeight: hetHan ? 800 : 600, color: hetHan ? '#ffd9d0' : 'rgba(255,255,255,.75)', marginTop: 2 }}>
+                        {hetHan ? '⚠ HẾT HẠN ' : 'HSD: '}{the.ngay_het_han.split('-').reverse().join('/')}
+                      </div>
+                    ) })()
+                  : <div style={{ fontSize: 10, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>HSD: Không giới hạn</div>}
               </button>
             ))}
           </div>

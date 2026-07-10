@@ -237,7 +237,13 @@ function TreatmentCard({ card, ended = false, statusLabel = null, isAdmin = fals
         <span>Số tiền đã sử dụng/Tổng thanh toán</span>
         <span style={{ color: 'var(--ink2)', fontWeight: 800 }}>{formatCurrency(usedValue)}/{formatCurrency(card.gia_tri_the || 0)}</span>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 12, fontSize: 12, fontWeight: 800 }}>
+      {/* Hạn sử dụng — hiện rõ như MySpa (thẻ nào còn/hết hạn), quá hạn tô đỏ */}
+      <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 700, color: card.ngay_het_han && card.ngay_het_han < todayISO() ? '#C0392B' : 'var(--ink3)' }}>
+        {card.ngay_het_han
+          ? `${card.ngay_het_han < todayISO() ? '⚠ Đã hết hạn: ' : '🗓 Hết hạn: '}${card.ngay_het_han.split('-').reverse().join('/')}`
+          : '🗓 HSD: Không giới hạn'}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 10, fontSize: 12, fontWeight: 800 }}>
         <span style={{ color: remain > 0 ? 'var(--thu)' : 'var(--ink3)' }}>Còn {remain} buổi</span>
         <span style={{ color: card.bi_dong ? '#C0392B' : (ended ? 'var(--ink3)' : 'var(--champagne)') }}>{statusLabel || (ended ? 'Đã kết thúc' : 'Đang sử dụng')}</span>
       </div>

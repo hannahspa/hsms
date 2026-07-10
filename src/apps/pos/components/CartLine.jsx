@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import DatePicker from '../../../components/shared/DatePicker'
-import { formatCurrency, kmBadge } from '../../../lib/utils'
+import { formatCurrency, kmBadge, todayISO } from '../../../lib/utils'
 import { calcKmRefPct, kmRefAlert } from '../../../lib/serviceCommission'
 import { C } from '../../../constants/colors'
 import { posService } from '../../../services/posService'
@@ -123,7 +123,10 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
             {name}
           </div>
           {isTheLT && theLTConLai !== null && (
-            <div style={{ fontSize: 10, color: C.thu }}>Còn {theLTConLai}/{theLTTong} buổi{theLTHH ? ` · HH: ${theLTHH}` : ''}</div>
+            <div style={{ fontSize: 10, color: C.thu }}>
+              Còn {theLTConLai}/{theLTTong} buổi
+              {theLTHH && <span style={{ color: theLTHH < todayISO() ? '#C0392B' : 'var(--ink3)', fontWeight: theLTHH < todayISO() ? 700 : 400 }}>{' · '}{theLTHH < todayISO() ? '⚠ hết hạn ' : 'HSD '}{theLTHH.split('-').reverse().join('/')}</span>}
+            </div>
           )}
           {!isTheLT && !isCard && <div style={{ fontSize: 10.5, color: 'var(--ink3)' }}>{formatCurrency(donGia)}</div>}
           {upsale && (
