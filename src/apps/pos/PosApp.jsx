@@ -4,7 +4,7 @@ import { posService } from '../../services/posService'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, getNowVN, todayISO } from '../../lib/utils'
 import { addDurationISO } from '../../lib/dateMath'
-import { calcCommissionRates, getMyspaCommissionRule } from '../../lib/serviceCommission'
+import { calcCommissionRates, getMyspaCommissionRule, calcServiceCommission } from '../../lib/serviceCommission'
 import { getCardComboService, getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
 import { useAuth } from '../../context/AuthContext'
 import { confirmDialog } from '../../components/ui/notify'
@@ -407,10 +407,42 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       policy = await posService.getTreatmentCardTourPolicy(card)
     } catch (e) { console.warn('Không đọc được chính sách tour thẻ (tour gợi ý = 0):', e) }
 
+    // ── Tiền tour buổi dùng thẻ = MỨC CỐ ĐỊNH của dịch vụ (anh Nam 10/07) ──
+    // KHÔNG tính theo % giá trị thẻ nữa. % chỉ hiển thị để tham khảo.
+    // Lấy quy tắc tour cố định (commission_ktv absolute) từ dịch vụ tương ứng của thẻ.
+    let myspaCommission = null
+    let tourCoDinh = policy?.suggestedTour || 0
+    let tiLeHienThi = null
+    try {
+      const svcId = card.dich_vu_id || comboService?.dich_vu_id || null
+      let svc = null
+      if (svcId) {
+        svc = await posService.getService(svcId)
+      } else {
+        const cleanName = String(card.ten_dich_vu || '').replace(/\s*\([^)]*\)\s*/g, ' ').trim()
+        if (cleanName) {
+          const list = await posService.getServices(cleanName)
+          svc = (list || []).find(d => d.ten === cleanName) || (list || [])[0] || null
+        }
+      }
+      if (svc) {
+        tiLeHienThi = Number(svc.ti_le_hoa_hong || 0) || null
+        const rule = getMyspaCommissionRule(svc, 'ktv')
+        if (rule?.type === 'absolute' && rule.amount > 0) {
+          myspaCommission = { ktv: rule }
+          tourCoDinh = Math.round(Number(rule.amount))
+        } else {
+          const fixed = calcServiceCommission(svc, svc.gia_co_ban, 'ktv')
+          if (fixed > 0) tourCoDinh = fixed
+        }
+      }
+    } catch (e) { console.warn('Không lấy được mức tour cố định của thẻ:', e) }
+
     handleAddItem({
       loai_item:         'the_lieu_trinh',
       the_lieu_trinh_id: card.id,
       dich_vu_id:        card.dich_vu_id || comboService?.dich_vu_id || null,
+      ti_le_hoa_hong:    tiLeHienThi,
       the_lieu_trinh:    {
         ten_dich_vu:        card.ten_dich_vu,
         so_buoi_con_lai:    card.so_buoi_con_lai,
@@ -428,14 +460,14 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       },
       don_gia:    0,
       thanh_tien: 0,
-      ti_le_hoa_hong: null,
-      tien_tour:  policy?.suggestedTour || 0,
+      tien_tour:  tourCoDinh,
       tien_hoa_hong: 0,
       meta: {
         treatmentPolicy: policy,
         displayValue,
         originalCardValue: card.gia_tri_the_goc ?? card.gia_tri_the,
         comboService: comboService || null,
+        ...(myspaCommission ? { myspaCommission } : {}),
       },
     })
   }
@@ -528,7 +560,13 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       ? Math.round((item.the_lieu_trinh.gia_tri_the || 0) / Math.max(1, item.the_lieu_trinh.so_buoi_tong || 1)) * (item.so_luong || 1)
       : (item.thanh_tien || 0)
     const finalTiLe = tourMeta?.tourMode === 'free_warranty' ? 0 : tiLe
-    const incomeAmount = tienTourFromPopup !== undefined ? Math.round(Number(tienTourFromPopup || 0)) : Math.round(baseTT * finalTiLe / 100)
+    // Tour = MỨC CỐ ĐỊNH của dịch vụ nếu có (anh Nam 10/07) — KHÔNG theo % giá trị thẻ.
+    // % chỉ để hiển thị. Fallback % chỉ dùng khi dịch vụ chưa có mức cố định.
+    const ktvFixedRule = item.meta?.myspaCommission?.ktv
+    const fallbackTour = (ktvFixedRule?.type === 'absolute' && Number(ktvFixedRule.amount) > 0)
+      ? Math.round(Number(ktvFixedRule.amount) * (item.so_luong || 1))
+      : Math.round(baseTT * finalTiLe / 100)
+    const incomeAmount = tienTourFromPopup !== undefined ? Math.round(Number(tienTourFromPopup || 0)) : fallbackTour
     const tienTour       = isSaleCommission ? 0 : incomeAmount
     // Dịch vụ upsale: KTV vẫn nhận tour theo DV mới + HOA HỒNG = 10% chênh lệch
     const tienCommission = isSaleCommission ? incomeAmount : (item.meta?.upsale?.tien_upsale || 0)

@@ -415,6 +415,13 @@ export default function CheckinLuong({ nhanVien, onBack }) {
                         <span style={{ fontFamily: LUX.fontSerif, fontSize: 24, fontWeight: 700, color: LUX.espresso }}>{formatCurrency(tongKy2)}</span>
                       </div>
 
+                      {/* Ghi chú đối chiếu MySpa — tránh so nhầm 'commission' MySpa (chỉ hoa hồng) với TỔNG này */}
+                      {!isLeTan && (showLKD.tienTour > 0 || showLKD.hoaHongDV > 0) && (
+                        <div style={{ background: '#FBF6EC', border: `1px solid ${LUX.line}`, borderRadius: 10, padding: '11px 13px', margin: '0 0 10px', fontSize: 11.5, lineHeight: 1.55, color: LUX.ink2 }}>
+                          💡 <b>Đối chiếu với MySpa:</b> cột <b>“commission”</b> bên MySpa <u>chỉ là phần Hoa Hồng DV</u>; còn <b>Tiền Tour</b> nằm ở cột <b>“Tiền tour NV”</b> riêng. Phải <b>cộng cả hai</b> mới bằng con số <b>Kỳ 2</b> ở trên — đừng chỉ nhìn mỗi “commission”.
+                        </div>
+                      )}
+
                       {/* Chi tiết từng lượt — KTV xem rõ: STT, ngày, dịch vụ, khách, tour, hoa hồng */}
                       {data?.kdDetail?.length > 0 && (
                         <div style={{ marginTop: 8 }}>
