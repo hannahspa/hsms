@@ -51,6 +51,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   const [showProposeModal, setShowProposeModal] = useState(false)
   const [proposeReason, setProposeReason]       = useState('')
   const [reviewYc, setReviewYc]                 = useState(null)   // yeu_cau_chinh_sua admin đang xem/duyệt
+  const [isMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   const [showRejectModal, setShowRejectModal]   = useState(false)
   const [rejectReason, setRejectReason]         = useState('')
   // Toast đẹp thay notify() — theo ngôn ngữ thiết kế HSMS
@@ -2216,6 +2217,31 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
             </button>
           </div>
         </div>
+      </div>
+    )}
+
+    {/* Thanh Duyệt/Từ chối CỐ ĐỊNH đáy màn hình — chỉ mobile + đang duyệt đề xuất sửa đơn.
+        Fix: trên điện thoại nút duyệt bị đẩy xuống cuối trang dài → Admin không thấy để bấm. */}
+    {reviewYc && isMobile && (
+      <div style={{
+        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 4000,
+        display: 'flex', gap: 10, alignItems: 'stretch',
+        padding: '10px 12px calc(10px + env(safe-area-inset-bottom))',
+        background: '#fff', borderTop: `1px solid ${C.line2}`, boxShadow: '0 -6px 20px rgba(0,0,0,.14)',
+      }}>
+        <button onClick={() => { setRejectReason(''); setShowRejectModal(true) }} disabled={loading}
+          style={{
+            padding: '0 18px', height: 50, borderRadius: 12, border: '1.5px solid rgba(192,57,43,.4)',
+            background: 'rgba(192,57,43,.06)', color: '#C0392B', fontWeight: 800, fontSize: 15,
+            fontFamily: FONT.sans, flexShrink: 0, cursor: 'pointer',
+          }}>✕ Từ chối</button>
+        <button onClick={() => handleConfirmOrder(true)} disabled={loading}
+          style={{
+            flex: 1, height: 50, borderRadius: 12, border: 'none', color: '#fff',
+            background: 'linear-gradient(135deg,#C9A96E 0%,#A0714F 45%,#7D5A3C 100%)',
+            fontWeight: 800, fontSize: 15, fontFamily: FONT.sans, cursor: loading ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>{loading ? 'Đang xử lý…' : '✓ Duyệt & Cập Nhật'}</button>
       </div>
     )}
 
