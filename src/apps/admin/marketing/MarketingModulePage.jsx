@@ -1360,9 +1360,23 @@ function Overview() {
         ))}
       </div>
 
+      {/* GỘP 11/07: 3 cụm rõ ràng thay 2 nhóm cũ thiếu mục — thêm card cho các
+          trang ngoài MARKETING_ROUTES (Cần Chạm, Chiến Dịch Tự Động, Soạn Tay AI) */}
       {[
-        { title: 'Chăm khách', desc: 'Hộp thư hằng ngày & remarketing', keys: ['inbox', 'remarketing'] },
-        { title: 'Phân tích & Cấu hình', desc: 'Dành cho chủ / admin', keys: ['fanpage', 'settings'] },
+        { title: '📥 Khách nhắn đến', desc: 'Trả lời & chốt lịch hằng ngày', items: [
+          routes.find(x => x.key === 'inbox'),
+        ]},
+        { title: '📤 Mình chủ động chăm', desc: 'Gọi/nhắn giữ chân khách — tự động mỗi sáng + thủ công', items: [
+          { key: 'can-cham', path: '/admin/cham-soc-khach', title: 'Hôm Nay Cần Chạm', short: 'Hôm Nay Cần Chạm', subtitle: 'Danh sách khách cần gọi/nhắn thủ công hôm nay: hàng đợi Fanpage, khách đã đến, khách cần gọi lại, hiệu quả nhân viên.', owner: 'Lễ tân', status: 'Việc hằng ngày', accent: '#d6336c', metrics: ['Cần chạm hôm nay', 'Khách đã đến', 'Cần gọi lại'] },
+          { key: 'tu-dong', path: '/admin/marketing/tu-dong', title: 'Chiến Dịch Tự Động (4 luồng)', short: 'Chiến Dịch Tự Động', subtitle: 'Sau Dịch Vụ · Chăm Sóc Lại thẻ (9h) · Win-back voucher (9h15) · Mời khách lẻ (9h30) — tự chạy mỗi sáng, vào xem kết quả & hàng đợi.', owner: 'Tự động + theo dõi', status: 'Đang chạy hằng ngày', accent: '#16A085', metrics: ['4 luồng ZNS', 'Tự gửi mỗi sáng', 'Theo dõi đã gửi/đã xem'] },
+          { key: 'soan-tay', path: '/admin/nhac-lieu-trinh', title: 'Soạn Tay AI (Nhắc Thẻ)', short: 'Soạn Tay AI (Nhắc Thẻ)', subtitle: 'AI soạn tin nhắc thẻ liệu trình cho từng khách — duyệt từng tin rồi gửi, kiểm soát 100% nội dung.', owner: 'Chủ / lễ tân', status: 'Thủ công', accent: '#b08968', metrics: ['AI soạn', 'Duyệt từng tin', 'Gửi lẻ/loạt'] },
+        ]},
+        { title: '📊 Phân tích & Cấu hình', desc: 'Dành cho chủ / admin', items: [
+          routes.find(x => x.key === 'remarketing'),
+          routes.find(x => x.key === 'fanpage'),
+          routes.find(x => x.key === 'training'),
+          routes.find(x => x.key === 'settings'),
+        ]},
       ].map(g => (
         <div key={g.title} style={{ marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
@@ -1370,10 +1384,7 @@ function Overview() {
             <span style={{ fontSize: 12, color: C.textSub }}>{g.desc}</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
-            {g.keys.map((k, i) => {
-              const r = routes.find(x => x.key === k)
-              return r ? <ModuleCard key={k} route={r} index={i} /> : null
-            })}
+            {g.items.filter(Boolean).map((r, i) => <ModuleCard key={r.key} route={r} index={i} />)}
           </div>
         </div>
       ))}
@@ -2771,6 +2782,57 @@ function KhachLePage() {
   )
 }
 
+// ── Chiến Dịch Tự Động: GỘP 4 trang chiến dịch chủ động về 1 trang 4 tab ──────
+// (gộp module 11/07 — anh Nam: 2 nhóm menu Chăm Sóc/Marketing trùng, khó khai thác)
+// URL cũ /cham-soc-sau-dich-vu, /cham-soc-lai, /win-back, /khach-le VẪN SỐNG:
+// router bên dưới trỏ chúng vào đây với tab tương ứng — link cũ/bookmark không vỡ.
+const AUTO_TABS = [
+  { key: 'aftercare',    label: '💆 Sau Dịch Vụ',       path: '/admin/marketing/cham-soc-sau-dich-vu', hint: 'Khách vừa đến hôm qua — AI soạn tin hỏi thăm' },
+  { key: 'cham-soc-lai', label: '🎫 Chăm Sóc Lại (Thẻ)', path: '/admin/marketing/cham-soc-lai',         hint: 'Còn buổi thẻ, lâu chưa quay lại — ZNS 9h sáng' },
+  { key: 'winback',      label: '🧊 Win-back Voucher',   path: '/admin/marketing/win-back',             hint: 'Khách lạnh >90 ngày — voucher mã riêng 9h15' },
+  { key: 'khach-le',     label: '🚶 Mời Khách Lẻ',       path: '/admin/marketing/khach-le',             hint: 'Khách lẻ >30 ngày chưa lại — mời 9h30' },
+]
+
+function AutoCampaignsPage({ initialTab }) {
+  const [tab, setTab] = useState(initialTab || 'aftercare')
+  const active = AUTO_TABS.find(t => t.key === tab) || AUTO_TABS[0]
+  const chooseTab = (t) => {
+    setTab(t.key)
+    // Giữ URL đồng bộ tab để F5/chia sẻ link mở lại đúng tab (không reload trang)
+    window.history.replaceState(null, '', t.path)
+  }
+  return (
+    <div>
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        background: 'rgba(250,247,244,.96)', backdropFilter: 'blur(6px)',
+        borderBottom: `1px solid ${C.border}`, padding: '10px clamp(16px, 2vw, 28px) 0',
+      }}>
+        <div style={{ fontSize: 10.5, fontWeight: 850, letterSpacing: '.14em', textTransform: 'uppercase', color: C.textMute, marginBottom: 6 }}>
+          🤖 Chiến Dịch Tự Động — 4 luồng chăm khách chạy mỗi sáng
+        </div>
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          {AUTO_TABS.map(t => (
+            <button key={t.key} onClick={() => chooseTab(t)} title={t.hint}
+              style={{
+                padding: '9px 16px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+                borderRadius: '10px 10px 0 0', fontFamily: FONT.sans, fontSize: 13, fontWeight: 750,
+                background: t.key === active.key ? '#fff' : 'transparent',
+                color: t.key === active.key ? C.text : C.textSub,
+                borderBottom: t.key === active.key ? '2.5px solid #C9A96E' : '2.5px solid transparent',
+                boxShadow: t.key === active.key ? '0 -4px 14px rgba(139,94,60,.08)' : 'none',
+              }}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+      {active.key === 'aftercare' && <AfterCarePage />}
+      {active.key === 'cham-soc-lai' && <ChamSocLaiPage />}
+      {active.key === 'winback' && <WinbackPage />}
+      {active.key === 'khach-le' && <KhachLePage />}
+    </div>
+  )
+}
+
 export default function MarketingModulePage() {
   const path = window.location.pathname
   // Khách tiềm năng (lead + đặt hẹn) — port từ bản cũ (03/07), Lễ tân vào được
@@ -2786,15 +2848,22 @@ export default function MarketingModulePage() {
     return <CampaignsPage route={MARKETING_ROUTES.find(r => r.key === 'fanpage')} />
   }
 
+  // Trang gộp Chiến Dịch Tự Động (?tab= để mở thẳng 1 tab)
+  if (path.startsWith('/admin/marketing/tu-dong')) {
+    const qTab = new URLSearchParams(window.location.search).get('tab')
+    return <AutoCampaignsPage initialTab={qTab || 'aftercare'} />
+  }
+
   const route = getRoute()
 
   if (route.key === 'overview') return <Overview />
   if (route.key === 'inbox') return <InboxPage />
   if (route.key === 'remarketing') return <RemarketingPage />
-  if (route.key === 'aftercare') return <AfterCarePage />
-  if (route.key === 'cham-soc-lai') return <ChamSocLaiPage />
-  if (route.key === 'winback') return <WinbackPage />
-  if (route.key === 'khach-le') return <KhachLePage />
+  // 4 chiến dịch chủ động → trang gộp (URL cũ giữ nguyên, mở đúng tab)
+  if (route.key === 'aftercare') return <AutoCampaignsPage initialTab="aftercare" />
+  if (route.key === 'cham-soc-lai') return <AutoCampaignsPage initialTab="cham-soc-lai" />
+  if (route.key === 'winback') return <AutoCampaignsPage initialTab="winback" />
+  if (route.key === 'khach-le') return <AutoCampaignsPage initialTab="khach-le" />
   if (route.key === 'fanpage') return <FanpageContentPage route={route} />
   if (route.key === 'training') return <TrainingPage />
   if (route.key === 'settings') return <ChannelSettingsPage route={route} />

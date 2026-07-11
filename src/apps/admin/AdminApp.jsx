@@ -69,14 +69,12 @@ const MODULES = [
   { icon: '🛒', label: 'POS Bán Hàng',   href: '/pos',                   badge: 'Mới',   group: 'nb',  color: '#e74c3c', desc: 'Tạo đơn · Thanh toán · Hoa hồng' },
   { icon: '👥', label: 'Nhân Sự',         href: '/admin/nhan-su',         badge: null,    group: 'nb',  color: '#a0714f', desc: 'Chấm công · Duyệt OFF · Bảng lương' },
   { icon: '👤', label: 'CRM Khách Hàng', href: '/admin/crm',             badge: null,    group: 'nb',  color: '#8e44ad', desc: 'Hồ sơ · Thẻ liệu trình · Công nợ' },
-  { icon: '💗', label: 'Chăm Sóc Khách', href: '/admin/cham-soc-khach',  badge: 'Mới',   group: 'nb',  color: '#d6336c', desc: 'Cần gọi hôm nay · Rời bỏ · Sinh nhật' },
+  // GỘP 11/07: Chăm Sóc Khách + Chăm Sóc Lại + Nhắc Thẻ + Marketing → 1 trung tâm "Khách & Marketing"
+  { icon: '💗', label: 'Khách & Marketing', href: '/admin/marketing',    badge: 'Gộp',   group: 'nb',  color: '#d6336c', desc: 'Hộp thư · Cần chạm · Chiến dịch tự động · Fanpage' },
   { icon: '🎫', label: 'Thẻ Liệu Trình', href: '/admin/the-lieu-trinh', badge: null,    group: 'nb',  color: '#6c3483', desc: 'Danh sách thẻ · Tiến độ · Hết hạn' },
-  { icon: '💌', label: 'Chăm Sóc Lại',    href: '/admin/marketing/cham-soc-lai', badge: 'AI', group: 'nb', color: '#d6336c', desc: 'Hàng đợi 40 khách/ngày · Mời quay lại · ZNS 9h' },
-  { icon: '📝', label: 'Nhắc Thẻ (thủ công)', href: '/admin/nhac-lieu-trinh', badge: null, group: 'nb', color: '#b08968', desc: 'Soạn tin AI · Gửi từng khách / hàng loạt' },
   { icon: '💎', label: 'Dịch Vụ',         href: '/admin/dich-vu',       badge: null,    group: 'nb',  color: '#a0714f', desc: 'Mã DV · Danh mục · Giá bán' },
   { icon: '📦', label: 'Kho Hàng',        href: '/admin/kho-hang',        badge: null,    group: 'nb',  color: '#16a085', desc: 'Nhập xuất · Tồn kho · Cảnh báo' },
   { icon: '🏷️', label: 'Khuyến Mãi',     href: '/admin/khuyen-mai',      badge: null,    group: 'nb',  color: '#c0392b', desc: 'CRUD KM · Badge giảm giá · ROI' },
-  { icon: '📣', label: 'Marketing',       href: '/admin/marketing',       badge: null,    group: 'nb',  color: '#e67e22', desc: 'Chiến dịch · Phân tích kênh' },
   { icon: '🌐', label: 'Nội Dung Web',    href: '/admin/trang-chu',       badge: null,    group: 'nb',  color: '#1a5276', desc: 'Hero · FAQ · Đánh giá · Liên hệ' },
   { icon: '📱', label: 'Checkin NV',      href: '/checkin',               badge: null,    group: 'nb',  color: '#6c3483', desc: 'Xem màn hình checkin NV' },
 ]

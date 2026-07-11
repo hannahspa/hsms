@@ -8,8 +8,10 @@ import { useAuth } from '../../../context/AuthContext'
 
 const PAGE_SIZE = 35
 
+// Đổi nhãn 11/07: 'Hộp thư Fanpage' → 'Cần chăm từ Fanpage' — tránh trùng tên với
+// Hộp Thư (chat FB+Zalo) bên Marketing. Tab này là HÀNG ĐỢI chăm sóc, không phải chat.
 const CARE_TABS = [
-  { key: 'fanpage', label: 'Hộp thư Fanpage' },
+  { key: 'fanpage', label: 'Cần chăm từ Fanpage' },
   { key: 'today', label: 'Khách đã đến' },
   { key: 'pos', label: 'Khách cần gọi lại' },
   { key: 'report', label: 'Hiệu quả nhân viên' },
