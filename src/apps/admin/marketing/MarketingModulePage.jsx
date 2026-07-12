@@ -1626,7 +1626,9 @@ function InboxPage() {
   useEffect(() => {
     let alive = true
     ;(async () => {
-      setLoading(true)
+      // Chỉ hiện "Đang tải" LẦN ĐẦU — các lần refresh nền (realtime/polling) cập nhật êm,
+      // không nháy màn hình (anh Nam 12/07: cảm giác phải F5 do màn nháy loading mỗi 40s).
+      if (nonce === 0) setLoading(true)
       try {
         const since = new Date(Date.now() - INBOX_DAYS * 864e5).toISOString()
         const { data } = await supabase.from('marketing_messages')
@@ -1664,8 +1666,8 @@ function InboxPage() {
     const ch = supabase.channel('inbox-page-rt')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'marketing_messages' }, () => { if (alive) setNonce(n => n + 1) })
       .subscribe()
-    // Dự phòng: realtime self-host có thể chập chờn → cứ 40s tải lại để chắc chắn không sót tin khách
-    const poll = setInterval(() => { if (alive && !document.hidden) setNonce(n => n + 1) }, 40000)
+    // Dự phòng: realtime self-host có thể chập chờn → cứ 15s tải lại êm (không nháy màn)
+    const poll = setInterval(() => { if (alive && !document.hidden) setNonce(n => n + 1) }, 15000)
     return () => { alive = false; clearInterval(poll); supabase.removeChannel(ch) }
   }, [nonce])
 
