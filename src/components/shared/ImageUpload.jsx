@@ -6,7 +6,7 @@ import { notify } from '../ui/notify'
 export default function ImageUpload({ onUploaded, onRemove }) {
   const [preview, setPreview] = useState(null)
   const [uploading, setUploading] = useState(false)
-  const [uploadedUrl, setUploadedUrl] = useState(null)
+  const [_uploadedUrl, setUploadedUrl] = useState(null)
   const fileRef = useRef(null)
 
   const handleFile = async (e) => {

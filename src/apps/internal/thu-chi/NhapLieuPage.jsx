@@ -70,10 +70,10 @@ export default function NhapLieuPage({ user }) {
   const [txFilter, setTxFilter] = useState('all')
 
   // Lịch sử giao dịch (dùng khi delete/edit)
-  const [hsFrom, setHsFrom] = useState(today)
-  const [hsTo, setHsTo] = useState(today)
-  const [hsData, setHsData] = useState([])
-  const [hsLoading, setHsLoading] = useState(false)
+  const [hsFrom, _setHsFrom] = useState(today)
+  const [hsTo, _setHsTo] = useState(today)
+  const [_hsData, setHsData] = useState([])
+  const [_hsLoading, setHsLoading] = useState(false)
   const [dailyClose, setDailyClose] = useState(null)
 
   useEffect(() => {
@@ -244,7 +244,7 @@ export default function NhapLieuPage({ user }) {
     } catch (e) { showMsg('Lỗi: ' + e.message, 'error') }
   }
 
-  const nhomChon = nhomList.find(n => n.id === nhomId)
+  const _nhomChon = nhomList.find(n => n.id === nhomId)
   const hangMucChon = hangMucList.find(h => h.id === hangMucId)
   const hmCuaNhom = hangMucList.filter(h => h.parent_id === nhomId)
 

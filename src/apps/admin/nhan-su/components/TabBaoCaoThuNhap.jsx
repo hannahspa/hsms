@@ -10,7 +10,7 @@ const ROLE_LABEL = { ktv: 'KTV', le_tan: 'Lễ Tân', tap_vu: 'Tạp Vụ', quan
 
 function fmtDate(s) {
   if (!s) return ''
-  const [y, m, d] = String(s).slice(0, 10).split('-')
+  const [_y, m, d] = String(s).slice(0, 10).split('-')
   return `${d}/${m}`
 }
 

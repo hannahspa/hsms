@@ -4,7 +4,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/utils'
-import { C } from '../../constants/colors'
 import I from './Icons'
 
 // ── CONSTANTS ─────────────────────────────────────────────

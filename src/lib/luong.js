@@ -10,8 +10,6 @@
  * - Ngay le tich luy: di lam ngay le → +1 ngay OFF co luong
  */
 
-import { getNowVN } from './utils'
-
 // Constants
 export const DON_GIA_TANG_CA = 25000
 export const KY_QUY_MOIS     = 500000
@@ -119,7 +117,7 @@ export function tinhTangCaChamCong(gioRa) {
  * @param {number} todayRef - (optional) day of month to cap at. If provided, only data up to this day is counted.
  *                            Used for current month real-time tracking.
  */
-export function tinhLuong(nv, chamCongList = [], dangKyOffList = [], bangLuongRow = null, year, month, quyNgayOff = null, todayRef = null) {
+export function tinhLuong(nv, chamCongList = [], _dangKyOffList = [], bangLuongRow = null, year, month, quyNgayOff = null, todayRef = null) {
   const soNgayThangFull = getDaysInMonth(year, month)
   // If todayRef is provided, cap the effective month length for real-time tracking
   const soNgayThang = todayRef ? Math.min(todayRef, soNgayThangFull) : soNgayThangFull

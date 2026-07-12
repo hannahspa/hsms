@@ -205,7 +205,7 @@ export const posService = {
       chien_dich_marketing_id: appointment.chien_dich_marketing_id || null,
     }
 
-    let order = null
+    let order
     const inserted = await supabase
       .from('don_hang')
       .insert(insertData)

@@ -35,7 +35,7 @@ export default function FABMenu({ onSelect }) {
           width: '240px',
           animation: 'popUp 0.2s ease'
         }}>
-          {options.map((opt, i) => (
+          {options.map((opt, _i) => (
             <button
               key={opt.id}
               onClick={() => { onSelect(opt.id); setOpen(false) }}

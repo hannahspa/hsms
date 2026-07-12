@@ -252,7 +252,7 @@ export default function CheckinHome({ nhanVien, onLogout }) {
                 da_xong:      { l: 'Xong', c: '#1a4f96', bg: '#e8f0fe' },
               }[h.trang_thai] || { l: '', c: LUX.ink3, bg: LUX.surface }
               const isToday = h.ngay_hen === today
-              const [yy, moo, dd] = (h.ngay_hen || '').split('-')
+              const [_yy, moo, dd] = (h.ngay_hen || '').split('-')
               const dowLabel = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][new Date(`${h.ngay_hen}T00:00:00`).getDay()]
               return (
                 <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: isToday ? '#fffaf0' : LUX.surface, borderRadius: 12, border: `1px solid ${isToday ? '#e8c987' : LUX.line}` }}>

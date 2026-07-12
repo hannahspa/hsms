@@ -126,7 +126,7 @@ function FormChienDich({ initial, khuyenMaiList, onSave, onClose }) {
         </div>
         <div>
           <label style={lbl}>Tên chiến dịch *</label>
-          <input style={inp} value={f.ten} onChange={e => set('ten', e.target.value)} placeholder={`VD: ${KENH[f.kenh].label} Ads tháng ${new Date().getMonth() + 1}`} autoFocus />
+          <input style={inp} value={f.ten} onChange={e => set('ten', e.target.value)} placeholder={`VD: ${KENH[f.kenh].label} Ads tháng ${Number(todayISO().slice(5, 7))}`} autoFocus />
         </div>
         <div>
           <label style={lbl}>Trạng thái</label>

@@ -28,11 +28,11 @@ function canChot(thang, nam, ky) {
   return curD >= 15
 }
 
-function getInitials(name) {
+function _getInitials(name) {
   const parts = name.trim().split(' ')
   return parts[parts.length - 1].charAt(0).toUpperCase()
 }
-function getAvatarColor(name) {
+function _getAvatarColor(name) {
   const p = [LUX.taupe, LUX.champagne, LUX.rose, LUX.sage, '#6a5a4a']
   let h = 0; for (const c of name) h += c.charCodeAt(0)
   return p[h % p.length]
@@ -384,7 +384,7 @@ export default function TabBangLuong({ fixedKy = null }) {
 
       if (ky === 1) {
         // Kỳ 1 — Lương Cứng
-        const tongLuongCung = ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - editState.truUngLuong
+        const _tongLuongCung = ld.luongCoBan + ld.tienTangCa - ld.tienPhat - ld.truKyQuy - editState.truUngLuong
         payload = {
           nhan_vien_id: selected.id, thang, nam,
           luong_co_ban: ld.luongCoBan, tien_tang_ca: ld.tienTangCa, tien_phat: ld.tienPhat,

@@ -99,8 +99,8 @@ export default function TabQuyNgayLe() {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const startYear = `${nam}-01-01`
-      const endYear   = `${nam}-12-31`
+      const _startYear = `${nam}-01-01`
+      const _endYear   = `${nam}-12-31`
       const holidayDates = holidaysOfYear.map(h => h.date)
 
       const [nvRes, ccRes, quyRes] = await Promise.all([
@@ -185,7 +185,7 @@ export default function TabQuyNgayLe() {
   }
 
   // ── Lưu cộng thủ công ──
-  const handleSaveThuCong = async () => {
+  const _handleSaveThuCong = async () => {
     if (!modalThuCong) return
     if (tcSoNgay <= 0) { showToast('Số ngày phải > 0', 'error'); return }
     setSaving(true)

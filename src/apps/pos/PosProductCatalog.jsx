@@ -27,7 +27,7 @@ const TABS_KH = [
   { key: 'san_pham', label: 'Sản phẩm' },
 ]
 
-export default function PosProductCatalog({ onAddItem, selectedCustomer, isGuest }) {
+export default function PosProductCatalog({ onAddItem, selectedCustomer, _isGuest }) {
   const [mode, setMode] = useState('dich_vu')
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('all')

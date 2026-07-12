@@ -311,7 +311,7 @@ function SummaryCard({ label, value, tone, isText }) {
 }
 
 // ── Modal sửa giao dịch (admin) ──────────────────────
-function EditModal({ row, danhMucList, viMap, onClose, onSaved }) {
+function EditModal({ row, danhMucList, _viMap, onClose, onSaved }) {
   const [soTien, setSoTien] = useState(fmtInput(row.so_tien))
   const [dienGiai, setDienGiai] = useState(row.dien_giai || '')
   const [hinhThuc, setHinhThuc] = useState(row.hinh_thuc || 'tien_mat')

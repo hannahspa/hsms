@@ -12,11 +12,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
-    "@tanstack/react-query": "^5.100.6",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-easy-crop": "^5.5.7",
-    "react-router-dom": "^7.14.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -28,6 +26,7 @@
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "eslint-plugin-unused-imports": "^4.4.1",
     "globals": "^17.5.0",
     "sharp": "^0.34.5",
     "tailwindcss": "^4.2.4",

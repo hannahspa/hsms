@@ -956,7 +956,7 @@ function PosVisitPrefill({ visitRows, onOpen }) {
   )
 }
 
-function FanpageTable({ rows, loading, onCopy, onSend, onMark, onVisit }) {
+function _FanpageTable({ rows, loading, onCopy, onSend, onMark, onVisit }) {
   return (
     <table className="tbl" style={{ width: '100%', tableLayout: 'fixed' }}>
       <thead>

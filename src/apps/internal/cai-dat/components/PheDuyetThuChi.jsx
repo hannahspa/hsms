@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { LUX } from '../../../../constants/lux'
-import { formatCurrency, formatDateInput } from '../../../../lib/utils'
+import { formatCurrency } from '../../../../lib/utils'
 
 const BANG_LABEL = {
   doanh_thu: 'Doanh Thu',
@@ -104,7 +104,7 @@ export default function PheDuyetThuChi({ onClose, onUpdated }) {
             <div style={{ fontSize: '13px', color: LUX.ink3, marginTop: '4px', fontFamily: LUX.fontSans }}>Tất cả yêu cầu sửa/xóa đã được xử lý</div>
           </div>
         ) : (
-          list.map((yc, i) => (
+          list.map((yc, _i) => (
             <div key={yc.id} style={{ background: LUX.surface2, borderRadius: '16px', padding: '16px', marginBottom: '12px', border: `1px solid ${LUX.line}`, boxShadow: LUX.shadowSm }}>
               {/* Type badge */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>

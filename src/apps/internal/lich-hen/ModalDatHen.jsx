@@ -183,12 +183,10 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
         ghi_chu: form.ghi_chu?.trim() || null, nguoi_nhap: user?.email || user?.ho_ten || 'Lễ Tân',
         dich_vu_list: dvThemSaved,
       }
-      let lichHenId = initial?.id
       if (initial?.id) await supabase.from('lich_hen').update(payload).eq('id', initial.id)
       else {
         payload.trang_thai = 'cho_xac_nhan'
-        const { data: ins } = await supabase.from('lich_hen').insert(payload).select('id').single()
-        lichHenId = ins?.id
+        await supabase.from('lich_hen').insert(payload).select('id').single()
       }
 
       // Gửi ZNS xác nhận đặt lịch cho khách (chỉ khi tạo mới + có SĐT) — không chặn lưu nếu lỗi

@@ -1,7 +1,6 @@
 import { formatCurrency } from '../../lib/utils'
 import { LUX } from '../../constants/lux'
 import { COLORS } from '../../constants/colors'
-import { TRANG_THAI_DON_HANG } from '../../constants/enums'
 
 const S = {
   container: {
@@ -101,10 +100,10 @@ const ITEM_TYPE_LABELS = {
 
 export default function PosCart({
   order, lineItems, payments, selectedCustomer,
-  tongHang, loading, onNewOrder, onRemoveItem, onUpdateQty,
+  tongHang, loading, onNewOrder, onRemoveItem, _onUpdateQty,
   onCheckout, onVoidOrder,
 }) {
-  const hasOrder = order && order.trang_thai === 'draft'
+  const _hasOrder = order && order.trang_thai === 'draft'
 
   const renderContent = () => {
     if (!order) {

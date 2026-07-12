@@ -196,7 +196,7 @@ export default function AdminShell({ children }) {
                     <div className="nav-children">
                       {n.children.map((child, ci) => {
                         const isActive = path === child.path
-                        const childIcon = ICON_MAP[child.id]
+                        const _childIcon = ICON_MAP[child.id]
                         return (
                           <button
                             key={ci}

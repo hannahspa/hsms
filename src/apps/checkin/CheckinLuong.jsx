@@ -31,8 +31,8 @@ export default function CheckinLuong({ nhanVien, onBack }) {
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(getDaysInMonth(year, month)).padStart(2, '0')}`
+    const _startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const _endDate = `${year}-${String(month).padStart(2, '0')}-${String(getDaysInMonth(year, month)).padStart(2, '0')}`
 
     const isLeTanNv = nhanVien.vi_tri === 'le_tan'
     // 1 RPC an toàn: trả dữ liệu lương CỦA CHÍNH NV (server không lộ của người khác).

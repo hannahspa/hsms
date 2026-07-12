@@ -281,7 +281,7 @@ export default function KiemSoatChiPhi() {
                               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                                 <tbody>
                                   {chiTiet.map((c, j) => {
-                                    const [y, m, d] = c.ngay.split('-')
+                                    const [_y, m, d] = c.ngay.split('-')
                                     return (
                                       <tr key={j} style={{ borderBottom: '1px solid rgba(232,220,200,0.5)' }}>
                                         <td style={{ padding: '6px 10px 6px 0', color: 'var(--ink3)', whiteSpace: 'nowrap', width: 70 }}>{d}/{m}</td>

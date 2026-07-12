@@ -619,31 +619,6 @@ function AdminCRMDetailPage({ customerId }) {
             </div>
           )}
 
-          {false && activeTab === 'service' && (
-            <div>
-              <h2 style={{ margin: '0 0 16px', fontFamily: 'var(--serif)', color: 'var(--ink)' }}>Dịch vụ đã sử dụng</h2>
-              {history.length ? (
-                <div style={{ border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '120px 130px 1fr 120px 160px 130px', gap: 10, padding: '11px 14px', background: 'var(--bg)', fontSize: 11, fontWeight: 800, color: 'var(--ink3)', textTransform: 'uppercase' }}>
-                    <div>Thời gian</div><div>Mã đơn</div><div>Dịch vụ</div><div>Tổng tiền</div><div>NV thực hiện</div><div>Tour / Hoa Hồng</div>
-                  </div>
-                  {history.map(row => {
-                    const income = historyIncome(row)
-                    return (
-                      <div key={row.don_hang_chi_tiet_id || row.don_hang_id} style={{ display: 'grid', gridTemplateColumns: '120px 130px 1fr 120px 160px 130px', gap: 10, padding: '12px 14px', borderTop: '1px solid var(--line)', fontSize: 13, alignItems: 'center' }}>
-                        <div>{fmtDate(row.ngay)}</div>
-                        <div style={{ fontWeight: 800 }}>{row.ma_don || '—'}</div>
-                        <div>{row.ten_dich_vu || historyLabel(row.loai_lich_su)}</div>
-                        <div>{formatCurrency(row.thanh_tien || 0)}</div>
-                        <div>{row.ktv || 'Chưa gắn'}</div>
-                        <div style={{ color: income?.color || 'var(--ink3)', fontWeight: 800 }}>{income ? `${income.label} ${formatCurrency(income.amount)}` : '—'}</div>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : <CRMEmpty>Chưa có lịch sử dịch vụ đã chốt từ POS.</CRMEmpty>}
-            </div>
-          )}
 
           {activeTab === 'cards' && (
             <div>
@@ -701,29 +676,6 @@ function AdminCRMDetailPage({ customerId }) {
             </div>
           )}
 
-          {false && activeTab === 'cards' && (
-            <div>
-              <h2 style={{ margin: '0 0 16px', fontFamily: 'var(--serif)', color: 'var(--ink)' }}>Thẻ dịch vụ</h2>
-              {cards.length ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-                  {cards.map(card => {
-                    const pct = card.so_buoi_tong > 0 ? Math.min(100, Math.round((card.so_buoi_da_dung / card.so_buoi_tong) * 100)) : 0
-                    return (
-                      <div key={card.id} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 14, background: 'var(--bg)' }}>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--ink)' }}>{card.ten_dich_vu}</div>
-                        <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 4 }}>{card.ma_the || 'Chưa có mã thẻ'} · {card.trang_thai}</div>
-                        <div className="bar-h" style={{ marginTop: 12, height: 6 }}><i style={{ width: pct + '%', background: 'var(--grad-gold)' }} /></div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12 }}>
-                          <span>Còn {card.so_buoi_con_lai || 0} buổi</span>
-                          <span>{card.so_buoi_da_dung || 0}/{card.so_buoi_tong || 0}</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : <CRMEmpty>Khách chưa có thẻ dịch vụ/thẻ liệu trình.</CRMEmpty>}
-            </div>
-          )}
 
           {activeTab === 'tuvan' && (
             <div>

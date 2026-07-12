@@ -8,7 +8,6 @@ import { calcCommissionRates, getMyspaCommissionRule, calcServiceCommission } fr
 import { getCardComboService, getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
 import { useAuth } from '../../context/AuthContext'
 import { confirmDialog } from '../../components/ui/notify'
-import I from '../../components/shared/Icons'
 import PosOrderHistory from './PosOrderHistory'
 import PosProductCatalog from './PosProductCatalog'
 import KtvPopupComponent from './components/KtvPopup'
@@ -1325,7 +1324,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   }, [tongCuoi])
 
   const tongNhan   = payLines.reduce((s, l) => s + (l.hinhThuc ? (l.soTien || 0) : 0), 0)
-  const tienThua   = Math.max(0, tongNhan - tongCuoi)
+  const _tienThua   = Math.max(0, tongNhan - tongCuoi)
   const conNo      = Math.max(0, tongCuoi - tongNhan)
   const isOverPaid = tongNhan > tongCuoi
   // Ví trả trước: tổng tiền dùng PTTT thẻ trả trước không được vượt số dư khách
@@ -1453,7 +1452,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
           : 'Chưa đủ thanh toán'
 
   const nowVN  = getNowVN()
-  const dateStr = nowVN.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const _dateStr = nowVN.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -1611,7 +1610,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                   {customerDebt.map(d => {
                     const conNo   = d.con_no || 0
                     const pctTra  = d.pct_da_tra || 0
-                    const du30    = d.du_30_pct
+                    const _du30    = d.du_30_pct
                     return (
                       <div key={d.the_lieu_trinh_id} style={{
                         padding: '7px 12px', borderTop: '1px solid rgba(192,57,43,.1)',

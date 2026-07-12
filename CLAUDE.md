@@ -167,7 +167,7 @@ Dự án cải tạo giao diện: D:\Hannah Spa\Du An WebApp Hannah Spa\Cai Tao 
 | Thành phần | Công nghệ | Ghi chú |
 |---|---|---|
 | Frontend | React 18 + Vite | |
-| UI | Inline styles (React `style={{}}`) | KHÔNG dùng Tailwind — đã bỏ |
+| UI | Inline styles (React `style={{}}`) là CHÍNH | Tailwind v4 VẪN được nạp (`@import "tailwindcss"` trong index.css) — 15 file website/báo cáo dùng class Tailwind + preflight reset ảnh hưởng toàn hệ. KHÔNG ĐƯỢC GỠ. Code mới: ưu tiên inline styles |
 | Backend | Supabase | PostgreSQL + Auth + Realtime + Storage |
 | Hosting | Vercel | Auto-deploy từ GitHub main |
 | Domain | hannahspa.vn | Đang LIVE |
@@ -184,14 +184,13 @@ Dự án cải tạo giao diện: D:\Hannah Spa\Du An WebApp Hannah Spa\Cai Tao 
 | `hannahspa.vn/checkin` | Check-in nhân viên (điện thoại) |
 | `hannahspa.vn/menu` | Menu iPad (khách tại quầy) |
 
-### Supabase Project
+### Database — Supabase SELF-HOST trên VPS (từ 06/2026)
 
 ```
-ID:      aqyemkfbjqxpegingoil
-Name:    HannahSpa-production
-Region:  Southeast Asia (Singapore)
-disable_signup: TRUE
-site_url: https://hannahspa.vn
+⚠️ DB thật: VPS Vietnix 103.90.224.43 — api.hannahspa.vn (Supabase self-host Docker)
+Chạy SQL:  ssh -i ~/.ssh/hannahspa_vps root@103.90.224.43 'docker exec -i supabase-db psql -U postgres -d postgres'
+Supabase cloud cũ (aqyemkfbjqxpegingoil) ĐÃ BỎ — chỉ còn read-only, KHÔNG ghi vào đó
+disable_signup: TRUE | site_url: https://hannahspa.vn
 ```
 
 ### Tài khoản hệ thống

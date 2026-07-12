@@ -18,7 +18,7 @@ const PTTT_OPTIONS = [
   { value: 'the_tra_truoc', label: 'Thẻ Trả Trước' },
 ]
 
-export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDeleted, canVoid = true, isAdmin = false }) {
+export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDeleted, _canVoid = true, isAdmin = false }) {
   const [detail, setDetail] = useState({ items: [], payments: [], ledger: [], customerSnapshot: null })
   const [loading, setLoading] = useState(true)
   const [savingPttt, setSavingPttt] = useState(null)   // id payment đang đổi PTTT

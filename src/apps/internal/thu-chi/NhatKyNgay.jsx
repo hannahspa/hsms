@@ -3,7 +3,6 @@ import { supabase } from '../../../lib/supabase'
 import { formatCurrency, todayISO, formatDateInput } from '../../../lib/utils'
 import { C, FONT } from '../../../constants/colors'
 import Card from '../../../components/ui/Card'
-import Badge from '../../../components/ui/Badge'
 import DatePicker from '../../../components/shared/DatePicker'
 import I from '../../../components/shared/Icons'
 

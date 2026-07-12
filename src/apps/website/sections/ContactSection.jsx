@@ -16,7 +16,7 @@ export default function ContactSection({ cmsContact = {} }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const msg = encodeURIComponent(
+    const _msg = encodeURIComponent(
       `Xin chào Hannah Spa! Tôi muốn đặt lịch:\nTên: ${form.name}\nSĐT: ${form.phone}\nDịch vụ: ${form.service}${form.note ? `\nGhi chú: ${form.note}` : ''}`
     )
     window.open(`https://www.facebook.com/hannahspact`, '_blank')

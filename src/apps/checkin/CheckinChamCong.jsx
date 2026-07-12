@@ -72,7 +72,7 @@ const infoIcon = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>
 )
 
-export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated }) {
+export default function CheckinChamCong({ _nhanVien, chamCong, onBack, onUpdated }) {
   const [loading, setLoading] = useState(false)
   const [showVeSom, setShowVeSom] = useState(false)
   const [lyDoVeSom, setLyDoVeSom] = useState('')
@@ -229,7 +229,7 @@ export default function CheckinChamCong({ nhanVien, chamCong, onBack, onUpdated 
   const fmtGio = (t) => t?.slice(0, 5) || '--:--'
   const isCheckedIn = chamCong?.gio_vao && !chamCong?.gio_ra
   const isCheckedOut = chamCong?.gio_vao && chamCong?.gio_ra
-  const gioLamHom = isCheckedOut ? tinhGioLam(chamCong.gio_vao, chamCong.gio_ra) : null
+  const _gioLamHom = isCheckedOut ? tinhGioLam(chamCong.gio_vao, chamCong.gio_ra) : null
 
   return (
     <div style={{ minHeight: '100vh', background: LUX.bg, fontFamily: LUX.fontSans }}>

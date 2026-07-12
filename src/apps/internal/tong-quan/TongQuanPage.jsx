@@ -86,7 +86,7 @@ function BarsThuChi({ data }) {
 }
 
 // ════════════════ MAIN PAGE ════════════════
-export default function TongQuanPage({ onOpenForm }) {
+export default function TongQuanPage({ _onOpenForm }) {
   const { user } = useAuth()
   const isAdmin = user?.vai_tro === 'admin'
   const [tab, setTab] = useState('thang')
@@ -359,7 +359,7 @@ export default function TongQuanPage({ onOpenForm }) {
           viList={data.viList}
           initialData={editingTx.data}
           onClose={() => setEditingTx(null)}
-          onSaved={(type, msg) => {
+          onSaved={(type, _msg) => {
             if (type === 'success') setRefreshKey(k => k + 1)
             setEditingTx(null)
           }}
@@ -371,7 +371,7 @@ export default function TongQuanPage({ onOpenForm }) {
           viList={data.viList}
           initialData={editingTx.data}
           onClose={() => setEditingTx(null)}
-          onSaved={(type, msg) => {
+          onSaved={(type, _msg) => {
             if (type === 'success') setRefreshKey(k => k + 1)
             setEditingTx(null)
           }}

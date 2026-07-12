@@ -483,7 +483,7 @@ export default function AdminSuaChamCong({ nhanVien, onClose, onSaved, initialDa
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '6px' }}>
                 {days.map(({ d, dateStr, thu, isWeekend, cc, off }) => {
                   const hasCc = !!cc
-                  const isOff = !!off
+                  const _isOff = !!off
                   const loaiLabel = cc ? (LOAI_OPTS.find(o => o.value === cc.loai) || LOAI_OPTS[0]) : null
                   const isDiLam = cc?.loai === 'di_lam'
                   const isBuNgayLe = buNgayLe.has(dateStr)   // ngày được bù bằng quỹ ngày lễ

@@ -6,7 +6,7 @@ import { tinhLuong, leTanCaInfo } from '../../lib/luong'
 import './styles.css'
 
 const CA_VAO_CHUAN = { h: 9, m: 15 }
-const CA_RA_CHUAN = { h: 20, m: 0 }
+const _CA_RA_CHUAN = { h: 20, m: 0 }
 
 function toPhut(timeStr) {
   const [h, m] = (timeStr || '0:0').split(':').map(Number)
@@ -106,7 +106,7 @@ export default function CheckinLich({ nhanVien, onBack }) {
     const date = new Date(nam, thang - 1, day)
     const isWeekend = date.getDay() === 0 || date.getDay() === 6
     const isFuture = date > now
-    const isToday = date.toDateString() === now.toDateString()
+    const _isToday = date.toDateString() === now.toDateString()
 
     if (isFuture) return {
       bg: 'transparent', textColor: LUX.ink4, numColor: LUX.ink4,
@@ -179,7 +179,7 @@ export default function CheckinLich({ nhanVien, onBack }) {
   const prevMonth = () => { if (thang === 1) { setThang(12); setNam(n => n - 1) } else setThang(t => t - 1) }
   const nextMonth = () => { if (thang === 12) { setThang(1); setNam(n => n + 1) } else setThang(t => t + 1) }
 
-  const statStyle = (mb, mc) => ({
+  const statStyle = (_mb, _mc) => ({
     background: LUX.surface2, border: `1px solid ${LUX.line}`, borderRadius: LUX.radiusSm,
     padding: '12px 10px', textAlign: 'center', transition: 'transform 0.25s',
     cursor: 'default',

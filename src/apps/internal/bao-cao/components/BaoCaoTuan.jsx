@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { formatCurrency, todayISO, getNowVN, formatDateInput } from '../../../../lib/utils'
-import DatePicker from '../../../../components/shared/DatePicker'
+import { formatCurrency, todayISO, formatDateInput } from '../../../../lib/utils'
 import I from '../../../../components/shared/Icons'
 
 function getWeekRange(date) {

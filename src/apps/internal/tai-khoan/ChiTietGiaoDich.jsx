@@ -73,7 +73,7 @@ export default function ChiTietGiaoDich({ giaoDich, user, onBack, onUpdated }) {
     }
   }
 
-  const loaiColor = giaoDich.loai === 'thu' ? '#2D7A4F' : giaoDich.loai === 'chi' ? '#C0392B' : '#6C3483'
+  const _loaiColor = giaoDich.loai === 'thu' ? '#2D7A4F' : giaoDich.loai === 'chi' ? '#C0392B' : '#6C3483'
   const loaiIcon  = giaoDich.loai === 'thu' ? '💰' : giaoDich.loai === 'chi' ? '💸' : '🔄'
 
   return (

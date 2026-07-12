@@ -130,7 +130,7 @@ function RevenueChart({ chartData }) {
   if (!chartData || chartData.length === 0) return null
 
   const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
-  const days = chartData.map((d, i) => {
+  const days = chartData.map((d, _i) => {
     const dt = new Date(d.label)
     return DAYS[dt.getDay()]
   })

@@ -21,7 +21,7 @@ function getInitials(name) {
 }
 
 // ════════════════ STAFF CARD ════════════════
-function StaffCard({ nv, onClick }) {
+function _StaffCard({ nv, onClick }) {
   const avGradients = [
     'linear-gradient(135deg,#c9a96e,#a87f4f)',
     'linear-gradient(135deg,#c4998a,#a87366)',
@@ -97,7 +97,7 @@ function navigate(v) {
 
 // ════════════════ MAIN ════════════════
 export default function AdminNhanSuPage() {
-  const { user } = useAuth()
+  const { _user } = useAuth()
   const view = PATH_VIEW[window.location.pathname] ?? null
   const [stats, setStats]   = useState({ nvCount: 0, diLam: 0, choduyet: 0 })
   const [nvList, setNvList] = useState([])

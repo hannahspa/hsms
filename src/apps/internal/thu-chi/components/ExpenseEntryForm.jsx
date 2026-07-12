@@ -52,7 +52,7 @@ export default function ExpenseEntryForm({
   isKho = false,
   products = [],
   khoLines = [],
-  tongKho = 0,
+  _tongKho = 0,
   onPickKhoSP,
   setKhoLine,
   addKhoLine,

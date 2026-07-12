@@ -12,7 +12,7 @@ const LOAI_CFG = {
 }
 
 const DAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
-const fmtDate = (iso) => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}` }
+const fmtDate = (iso) => { if (!iso) return ''; const [_y, m, d] = iso.split('-'); return `${d}/${m}` }
 const getDay = (iso) => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return DAYS[new Date(y, m-1, d).getDay()] }
 
 const YC_LABEL = {

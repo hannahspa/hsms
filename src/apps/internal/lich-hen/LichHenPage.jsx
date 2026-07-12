@@ -6,7 +6,7 @@ import { addDaysISO, addMonthsISO, daysInMonth } from '../../../lib/dateMath'
 import DatePicker from '../../../components/shared/DatePicker'
 import {
   C, TRANG_THAI, VIEW_TABS, SLOTS, ROW_H, HOUR_START, SLOT_MIN,
-  weekDaysOf, monthMatrixOf, monthOf, dayOfWeek, fmtDate, shortName, gioToMin,
+  weekDaysOf, monthMatrixOf, monthOf, dayOfWeek, fmtDate, gioToMin,
   Avatar, navBtn, miniBtn,
 } from './lichHenShared'
 import ModalDatHen from './ModalDatHen'
@@ -131,8 +131,8 @@ export default function LichHenPage({ user }) {
   // Cột KTV: chỉ KTV ĐI LÀM hôm đó (ẩn người nghỉ/off); cộng cột "Nhân viên bất kỳ" nếu có lịch chưa gán
   const workingKtv = ktvList.filter(k => k.vi_tri === 'ktv' && !offIds.includes(k.id))
   const hasUnassigned = henList.some(h => !h.nhan_vien_id && h.trang_thai !== 'huy')
-  const columns = [...workingKtv, ...(hasUnassigned ? [{ id: null, ho_ten: 'Nhân viên bất kỳ', vi_tri: 'none' }] : [])]
-  const henByCol = id => henList.filter(h => (h.nhan_vien_id || null) === id && h.trang_thai !== 'huy')
+  const _columns = [...workingKtv, ...(hasUnassigned ? [{ id: null, ho_ten: 'Nhân viên bất kỳ', vi_tri: 'none' }] : [])]
+  const _henByCol = id => henList.filter(h => (h.nhan_vien_id || null) === id && h.trang_thai !== 'huy')
 
   // Chặn đặt lịch quá khứ: nếu xem hôm nay, các slot trước giờ hiện tại bị khoá
   const nowMin = (() => { const d = getNowVN(); return d.getHours() * 60 + d.getMinutes() })()
@@ -147,7 +147,7 @@ export default function LichHenPage({ user }) {
   const visSlots = SLOTS.filter(m => m >= visStartMin)
   const timelineH = visSlots.length * ROW_H
 
-  const ktvMap = Object.fromEntries(ktvList.map(k => [k.id, k.ho_ten]))
+  const _ktvMap = Object.fromEntries(ktvList.map(k => [k.id, k.ho_ten]))
   // Xếp tất cả lịch hẹn vào 1 timeline chung; trùng giờ → xếp ngang (lane theo cụm chồng giờ)
   const dayItems = henList.filter(h => h.trang_thai !== 'huy')
     .map(h => ({ h, start: gioToMin(h.gio_hen), end: gioToMin(h.gio_hen) + (h.thoi_luong_phut || 60) }))

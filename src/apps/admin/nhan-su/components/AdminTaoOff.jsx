@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { COLORS } from '../../../../constants/colors'
-import { todayISO, getNowVN } from '../../../../lib/utils'
+import { todayISO } from '../../../../lib/utils'
 import DatePicker from '../../../../components/shared/DatePicker'
 import { useAuth } from '../../../../context/AuthContext'
 import Modal from '../../../../components/ui/Modal'

@@ -35,7 +35,7 @@ function fmtMonth(y, m) {
   return `Tháng ${m}/${y}`
 }
 
-export default function CheckinThuNhap({ nhanVien, onBack }) {
+export default function CheckinThuNhap({ _nhanVien, onBack }) {
   const now = getNowVN()
   const curYear  = now.getFullYear()
   const curMonth = now.getMonth() + 1
@@ -296,7 +296,7 @@ export default function CheckinThuNhap({ nhanVien, onBack }) {
                     </div>
                   </div>
                   {/* Rows */}
-                  {monthRows.map((r, i) => {
+                  {monthRows.map((r, _i) => {
                     const cfg = LOAI_CONFIG[r.loai] || { label: r.loai, icon: '📌', color: LUX.ink2, bg: LUX.surface2 }
                     return (
                       <div key={r.id} style={{

@@ -47,7 +47,7 @@ export default function AdminTheLieuTrinhPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [cardPage, setCardPage] = useState(1)
-  const [tab, setTab] = useState(window.location.pathname.endsWith('/combo') ? 'combos' : 'cards')
+  const [tab, _setTab] = useState(window.location.pathname.endsWith('/combo') ? 'combos' : 'cards')
   const [selected, setSelected] = useState(null)
   const [editingCombo, setEditingCombo] = useState(null)
   const [editingCard, setEditingCard] = useState(null)
@@ -121,7 +121,7 @@ export default function AdminTheLieuTrinhPage() {
   const isAlmostDone = isAlmostDoneCard
   const needsReview = needsReviewCard
 
-  const { total, activeN, expiredN, doneN, almostN, comboCardN, reviewN, totalValue } = getCardStats(cards)
+  const { total, activeN, expiredN, doneN, almostN, comboCardN, reviewN, _totalValue } = getCardStats(cards)
   const backfilledCardN = (backfill || []).reduce((sum, row) => sum + Number(row.so_the_da_gan || 0), 0)
   const filtered = filterCards(cards, filter, search)
   const cardTotalPages = Math.max(1, Math.ceil(filtered.length / CARD_PAGE_SIZE))

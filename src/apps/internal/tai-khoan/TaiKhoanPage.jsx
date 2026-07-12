@@ -166,7 +166,7 @@ export default function TaiKhoanPage({ user }) {
   )
 
   const viIcons = { tien_mat: '💵', chuyen_khoan: '🏦', quet_the: '💳' }
-  const viGradients = {
+  const _viGradients = {
     tien_mat: 'linear-gradient(180deg,#e0eedd,#bfd5b8)',
     chuyen_khoan: 'linear-gradient(180deg,#dde9f3,#a8c5dc)',
     quet_the: 'linear-gradient(180deg,#f0dcc0,#d4a574)',

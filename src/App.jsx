@@ -108,9 +108,6 @@ export default function App() {
   // Vòng quay may mắn cho khách (iPad tại quầy)
   if (path.startsWith('/quay')) return <ErrorBoundary><LazyRoute><CustomerWheelApp /></LazyRoute></ErrorBoundary>
 
-  // Shop (sắp ra mắt)
-  if (path.startsWith('/shop')) return <ErrorBoundary><LazyRoute><LandingPage /></LazyRoute></ErrorBoundary>
-
   // POS, Admin, SoThuChi — dùng chung AdminShell
   return (
     <AuthProvider>

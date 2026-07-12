@@ -146,7 +146,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
     setDateTab(key)
   }
 
-  const handleDateTab = (tab) => {
+  const _handleDateTab = (tab) => {
     setSearch(''); setActiveSearch(''); setStatusTab('all')
     setDateTab(tab)
     if (tab === 'today') {
@@ -448,7 +448,7 @@ export default function PosOrderHistory({ onResumeOrder }) {
                 // Đơn nháp chưa finalize (thuc_thu=0) → lấy giá trị giỏ hàng net.
                 const cartNet = Math.max(0, (o.don_gia_tong ?? orderTotal) - realDiscount)
                 const netValue = isDraft ? cartNet : (o.thuc_thu ?? cartNet)
-                const creatorName = o.nguoi_tao_ten || 'HSMS'
+                const _creatorName = o.nguoi_tao_ten || 'HSMS'
                 const paymentText = (o.payments || []).length > 0
                   ? (o.payments || []).map(p => `${paymentMethodLabel(p.hinh_thuc)}: ${formatCurrency(p.so_tien)}`).join(' · ')
                   : 'Không thu tiền'

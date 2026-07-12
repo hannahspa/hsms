@@ -19,7 +19,7 @@ const stepInfo = [
   { title: 'Xác Nhận PIN Mới', icon: '✅' },
 ]
 
-export default function CheckinDoiPin({ nhanVien, onBack }) {
+export default function CheckinDoiPin({ _nhanVien, onBack }) {
   const [step, setStep] = useState(1)
   const [pinCu, setPinCu] = useState('')
   const [pinMoi, setPinMoi] = useState('')
