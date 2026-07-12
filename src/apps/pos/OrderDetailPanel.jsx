@@ -104,6 +104,31 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
     }
   }
 
+  // ── Admin: SỬA NHANH tour/hoa hồng từng dòng (RPC 147) — không mở lại đơn ──
+  // (anh Nam 12/07: sửa 1 con số mà phải khôi phục→tạo lại→thanh toán lại → dễ dupe thẻ)
+  const [editMoney, setEditMoney] = useState(null)   // { id, tour, hh }
+  const [savingMoney, setSavingMoney] = useState(false)
+  const openEditMoney = (item) => setEditMoney({
+    id: item.id,
+    tour: String(item.tien_tour || 0),
+    hh: String(item.tien_hoa_hong || 0),
+  })
+  const handleSaveMoney = async () => {
+    if (!editMoney) return
+    setSavingMoney(true)
+    try {
+      const toInt = (s) => Math.max(0, parseInt(String(s).replace(/\D/g, ''), 10) || 0)
+      await posService.suaTienDong(editMoney.id, {
+        tienTour: toInt(editMoney.tour),
+        tienHoaHong: toInt(editMoney.hh),
+      })
+      notify('Đã sửa tiền tour/hoa hồng — sổ lương NV đã đồng bộ.')
+      setEditMoney(null)
+      await reloadDetail()
+    } catch (e) { notify('Lỗi sửa tiền: ' + e.message, 'error') }
+    finally { setSavingMoney(false) }
+  }
+
   const st = STATUS_MAP[order.trang_thai] || STATUS_MAP.draft
   const { date, time } = fmtDateTime(order.created_at, order.ngay)
   const orderTotal = order.tong_tien_hang || order.thanh_tien || 0
@@ -206,7 +231,40 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
                     {item.meta?.myspaStaffStatus === 'chua_co_ten' ? 'Chưa có tên NV từ MySpa' : 'Không rõ KTV'}
                   </span>
                 )}
+                {/* Sửa nhanh tour/HH — không cần mở lại đơn (chống dupe thẻ) */}
+                {isAdmin && order.trang_thai !== 'huy' && editMoney?.id !== item.id && (
+                  <button onClick={() => openEditMoney(item)} title="Sửa nhanh tiền tour / hoa hồng dòng này (đồng bộ sổ lương, không mở lại đơn)"
+                    style={{ marginLeft: 'auto', border: '1px solid var(--line)', background: '#fff', borderRadius: 7, padding: '2px 8px', fontSize: 10.5, fontWeight: 700, color: 'var(--ink2)', cursor: 'pointer', flexShrink: 0 }}>
+                    ✎ Sửa tiền
+                  </button>
+                )}
               </div>
+
+              {/* Khung sửa nhanh tour/HH */}
+              {isAdmin && editMoney?.id === item.id && (
+                <div style={{ marginTop: 7, padding: '10px 12px', background: '#FFF9F0', border: '1px solid rgba(201,169,110,.45)', borderRadius: 9, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Tiền Tour
+                    <input value={editMoney.tour} inputMode="numeric"
+                      onChange={e => setEditMoney(m => ({ ...m, tour: e.target.value }))}
+                      style={{ width: 90, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--line)', fontSize: 12.5, fontWeight: 700, textAlign: 'right' }} />
+                  </label>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Hoa Hồng
+                    <input value={editMoney.hh} inputMode="numeric"
+                      onChange={e => setEditMoney(m => ({ ...m, hh: e.target.value }))}
+                      style={{ width: 90, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--line)', fontSize: 12.5, fontWeight: 700, textAlign: 'right' }} />
+                  </label>
+                  <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                    <button onClick={() => setEditMoney(null)} disabled={savingMoney}
+                      style={{ border: '1px solid var(--line)', background: '#fff', borderRadius: 7, padding: '6px 12px', fontSize: 11.5, fontWeight: 700, color: 'var(--ink2)', cursor: 'pointer' }}>Hủy</button>
+                    <button onClick={handleSaveMoney} disabled={savingMoney}
+                      style={{ border: 'none', background: 'linear-gradient(135deg,#C9A96E 0%,#A0714F 60%)', color: '#fff', borderRadius: 7, padding: '6px 14px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer' }}>
+                      {savingMoney ? 'Đang lưu…' : '💾 Lưu (đồng bộ lương)'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Chi tiết BÁN THẺ — đầy đủ như màn bán hàng: giá gốc, KM%, buổi mua/tặng, hết hạn */}
               {isCardSale && (

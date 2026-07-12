@@ -748,6 +748,19 @@ export const posService = {
     if (error) throw error
   },
 
+  // Admin sửa nhanh tour/hoa hồng MỘT dòng đơn đã chốt — đồng bộ sổ thu nhập NV,
+  // KHÔNG đụng thẻ/kho/doanh thu (không cần khôi phục đơn). Migration 147.
+  async suaTienDong(ctId, { tienTour = null, tienHoaHong = null } = {}) {
+    const { data, error } = await supabase.rpc('pos_sua_tien_dong', {
+      p_ct_id: ctId,
+      p_tien_tour: tienTour,
+      p_tien_hoa_hong: tienHoaHong,
+    })
+    if (error) throw error
+    if (data?.success === false) throw new Error(data.error || 'Không sửa được tiền dòng này')
+    return data
+  },
+
   // Đổi PTTT của đơn đã chốt — RPC atomic, đồng bộ luôn doanh_thu (Admin). Migration 065.
   async updatePaymentMethod(paymentId, newHinhThuc) {
     const { data, error } = await supabase
