@@ -106,9 +106,19 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
     return matchSearch && matchWarranty
   })
 
+  // TRẦN tiền tour cho Lễ tân (anh Nam 12/07: "đơn 1tr stick 300k là vô lý — chặn"):
+  // tối đa 10% giá trị dịch vụ, sàn 50k để không phá dịch vụ giá rẻ có tour cố định.
+  // Admin không giới hạn (xử ngoại lệ). DV có mức cố định thì đã tourLocked sẵn.
+  const tourCeiling = Math.max(Math.round(baseTienTour * 0.10), 50000)
+  const overCeiling = !isAdmin && !isSaleCommission && !isFreeWarrantyTour && !tourLocked && tienTour > tourCeiling
+
   const handleSave = async () => {
     if (restrictWarrantyStaff && selectedKtv?.id && !allowedStaffIds.includes(selectedKtv.id)) {
       notify('Gói bảo hành này chỉ được chọn nhân viên đã nhận tiền tour trong 10 buổi đầu.', 'warn')
+      return
+    }
+    if (overCeiling) {
+      notify(`Tiền tour ${formatCurrency(tienTour)} vượt mức quy định (tối đa ${formatCurrency(tourCeiling)} cho dịch vụ này). Nhập lại đúng quy định — cần ngoại lệ thì báo Admin.`, 'warn')
       return
     }
     if (canSplit && splitOver) {
@@ -246,9 +256,16 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
               )}
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 10, color: 'var(--ink3)' }}>{incomeLabel}</div>
-                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--serif)', color: 'var(--champagne)' }}>{formatCurrency(tienTour)}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--serif)', color: overCeiling ? '#C0392B' : 'var(--champagne)' }}>{formatCurrency(tienTour)}</div>
               </div>
             </div>
+
+            {/* Chặn tour vượt quy định (Lễ tân) — anh Nam 12/07 */}
+            {overCeiling && (
+              <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 700, color: '#C0392B', background: '#fdecea', border: '1px solid rgba(192,57,43,.35)', borderRadius: 8, padding: '7px 10px' }}>
+                ⛔ Vượt mức quy định — tối đa {formatCurrency(tourCeiling)} cho dịch vụ này. Không lưu được; cần ngoại lệ thì báo Admin.
+              </div>
+            )}
 
             {/* ── Chia tiền tour cho KTV khác (nhiều KTV cùng làm 1 dịch vụ) ── */}
             {canSplit && (

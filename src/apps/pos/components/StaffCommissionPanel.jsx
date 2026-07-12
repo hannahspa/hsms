@@ -12,6 +12,7 @@ export default function StaffCommissionPanel({
   orderKmRefPct,
   totalPaid,
   orderTotal,
+  isAdmin = false,
 }) {
   const inputRef = useRef(null)
   const [search, setSearch] = useState('')
@@ -111,6 +112,7 @@ export default function StaffCommissionPanel({
         const commAmt = Math.round(totalPaid * row.pct / 100)
         const rulesPct = getRulesPct(row.nv.vi_tri)
         const overRule = row.pct > rulesPct
+        const conNo = Math.max(0, orderTotal - totalPaid)
 
         return (
           <div key={row.nv.id} style={{ padding: '7px 0', borderBottom: `1px solid ${C.line}` }}>
@@ -123,7 +125,10 @@ export default function StaffCommissionPanel({
                   type="number" min={0} max={10} step={0.5}
                   value={row.pct}
                   onChange={event => {
-                    const value = Math.min(10, Math.max(0, parseFloat(event.target.value) || 0))
+                    // Lễ tân: KẸP CỨNG theo quy tắc hoa hồng (anh Nam 12/07 — không cho
+                    // stick vượt quy định). Admin: trần 10%, có cảnh báo nếu vượt rule.
+                    const cap = isAdmin ? 10 : Math.min(10, rulesPct)
+                    const value = Math.min(cap, Math.max(0, parseFloat(event.target.value) || 0))
                     setOrderStaff(prev => prev.map(item => item.nv.id === row.nv.id ? { ...item, pct: value } : item))
                   }}
                   style={{
@@ -150,6 +155,14 @@ export default function StaffCommissionPanel({
             {overRule && (
               <div style={{ marginTop: 4, fontSize: 10, color: '#E67E22', background: '#fef3e2', border: '1px solid #E67E2244', borderRadius: 5, padding: '3px 8px' }}>
                 ⚠ KM {orderKmRefPct.toFixed(0)}% ≥ 30% — tối đa {rulesPct}% (đang tính {row.pct}%)
+              </div>
+            )}
+
+            {/* Đơn ghi nợ: hoa hồng nhận theo phần ĐÃ TRẢ — báo rõ phần còn lại (anh Nam 12/07) */}
+            {conNo > 0 && row.pct > 0 && (
+              <div style={{ marginTop: 4, fontSize: 10.5, color: '#1A5276', background: 'rgba(26,82,118,.07)', border: '1px solid rgba(26,82,118,.22)', borderRadius: 5, padding: '4px 8px', lineHeight: 1.5 }}>
+                ⏳ Khách còn nợ <b>{formatCurrency(conNo)}</b> — hôm nay nhận <b>{formatCurrency(commAmt)}</b> (theo phần đã trả).
+                Khi khách trả nợ, hệ thống <b>tự cộng thêm ~{formatCurrency(Math.round(conNo * row.pct / 100))}</b>.
               </div>
             )}
           </div>

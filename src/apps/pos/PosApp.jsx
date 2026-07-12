@@ -1933,6 +1933,7 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                   orderKmRefPct={orderKmRefPct}
                   totalPaid={tongNhan}
                   orderTotal={tongCuoi}
+                  isAdmin={user?.vai_tro === 'admin'}
                 />
               )}
 

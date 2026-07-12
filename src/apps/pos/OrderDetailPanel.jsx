@@ -480,6 +480,14 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
           ))}
         </div>
       )}
+
+      {/* Đơn còn nợ: hoa hồng đang tính theo phần ĐÃ TRẢ — nói rõ để NV yên tâm (anh Nam 12/07) */}
+      {(order.con_no || 0) > 0 && (
+        <div style={{ marginTop: 8, fontSize: 11.5, color: '#1A5276', background: 'rgba(26,82,118,.07)', border: '1px solid rgba(26,82,118,.22)', borderRadius: 8, padding: '8px 10px', lineHeight: 1.55 }}>
+          ⏳ <b>Đơn còn nợ {formatCurrency(order.con_no)}</b> — hoa hồng ở trên tính theo phần khách <b>đã trả</b>.
+          Khi khách trả nợ (Thu nợ thẻ), hệ thống <b>tự cộng thêm</b> phần hoa hồng còn lại cho nhân viên bán.
+        </div>
+      )}
     </div>
   )
 
