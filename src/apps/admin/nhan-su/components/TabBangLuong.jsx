@@ -309,7 +309,7 @@ export default function TabBangLuong({ fixedKy = null }) {
     const lastDay = new Date(nam, thang, 0).getDate()
     const ed = `${nam}-${String(thang).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
     supabase.from('don_hang_chi_tiet')
-      .select(`ti_le_hoa_hong, tien_commission, tien_hoa_hong, tien_tour, loai_item,
+      .select(`ti_le_hoa_hong, tien_commission, tien_hoa_hong, tien_tour, loai_item, meta,
         nhan_vien:nhan_vien_id(ho_ten, vi_tri),
         don_hang:don_hang_id!inner(ma_don, ngay, is_test, trang_thai)`)
       .gte('don_hang.ngay', sd).lte('don_hang.ngay', ed)
@@ -323,7 +323,23 @@ export default function TabBangLuong({ fixedKy = null }) {
           const hh = r.tien_commission || r.tien_hoa_hong || 0
           const rate = Number(r.ti_le_hoa_hong || 0)
           const nv = r.nhan_vien
-          if (hh > 0 && !RATE_OK.has(rate)) {
+          if (hh <= 0) return
+          // UPSALE (12/07): dòng DỊCH VỤ có hoa hồng = 10% × chênh lệch (không theo
+          // % thanh_tien; ti_le trên dòng là tỉ lệ TOUR) → soi theo đúng quy tắc upsale.
+          const isServiceLine = r.loai_item === 'dich_vu' || r.loai_item === 'the_lieu_trinh'
+          if (isServiceLine) {
+            const up = r.meta?.upsale
+            if (up) {
+              const expect = Math.round(Number(up.chenh || 0) * 0.10)
+              if (expect > 0 && Math.abs(hh - expect) > 1) {
+                w.push({ ma: r.don_hang?.ma_don, nv: nv?.ho_ten || '(không NV)', detail: `HH upsale ${hh.toLocaleString('vi-VN')}₫ lệch chuẩn 10% chênh (${expect.toLocaleString('vi-VN')}₫)` })
+              }
+            } else {
+              w.push({ ma: r.don_hang?.ma_don, nv: nv?.ho_ten || '(không NV)', detail: `Dòng dịch vụ có hoa hồng ${hh.toLocaleString('vi-VN')}₫ nhưng không phải upsale — kiểm tra lại` })
+            }
+            return
+          }
+          if (!RATE_OK.has(rate)) {
             w.push({ ma: r.don_hang?.ma_don, nv: nv?.ho_ten || '(không NV)', detail: `Tỉ lệ hoa hồng ${rate}% ngoài chuẩn (3/5/7/10% hoặc chia đôi)` })
           }
           // (Bỏ cảnh báo "Lễ Tân có tiền tour" — tại Hannah, lễ tân Khánh Duy/Ngọc Phương
@@ -824,16 +840,7 @@ export default function TabBangLuong({ fixedKy = null }) {
         return null
       })()}
 
-      {/* Kỳ 2 — badge thông tin real-time */}
-      {ky === 2 && (
-        <div style={{ marginBottom: 16, background: '#e8f5e9', borderRadius: LUX.radiusSm, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #a5d6a7' }}>
-          <span style={{ fontSize: 16 }}>🔄</span>
-          <div style={{ fontFamily: LUX.fontSans, fontSize: 12, color: '#1b5e20', fontWeight: 600 }}>
-            Lương Kinh Doanh cập nhật tự động từ HSMS POS
-            <span style={{ fontWeight: 400, marginLeft: 6, color: '#388e3c' }}>— real-time, không cần nhập tay</span>
-          </div>
-        </div>
-      )}
+      {/* (12/07: bỏ banner "cập nhật tự động từ HSMS POS" — anh Nam: rối mắt) */}
 
       {/* ── CẢNH BÁO ĐỐI SOÁT hoa hồng / tour (Kỳ 2) ── */}
       {ky === 2 && warnings.length > 0 && (
