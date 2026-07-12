@@ -33,6 +33,8 @@ const ICON_MAP = {
   kho: I.Box,
   khuyenmai: I.Tag,
   marketing: I.Speaker,
+  'khach-mkt': I.Speaker,   // nhóm gộp Khách & Marketing (12/07) — icon viền đồng bộ
+  chamsoc: I.Heart,         // nhóm Chăm Sóc Khách (menu Lễ tân)
   web: I.Globe,
   settings: I.Cog,
   tongquan: I.Dashboard,

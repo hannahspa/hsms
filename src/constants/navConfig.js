@@ -39,15 +39,15 @@ export const ADMIN_NAV = [
   // (2 Hộp Thư, mục Nhắc Lịch chết, 4 chiến dịch rải lẻ) → 1 nhóm duy nhất
   // 3 cụm: khách nhắn đến · mình chủ động chăm · phân tích & cấu hình.
   { id: 'khach-mkt', icon: '💗', label: 'Khách & Marketing', children: [
-    { id: 'km-tongquan',  label: 'Tổng Quan',                 path: '/admin/marketing' },
-    { id: 'km-inbox',     label: '💬 Hộp Thư',                path: '/admin/marketing/hop-thu' },
-    { id: 'km-homnay',    label: '📞 Hôm Nay Cần Chạm',       path: '/admin/cham-soc-khach' },
-    { id: 'km-tudong',    label: '🤖 Chiến Dịch Tự Động',     path: '/admin/marketing/tu-dong' },
-    { id: 'km-soantay',   label: '📝 Soạn Tay AI (Nhắc Thẻ)', path: '/admin/nhac-lieu-trinh' },
-    { id: 'km-remkt',     label: '👥 Khách & Remarketing',    path: '/admin/marketing/khach-remarketing' },
-    { id: 'km-fanpage',   label: '📣 Fanpage & Chiến Dịch',   path: '/admin/marketing/fanpage-noi-dung' },
-    { id: 'km-training',  label: '🎓 Huấn Luyện AI',          path: '/admin/marketing/huan-luyen' },
-    { id: 'km-cauhinh',   label: '⚙️ Cấu Hình Kênh',          path: '/admin/marketing/cau-hinh-kenh' },
+    { id: 'km-tongquan',  label: 'Tổng Quan',              path: '/admin/marketing' },
+    { id: 'km-inbox',     label: 'Hộp Thư',                path: '/admin/marketing/hop-thu' },
+    { id: 'km-homnay',    label: 'Hôm Nay Cần Chạm',       path: '/admin/cham-soc-khach' },
+    { id: 'km-tudong',    label: 'Chiến Dịch Tự Động',     path: '/admin/marketing/tu-dong' },
+    { id: 'km-soantay',   label: 'Soạn Tay AI (Nhắc Thẻ)', path: '/admin/nhac-lieu-trinh' },
+    { id: 'km-remkt',     label: 'Khách & Remarketing',    path: '/admin/marketing/khach-remarketing' },
+    { id: 'km-fanpage',   label: 'Fanpage & Chiến Dịch',   path: '/admin/marketing/fanpage-noi-dung' },
+    { id: 'km-training',  label: 'Huấn Luyện AI',          path: '/admin/marketing/huan-luyen' },
+    { id: 'km-cauhinh',   label: 'Cấu Hình Kênh',          path: '/admin/marketing/cau-hinh-kenh' },
   ]},
 
   { id: 'dichvu', icon: '💎', label: 'Dịch Vụ', children: [
@@ -107,9 +107,9 @@ export const LETAN_NAV = [
   { id: 'crm',          icon: '💝', label: 'CRM Khách Hàng',  path: '/admin/crm' },
   { id: 'mkt-inbox',    icon: '💬', label: 'Hộp Thư', path: '/admin/marketing/hop-thu' },
   { id: 'chamsoc', icon: '💗', label: 'Chăm Sóc Khách', children: [
-    { id: 'cs-homnay',   label: '📞 Hôm Nay Cần Chạm',    path: '/admin/cham-soc-khach' },
-    { id: 'cs-tudong',   label: '🤖 Chiến Dịch Tự Động',  path: '/admin/marketing/tu-dong' },
-    { id: 'cs-soantay',  label: '📝 Soạn Tay AI (Nhắc Thẻ)', path: '/admin/nhac-lieu-trinh' },
+    { id: 'cs-homnay',   label: 'Hôm Nay Cần Chạm',       path: '/admin/cham-soc-khach' },
+    { id: 'cs-tudong',   label: 'Chiến Dịch Tự Động',     path: '/admin/marketing/tu-dong' },
+    { id: 'cs-soantay',  label: 'Soạn Tay AI (Nhắc Thẻ)', path: '/admin/nhac-lieu-trinh' },
   ]},
   { id: 'the-lieu-trinh', icon: '🎫', label: 'Thẻ Liệu Trình', path: '/admin/the-lieu-trinh' },
 ]
