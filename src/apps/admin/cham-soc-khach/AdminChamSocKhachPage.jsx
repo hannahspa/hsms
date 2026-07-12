@@ -680,6 +680,21 @@ export default function AdminChamSocKhachPage({
     setVisitOpen(true)
   }
 
+  // Ghi phiếu tư vấn cho khách ĐẾN HÔM NAY từ POS — tên/SĐT/dịch vụ/KTV điền sẵn,
+  // NV chỉ điền: tư vấn gì + khách phản hồi + kết quả (~20 giây/khách).
+  // (12/07 — anh Nam: NV đang ghi phiếu Excel rời, không gắn vào khách, không ai chăm lại.)
+  function openVisitFromPos(row) {
+    setVisitInitial({
+      nguon: 'pos_don_hang',
+      ho_ten: row.ten,
+      so_dien_thoai: row.sdt,
+      dich_vu_su_dung: row.dichVu,
+      ktv_phu_trach: row.ktv,
+      ket_qua: 'hai_long',
+    })
+    setVisitOpen(true)
+  }
+
   async function handleVisitSaved({ form, initialData }) {
     const nextStatus = initialData?.segment_id ? fanpageStatusAfterVisit(form.ket_qua) : null
     let statusUpdated = false
@@ -791,7 +806,10 @@ export default function AdminChamSocKhachPage({
           <SmartInboxPanel rows={pagedRows} loading={loading} onCopy={copyText} onSend={sendFanpage} onMark={markFanpage} onVisit={openVisitFromFanpage} />
         )}
         {effectiveTab === 'today' && (
-          <VisitTable rows={pagedRows} loading={loading} onCopy={copyText} />
+          <>
+            <PosVisitPrefill visitRows={visitRows} onOpen={openVisitFromPos} />
+            <VisitTable rows={pagedRows} loading={loading} onCopy={copyText} />
+          </>
         )}
         {effectiveTab === 'pos' && (
           <PosCareTable rows={pagedRows} loading={loading} onCopy={copyText} />
@@ -818,6 +836,120 @@ export default function AdminChamSocKhachPage({
           boxShadow: 'var(--sh-3)',
         }}>
           {toast}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Khách đến HÔM NAY từ POS — điền sẵn phiếu tư vấn, NV chỉ bấm ghi ──────────
+// Thay phiếu Excel rời: mỗi khách đến (đơn POS) hiện 1 dòng, bấm "Ghi phiếu" là
+// form mở sẵn tên/SĐT/dịch vụ/KTV — NV chỉ điền tư vấn + phản hồi. Đã ghi → ✓.
+function PosVisitPrefill({ visitRows, onOpen }) {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [ngay, setNgay] = useState(todayISO())
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      setLoading(true)
+      try {
+        const { data: dons } = await supabase.from('don_hang')
+          .select('id, khach_hang_id, khach_hang:khach_hang_id(ho_ten, so_dien_thoai)')
+          .eq('ngay', ngay).eq('is_test', false).not('trang_thai', 'in', '("huy","draft")')
+          .not('khach_hang_id', 'is', null).order('created_at', { ascending: true }).limit(150)
+        const ids = (dons || []).map(d => d.id)
+        const ctMap = {}
+        if (ids.length) {
+          const { data: cts } = await supabase.from('don_hang_chi_tiet')
+            .select('don_hang_id, dich_vu:dich_vu_id(ten), the:the_lieu_trinh_id(ten_dich_vu), nhan_vien:nhan_vien_id(ho_ten)')
+            .in('don_hang_id', ids)
+          for (const c of (cts || [])) {
+            if (!ctMap[c.don_hang_id]) ctMap[c.don_hang_id] = []
+            ctMap[c.don_hang_id].push(c)
+          }
+        }
+        // Gom theo KHÁCH (1 khách nhiều đơn/ngày = 1 dòng)
+        const byKh = new Map()
+        for (const d of (dons || [])) {
+          const key = d.khach_hang_id
+          if (!byKh.has(key)) {
+            byKh.set(key, {
+              khach_hang_id: key,
+              ten: d.khach_hang?.ho_ten || 'Khách lẻ',
+              sdt: d.khach_hang?.so_dien_thoai || '',
+              dvSet: new Set(), ktvSet: new Set(),
+            })
+          }
+          const row = byKh.get(key)
+          for (const c of (ctMap[d.id] || [])) {
+            const dv = c.dich_vu?.ten || c.the?.ten_dich_vu
+            if (dv) row.dvSet.add(dv)
+            const parts = String(c.nhan_vien?.ho_ten || '').trim().split(/\s+/)
+            if (parts.length) row.ktvSet.add(parts.slice(-2).join(' '))
+          }
+        }
+        const list = [...byKh.values()].map(r => ({
+          ...r,
+          dichVu: [...r.dvSet].join(', '),
+          ktv: [...r.ktvSet].filter(Boolean).join(', '),
+        }))
+        if (alive) { setRows(list); setLoading(false) }
+      } catch { if (alive) setLoading(false) }
+    })()
+    return () => { alive = false }
+  }, [ngay, visitRows])
+
+  const daGhi = (r) => visitRows.some(v =>
+    v.ngay === ngay && (
+      (v.khach_hang_id && v.khach_hang_id === r.khach_hang_id) ||
+      (v.so_dien_thoai && r.sdt && normalizePhone(v.so_dien_thoai) === normalizePhone(r.sdt))
+    ))
+
+  const chuaGhi = rows.filter(r => !daGhi(r))
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--line)', background: 'var(--surface2)', padding: '14px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: chuaGhi.length || loading ? 10 : 0 }}>
+        <span style={{ fontWeight: 900, fontSize: 13.5, color: 'var(--ink)' }}>⚡ Khách đến từ POS</span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[{ l: 'Hôm nay', v: todayISO() }, { l: 'Hôm qua', v: new Date(Date.now() - 864e5).toISOString().slice(0, 10) }].map(o => (
+            <button key={o.v} onClick={() => setNgay(o.v)} style={{
+              padding: '5px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              border: ngay === o.v ? '1.5px solid var(--champagne)' : '1px solid var(--line)',
+              background: ngay === o.v ? 'var(--champagne)' : '#fff',
+              color: ngay === o.v ? '#fff' : 'var(--ink2)',
+            }}>{o.l}</button>
+          ))}
+        </div>
+        <span style={{ fontSize: 12, color: 'var(--ink3)' }}>
+          {loading ? 'Đang tải…' : `${rows.length} khách · còn ${chuaGhi.length} chưa ghi phiếu tư vấn`}
+        </span>
+      </div>
+      {!loading && chuaGhi.length === 0 && rows.length > 0 && (
+        <div style={{ fontSize: 12.5, color: 'var(--ink3)' }}>✅ Tất cả khách {ngay === todayISO() ? 'hôm nay' : 'hôm qua'} đã có phiếu tư vấn.</div>
+      )}
+      {!loading && chuaGhi.length > 0 && (
+        <div style={{ display: 'grid', gap: 6 }}>
+          {chuaGhi.map(r => (
+            <div key={r.khach_hang_id} style={{
+              display: 'flex', alignItems: 'center', gap: 12, background: '#fff',
+              border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px',
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--ink)' }}>{r.ten}</span>
+                <span style={{ fontSize: 12, color: 'var(--ink3)', marginLeft: 8 }}>{r.sdt}</span>
+                <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.dichVu || '(chưa rõ dịch vụ)'}{r.ktv ? ` · KTV: ${r.ktv}` : ''}
+                </div>
+              </div>
+              <button onClick={() => onOpen({ ...r })} style={{
+                flexShrink: 0, padding: '8px 14px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg,#C9A96E 0%,#A0714F 60%)', color: '#fff', fontWeight: 800, fontSize: 12.5,
+              }}>📝 Ghi phiếu</button>
+            </div>
+          ))}
         </div>
       )}
     </div>

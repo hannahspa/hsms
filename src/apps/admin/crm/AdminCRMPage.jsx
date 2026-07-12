@@ -282,6 +282,7 @@ function AdminCRMDetailPage({ customerId }) {
   const [activeTab, setActiveTab] = useState('info')
   const [expandedOrderId, setExpandedOrderId] = useState(null)
   const [prepaidHistory, setPrepaidHistory] = useState([])
+  const [tuVanRows, setTuVanRows] = useState([])       // nhật ký tư vấn (nhat_ky_khach_den)
   const [cardAction, setCardAction] = useState(null)   // { type, card } — hành động Admin trên thẻ
   const [reloadKey, setReloadKey] = useState(0)
   const reloadSnapshot = () => setReloadKey(k => k + 1)
@@ -296,6 +297,12 @@ function AdminCRMDetailPage({ customerId }) {
     posService.getPrepaidHistory(customerId, 100)
       .then(rows => { if (!cancelled) setPrepaidHistory(rows || []) })
       .catch(() => { if (!cancelled) setPrepaidHistory([]) })
+    // Nhật ký tư vấn — NV ghi từ Chăm Sóc Khách (12/07: gắn phiếu tư vấn vào hồ sơ khách)
+    supabase.from('nhat_ky_khach_den')
+      .select('id, ngay, dich_vu_su_dung, ktv_phu_trach, phan_hoi, co_hoi_upsell, ket_qua, goi_y_tiep_theo, ghi_chu, created_at')
+      .eq('khach_hang_id', customerId)
+      .order('ngay', { ascending: false }).order('created_at', { ascending: false }).limit(100)
+      .then(({ data }) => { if (!cancelled) setTuVanRows(data || []) })
     return () => { cancelled = true }
   }, [customerId, reloadKey])
 
@@ -364,6 +371,7 @@ function AdminCRMDetailPage({ customerId }) {
     { k: 'prepaid', l: 'Ví Trả Trước', icon: I.Wallet, n: (customer.so_du_tra_truoc || 0) > 0 ? 1 : 0 },
     { k: 'appointment', l: 'Đặt Hẹn', icon: I.Calendar },
     { k: 'service', l: 'Dịch Vụ Đã Sử Dụng', icon: I.Box, n: orderGroups.length },
+    { k: 'tuvan', l: 'Nhật Ký Tư Vấn', icon: I.FileText, n: tuVanRows.length },
     { k: 'cards', l: 'Thẻ Dịch Vụ', icon: I.CreditCard, n: cards.length },
     { k: 'note', l: 'Ghi Chú', icon: I.FileText },
     { k: 'image', l: 'Hình Ảnh', icon: I.Image },
@@ -714,6 +722,44 @@ function AdminCRMDetailPage({ customerId }) {
                   })}
                 </div>
               ) : <CRMEmpty>Khách chưa có thẻ dịch vụ/thẻ liệu trình.</CRMEmpty>}
+            </div>
+          )}
+
+          {activeTab === 'tuvan' && (
+            <div>
+              <h2 style={{ margin: '0 0 6px', fontFamily: 'var(--serif)', color: 'var(--ink)' }}>Nhật Ký Tư Vấn</h2>
+              <div style={{ fontSize: 12.5, color: 'var(--ink3)', marginBottom: 16 }}>
+                NV ghi từ <b>Khách & Marketing → Hôm Nay Cần Chạm → Khách đã đến</b> · mỗi lần khách tới: tư vấn gì, khách phản hồi sao, cơ hội lần sau.
+              </div>
+              {tuVanRows.length === 0 ? (
+                <CRMEmpty>Chưa có phiếu tư vấn nào cho khách này.</CRMEmpty>
+              ) : (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {tuVanRows.map(r => {
+                    const KQ = {
+                      hai_long: { l: '😊 Hài lòng', c: '#2D7A4F' }, tam_duoc: { l: '🙂 Tạm được', c: '#B8860B' },
+                      chua_hai_long: { l: '😕 Chưa hài lòng', c: '#C0392B' }, da_mua_them: { l: '🛍 Đã mua thêm', c: '#6C3483' },
+                      can_cham_lai: { l: '📞 Cần chăm lại', c: '#1A5276' },
+                    }[r.ket_qua] || { l: r.ket_qua || '—', c: 'var(--ink3)' }
+                    return (
+                      <div key={r.id} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '13px 16px', background: '#fff' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--ink)' }}>
+                            {String(r.ngay || '').split('-').reverse().join('/')}
+                          </span>
+                          <span style={{ fontSize: 11.5, fontWeight: 800, color: KQ.c, background: `${KQ.c}14`, padding: '3px 10px', borderRadius: 999 }}>{KQ.l}</span>
+                          {r.ktv_phu_trach && <span style={{ fontSize: 12, color: 'var(--ink3)' }}>KTV: {r.ktv_phu_trach}</span>}
+                        </div>
+                        {r.dich_vu_su_dung && <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--ink2)' }}>💆 {r.dich_vu_su_dung}</div>}
+                        {r.co_hoi_upsell && <div style={{ marginTop: 4, fontSize: 12.5, color: 'var(--ink2)' }}>🎯 <b>Tư vấn/cơ hội:</b> {r.co_hoi_upsell}</div>}
+                        {r.phan_hoi && <div style={{ marginTop: 4, fontSize: 12.5, color: 'var(--ink2)' }}>💬 <b>Khách phản hồi:</b> {r.phan_hoi}</div>}
+                        {r.goi_y_tiep_theo && <div style={{ marginTop: 4, fontSize: 12.5, color: '#1A5276' }}>➡️ <b>Lần sau:</b> {r.goi_y_tiep_theo}</div>}
+                        {r.ghi_chu && <div style={{ marginTop: 4, fontSize: 12, color: 'var(--ink3)', fontStyle: 'italic' }}>{r.ghi_chu}</div>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 
