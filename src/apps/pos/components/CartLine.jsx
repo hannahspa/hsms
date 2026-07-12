@@ -361,9 +361,15 @@ export default function CartLine({ item, onRemove, onQtyChange, onDiscountChange
             }}>
               <NvAvatar nv={nv} size={24} />
               <span style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{shortName(nv.ho_ten)}</span>
-              {(item.tien_tour > 0 || item.tien_hoa_hong > 0) && (
+              {(item.tien_tour > 0 || (isSanPham && item.tien_hoa_hong > 0)) && (
                 <span style={{ fontSize: 11, fontWeight: 700, color: C.champagne }}>
-                  · {isSanPham ? 'HH' : 'Tour'} {formatCurrency(item.tien_tour || item.tien_hoa_hong || 0)}
+                  · {isSanPham ? 'HH' : 'Tour'} {formatCurrency(isSanPham ? item.tien_hoa_hong : item.tien_tour)}
+                </span>
+              )}
+              {/* Upsale: HH 10% chênh TÁCH RIÊNG khỏi Tour — hết rối (anh Nam 12/07) */}
+              {!isSanPham && item.tien_hoa_hong > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#6C3483' }}>
+                  · ⬆HH Upsale {formatCurrency(item.tien_hoa_hong)}
                 </span>
               )}
               <span style={{ fontSize: 10, color: C.ink3 }}>✎</span>

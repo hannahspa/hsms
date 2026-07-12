@@ -225,6 +225,12 @@ export default function OrderDetailPanel({ order, onClose, onVoid, onEdit, onDel
                         {income.label}: {formatCurrency(income.amount)}
                       </span>
                     )}
+                    {/* Upsale: hoa hồng 10% chênh — TÁCH RIÊNG khỏi Tour (anh Nam 12/07) */}
+                    {(income.upsaleComm || 0) > 0 && (
+                      <span style={{ fontSize: 11, color: '#6C3483', fontWeight: 700, background: 'rgba(108,52,131,.08)', border: '1px solid rgba(108,52,131,.25)', borderRadius: 6, padding: '1px 7px' }}>
+                        ⬆ HH Upsale: {formatCurrency(income.upsaleComm)}
+                      </span>
+                    )}
                   </>
                 ) : (
                   <span style={{ fontSize: 10.5, color: 'var(--ink3)', fontStyle: 'italic' }}>

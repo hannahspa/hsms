@@ -372,8 +372,11 @@ export const posService = {
     }, 0)
     const hoaHong = items.reduce((s, i) => {
       const isSaleItem = i.loai_item === 'san_pham' || i.loai_item === 'the_moi'
-      if (!isSaleItem) return s
-      return s + (i.tien_hoa_hong || 0)
+      const isService = i.loai_item === 'dich_vu' || i.loai_item === 'the_lieu_trinh'
+      if (isSaleItem) return s + (i.tien_hoa_hong || 0)
+      // UPSALE (12/07): dòng dịch vụ có CẢ tour + HH (10% chênh) → HH vào cột Hoa Hồng
+      if (isService && (i.tien_tour || 0) > 0 && (i.tien_hoa_hong || 0) > 0) return s + i.tien_hoa_hong
+      return s
     }, 0)
     const itemNames = items.map(i =>
       i.meta?.tenDichVu || i.the_lieu_trinh?.ten_dich_vu || i.dich_vu?.ten || i.san_pham?.ten || i.loai_item
@@ -402,6 +405,10 @@ export const posService = {
       if (isServiceItem) {
         // tien_tour là cột chuẩn; fallback tien_hoa_hong cho data T5 import cũ ghi nhầm cột
         staffMap[key].tour += (i.tien_tour || i.tien_hoa_hong || 0)
+        // UPSALE (12/07): có CẢ tour + HH → phần HH (10% chênh) vào cột Hoa Hồng
+        if ((i.tien_tour || 0) > 0 && (i.tien_hoa_hong || 0) > 0) {
+          staffMap[key].hoaHong += i.tien_hoa_hong
+        }
       } else {
         // san_pham, the_moi → hoa hồng
         staffMap[key].hoaHong += (i.tien_hoa_hong || 0)
