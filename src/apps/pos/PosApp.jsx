@@ -11,6 +11,8 @@ import { confirmDialog } from '../../components/ui/notify'
 import PosOrderHistory from './PosOrderHistory'
 import PosProductCatalog from './PosProductCatalog'
 import InboxBell from './InboxBell'
+import CustomerInsight from './components/CustomerInsight'
+import VisitQuickForm from './components/VisitQuickForm'
 import KtvPopupComponent from './components/KtvPopup'
 import CartLine from './components/CartLine'
 import DebtPaymentModal from './components/DebtPaymentModal'
@@ -138,6 +140,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
 
   // CTKM tự nhận biết: map dich_vu_id → km active khớp (gồm KM theo nhóm)
   const [kmByDichVu, setKmByDichVu] = useState({})
+
+  // Phiếu tư vấn 20 giây sau thanh toán (khép kín CRM)
+  const [visitPrompt, setVisitPrompt] = useState(null)   // {khach, dichVu, ktv}
 
   // Gia hạn thẻ liệu trình (khách quay lại)
   const [giaHanCard, setGiaHanCard]   = useState(null)   // card đang gia hạn
@@ -1232,6 +1237,18 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       }
       // Đơn mới: reset form để bán tiếp
       setSavedOrderId(null)
+      // PHIẾU TƯ VẤN 20 GIÂY: khách có hồ sơ → mời NV ghi ngay (prefill từ đơn vừa chốt).
+      // Lấy dữ liệu TRƯỚC resetCreateForm vì reset xoá selectedCustomer/lineItems.
+      if (selectedCustomer?.id) {
+        const dvNames = [...new Set(lineItems.map(i => i.dich_vu?.ten || i.the_lieu_trinh?.ten_dich_vu || i.san_pham?.ten).filter(Boolean))]
+        const ktvIds = new Set(lineItems.map(i => i.nhan_vien_id).filter(Boolean))
+        const ktvNames = ktvList.filter(k => ktvIds.has(k.id)).map(k => k.ho_ten.split(' ').slice(-2).join(' '))
+        setVisitPrompt({
+          khach: selectedCustomer,
+          dichVu: dvNames.join(', ').slice(0, 200),
+          ktv: ktvNames.join(', ').slice(0, 100),
+        })
+      }
       resetCreateForm()
       const stats = await posService.getTodayStats()
       setTodayStats(stats)
@@ -1581,6 +1598,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                   ))}
                 </div>
               )}
+
+              {/* Gợi ý tư vấn từ CRM: lần trước tư vấn gì · nên upsale gì · DV hot chưa thử */}
+              <CustomerInsight customer={selectedCustomer} />
 
               {/* ── VÍ TRẢ TRƯỚC ── */}
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(201,169,110,.08)', border: '1.5px solid rgba(201,169,110,.35)', borderRadius: 8, padding: '7px 12px' }}>
@@ -2101,6 +2121,10 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
     {/* KTV Popup */}
     {ktvPopup && (
       <KtvPopupComponent item={ktvPopup} ktvList={ktvList} onAssign={handleAssignKTV} onClose={() => setKtvPopup(null)} isAdmin={user?.vai_tro === 'admin'} />
+    )}
+
+    {visitPrompt && (
+      <VisitQuickForm prompt={visitPrompt} onClose={() => setVisitPrompt(null)} user={user} notify={notify} />
     )}
 
     <DebtPaymentModal
