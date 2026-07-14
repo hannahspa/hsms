@@ -2,7 +2,7 @@
 // Marketing — Fanpage & Nội Dung, Chiến Dịch & ROI, Cấu Hình Kênh
 // Tách từ MarketingModulePage.jsx (11/07/2026) — code giữ nguyên, chỉ chia file
 // ═══════════════════════════════════════════════════════════════════════════
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { C, FONT } from '../../../constants/colors'
 import { supabase } from '../../../lib/supabase'
 import { notify } from '../../../components/ui/notify'
@@ -170,6 +170,124 @@ function FanpageActions({ reload = () => {} }) {
   )
 }
 
+// ── MÁY ĐĂNG BÀI: duyệt bài AI soạn ngay trên web (song song nút trên Telegram) ──
+const TT_BAI = {
+  cho_duyet: { label: 'Chờ duyệt', color: '#a8741a', bg: '#fdf3e0' },
+  da_duyet: { label: 'Đã duyệt — chờ giờ đăng', color: '#1A5276', bg: 'rgba(26,82,118,.08)' },
+  da_dang: { label: 'Đã đăng', color: '#2D7A4F', bg: 'rgba(45,122,79,.08)' },
+}
+
+function BaiChoDuyetPanel() {
+  const [items, setItems] = useState(null)
+  const [busy, setBusy] = useState('')
+  const [nonce, setNonce] = useState(0)
+  const [expand, setExpand] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const { data } = await supabase.from('marketing_content_calendar')
+        .select('id, tieu_de, noi_dung, hashtags, asset_urls, scheduled_at, trang_thai, published_at, metadata')
+        .in('trang_thai', ['cho_duyet', 'da_duyet', 'da_dang'])
+        .order('created_at', { ascending: false })
+        .limit(12)
+      if (alive) setItems(data || [])
+    })()
+    return () => { alive = false }
+  }, [nonce])
+
+  const act = async (item, action) => {
+    setBusy(item.id + action)
+    try {
+      if (action === 'duyet') {
+        // Giữ lịch nếu còn ở tương lai — quá hạn/trống thì hẹn 19:30 ngày mai (giờ vàng)
+        const sched = item.scheduled_at && new Date(item.scheduled_at) > new Date()
+          ? item.scheduled_at
+          : new Date(Date.now() + 864e5).toISOString().slice(0, 10) + 'T19:30:00+07:00'
+        const { error } = await supabase.from('marketing_content_calendar')
+          .update({ trang_thai: 'da_duyet', scheduled_at: sched }).eq('id', item.id)
+        if (error) throw error
+        notify('✓ Đã duyệt — máy sẽ tự đăng theo lịch', 'success')
+      } else if (action === 'bo') {
+        const { error } = await supabase.from('marketing_content_calendar')
+          .update({ trang_thai: 'huy' }).eq('id', item.id)
+        if (error) throw error
+        notify('Đã bỏ bài này', 'success')
+      } else if (action === 'dang') {
+        const { error: e1 } = await supabase.from('marketing_content_calendar')
+          .update({ trang_thai: 'da_duyet' }).eq('id', item.id)
+        if (e1) throw e1
+        const { data, error } = await supabase.functions.invoke('marketing-meta-page-sync', {
+          body: { mode: 'publish_post', content_id: item.id, source: 'web_dang_ngay' },
+        })
+        if (error) throw error
+        const res = (data?.results || [])[0] || {}
+        if (res.error) throw new Error(res.error)
+        notify('🚀 Đã đăng lên Fanpage', 'success')
+      }
+      setNonce(v => v + 1)
+    } catch (e) { notify('Lỗi: ' + (e.message || e), 'error') }
+    finally { setBusy('') }
+  }
+
+  const btn = (bg, color, border = 'none') => ({
+    border, background: bg, color, borderRadius: 7, padding: '6px 12px',
+    fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: FONT.sans, whiteSpace: 'nowrap',
+  })
+
+  return (
+    <Panel title="Bài chờ duyệt & đã đăng" eyebrow="Máy Đăng Bài — duyệt tại đây hoặc trên Telegram">
+      <div style={{ display: 'grid', gap: 10 }}>
+        {items === null ? <EmptyBox text="Đang tải bài…" />
+          : items.length === 0 ? <EmptyBox text="Chưa có bài nào. Máy tự lên bài mới sáng Thứ 2 & Thứ 5 (hoặc chạy tay từ Cấu Hình Kênh)." />
+            : items.map(item => {
+              const tt = TT_BAI[item.trang_thai] || TT_BAI.cho_duyet
+              const anh = (item.asset_urls || [])[0]
+              const link = item.metadata?.publish_result?.permalink
+              const open = expand === item.id
+              return (
+                <div key={item.id} style={{ border: `1px solid ${C.border}`, borderRadius: 9, padding: 12, background: '#FFFDF8' }}>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    {anh && <img src={anh} alt="" style={{ width: 86, height: 46, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <strong style={{ color: C.text, fontSize: 13.5 }}>{item.tieu_de}</strong>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: tt.color, background: tt.bg, borderRadius: 99, padding: '2px 8px' }}>{tt.label}</span>
+                      </div>
+                      <div style={{ marginTop: 3, fontSize: 12, color: C.textSub }}>
+                        {item.trang_thai === 'da_dang'
+                          ? `Đăng lúc ${fmtDate(item.published_at)}`
+                          : `Lịch đăng: ${item.scheduled_at ? new Date(item.scheduled_at).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'duyệt xong tự xếp giờ vàng'}`}
+                      </div>
+                      <div onClick={() => setExpand(open ? null : item.id)} style={{ marginTop: 5, fontSize: 12.5, color: C.text, lineHeight: 1.5, cursor: 'pointer', whiteSpace: 'pre-wrap' }}>
+                        {open ? item.noi_dung : String(item.noi_dung || '').slice(0, 140) + (String(item.noi_dung || '').length > 140 ? '… (bấm xem hết)' : '')}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 9, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    {link && <a href={link} target="_blank" rel="noreferrer" style={{ ...btn('#fff', C.taiSan, `1px solid ${C.border}`), textDecoration: 'none' }}>Xem bài trên Fanpage ↗</a>}
+                    {item.trang_thai !== 'da_dang' && (
+                      <>
+                        <button disabled={!!busy} onClick={() => act(item, 'bo')} style={btn('#fff', C.chi, `1px solid ${C.border}`)}>❌ Bỏ</button>
+                        {item.trang_thai === 'cho_duyet' && (
+                          <button disabled={!!busy} onClick={() => act(item, 'duyet')} style={btn('rgba(45,122,79,.1)', '#2D7A4F', '1.5px solid rgba(45,122,79,.4)')}>
+                            {busy === item.id + 'duyet' ? 'Đang lưu…' : '✅ Duyệt (đăng theo lịch)'}
+                          </button>
+                        )}
+                        <button disabled={!!busy} onClick={() => act(item, 'dang')} style={btn(C.grad, '#fff')}>
+                          {busy === item.id + 'dang' ? 'Đang đăng…' : '🚀 Đăng ngay'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+      </div>
+    </Panel>
+  )
+}
+
 export function FanpageContentPage({ route }) {
   const data = useMarketingOpsData()
   const overview = data.fanpageOverview[0] || {}
@@ -181,7 +299,6 @@ export function FanpageContentPage({ route }) {
     )).slice(0, 6)
   ), [data.posts])
 
-  const planned = data.content.filter(item => !['da_dang', 'huy'].includes(item.trang_thai)).slice(0, 8)
   const totalReachHint = Number(overview.fan_count || 0) + Number(overview.followers_count || 0)
 
   return (
@@ -197,10 +314,8 @@ export function FanpageContentPage({ route }) {
         <a href="/admin/marketing/cau-hinh-kenh" style={{ color: C.primary, fontWeight: 700, textDecoration: 'none' }}>Cấu Hình Kênh</a>.
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        <span style={{ padding: '8px 14px', borderRadius: 9, fontWeight: 800, fontSize: 13, background: C.grad, color: '#fff' }}>Fanpage &amp; Nội Dung</span>
-        <button onClick={() => go('/admin/marketing/chien-dich')} style={{ padding: '8px 14px', borderRadius: 9, fontWeight: 800, fontSize: 13, border: `1px solid ${C.border}`, background: '#fff', color: C.text, cursor: 'pointer' }}>Chiến Dịch &amp; ROI →</button>
-      </div>
+      {/* Nút "Chiến Dịch & ROI" đã bỏ khỏi màn hình chính (0 chiến dịch từ trước tới nay —
+          review 14/07). URL /admin/marketing/chien-dich vẫn sống khi thật sự chạy ads. */}
 
       <MetricGrid items={[
         { label: 'Người theo dõi', value: fmtNumber(overview.followers_count || overview.fan_count), sub: 'Từ Fanpage đã kết nối', tone: C.taiSan },
@@ -235,20 +350,7 @@ export function FanpageContentPage({ route }) {
           </div>
         </Panel>
 
-        <Panel title="Lịch nội dung cần làm" eyebrow="Kế hoạch đăng bài">
-          <div style={{ display: 'grid', gap: 10 }}>
-            {planned.map(item => (
-              <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, borderBottom: `1px solid ${C.border}`, paddingBottom: 10 }}>
-                <div>
-                  <div style={{ fontWeight: 900, color: C.text }}>{item.tieu_de}</div>
-                  <div style={{ marginTop: 4, fontSize: 12, color: C.textSub }}>{channelLabel(item.kenh)} · {item.chu_de || item.loai_noi_dung} · {fmtDate(item.scheduled_at || item.created_at)}</div>
-                </div>
-                <SmallBadge color={item.trang_thai === 'da_duyet' ? C.thu : C.gold}>{statusLabel(item.trang_thai)}</SmallBadge>
-              </div>
-            ))}
-            {!data.loading && planned.length === 0 && <EmptyBox text="Chưa có lịch nội dung đang chờ làm. HSMS vẫn gợi ý chủ đề bên dưới để đội marketing triển khai." />}
-          </div>
-        </Panel>
+        <BaiChoDuyetPanel />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, .7fr)', gap: 14 }}>
@@ -409,6 +511,13 @@ export function ChannelSettingsPage({ route }) {
     <Shell>
       <Header route={route} />
       <StateNotice data={data} />
+
+      {/* Menu gộp "Cấu Hình & Dạy AI" (15/07) — Huấn Luyện AI vào từ đây */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <span style={{ padding: '8px 14px', borderRadius: 9, fontWeight: 800, fontSize: 13, background: C.grad, color: '#fff' }}>Cấu Hình Kênh</span>
+        <button onClick={() => go('/admin/marketing/huan-luyen')} style={{ padding: '8px 14px', borderRadius: 9, fontWeight: 800, fontSize: 13, border: `1px solid ${C.border}`, background: '#fff', color: C.text, cursor: 'pointer' }}>🎓 Huấn Luyện AI →</button>
+      </div>
+
       <MetricGrid items={[
         { label: 'Facebook', value: overview.page_name ? 'Đã nối' : 'Chờ nối', sub: overview.page_name || 'Hannah Spa', tone: overview.page_name ? C.thu : C.chi },
         { label: 'Webhook', value: overview.webhook_enabled ? 'Bật' : 'Chưa bật', sub: 'Nhận tin mới realtime', tone: overview.webhook_enabled ? C.thu : C.warn },

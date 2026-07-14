@@ -35,19 +35,16 @@ export const ADMIN_NAV = [
 
   { id: 'crm', icon: '💝', label: 'CRM Khách Hàng', path: '/admin/crm' },
 
-  // GỘP MODULE (11/07): 2 nhóm "Chăm Sóc Khách" + "Marketing" trùng lặp
-  // (2 Hộp Thư, mục Nhắc Lịch chết, 4 chiến dịch rải lẻ) → 1 nhóm duy nhất
-  // 3 cụm: khách nhắn đến · mình chủ động chăm · phân tích & cấu hình.
+  // KHUNG 5 MỤC (15/07): menu đặt tên theo VIỆC, gộp mục trùng/chết theo
+  // docs/MARKETING_REVIEW_TUNG_TINH_NANG.md. URL cũ (remarketing, huấn luyện,
+  // soạn tay, 4 chiến dịch lẻ) vẫn sống qua redirect trong MarketingModulePage.
   { id: 'khach-mkt', icon: '💗', label: 'Khách & Marketing', children: [
-    { id: 'km-tongquan',  label: 'Tổng Quan',              path: '/admin/marketing' },
-    { id: 'km-inbox',     label: 'Hộp Thư',                path: '/admin/marketing/hop-thu' },
-    { id: 'km-homnay',    label: 'Hôm Nay Cần Chạm',       path: '/admin/cham-soc-khach' },
-    { id: 'km-tudong',    label: 'Chiến Dịch Tự Động',     path: '/admin/marketing/tu-dong' },
-    { id: 'km-soantay',   label: 'Soạn Tay AI (Nhắc Thẻ)', path: '/admin/nhac-lieu-trinh' },
-    { id: 'km-remkt',     label: 'Khách & Remarketing',    path: '/admin/marketing/khach-remarketing' },
-    { id: 'km-fanpage',   label: 'Fanpage & Chiến Dịch',   path: '/admin/marketing/fanpage-noi-dung' },
-    { id: 'km-training',  label: 'Huấn Luyện AI',          path: '/admin/marketing/huan-luyen' },
-    { id: 'km-cauhinh',   label: 'Cấu Hình Kênh',          path: '/admin/marketing/cau-hinh-kenh' },
+    { id: 'km-tongquan',  label: 'Báo Cáo Marketing',   path: '/admin/marketing' },
+    { id: 'km-inbox',     label: 'Hộp Thư',             path: '/admin/marketing/hop-thu' },
+    { id: 'km-homnay',    label: 'Hôm Nay Cần Chạm',    path: '/admin/cham-soc-khach' },
+    { id: 'km-tudong',    label: 'Máy Chăm Khách',      path: '/admin/marketing/tu-dong' },
+    { id: 'km-fanpage',   label: 'Máy Đăng Bài',        path: '/admin/marketing/fanpage-noi-dung' },
+    { id: 'km-cauhinh',   label: 'Cấu Hình & Dạy AI',   path: '/admin/marketing/cau-hinh-kenh' },
   ]},
 
   { id: 'dichvu', icon: '💎', label: 'Dịch Vụ', children: [

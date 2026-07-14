@@ -8,16 +8,18 @@ import { C, FONT } from '../../../constants/colors'
 import { supabase } from '../../../lib/supabase'
 
 export const MARKETING_ROUTES = [
+  // KHUNG 5 MỤC (15/07): mục hidden:true = bỏ khỏi menu/Overview nhưng GIỮ route
+  // (URL cũ sống, Header các trang cũ vẫn tìm được route object).
   {
     key: 'overview',
     path: '/admin/marketing',
-    title: 'Tổng Quan Marketing',
-    short: 'Tổng Quan',
-    subtitle: 'Trung tâm báo cáo toàn hệ thống Marketing — nhìn vào là biết hôm nay cần làm gì.',
+    title: 'Báo Cáo Marketing',
+    short: 'Báo Cáo',
+    subtitle: 'Sáu con số ĐỘNG của hôm nay — mỗi số bấm vào là tới đúng việc cần làm.',
     owner: 'Chủ / quản lý',
     status: 'Báo cáo',
     accent: C.gold,
-    metrics: ['Tin mới hôm nay', 'Cần trả lời', 'Khách chốt lịch'],
+    metrics: ['Tin chưa trả lời', 'ZNS hôm nay', 'Khách quay lại'],
   },
   {
     key: 'inbox',
@@ -31,6 +33,18 @@ export const MARKETING_ROUTES = [
     metrics: ['Đa kênh FB+Zalo', 'Nhận diện khách', 'Gợi ý trả lời'],
   },
   {
+    key: 'tu-dong',
+    path: '/admin/marketing/tu-dong',
+    title: 'Máy Chăm Khách',
+    short: 'Máy Chăm Khách',
+    subtitle: '4 luồng tự chạy mỗi sáng: chăm sau dịch vụ · nhắc thẻ còn buổi (9h) · win-back voucher (9h15) · mời khách lẻ (9h30). Vào xem hàng đợi, kết quả, ai quay lại.',
+    owner: 'Tự động + theo dõi',
+    status: 'Đang chạy hằng ngày',
+    accent: '#16A085',
+    metrics: ['4 luồng ZNS', 'Tự gửi mỗi sáng', 'Đo khách quay lại'],
+  },
+  {
+    hidden: true,
     key: 'remarketing',
     path: '/admin/marketing/khach-remarketing',
     title: 'Khách & Remarketing',
@@ -42,6 +56,7 @@ export const MARKETING_ROUTES = [
     metrics: ['Đã nối HSMS', 'Còn thẻ / buổi', 'Vắng lâu'],
   },
   {
+    hidden: true,
     key: 'aftercare',
     path: '/admin/marketing/cham-soc-sau-dich-vu',
     title: 'Chăm Sóc Sau Dịch Vụ',
@@ -55,15 +70,16 @@ export const MARKETING_ROUTES = [
   {
     key: 'fanpage',
     path: '/admin/marketing/fanpage-noi-dung',
-    title: 'Fanpage & Chiến Dịch',
-    short: 'Fanpage & Chiến Dịch',
-    subtitle: 'Sức khoẻ Fanpage, bài viết hiệu quả, gợi ý nội dung; quản lý chiến dịch quảng cáo và ROI.',
+    title: 'Máy Đăng Bài',
+    short: 'Máy Đăng Bài',
+    subtitle: 'AI tự soạn bài từ dữ liệu thật (2 ngày/bài, giờ vàng) — anh duyệt tại đây hoặc trên Telegram, đến giờ máy tự đăng lên Fanpage.',
     owner: 'Chủ / marketing',
-    status: 'Phân tích',
+    status: 'Đang chạy',
     accent: C.rose,
-    metrics: ['Bài viết tốt', 'Chiến dịch', 'ROI'],
+    metrics: ['Bài chờ duyệt', 'Đã đăng + reach', 'Lịch giờ vàng'],
   },
   {
+    hidden: true,
     key: 'training',
     path: '/admin/marketing/huan-luyen',
     title: 'Huấn Luyện AI',
@@ -75,6 +91,7 @@ export const MARKETING_ROUTES = [
     metrics: ['Hiến pháp', 'Mẫu vàng', 'Khuyến mãi'],
   },
   {
+    hidden: true,
     key: 'cham-soc-lai',
     path: '/admin/marketing/cham-soc-lai',
     title: 'Chăm Sóc Lại (Thẻ Liệu Trình)',
@@ -86,6 +103,7 @@ export const MARKETING_ROUTES = [
     metrics: ['40 khách/ngày', 'Đã xem / Quan tâm', 'Cũ – Mới'],
   },
   {
+    hidden: true,
     key: 'winback',
     path: '/admin/marketing/win-back',
     title: 'Win-back Khách Lạnh (Voucher)',
@@ -97,6 +115,7 @@ export const MARKETING_ROUTES = [
     metrics: ['462 khách lạnh', 'Voucher mã riêng', 'Đo ai đến nhờ mã'],
   },
   {
+    hidden: true,
     key: 'khach-le',
     path: '/admin/marketing/khach-le',
     title: 'Mời Khách Lẻ Quay Lại',
@@ -110,13 +129,13 @@ export const MARKETING_ROUTES = [
   {
     key: 'settings',
     path: '/admin/marketing/cau-hinh-kenh',
-    title: 'Cấu Hình Kênh',
-    short: 'Cấu Hình',
-    subtitle: 'Kết nối Facebook/Zalo, webhook, token, đồng bộ thủ công và phân công nhân viên.',
+    title: 'Cấu Hình & Dạy AI',
+    short: 'Cấu Hình & Dạy AI',
+    subtitle: 'Kết nối Facebook/Zalo, webhook, token, đồng bộ thủ công. Huấn luyện AI tư vấn nằm trong này.',
     owner: 'Chủ / kỹ thuật',
     status: 'Admin',
     accent: C.primary,
-    metrics: ['Facebook', 'Zalo', 'Webhook'],
+    metrics: ['Facebook', 'Zalo', 'Huấn luyện AI'],
   },
 ]
 
