@@ -1572,7 +1572,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                 <button onClick={clearCustomer} style={{ background: 'none', border: 'none', color: 'var(--ink3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 4 }}>✕</button>
               </div>
               {customerCards.filter(c => c.so_buoi_con_lai > 0).length > 0 && (
-                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+                // Lưới 4 ô đổ xuống (giống MySpa) — NV chụp màn hình gửi khách theo dõi được,
+                // cuộn ngang cũ che mất thẻ nên không chụp trọn (NV yêu cầu 14/07)
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))', gap: 8, paddingBottom: 2 }}>
                   {customerCards.filter(c => c.so_buoi_con_lai > 0).map(card => (
                     <LieuTrinhCard key={card.id} card={card} onUse={handleAddCard} onGiaHan={openGiaHan} />
                   ))}

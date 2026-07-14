@@ -132,9 +132,7 @@ export function LieuTrinhCard({ card, onUse, onGiaHan }) {
 
   return (
     <div style={{
-      minWidth: 160,
-      maxWidth: 175,
-      flexShrink: 0,
+      minWidth: 0, // width do lưới cha quyết định (grid 4 ô kiểu MySpa)
       borderRadius: 8,
       padding: '7px 10px',
       background: bg,

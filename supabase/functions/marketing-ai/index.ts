@@ -1735,11 +1735,12 @@ async function handleAnalyze() {
   }
 }
 
-// Giờ vàng đăng bài fanpage: 19:30 (tối, tương tác cao) xen 11:30 (trưa) giờ VN, mỗi ngày 1 bài, bắt đầu ngày mai.
+// Giờ vàng đăng bài fanpage: 19:30 (tối, tương tác cao) xen 11:30 (trưa) giờ VN.
+// Nhịp 2 NGÀY 1 BÀI (anh Nam chốt 14/07) — đủ nuôi page mà không nhàm, bắt đầu từ ngày mai.
 function goldenSlots(count: number): string[] {
   const out: string[] = []
   const now = Date.now()
-  for (let d = 1; out.length < count && d <= 14; d++) {
+  for (let d = 1; out.length < count && d <= 28; d += 2) {
     const ymd = new Date(now + d * 864e5).toISOString().slice(0, 10)
     out.push(`${ymd}T${out.length % 2 === 0 ? '19:30' : '11:30'}:00+07:00`)
   }
