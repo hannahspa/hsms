@@ -70,6 +70,14 @@ async function graphPost(path: string, body: Record<string, unknown>, token: str
   return data
 }
 
+async function graphDelete(path: string, token: string) {
+  const url = graphUrl(path, {}, token)
+  const res = await fetch(url, { method: 'DELETE' })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data?.error?.message || JSON.stringify(data))
+  return data
+}
+
 async function graphUrlGet(url: string) {
   const res = await fetch(url)
   const data = await res.json().catch(() => ({}))
@@ -897,6 +905,123 @@ async function sendMessageFromPage(page: ConnectedPage, body: Record<string, unk
   }
 }
 
+// ── T1 Máy đăng bài: đăng nội dung đã duyệt từ marketing_content_calendar lên Fanpage ──
+
+function buildPostMessage(content: Record<string, unknown>) {
+  const caption = String(content.noi_dung || content.tieu_de || '').trim()
+  const tags = Array.isArray(content.hashtags)
+    ? (content.hashtags as unknown[]).map(h => String(h).trim()).filter(Boolean).join(' ')
+    : ''
+  return [caption, tags].filter(Boolean).join('\n\n')
+}
+
+async function publishContentToFacebook(page: ConnectedPage, token: string, content: Record<string, unknown>) {
+  const message = buildPostMessage(content)
+  if (!message) throw new Error('Noi dung bai dang trong')
+  const assets = Array.isArray(content.asset_urls) ? (content.asset_urls as unknown[]).map(String).filter(Boolean) : []
+
+  const posted = assets.length
+    ? await graphPost(`${page.page_id}/photos`, { url: assets[0], message, published: true }, token)
+    : await graphPost(`${page.page_id}/feed`, { message, published: true }, token)
+
+  const postId = posted?.post_id || posted?.id || null
+  let permalink: string | null = null
+  if (postId) {
+    try {
+      const info = await graphGet(String(postId), { fields: 'permalink_url' }, token)
+      permalink = info?.permalink_url || null
+    } catch (_e) { /* permalink chỉ để tiện mở xem — lỗi không chặn luồng đăng */ }
+  }
+  return { postId, permalink }
+}
+
+async function publishPostFromPage(page: ConnectedPage, body: Record<string, unknown>) {
+  const token = await getSecret(page.page_access_token_secret)
+  if (!token) throw new Error(`Thieu Page Access Token cho ${page.page_name || page.page_id}`)
+
+  // Chế độ test: đăng bài ẨN (khách không thấy) rồi xóa ngay — kiểm tra quyền pages_manage_posts
+  if (body.test_message) {
+    const posted = await graphPost(`${page.page_id}/feed`, { message: String(body.test_message), published: false }, token)
+    const postId = posted?.id || null
+    let deleted = false
+    if (postId && body.keep_test !== true) {
+      try { await graphDelete(String(postId), token); deleted = true } catch (_e) { deleted = false }
+    }
+    return { ok: true, test: true, post_id: postId, deleted }
+  }
+
+  const contentId = String(body.content_id || '').trim()
+  if (!contentId) throw new Error('Thieu content_id')
+  const { data: content, error } = await supabase.from('marketing_content_calendar')
+    .select('*').eq('id', contentId).single()
+  if (error) throw new Error(errorMessage(error))
+  if (content.trang_thai === 'da_dang') return { ok: true, skipped: 'da_dang', content_id: contentId }
+  if (content.trang_thai !== 'da_duyet' && body.force !== true) {
+    throw new Error(`Bai chua duoc duyet (trang_thai=${content.trang_thai})`)
+  }
+
+  try {
+    const result = await publishContentToFacebook(page, token, content)
+    await supabase.from('marketing_content_calendar').update({
+      trang_thai: 'da_dang',
+      published_at: new Date().toISOString(),
+      metadata: {
+        ...(content.metadata || {}),
+        publish_result: {
+          post_id: result.postId,
+          permalink: result.permalink,
+          page_id: page.page_id,
+          published_at: new Date().toISOString(),
+          source: String(body.source || 'api'),
+        },
+      },
+    }).eq('id', contentId)
+    await supabase.from('marketing_ai_actions').update({
+      trang_thai: 'da_chay',
+      executed_at: new Date().toISOString(),
+      result_payload: { post_id: result.postId, permalink: result.permalink },
+    }).eq('content_id', contentId).eq('action_type', 'publish_content')
+      .in('trang_thai', ['de_xuat', 'cho_duyet', 'da_duyet'])
+    await supabase.from('marketing_automation_runs').insert({
+      mode: 'publish_post',
+      status: 'success',
+      input_payload: { content_id: contentId, page_id: page.page_id },
+      result_payload: { post_id: result.postId, permalink: result.permalink },
+    })
+    return { ok: true, content_id: contentId, post_id: result.postId, permalink: result.permalink }
+  } catch (e) {
+    // Đánh dấu that_bai để cron không retry mù — anh Nam xem lỗi trong metadata rồi duyệt lại
+    await supabase.from('marketing_content_calendar').update({
+      trang_thai: 'that_bai',
+      metadata: { ...(content.metadata || {}), publish_error: { message: errorMessage(e), at: new Date().toISOString() } },
+    }).eq('id', contentId)
+    throw e
+  }
+}
+
+async function publishDueFromPage(page: ConnectedPage, body: Record<string, unknown>) {
+  const limit = Math.min(Number(body.limit || 3), 5)
+  const { data: due, error } = await supabase.from('marketing_content_calendar')
+    .select('id, scheduled_at')
+    .eq('kenh', 'facebook')
+    .eq('trang_thai', 'da_duyet')
+    .not('scheduled_at', 'is', null)
+    .lte('scheduled_at', new Date().toISOString())
+    .order('scheduled_at', { ascending: true })
+    .limit(limit)
+  if (error) throw new Error(errorMessage(error))
+
+  const published: Record<string, unknown>[] = []
+  for (const item of due || []) {
+    try {
+      published.push(await publishPostFromPage(page, { content_id: item.id, source: 'cron_publish_due' }))
+    } catch (e) {
+      published.push({ content_id: item.id, error: errorMessage(e) })
+    }
+  }
+  return { ok: true, due: (due || []).length, published }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
@@ -933,6 +1058,10 @@ serve(async (req) => {
           results.push(await syncConversationBatchForPage(page, body))
         } else if (mode === 'send_message') {
           results.push(await sendMessageFromPage(page, body))
+        } else if (mode === 'publish_post') {
+          results.push(await publishPostFromPage(page, body))
+        } else if (mode === 'publish_due') {
+          results.push(await publishDueFromPage(page, body))
         } else {
           results.push(await syncOnePage(page, body))
         }

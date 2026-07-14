@@ -110,12 +110,15 @@ async function logRun(mode: string, status: 'success' | 'error', input: unknown,
 }
 
 function safeJSON(text: string, fallback: Record<string, unknown>) {
+  const cleaned = String(text || '').trim().replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim()
   try {
-    const cleaned = text.trim().replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim()
     return JSON.parse(cleaned)
-  } catch {
-    return fallback
+  } catch { /* AI hay kèm lời dẫn quanh JSON — thử trích khối JSON bên trong */ }
+  const m = cleaned.match(/[\[{][\s\S]*[\]}]/)
+  if (m) {
+    try { return JSON.parse(m[0]) } catch { /* rơi xuống fallback */ }
   }
+  return fallback
 }
 
 // Lọc enum mức an toàn về giá trị DB hợp lệ (AI có thể trả 'safe'/'high'/...).
@@ -1732,48 +1735,122 @@ async function handleAnalyze() {
   }
 }
 
+// Giờ vàng đăng bài fanpage: 19:30 (tối, tương tác cao) xen 11:30 (trưa) giờ VN, mỗi ngày 1 bài, bắt đầu ngày mai.
+function goldenSlots(count: number): string[] {
+  const out: string[] = []
+  const now = Date.now()
+  for (let d = 1; out.length < count && d <= 14; d++) {
+    const ymd = new Date(now + d * 864e5).toISOString().slice(0, 10)
+    out.push(`${ymd}T${out.length % 2 === 0 ? '19:30' : '11:30'}:00+07:00`)
+  }
+  return out
+}
+
+function fmtMoneyText(n: unknown) {
+  const v = Number(n || 0)
+  return v ? `${v.toLocaleString('vi-VN')}đ` : ''
+}
+
 async function handleContentPlan() {
-  const { data: campaigns } = await supabase.from('chien_dich_marketing')
-    .select('id, ten, kenh, mo_ta, khuyen_mai_id, trang_thai')
-    .eq('trang_thai', 'active')
-    .limit(20)
+  // Chống ngập: còn từ 5 bài chưa đăng thì không sinh thêm — duyệt hết đợt trước đã.
+  const { count: pendingCount } = await supabase.from('marketing_content_calendar')
+    .select('id', { count: 'exact', head: true })
+    .in('trang_thai', ['y_tuong', 'nhap', 'cho_duyet', 'da_duyet'])
+  if ((pendingCount || 0) >= 5) return { inserted: 0, skipped: 'con_bai_chua_dang', pending: pendingCount }
+
+  const [{ data: campaigns }, { data: promos }] = await Promise.all([
+    supabase.from('chien_dich_marketing')
+      .select('id, ten, kenh, mo_ta, khuyen_mai_id, trang_thai')
+      .eq('trang_thai', 'active')
+      .limit(20),
+    supabase.from('khuyen_mai')
+      .select('id, ten, mo_ta, gia_goc, gia_km, phan_tram_giam, ngay_ket_thuc, loai_km, dich_vu:dich_vu_id(ten)')
+      .eq('trang_thai', 'active')
+      .or(`ngay_ket_thuc.is.null,ngay_ket_thuc.gte.${todayISO()}`)
+      .limit(10),
+  ])
+
+  // Dịch vụ hot 30 ngày qua từ đơn POS thật — để AI viết bài về thứ khách đang thực sự chuộng.
+  const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)
+  const { data: lines } = await supabase.from('don_hang_chi_tiet')
+    .select('dich_vu_id, don_hang:don_hang_id!inner(ngay)')
+    .gte('don_hang.ngay', since)
+    .not('dich_vu_id', 'is', null)
+    .limit(2000)
+  const dvCount = new Map<string, number>()
+  for (const l of (lines || []) as any[]) dvCount.set(l.dich_vu_id, (dvCount.get(l.dich_vu_id) || 0) + 1)
+  const topIds = [...dvCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id)
+  let topServices: any[] = []
+  if (topIds.length) {
+    const { data: dv } = await supabase.from('dich_vu').select('id, ten, gia_co_ban, danh_muc').in('id', topIds)
+    topServices = (dv || []).map((d: any) => ({ ...d, luot_dung_30_ngay: dvCount.get(d.id) || 0 }))
+  }
 
   const ai = await callAI(
     [
-      'Bạn là AI Content Marketing cho Hannah Beauty & Spa.',
-      'Tạo 5 ý tưởng nội dung sang trọng, ấm áp, phù hợp spa Cần Thơ.',
-      'Không cam kết trị khỏi. Không dùng ngôn ngữ y khoa quá mức. Có CTA đặt lịch tư vấn.',
-      'Chỉ trả về JSON array: [{tieu_de, kenh, loai_noi_dung, chu_de, noi_dung, ai_prompt, chien_dich_id}].',
+      'Bạn là AI Content Marketing cho Hannah Beauty & Spa (39 Nam Kỳ Khởi Nghĩa, Cần Thơ).',
+      'Dựa trên DỮ LIỆU THẬT được cung cấp (khuyến mãi đang chạy, dịch vụ khách chuộng 30 ngày qua, chiến dịch active), tạo 5 bài đăng fanpage ĐA DẠNG:',
+      '- 1-2 bài về khuyến mãi đang chạy (nêu đúng giá, đúng thời hạn — KHÔNG bịa giá hay tự chế khuyến mãi mới).',
+      '- 1 bài kiến thức chăm sóc da/tóc ngắn gọn hữu ích.',
+      '- 1 bài giới thiệu dịch vụ khách đang chuộng nhất.',
+      '- 1 bài không khí spa / cảm nhận khách (không bịa tên khách cụ thể).',
+      'Giọng sang trọng, ấm áp. Không cam kết trị khỏi. Không ngôn ngữ y khoa quá mức. Mỗi bài có CTA đặt lịch (inbox fanpage hoặc Zalo).',
+      'Chỉ trả về JSON array: [{tieu_de, loai_noi_dung, chu_de, noi_dung, ai_prompt, khuyen_mai_id, chien_dich_id}].',
+      'noi_dung là caption HOÀN CHỈNH sẵn sàng đăng (có xuống dòng, emoji tiết chế). khuyen_mai_id/chien_dich_id lấy từ dữ liệu nếu bài liên quan, không thì null.',
     ].join('\n'),
-    { campaigns: campaigns || [], today: todayISO() },
-    'pro',
+    { khuyen_mai_dang_chay: promos || [], dich_vu_hot_30_ngay: topServices, campaigns: campaigns || [], today: todayISO() },
+    // flash: bản pro (reasoning) chậm quá giới hạn wall-clock của edge runtime → supervisor hủy request
+    'fast',
   )
 
-  const fallback = (campaigns || []).slice(0, 5).map((c: any) => ({
-    tieu_de: `Ý tưởng nội dung cho ${c.ten}`,
-    kenh: c.kenh || 'facebook',
-    loai_noi_dung: 'bai_viet',
-    chu_de: 'Tư vấn chăm sóc da và đặt lịch',
-    noi_dung: `Gợi ý nội dung giới thiệu ${c.ten}, nhấn mạnh trải nghiệm thư giãn và tư vấn cá nhân hóa tại Hannah Spa.`,
-    ai_prompt: 'Viết caption giọng sang, ấm, không cam kết điều trị, có CTA đặt lịch.',
-    chien_dich_id: c.id,
-  }))
+  const fallback = [
+    ...(promos || []).slice(0, 3).map((p: any) => ({
+      tieu_de: `Ưu đãi ${p.ten}`,
+      loai_noi_dung: 'bai_viet',
+      chu_de: 'Khuyến mãi đang chạy',
+      noi_dung: `${p.ten} — chỉ còn ${fmtMoneyText(p.gia_km)} (giá gốc ${fmtMoneyText(p.gia_goc)}). Inbox fanpage hoặc Zalo để Hannah giữ lịch cho mình nhé.`,
+      ai_prompt: 'Ảnh spa sang trọng ấm áp, tông nâu vàng.',
+      khuyen_mai_id: p.id,
+      chien_dich_id: null,
+    })),
+    ...(campaigns || []).slice(0, 2).map((c: any) => ({
+      tieu_de: `Ý tưởng nội dung cho ${c.ten}`,
+      loai_noi_dung: 'bai_viet',
+      chu_de: 'Tư vấn chăm sóc da và đặt lịch',
+      noi_dung: `Gợi ý nội dung giới thiệu ${c.ten}, nhấn mạnh trải nghiệm thư giãn và tư vấn cá nhân hóa tại Hannah Spa.`,
+      ai_prompt: 'Viết caption giọng sang, ấm, không cam kết điều trị, có CTA đặt lịch.',
+      khuyen_mai_id: null,
+      chien_dich_id: c.id,
+    })),
+  ]
 
   const ideas = ai.ok ? safeJSON(ai.text, fallback as any) : fallback
-  const rows = (Array.isArray(ideas) ? ideas : fallback).map((idea: any) => ({
+  const list = (Array.isArray(ideas) ? ideas : fallback).slice(0, 5)
+  const slots = goldenSlots(list.length)
+  const promoIds = new Set((promos || []).map((p: any) => p.id))
+  const LOAI_HOP_LE = new Set(['bai_viet', 'hinh_anh', 'video', 'story', 'reel', 'quang_cao'])
+  const rows = list.map((idea: any, i: number) => ({
     tieu_de: String(idea.tieu_de || 'Ý tưởng nội dung Hannah Spa').slice(0, 200),
-    kenh: idea.kenh || 'facebook',
-    loai_noi_dung: idea.loai_noi_dung || 'bai_viet',
+    kenh: 'facebook',
+    // AI hay trả enum tự chế (vd 'gioi_thieu_dich_vu') → ép về giá trị CHECK constraint chấp nhận
+    loai_noi_dung: LOAI_HOP_LE.has(idea.loai_noi_dung) ? idea.loai_noi_dung : 'bai_viet',
     chu_de: idea.chu_de || null,
     noi_dung: idea.noi_dung || null,
     ai_prompt: idea.ai_prompt || null,
     chien_dich_id: idea.chien_dich_id || null,
-    khuyen_mai_id: idea.khuyen_mai_id || null,
+    khuyen_mai_id: promoIds.has(idea.khuyen_mai_id) ? idea.khuyen_mai_id : null,
+    scheduled_at: slots[i] || null,
     trang_thai: 'y_tuong',
-    ai_notes: ai.ok ? 'Tạo bởi AI Marketing' : 'Tạo bằng fallback vì chưa cấu hình AI',
+    ai_notes: ai.ok ? 'Tạo bởi AI Marketing (dữ liệu KM + DV hot thật)' : 'Tạo bằng fallback vì chưa cấu hình AI',
   }))
 
-  if (rows.length === 0) return { inserted: 0, note: 'khong_co_chien_dich_active' }
+  if (rows.length === 0) {
+    return {
+      inserted: 0, note: 'khong_co_du_lieu_de_len_bai', ai_configured: ai.ok,
+      ai_error: (ai as any).error || (ai as any).note || null,
+      ai_sample: String((ai as any).text || '').slice(0, 300),
+    }
+  }
   const { data, error } = await supabase.from('marketing_content_calendar').insert(rows).select('*')
   if (error) throw error
   return { inserted: data?.length || 0, ai_configured: ai.ok, data }
@@ -1799,7 +1876,8 @@ async function handleDraftContent() {
     .select('*')
     .in('trang_thai', ['y_tuong', 'nhap'])
     .order('created_at', { ascending: true })
-    .limit(10)
+    // 3 bài/lượt: giữ mỗi request dưới wall-clock limit của edge runtime — cron 30' xử lý dần hết hàng chờ
+    .limit(3)
   if (error) throw error
 
   const drafted: any[] = []
@@ -1812,7 +1890,7 @@ async function handleDraftContent() {
         'Chi tra ve JSON: caption, hashtags, image_prompt, review_notes.',
       ].join('\n'),
       item,
-      'pro',
+      'fast',
     )
 
     const draft = ai.ok ? safeJSON(ai.text, fallbackContentDraft(item)) : fallbackContentDraft(item)
