@@ -49,10 +49,12 @@ def ai_background(ai_prompt):
     if not OPENAI_KEY:
         return None
     prompt = ((ai_prompt or '').strip() + '. ' if ai_prompt else '') + (
-        'Luxury beauty spa in Vietnam, warm champagne-gold and soft brown tones, elegant, '
-        'cinematic soft lighting, professional photography, high detail. '
-        'ABSOLUTELY NO text, no words, no letters, no logo, no watermark.')
-    body = json.dumps({'model': 'gpt-image-1', 'prompt': prompt[:3500], 'size': '1536x1024', 'quality': 'medium'}).encode('utf-8')
+        'Luxury Vietnamese beauty spa aesthetic, warm champagne-gold and soft brown brand palette. '
+        'Photorealistic editorial photography: layered composition with foreground/background depth, '
+        'shallow depth of field, cinematic soft light, gentle film grain, magazine quality. '
+        'ABSOLUTELY NO text, no words, no letters, no logo, no watermark anywhere.')
+    # quality high (~6k đ/ảnh): anh Nam yêu cầu ảnh thay được designer Canva — đáng tiền (15/07)
+    body = json.dumps({'model': 'gpt-image-1', 'prompt': prompt[:3500], 'size': '1536x1024', 'quality': 'high'}).encode('utf-8')
     req = urllib.request.Request('https://api.openai.com/v1/images/generations', data=body, headers={
         'Authorization': 'Bearer ' + OPENAI_KEY, 'Content-Type': 'application/json'})
     try:

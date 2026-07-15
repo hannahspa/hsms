@@ -1752,12 +1752,13 @@ function fmtMoneyText(n: unknown) {
   return v ? `${v.toLocaleString('vi-VN')}đ` : ''
 }
 
-async function handleContentPlan() {
+async function handleContentPlan(body: Record<string, unknown> = {}) {
+  const soBai = Math.min(Math.max(Number(body.so_bai) || 5, 1), 5)
   // Chống ngập: còn từ 5 bài chưa đăng thì không sinh thêm — duyệt hết đợt trước đã.
   const { count: pendingCount } = await supabase.from('marketing_content_calendar')
     .select('id', { count: 'exact', head: true })
     .in('trang_thai', ['y_tuong', 'nhap', 'cho_duyet', 'da_duyet'])
-  if ((pendingCount || 0) >= 5) return { inserted: 0, skipped: 'con_bai_chua_dang', pending: pendingCount }
+  if ((pendingCount || 0) >= 5 && body.force !== true) return { inserted: 0, skipped: 'con_bai_chua_dang', pending: pendingCount }
 
   const [{ data: campaigns }, { data: promos }] = await Promise.all([
     supabase.from('chien_dich_marketing')
@@ -1770,6 +1771,16 @@ async function handleContentPlan() {
       .or(`ngay_ket_thuc.is.null,ngay_ket_thuc.gte.${todayISO()}`)
       .limit(10),
   ])
+
+  // Bài fanpage CŨ hiệu quả nhất (đã sync từ Meta) — cho AI học giọng văn thật của Hannah
+  const { data: oldPosts } = await supabase.from('marketing_page_posts')
+    .select('message, reactions_count, comments_count')
+    .not('message', 'is', null)
+    .order('reactions_count', { ascending: false })
+    .limit(3)
+  const baiCuHay = (oldPosts || [])
+    .map((p: any) => String(p.message || '').slice(0, 320))
+    .filter(t => t.length > 40)
 
   // Dịch vụ hot 30 ngày qua từ đơn POS thật — để AI viết bài về thứ khách đang thực sự chuộng.
   const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)
@@ -1790,16 +1801,17 @@ async function handleContentPlan() {
   const ai = await callAI(
     [
       'Bạn là AI Content Marketing cho Hannah Beauty & Spa (39 Nam Kỳ Khởi Nghĩa, Cần Thơ).',
-      'Dựa trên DỮ LIỆU THẬT được cung cấp (khuyến mãi đang chạy, dịch vụ khách chuộng 30 ngày qua, chiến dịch active), tạo 5 bài đăng fanpage ĐA DẠNG:',
-      '- 1-2 bài về khuyến mãi đang chạy (nêu đúng giá, đúng thời hạn — KHÔNG bịa giá hay tự chế khuyến mãi mới).',
-      '- 1 bài kiến thức chăm sóc da/tóc ngắn gọn hữu ích.',
-      '- 1 bài giới thiệu dịch vụ khách đang chuộng nhất.',
-      '- 1 bài không khí spa / cảm nhận khách (không bịa tên khách cụ thể).',
+      `Dựa trên DỮ LIỆU THẬT được cung cấp (khuyến mãi đang chạy, dịch vụ khách chuộng 30 ngày qua, chiến dịch active), tạo ${soBai} bài đăng fanpage ĐA DẠNG, chọn trong các dạng:`,
+      '- Bài về khuyến mãi đang chạy (nêu đúng giá, đúng thời hạn — KHÔNG bịa giá hay tự chế khuyến mãi mới).',
+      '- Bài kiến thức chăm sóc da/tóc ngắn gọn hữu ích.',
+      '- Bài giới thiệu dịch vụ khách đang chuộng nhất.',
+      '- Bài không khí spa / cảm nhận khách (không bịa tên khách cụ thể).',
+      'HỌC GIỌNG VĂN từ các bài cũ hiệu quả trong "bai_cu_hieu_qua" (cách xưng hô, nhịp câu, emoji) — nhưng viết nội dung MỚI, không chép lại.',
       'Giọng sang trọng, ấm áp. Không cam kết trị khỏi. Không ngôn ngữ y khoa quá mức. Mỗi bài có CTA đặt lịch (inbox fanpage hoặc Zalo).',
       'Chỉ trả về JSON array: [{tieu_de, loai_noi_dung, chu_de, noi_dung, ai_prompt, khuyen_mai_id, chien_dich_id}].',
-      'noi_dung là caption HOÀN CHỈNH sẵn sàng đăng (có xuống dòng, emoji tiết chế). khuyen_mai_id/chien_dich_id lấy từ dữ liệu nếu bài liên quan, không thì null.',
+      'noi_dung là caption HOÀN CHỈNH sẵn sàng đăng (có xuống dòng, emoji tiết chế). ai_prompt là MÔ TẢ ẢNH chi tiết cho hoạ sĩ AI (cảnh spa cụ thể hợp nội dung bài). khuyen_mai_id/chien_dich_id lấy từ dữ liệu nếu bài liên quan, không thì null.',
     ].join('\n'),
-    { khuyen_mai_dang_chay: promos || [], dich_vu_hot_30_ngay: topServices, campaigns: campaigns || [], today: todayISO() },
+    { khuyen_mai_dang_chay: promos || [], dich_vu_hot_30_ngay: topServices, bai_cu_hieu_qua: baiCuHay, campaigns: campaigns || [], today: todayISO() },
     // flash: bản pro (reasoning) chậm quá giới hạn wall-clock của edge runtime → supervisor hủy request
     'fast',
   )
@@ -1826,7 +1838,7 @@ async function handleContentPlan() {
   ]
 
   const ideas = ai.ok ? safeJSON(ai.text, fallback as any) : fallback
-  const list = (Array.isArray(ideas) ? ideas : fallback).slice(0, 5)
+  const list = (Array.isArray(ideas) ? ideas : fallback).slice(0, soBai)
   const slots = goldenSlots(list.length)
   const promoIds = new Set((promos || []).map((p: any) => p.id))
   const LOAI_HOP_LE = new Set(['bai_viet', 'hinh_anh', 'video', 'story', 'reel', 'quang_cao'])
@@ -2390,7 +2402,7 @@ serve(async (req) => {
     else if (mode === 'resolve_identities') result = await handleResolveIdentities()
     else if (mode === 'classify_fanpage_customers') result = await handleClassifyFanpageCustomers(body)
     else if (mode === 'attribution_bridge') result = await handleAttributionBridge(body)
-    else if (mode === 'content_plan') result = await handleContentPlan()
+    else if (mode === 'content_plan') result = await handleContentPlan(body)
     else if (mode === 'draft_content') result = await handleDraftContent()
     else if (mode === 'run_approved') result = await handleRunApproved()
     else return json({
