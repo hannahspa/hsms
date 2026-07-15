@@ -120,6 +120,12 @@ def render(tieu_de, chu_de, ai_prompt=None):
     block_h = len(lines) * (size + 12)
     # Căn khối tiêu đề vào khoảng giữa còn lại (chừa footer 130px)
     y = max(top, top + (H - 130 - top - block_h) // 2 - (40 if chu_de else 0))
+    # Scrim: dải tối mờ full-width sau khối chữ (kiểu banner Canva) — chữ không "dán" lên mặt/chủ thể
+    scrim_top = y - 26
+    scrim_bot = y + block_h + (76 if chu_de else 32)
+    d.rectangle([0, scrim_top, W, scrim_bot], fill=(26, 18, 9, 96))
+    d.line([(0, scrim_top), (W, scrim_top)], fill=(255, 255, 255, 40), width=1)
+    d.line([(0, scrim_bot), (W, scrim_bot)], fill=(255, 255, 255, 40), width=1)
     for ln in lines:
         d.text((W // 2, y), ln, font=f_title, fill=(255, 255, 255, 255), anchor='ma')
         y += size + 12
