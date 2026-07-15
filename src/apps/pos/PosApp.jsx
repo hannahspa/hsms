@@ -80,6 +80,9 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [customerCards, setCustomerCards]       = useState([])
   const [customerDebt, setCustomerDebt]         = useState([])
+  // Gợi ý tư vấn (khép vòng CRM 15/07): hồ sơ thông minh + nhật ký tư vấn lần trước
+  const [custIntel, setCustIntel]               = useState(null)
+  const [custNhatKy, setCustNhatKy]             = useState(null)
   const [customerPrepaid, setCustomerPrepaid]   = useState(0)   // số dư ví trả trước
   const [cardHistory, setCardHistory]           = useState([])
   const [showCardHistory, setShowCardHistory]   = useState(true)   // mặc định HIỆN hết thẻ hết hạn/đã dùng (anh Nam: show up hết)
@@ -331,8 +334,17 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
       setCardHistory([])
       setShowCardHistory(false)
       setCustomerPrepaid(0)
+      setCustIntel(null)
+      setCustNhatKy(null)
       return
     }
+    // Gợi ý tư vấn: DV nên upsell (view thông minh) + lời dặn từ phiếu tư vấn lần trước
+    supabase.from('v_customer_pos_intelligence').select('goi_y_upsell, muc_tieu_tu_van, dich_vu_gan_nhat, ghi_chu_da_lieu')
+      .eq('khach_hang_id', selectedCustomer.id).limit(1).maybeSingle()
+      .then(({ data }) => setCustIntel(data || null), () => setCustIntel(null))
+    supabase.from('nhat_ky_khach_den').select('ngay, ket_qua, goi_y_tiep_theo, co_hoi_upsell, phan_hoi')
+      .eq('khach_hang_id', selectedCustomer.id).order('ngay', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => setCustNhatKy(data || null), () => setCustNhatKy(null))
     posService.getCustomerCards(selectedCustomer.id)
       .then(cards => setCustomerCards(cards || []))
       .catch(() => setCustomerCards([]))
@@ -1601,6 +1613,30 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
 
               {/* Gợi ý tư vấn từ CRM: lần trước tư vấn gì · nên upsale gì · DV hot chưa thử */}
               <CustomerInsight customer={selectedCustomer} />
+
+              {/* ── GỢI Ý TƯ VẤN (khép vòng CRM): DV nên upsell + lời dặn phiếu tư vấn lần trước ── */}
+              {(custIntel?.goi_y_upsell || custIntel?.muc_tieu_tu_van || custNhatKy?.goi_y_tiep_theo || custNhatKy?.co_hoi_upsell) && (
+                <div style={{ marginTop: 8, background: 'rgba(45,122,79,.06)', border: '1.5px solid rgba(45,122,79,.3)', borderRadius: 8, padding: '8px 12px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#2D7A4F', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>
+                    💡 Gợi ý tư vấn hôm nay
+                  </div>
+                  {(custNhatKy?.goi_y_tiep_theo || custNhatKy?.co_hoi_upsell) && (
+                    <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5 }}>
+                      <b>Lần trước dặn{custNhatKy.ngay ? ` (${fmtDate(custNhatKy.ngay)})` : ''}:</b> {custNhatKy.goi_y_tiep_theo || custNhatKy.co_hoi_upsell}
+                    </div>
+                  )}
+                  {(custIntel?.goi_y_upsell || custIntel?.muc_tieu_tu_van) && (
+                    <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5, marginTop: 2 }}>
+                      <b>Nên mời thử:</b> {custIntel.goi_y_upsell || custIntel.muc_tieu_tu_van}
+                    </div>
+                  )}
+                  {custIntel?.ghi_chu_da_lieu && (
+                    <div style={{ fontSize: 11.5, color: '#C0392B', lineHeight: 1.5, marginTop: 2 }}>
+                      ⚠ Da liễu: {custIntel.ghi_chu_da_lieu}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* ── VÍ TRẢ TRƯỚC ── */}
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(201,169,110,.08)', border: '1.5px solid rgba(201,169,110,.35)', borderRadius: 8, padding: '7px 12px' }}>

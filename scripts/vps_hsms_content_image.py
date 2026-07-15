@@ -140,8 +140,8 @@ def render(bai):
         y += f_title.size + 8
     if ten_script:
         f_scr = F(SCRIPT, 84, bold_var=True)
-        d.text((LX + 4, y + 2), ten_script, font=f_scr, fill=NAU_DO)
-        y += 108
+        d.text((LX + 4, y + 14), ten_script, font=f_scr, fill=NAU_DO)   # +14: không chạm descender dòng serif
+        y += 120
     y += 6
     if tagline:
         f_tag = F(SANS_BOLD, 27)
