@@ -24,6 +24,10 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
   // Dịch vụ THÊM (KTV khác phụ trách) — khách đặt nhiều dịch vụ với nhiều KTV
   const dvThem = Array.isArray(form.dich_vu_list) ? form.dich_vu_list : []
   const addDvThem = () => set('dich_vu_list', [...dvThem, { ten_dich_vu: '', dich_vu_id: null, nhan_vien_id: null }])
+  // Khách đi 2 người cùng làm 1 dịch vụ (không thẻ) → +1 suất y hệt DV chính, chỉ chọn KTV (16/07)
+  const addSuatGiongChinh = () => set('dich_vu_list', [...dvThem, {
+    ten_dich_vu: form.ten_dich_vu, dich_vu_id: form.dich_vu_id, nhan_vien_id: null, thoi_luong: form.thoi_luong_phut || 60,
+  }])
   const updDvThem = (i, patch) => set('dich_vu_list', dvThem.map((r, idx) => idx === i ? { ...r, ...patch } : r))
   const delDvThem = (i) => set('dich_vu_list', dvThem.filter((_, idx) => idx !== i))
   const [dichVuList, setDichVuList] = useState([])
@@ -316,7 +320,11 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
                       <div style={{ fontSize: 12.5, fontWeight: 700, color: active ? '#2D7A4F' : C.ink, display: 'flex', alignItems: 'center', gap: 5 }}>
                         {active && '✓'} {card.ten_dich_vu}
                       </div>
-                      <div style={{ fontSize: 11, color: C.ink3, marginTop: 2 }}>Còn {card.so_buoi_con_lai}/{card.so_buoi_tong} buổi</div>
+                      <div style={{ fontSize: 11, color: C.ink3, marginTop: 2 }}>
+                        {card.so_buoi_con_lai === card.so_buoi_tong
+                          ? `🆕 Thẻ mới nguyên · ${card.so_buoi_tong} buổi`
+                          : `Còn ${card.so_buoi_con_lai}/${card.so_buoi_tong} buổi`}
+                      </div>
                     </button>
                   )
                 })}
@@ -373,9 +381,17 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
 
           {/* Dịch vụ THÊM — khách đặt nhiều dịch vụ với KTV khác nhau */}
           <div>
-            <div style={{ ...LBL, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ ...LBL, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span>Dịch Vụ Thêm (KTV khác phụ trách)</span>
-              <button onClick={addDvThem} style={{ padding: '4px 12px', borderRadius: 8, border: `1px solid ${C.gold}`, background: '#fdf3e0', color: '#8a6a35', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)' }}>+ Thêm dịch vụ</button>
+              <span style={{ display: 'flex', gap: 6 }}>
+                {form.dich_vu_id && !form.the_lieu_trinh_id && (
+                  <button onClick={addSuatGiongChinh} title="Khách đi 2 người cùng làm 1 dịch vụ — thêm suất y hệt, chỉ chọn KTV"
+                    style={{ padding: '4px 12px', borderRadius: 8, border: '1px solid #2D7A4F', background: '#eef5ee', color: '#2D7A4F', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)' }}>
+                    +1 suất giống DV chính
+                  </button>
+                )}
+                <button onClick={addDvThem} style={{ padding: '4px 12px', borderRadius: 8, border: `1px solid ${C.gold}`, background: '#fdf3e0', color: '#8a6a35', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--sans)' }}>+ Thêm dịch vụ</button>
+              </span>
             </div>
             {dvThem.length === 0
               ? <div style={{ fontSize: 11.5, color: C.ink3, fontStyle: 'italic' }}>Khách yêu cầu nhiều dịch vụ / nhiều KTV thì bấm "+ Thêm dịch vụ".</div>
