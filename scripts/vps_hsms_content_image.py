@@ -25,10 +25,15 @@ for line in open(ENV_FILE):
     if line.startswith('SERVICE_ROLE_KEY='):
         KEY = line.strip().split('=', 1)[1]
 OPENAI_KEY = ''
+AI_PHOTO_OFF = False
 try:
     for line in open(TG_ENV):
         if line.startswith('OPENAI_KEY='):
             OPENAI_KEY = line.strip().split('=', 1)[1]
+        if line.strip() == 'AI_PHOTO=off':
+            # Van tiền (anh Nam 16/07): quality high ~6k đ/ảnh đốt $5 khi test loạt.
+            # off → poster nền kem 0 đồng; bật lại khi chốt được công thức ảnh đẹp từ mẫu anh gửi.
+            AI_PHOTO_OFF = True
 except FileNotFoundError:
     pass
 
@@ -55,7 +60,7 @@ def lerp(a, b, t):
 
 def ai_photo(ai_prompt):
     """AI vẽ ẢNH THẬT (người/cảnh spa, KHÔNG chữ) khổ dọc — làm nửa phải poster."""
-    if not OPENAI_KEY:
+    if not OPENAI_KEY or AI_PHOTO_OFF:
         return None
     prompt = ((ai_prompt or '').strip() + '. ' if ai_prompt else '') + (
         'Vertical portrait composition. Photorealistic professional spa photography, '
