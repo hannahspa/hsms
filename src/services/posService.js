@@ -319,6 +319,39 @@ export const posService = {
     const extraList = Array.isArray(appointment.dich_vu_list) ? appointment.dich_vu_list : []
     for (const ex of extraList) {
       if (!ex?.dich_vu_id && !(ex?.ten_dich_vu || '').trim()) continue
+      // Suất dùng THẺ thứ 2+ (16/07 — khách đi 2 người, 2 thẻ, 2 KTV): dòng thẻ 0đ trừ đúng thẻ đó
+      if (ex.the_lieu_trinh_id) {
+        try {
+          const { data: exCard } = await supabase
+            .from('the_lieu_trinh')
+            .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai, bi_dong, da_xoa, dich_vu_id')
+            .eq('id', ex.the_lieu_trinh_id)
+            .maybeSingle()
+          if (exCard && exCard.trang_thai === 'active' && (exCard.so_buoi_con_lai || 0) > 0 && !exCard.bi_dong && !exCard.da_xoa) {
+            let exCardTiLe = 0
+            if (exCard.dich_vu_id) {
+              try {
+                const { data: svcOfCard } = await supabase.from('dich_vu').select('*').eq('id', exCard.dich_vu_id).maybeSingle()
+                exCardTiLe = svcOfCard ? getCommissionPercent(svcOfCard, 'ktv') : 0
+              } catch { exCardTiLe = 0 }
+            }
+            const perSession = Math.round((exCard.gia_tri_the || 0) / Math.max(1, exCard.so_buoi_tong || 1))
+            await this.addLineItem(order.id, {
+              loai_item: 'the_lieu_trinh',
+              the_lieu_trinh_id: exCard.id,
+              dich_vu_id: exCard.dich_vu_id || null,
+              nhan_vien_id: ex.nhan_vien_id || null,
+              so_luong: 1, don_gia: 0, thanh_tien: 0,
+              ti_le_hoa_hong: exCardTiLe || null,
+              tien_tour: Math.round(perSession * (exCardTiLe || 0) / 100),
+              tien_hoa_hong: 0,
+              ghi_chu: `Dung the tu lich hen: ${exCard.ten_dich_vu}`,
+              meta: { source: 'lich_hen', lichHenId: appointment.id, tenDichVu: exCard.ten_dich_vu, dungThe: true },
+            })
+          }
+        } catch { /* thẻ lỗi/hết hạn → bỏ dòng, Lễ Tân thêm tay trong POS */ }
+        continue
+      }
       let exSvc = null
       if (ex.dich_vu_id) {
         try {

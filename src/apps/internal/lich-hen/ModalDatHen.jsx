@@ -55,10 +55,28 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
     return () => { alive = false }
   }, [form.khach_hang_id])
 
-  // Chọn thẻ liệu trình → điền dịch vụ + đánh dấu dùng thẻ
-  const selectCard = (card) => setForm(f => ({
-    ...f, the_lieu_trinh_id: card.id, ten_dich_vu: card.ten_dich_vu, dich_vu_id: null,
-  }))
+  // Chọn thẻ liệu trình — hỗ trợ NHIỀU SUẤT (16/07, anh Nam):
+  // khách có 2 thẻ đi 2 người → bấm thẻ 1 = suất chính, bấm thẻ 2 = thêm suất với KTV riêng.
+  // Bấm lại thẻ đang chọn = bỏ chọn (toggle).
+  const selectCard = (card) => {
+    if (form.the_lieu_trinh_id === card.id) {
+      setForm(f => ({ ...f, the_lieu_trinh_id: null, ten_dich_vu: '', dich_vu_id: null }))
+      return
+    }
+    if (dvThem.some(r => r.the_lieu_trinh_id === card.id)) {
+      set('dich_vu_list', dvThem.filter(r => r.the_lieu_trinh_id !== card.id))
+      return
+    }
+    if (!form.the_lieu_trinh_id && !(form.ten_dich_vu || '').trim()) {
+      setForm(f => ({ ...f, the_lieu_trinh_id: card.id, ten_dich_vu: card.ten_dich_vu, dich_vu_id: null }))
+      return
+    }
+    // Đã có suất chính → thẻ này thành SUẤT THÊM (chọn KTV ở khung Dịch Vụ Thêm)
+    set('dich_vu_list', [...dvThem, {
+      ten_dich_vu: card.ten_dich_vu, dich_vu_id: null,
+      the_lieu_trinh_id: card.id, nhan_vien_id: null, thoi_luong: 60,
+    }])
+  }
 
   // Giờ hẹn realtime: nếu đặt cho HÔM NAY thì chỉ hiện các giờ SAU giờ hiện tại
   const henToday = form.ngay_hen === todayISO()
@@ -284,10 +302,10 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
           {/* Thẻ liệu trình của khách — bấm để dùng (trừ đúng thẻ đó khi tạo đơn) */}
           {custCards.length > 0 && (
             <div>
-              <div style={LBL}>Thẻ liệu trình của khách · bấm để dùng</div>
+              <div style={LBL}>Thẻ liệu trình của khách · bấm để dùng — bấm thêm thẻ nữa = thêm suất (khách đi 2 người)</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {custCards.map(card => {
-                  const active = form.the_lieu_trinh_id === card.id
+                  const active = form.the_lieu_trinh_id === card.id || dvThem.some(r => r.the_lieu_trinh_id === card.id)
                   return (
                     <button key={card.id} type="button" onClick={() => selectCard(card)}
                       style={{
@@ -363,10 +381,17 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
               ? <div style={{ fontSize: 11.5, color: C.ink3, fontStyle: 'italic' }}>Khách yêu cầu nhiều dịch vụ / nhiều KTV thì bấm "+ Thêm dịch vụ".</div>
               : dvThem.map((r, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr auto', gap: 8, marginBottom: 7, alignItems: 'center' }}>
-                  <select value={r.dich_vu_id || ''} onChange={e => { const dv = dichVuList.find(d => d.id === e.target.value); updDvThem(i, { dich_vu_id: e.target.value || null, ten_dich_vu: dv?.ten || '', thoi_luong: dv?.thoi_gian_phut || 60 }) }} style={{ ...INP, height: 36 }}>
-                    <option value="">— Chọn dịch vụ —</option>
-                    {dichVuList.map(d => <option key={d.id} value={d.id}>{d.ten}</option>)}
-                  </select>
+                  {r.the_lieu_trinh_id ? (
+                    // Suất dùng THẺ (bấm từ dải thẻ phía trên) — tên thẻ cố định, chỉ chọn KTV
+                    <div style={{ ...INP, height: 36, display: 'flex', alignItems: 'center', gap: 6, borderColor: '#2D7A4F', background: '#f3f8f3', fontSize: 12.5, fontWeight: 700, color: '#2D7A4F', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                      🎫 {r.ten_dich_vu} (dùng thẻ)
+                    </div>
+                  ) : (
+                    <select value={r.dich_vu_id || ''} onChange={e => { const dv = dichVuList.find(d => d.id === e.target.value); updDvThem(i, { dich_vu_id: e.target.value || null, ten_dich_vu: dv?.ten || '', thoi_luong: dv?.thoi_gian_phut || 60 }) }} style={{ ...INP, height: 36 }}>
+                      <option value="">— Chọn dịch vụ —</option>
+                      {dichVuList.map(d => <option key={d.id} value={d.id}>{d.ten}</option>)}
+                    </select>
+                  )}
                   <select value={r.nhan_vien_id || ''} onChange={e => updDvThem(i, { nhan_vien_id: e.target.value || null })} style={{ ...INP, height: 36 }}>
                     <option value="">KTV bất kỳ</option>
                     {ktvList.map(k => <option key={k.id} value={k.id}>{shortName(k.ho_ten)}</option>)}
