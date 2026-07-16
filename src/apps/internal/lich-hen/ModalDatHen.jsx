@@ -331,9 +331,10 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
                         {active && (soSuat > 1 ? `✓×${soSuat}` : '✓')} {card.ten_dich_vu}
                       </div>
                       <div style={{ fontSize: 11, color: C.ink3, marginTop: 2 }}>
-                        {card.so_buoi_con_lai === card.so_buoi_tong
-                          ? `🆕 Thẻ mới nguyên · ${card.so_buoi_tong} buổi`
-                          : `Còn ${card.so_buoi_con_lai}/${card.so_buoi_tong} buổi`}
+                        {card.so_buoi_con_lai === card.so_buoi_tong && <span style={{ marginRight: 3 }}>🆕</span>}
+                        Thẻ <b style={{ color: C.ink }}>{card.so_buoi_tong} lần</b>
+                        {' · '}<span style={{ color: '#8a6a35', fontWeight: 700 }}>đã dùng {(card.so_buoi_tong || 0) - (card.so_buoi_con_lai || 0)}</span>
+                        {' · '}<span style={{ color: '#2D7A4F', fontWeight: 800 }}>còn {card.so_buoi_con_lai} lần</span>
                       </div>
                     </button>
                   )

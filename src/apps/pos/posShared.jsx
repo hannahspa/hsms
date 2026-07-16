@@ -154,7 +154,7 @@ export function LieuTrinhCard({ card, onUse, onGiaHan }) {
         {card.ten_dich_vu}
       </div>
       <div style={{ fontSize: 9, opacity: .8, marginBottom: 2 }}>
-        {card.so_buoi_da_dung}/{card.so_buoi_tong} buổi · {formatCurrency(displayValue || 0)}
+        {formatCurrency(displayValue || 0)}
       </div>
       <div style={{
         fontSize: 9, fontWeight: hetHan ? 800 : 600, marginBottom: coNo ? 3 : 5,
@@ -176,8 +176,18 @@ export function LieuTrinhCard({ card, onUse, onGiaHan }) {
           {`Nợ ${formatCurrency(conNo)}`}
         </div>
       )}
-      <div style={{ height: 2, background: 'rgba(255,255,255,.25)', borderRadius: 2, marginBottom: 5 }}>
+      <div style={{ height: 2, background: 'rgba(255,255,255,.25)', borderRadius: 2, marginBottom: 4 }}>
         <div style={{ height: '100%', borderRadius: 2, background: '#fff', width: `${pct}%` }} />
+      </div>
+      {/* Số buổi ghi RÕ RÀNG 3 màu (anh Nam 16/07): "8/10 buổi" không ai hiểu còn hay đã dùng */}
+      <div style={{ textAlign: 'center', fontSize: 9.5, marginBottom: 5, lineHeight: 1.4 }}>
+        <span style={{ opacity: .9 }}>Thẻ <b>{card.so_buoi_tong} lần</b></span>
+        <span style={{ opacity: .6 }}> · </span>
+        <span style={{ color: '#FFE2A8', fontWeight: 700 }}>đã dùng {card.so_buoi_da_dung}</span>
+        <span style={{ opacity: .6 }}> · </span>
+        <span style={{ color: '#9DF7B8', fontWeight: 800, fontSize: 10.5 }}>
+          còn {card.so_buoi_con_lai ?? Math.max(0, (card.so_buoi_tong || 0) - (card.so_buoi_da_dung || 0))} lần
+        </span>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
         <span style={{ fontSize: 8.5, opacity: .7, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.ma_the || '-'}</span>

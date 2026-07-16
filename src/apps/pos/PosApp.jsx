@@ -1734,8 +1734,8 @@ function PosCreateOrder({ resumeOrderId, editMode = false, ycId = null }) {
                               {c.ten_dich_vu}
                             </div>
                             <div style={{ color: C.ink3, marginTop: 1 }}>
-                              {c.so_buoi_da_dung}/{c.so_buoi_tong} buổi
-                              {c.so_buoi_con_lai > 0 && <span style={{ marginLeft: 5, color: '#C0392B', fontWeight: 700 }}>· Còn {c.so_buoi_con_lai} buổi</span>}
+                              Thẻ {c.so_buoi_tong} lần · đã dùng {c.so_buoi_da_dung}
+                              {c.so_buoi_con_lai > 0 && <span style={{ marginLeft: 5, color: '#C0392B', fontWeight: 700 }}>· còn {c.so_buoi_con_lai} lần</span>}
                               {' · '}{formatCurrency(c.gia_tri_the || 0)}
                               {c.ngay_het_han && <span style={{ marginLeft: 6 }}>HH: {fmtDate(c.ngay_het_han)}</span>}
                             </div>
