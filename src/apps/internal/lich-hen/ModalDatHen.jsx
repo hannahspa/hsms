@@ -59,23 +59,28 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
     return () => { alive = false }
   }, [form.khach_hang_id])
 
-  // Chọn thẻ liệu trình — hỗ trợ NHIỀU SUẤT (16/07, anh Nam):
-  // khách có 2 thẻ đi 2 người → bấm thẻ 1 = suất chính, bấm thẻ 2 = thêm suất với KTV riêng.
-  // Bấm lại thẻ đang chọn = bỏ chọn (toggle).
+  // Chọn thẻ liệu trình — NHIỀU SUẤT, kể cả CÙNG 1 THẺ (16/07, anh Nam):
+  // 2 người đi chung dùng chung 1 thẻ = bấm thẻ 2 lần → trừ 2 buổi, mỗi suất 1 KTV.
+  // Quy tắc: mỗi cú bấm +1 suất (tối đa = số buổi còn lại); bấm quá → bỏ hết suất của thẻ để chọn lại.
+  const soSuatThe = (cardId) => (form.the_lieu_trinh_id === cardId ? 1 : 0)
+    + dvThem.filter(r => r.the_lieu_trinh_id === cardId).length
   const selectCard = (card) => {
-    if (form.the_lieu_trinh_id === card.id) {
-      setForm(f => ({ ...f, the_lieu_trinh_id: null, ten_dich_vu: '', dich_vu_id: null }))
-      return
-    }
-    if (dvThem.some(r => r.the_lieu_trinh_id === card.id)) {
-      set('dich_vu_list', dvThem.filter(r => r.the_lieu_trinh_id !== card.id))
+    const soSuat = soSuatThe(card.id)
+    if (soSuat >= (card.so_buoi_con_lai || 1)) {
+      // Đã dùng hết số buổi còn của thẻ trong lịch này → bấm nữa = bỏ chọn hết (quay vòng)
+      const listSach = dvThem.filter(r => r.the_lieu_trinh_id !== card.id)
+      if (form.the_lieu_trinh_id === card.id) {
+        setForm(f => ({ ...f, the_lieu_trinh_id: null, ten_dich_vu: '', dich_vu_id: null, dich_vu_list: listSach }))
+      } else {
+        set('dich_vu_list', listSach)
+      }
       return
     }
     if (!form.the_lieu_trinh_id && !(form.ten_dich_vu || '').trim()) {
       setForm(f => ({ ...f, the_lieu_trinh_id: card.id, ten_dich_vu: card.ten_dich_vu, dich_vu_id: null }))
       return
     }
-    // Đã có suất chính → thẻ này thành SUẤT THÊM (chọn KTV ở khung Dịch Vụ Thêm)
+    // Suất thứ 2+ (cùng thẻ hoặc thẻ khác) → dòng riêng, chọn KTV ở khung Dịch Vụ Thêm
     set('dich_vu_list', [...dvThem, {
       ten_dich_vu: card.ten_dich_vu, dich_vu_id: null,
       the_lieu_trinh_id: card.id, nhan_vien_id: null, thoi_luong: 60,
@@ -306,10 +311,11 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
           {/* Thẻ liệu trình của khách — bấm để dùng (trừ đúng thẻ đó khi tạo đơn) */}
           {custCards.length > 0 && (
             <div>
-              <div style={LBL}>Thẻ liệu trình của khách · bấm để dùng — bấm thêm thẻ nữa = thêm suất (khách đi 2 người)</div>
+              <div style={LBL}>Thẻ liệu trình của khách · bấm để dùng — khách đi 2 người: bấm 2 lần (chung thẻ) hoặc bấm 2 thẻ</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {custCards.map(card => {
-                  const active = form.the_lieu_trinh_id === card.id || dvThem.some(r => r.the_lieu_trinh_id === card.id)
+                  const soSuat = soSuatThe(card.id)
+                  const active = soSuat > 0
                   return (
                     <button key={card.id} type="button" onClick={() => selectCard(card)}
                       style={{
@@ -318,7 +324,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
                         textAlign: 'left', fontFamily: 'var(--sans)', minWidth: 150,
                       }}>
                       <div style={{ fontSize: 12.5, fontWeight: 700, color: active ? '#2D7A4F' : C.ink, display: 'flex', alignItems: 'center', gap: 5 }}>
-                        {active && '✓'} {card.ten_dich_vu}
+                        {active && (soSuat > 1 ? `✓×${soSuat}` : '✓')} {card.ten_dich_vu}
                       </div>
                       <div style={{ fontSize: 11, color: C.ink3, marginTop: 2 }}>
                         {card.so_buoi_con_lai === card.so_buoi_tong
