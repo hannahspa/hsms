@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Bắn thông báo LỊCH HẸN MỚI vào GROUP TELEGRAM NHÂN SỰ (16/07 — thay NV nhắn tay "5h45: 1 cvg...").
-# CHỈ báo lịch mới đặt — anh Nam dặn KHÔNG nhắc lại trước giờ hẹn (tránh loãng group).
-# Format: Có 1 Khách - Book <KTV> - dùng <dịch vụ> - Vào lúc <giờ>.
-# Cron */5. Cần TELEGRAM_GROUP trong /root/.hsms_telegram_env (anh Nam /setgroup <id>).
+# LƯỚI AN TOÀN thông báo lịch hẹn nhóm Telegram (16/07): bản THỜI GIAN THỰC do edge function
+# telegram-notify bắn ngay khi lễ tân bấm Đặt Lịch (set tg_bao_luc). Cron này 5'/lần chỉ gửi
+# những lịch tg_bao_luc IS NULL (client lỗi mạng/lịch tạo ngoài form) — không bao giờ trùng tin.
+# Format đồng bộ với edge function: icon 🌷 + câu dễ thương + tag KTV (telegram_chat_id).
 # Bản gốc VPS: /root/hsms_lichhen_telegram.py
-import subprocess, urllib.request, urllib.parse, json, os
+import subprocess, urllib.request, urllib.parse, json, html
 
 env = {}
 for line in open('/root/.hsms_telegram_env'):
@@ -17,7 +17,6 @@ if not GROUP:
     print('chua_setgroup')
     raise SystemExit(0)
 API = f'https://api.telegram.org/bot{TOKEN}'
-LAST = '/root/.hsms_last_lichhen'         # mốc created_at cho lịch MỚI
 
 def q(sql):
     r = subprocess.run(['docker', 'exec', 'supabase-db', 'psql', '-U', 'postgres', '-d', 'postgres', '-tA', '-c', sql],
@@ -25,49 +24,59 @@ def q(sql):
     return r.stdout.strip()
 
 def send(text):
-    data = urllib.parse.urlencode({'chat_id': GROUP, 'text': text}).encode('utf-8')
+    data = urllib.parse.urlencode({'chat_id': GROUP, 'text': text, 'parse_mode': 'HTML'}).encode('utf-8')
     try:
         urllib.request.urlopen(urllib.request.Request(API + '/sendMessage', data=data), timeout=20)
+        return True
     except Exception as e:
         print('Err send', e)
+        return False
 
 def ten_dv(r):
-    """Ghép tên dịch vụ: ưu tiên dich_vu_list (đặt nhiều DV), fallback ten_dich_vu."""
     try:
         dl = json.loads(r.get('dich_vu_list') or '[]')
         names = [str(d.get('ten_dich_vu') or d.get('ten') or '').strip() for d in dl if isinstance(d, dict)]
         names = [n for n in names if n]
-        if names:
-            return ' + '.join(names)
     except Exception:
-        pass
-    return (r.get('ten_dich_vu') or 'Dịch vụ').strip()
+        names = []
+    chinh = (r.get('ten_dich_vu') or '').strip()
+    return ' + '.join([x for x in [chinh] + names if x]) or 'Dịch vụ'
 
-# ── 1. LỊCH HẸN MỚI ĐẶT ──
-last = open(LAST).read().strip() if os.path.exists(LAST) else q("SELECT (now() - interval '6 minutes')::text")
-rows = q(f"""SELECT row_to_json(t) FROM (
-  SELECT lh.ten_khach, lh.sdt_khach, to_char(lh.ngay_hen,'DD/MM') AS ngay, lh.gio_hen,
-         lh.ten_dich_vu, lh.dich_vu_list::text AS dich_vu_list, lh.ghi_chu, lh.nguoi_nhap,
-         COALESCE(nv.ho_ten,'') AS ktv,
+rows = q("""SELECT row_to_json(t) FROM (
+  SELECT lh.id::text, lh.ten_khach, to_char(lh.ngay_hen,'DD/MM') AS ngay, lh.gio_hen,
+         lh.ten_dich_vu, lh.dich_vu_list::text AS dich_vu_list, lh.ghi_chu,
+         COALESCE(nv.ho_ten,'') AS ktv, COALESCE(nv.telegram_chat_id,'') AS ktv_tg,
          CASE WHEN lh.ngay_hen = (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date THEN 1 ELSE 0 END AS hom_nay
   FROM lich_hen lh LEFT JOIN nhan_vien nv ON nv.id = lh.nhan_vien_id
-  WHERE lh.created_at > '{last}'::timestamptz AND lh.trang_thai NOT IN ('huy','tu_choi')
+  WHERE lh.tg_bao_luc IS NULL
+    AND lh.created_at > now() - interval '2 hours'
+    AND lh.created_at < now() - interval '2 minutes'
+    AND lh.trang_thai NOT IN ('huy','tu_choi')
   ORDER BY lh.created_at LIMIT 10) t""")
+
+sent = 0
 for line in [l for l in rows.split('\n') if l.strip()]:
     try:
         r = json.loads(line)
     except Exception:
         continue
-    # Format anh Nam chốt 16/07 (bản icon vui): KTV gọn 2 chữ cuối, dịch vụ nguyên văn
-    ktv_ten = ' '.join((r['ktv'] or '').strip().split()[-2:])
-    khach = (r['ten_khach'] or '').strip()
+    ktv = (r.get('ktv') or '').strip()
+    if ktv:
+        ten = html.escape(' '.join(ktv.split()[-2:]))
+        if r.get('ktv_tg'):
+            dong_ktv = f'💖 Khách Book chị <a href="tg://user?id={html.escape(r["ktv_tg"])}">{ten}</a> ạ'
+        else:
+            dong_ktv = f'💖 Khách Book chị {ten} ạ'
+    else:
+        dong_ktv = '💖 Chị yêu nào làm cũng được ạ'
     msg = ('🔔 CÓ KHÁCH ĐẶT HẸN 🌸\n'
-           f"👤 {khach or 'Khách'}\n"
-           + (f'💖 Book: {ktv_ten}\n' if ktv_ten else '')
-           + f'💆‍♀️ {ten_dv(r)}\n'
-           + f"⏰ {r['gio_hen']}" + (' hôm nay ✨' if r['hom_nay'] else f" ngày {r['ngay']} 📆"))
+           f"👤 {html.escape(r.get('ten_khach') or 'Khách')}\n"
+           f'{dong_ktv}\n'
+           f'🌷 {html.escape(ten_dv(r))}\n'
+           f"⏰ {str(r.get('gio_hen') or '')[:5]}" + (' hôm nay ✨' if r.get('hom_nay') else f" ngày {r.get('ngay')} 📆"))
     if r.get('ghi_chu'):
-        msg += f"\n📝 {r['ghi_chu']}"
-    send(msg)
-open(LAST, 'w').write(q('SELECT now()::text'))
-print('done')
+        msg += f"\n📝 {html.escape(r['ghi_chu'])}"
+    if send(msg):
+        q(f"UPDATE lich_hen SET tg_bao_luc = now() WHERE id='{r['id']}'")
+        sent += 1
+print(f'sent={sent}')

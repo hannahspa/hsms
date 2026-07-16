@@ -213,7 +213,11 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
       if (initial?.id) await supabase.from('lich_hen').update(payload).eq('id', initial.id)
       else {
         payload.trang_thai = 'cho_xac_nhan'
-        await supabase.from('lich_hen').insert(payload).select('id').single()
+        const { data: lichMoi } = await supabase.from('lich_hen').insert(payload).select('id').single()
+        // Bắn thông báo nhóm Telegram NGAY (anh Nam 16/07: không chờ cron 5') — lỗi thì cron tự gửi bù
+        if (lichMoi?.id) {
+          supabase.functions.invoke('telegram-notify', { body: { lich_hen_id: lichMoi.id } }).catch(() => {})
+        }
       }
 
       // Gửi ZNS xác nhận đặt lịch cho khách (chỉ khi tạo mới + có SĐT) — không chặn lưu nếu lỗi
