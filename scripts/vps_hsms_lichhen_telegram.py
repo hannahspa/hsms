@@ -58,16 +58,14 @@ for line in [l for l in rows.split('\n') if l.strip()]:
         r = json.loads(line)
     except Exception:
         continue
-    # Format anh Nam chốt 16/07: Có 1 Khách - Book <KTV> - dùng <DV> - Vào lúc <giờ>
-    # KHÔNG viết tắt/rút gọn: tên KTV + tên dịch vụ ghi ĐẦY ĐỦ y hệt trong hệ thống (trang trọng)
-    ktv_ten = (r['ktv'] or '').strip()
+    # Format anh Nam chốt 16/07 (bản icon vui): KTV gọn 2 chữ cuối, dịch vụ nguyên văn
+    ktv_ten = ' '.join((r['ktv'] or '').strip().split()[-2:])
     khach = (r['ten_khach'] or '').strip()
-    parts = ['🔔 Có 1 Khách' + (f' ({khach})' if khach else '')]
-    if ktv_ten:
-        parts.append(f'Book {ktv_ten}')
-    parts.append(f'dùng {ten_dv(r)}')
-    parts.append(f"Vào lúc {r['gio_hen']}" + ('' if r['hom_nay'] else f" ngày {r['ngay']}"))
-    msg = ' - '.join(parts)
+    msg = ('🔔 CÓ KHÁCH ĐẶT HẸN 🌸\n'
+           f"👤 {khach or 'Khách'}\n"
+           + (f'💖 Book: {ktv_ten}\n' if ktv_ten else '')
+           + f'💆‍♀️ {ten_dv(r)}\n'
+           + f"⏰ {r['gio_hen']}" + (' hôm nay ✨' if r['hom_nay'] else f" ngày {r['ngay']} 📆"))
     if r.get('ghi_chu'):
         msg += f"\n📝 {r['ghi_chu']}"
     send(msg)
