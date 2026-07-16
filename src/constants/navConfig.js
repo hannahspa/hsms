@@ -104,8 +104,8 @@ export const LETAN_NAV = [
   { sec: 'Khách Hàng' },
   { id: 'crm',          icon: '💝', label: 'CRM Khách Hàng',  path: '/admin/crm' },
   { id: 'mkt-inbox',    icon: '💬', label: 'Hộp Thư', path: '/admin/marketing/hop-thu' },
-  { id: 'phieutv',      icon: '📝', label: 'Phiếu Tư Vấn Khách', path: '/admin/phieu-tu-van' },
   { id: 'chamsoc', icon: '💗', label: 'Chăm Sóc Khách', children: [
+    { id: 'cs-phieutv',  label: 'Phiếu Tư Vấn Khách',     path: '/admin/phieu-tu-van' },
     { id: 'cs-homnay',   label: 'Hôm Nay Cần Chạm',       path: '/admin/cham-soc-khach' },
     { id: 'cs-tudong',   label: 'Chiến Dịch Tự Động',     path: '/admin/marketing/tu-dong' },
     { id: 'cs-soantay',  label: 'Soạn Tay AI (Nhắc Thẻ)', path: '/admin/nhac-lieu-trinh' },

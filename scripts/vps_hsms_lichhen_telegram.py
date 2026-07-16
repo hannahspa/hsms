@@ -59,7 +59,8 @@ for line in [l for l in rows.split('\n') if l.strip()]:
     except Exception:
         continue
     # Format anh Nam chốt 16/07: Có 1 Khách - Book <KTV> - dùng <DV> - Vào lúc <giờ>
-    ktv_ten = ' '.join(r['ktv'].split()[-2:]) if r['ktv'] else ''
+    # KHÔNG viết tắt/rút gọn: tên KTV + tên dịch vụ ghi ĐẦY ĐỦ y hệt trong hệ thống (trang trọng)
+    ktv_ten = (r['ktv'] or '').strip()
     khach = (r['ten_khach'] or '').strip()
     parts = ['🔔 Có 1 Khách' + (f' ({khach})' if khach else '')]
     if ktv_ten:
