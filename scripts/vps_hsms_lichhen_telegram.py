@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Bắn thông báo LỊCH HẸN vào GROUP TELEGRAM NHÂN SỰ (16/07 — thay NV nhắn tay "5h45: 1 cvg...").
-# 2 loại tin: (1) lịch hẹn MỚI đặt · (2) NHẮC CHUẨN BỊ ~30 phút trước giờ hẹn.
+# Bắn thông báo LỊCH HẸN MỚI vào GROUP TELEGRAM NHÂN SỰ (16/07 — thay NV nhắn tay "5h45: 1 cvg...").
+# CHỈ báo lịch mới đặt — anh Nam dặn KHÔNG nhắc lại trước giờ hẹn (tránh loãng group).
+# Format: Có 1 Khách - Book <KTV> - dùng <dịch vụ> - Vào lúc <giờ>.
 # Cron */5. Cần TELEGRAM_GROUP trong /root/.hsms_telegram_env (anh Nam /setgroup <id>).
 # Bản gốc VPS: /root/hsms_lichhen_telegram.py
 import subprocess, urllib.request, urllib.parse, json, os
@@ -17,7 +18,6 @@ if not GROUP:
     raise SystemExit(0)
 API = f'https://api.telegram.org/bot{TOKEN}'
 LAST = '/root/.hsms_last_lichhen'         # mốc created_at cho lịch MỚI
-NHAC = '/root/.hsms_lichhen_da_nhac'      # id lịch đã nhắc chuẩn bị
 
 def q(sql):
     r = subprocess.run(['docker', 'exec', 'supabase-db', 'psql', '-U', 'postgres', '-d', 'postgres', '-tA', '-c', sql],
@@ -58,42 +58,17 @@ for line in [l for l in rows.split('\n') if l.strip()]:
         r = json.loads(line)
     except Exception:
         continue
-    ktv_ten = r['ktv'].split()[-2:] if r['ktv'] else []
-    send('📅 LỊCH HẸN MỚI\n'
-         f"🕐 {r['gio_hen']} {'HÔM NAY' if r['hom_nay'] else 'ngày ' + r['ngay']}\n"
-         f"👤 {r['ten_khach'] or 'Khách'}{(' · ' + r['sdt_khach']) if r['sdt_khach'] else ''}\n"
-         f"💆 {ten_dv(r)}\n"
-         + (f"🙋 KTV: {' '.join(ktv_ten)}\n" if ktv_ten else '')
-         + (f"📝 {r['ghi_chu']}\n" if r.get('ghi_chu') else '')
-         + (f"(nhập bởi {r['nguoi_nhap']})" if r.get('nguoi_nhap') else ''))
-open(LAST, 'w').write(q('SELECT now()::text'))
-
-# ── 2. NHẮC CHUẨN BỊ ~30 PHÚT TRƯỚC GIỜ HẸN (25-40 phút để cron 5' không lọt) ──
-da_nhac = set(open(NHAC).read().split('\n')) if os.path.exists(NHAC) else set()
-rows = q("""SELECT row_to_json(t) FROM (
-  SELECT lh.id::text, lh.ten_khach, lh.gio_hen, lh.ten_dich_vu, lh.dich_vu_list::text AS dich_vu_list,
-         COALESCE(nv.ho_ten,'') AS ktv
-  FROM lich_hen lh LEFT JOIN nhan_vien nv ON nv.id = lh.nhan_vien_id
-  WHERE lh.ngay_hen = (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date
-    AND lh.trang_thai NOT IN ('huy','tu_choi','hoan_thanh','da_den')
-    AND lh.gio_hen ~ '^[0-9]{1,2}:[0-9]{2}'
-    AND (lh.gio_hen || ':00')::time BETWEEN ((now() AT TIME ZONE 'Asia/Ho_Chi_Minh') + interval '25 minutes')::time
-                                        AND ((now() AT TIME ZONE 'Asia/Ho_Chi_Minh') + interval '40 minutes')::time
-  ORDER BY lh.gio_hen LIMIT 10) t""")
-moi = []
-for line in [l for l in rows.split('\n') if l.strip()]:
-    try:
-        r = json.loads(line)
-    except Exception:
-        continue
-    if r['id'] in da_nhac:
-        continue
+    # Format anh Nam chốt 16/07: Có 1 Khách - Book <KTV> - dùng <DV> - Vào lúc <giờ>
     ktv_ten = ' '.join(r['ktv'].split()[-2:]) if r['ktv'] else ''
-    send('⏰ CHUẨN BỊ ĐÓN KHÁCH (còn ~30 phút)\n'
-         f"🕐 {r['gio_hen']} — {r['ten_khach'] or 'Khách'}\n"
-         f"💆 {ten_dv(r)}"
-         + (f"\n🙋 KTV: {ktv_ten}" if ktv_ten else ''))
-    da_nhac.add(r['id']); moi.append(r['id'])
-if moi:
-    open(NHAC, 'w').write('\n'.join(list(da_nhac)[-300:]))
+    khach = (r['ten_khach'] or '').strip()
+    parts = ['🔔 Có 1 Khách' + (f' ({khach})' if khach else '')]
+    if ktv_ten:
+        parts.append(f'Book {ktv_ten}')
+    parts.append(f'dùng {ten_dv(r)}')
+    parts.append(f"Vào lúc {r['gio_hen']}" + ('' if r['hom_nay'] else f" ngày {r['ngay']}"))
+    msg = ' - '.join(parts)
+    if r.get('ghi_chu'):
+        msg += f"\n📝 {r['ghi_chu']}"
+    send(msg)
+open(LAST, 'w').write(q('SELECT now()::text'))
 print('done')

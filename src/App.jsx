@@ -24,6 +24,8 @@ const LETAN_ALLOWED_ADMIN = [
   '/admin/marketing/khach-tiem-nang',
   '/admin/marketing/cham-soc-sau-dich-vu',
   '/admin/marketing/nhac-lich-lieu-trinh',
+  '/admin/phieu-tu-van',        // phiếu tư vấn khách hằng ngày — việc chính của lễ tân (16/07)
+  '/admin/cham-soc-khach',
 ]
 const LETAN_BLOCKED_ADMIN = ['/admin/the-lieu-trinh/bao-cao'] // báo cáo chỉ Admin
 

@@ -105,6 +105,19 @@ export default function AdminApp() {
   if (path.startsWith('/admin/kho-hang'))   return <AdminRoute><AdminKhoHangPage /></AdminRoute>
   if (path.startsWith('/admin/nhac-lieu-trinh')) return <AdminRoute><AdminNhacLieuTrinhPage /></AdminRoute>
   if (path.startsWith('/admin/cham-soc-khach')) return <AdminRoute><AdminChamSocKhachPage /></AdminRoute>
+  // Phiếu Tư Vấn (16/07 — anh Nam): trang RIÊNG cho lễ tân nhập cuối ngày, tái dùng tab "today"
+  if (path.startsWith('/admin/phieu-tu-van')) {
+    return (
+      <AdminRoute>
+        <AdminChamSocKhachPage
+          fixedTab="today"
+          showVisitButton
+          title="Phiếu Tư Vấn Khách Hàng"
+          subtitle="Cuối ngày lễ tân ghi đủ phiếu cho TỪNG khách đã đến (tên/SĐT/dịch vụ điền sẵn từ POS) — 21:00 bot tổng hợp gửi anh Nam."
+        />
+      </AdminRoute>
+    )
+  }
   if (path.startsWith('/admin/crm'))        return <AdminRoute><AdminCRMPage /></AdminRoute>
   // 03/07: đã port đủ 5 cụm vận hành (chiến dịch/lead/đặt hẹn/nội dung/duyệt AI) → xóa bản cũ + route /ban-cu
   if (path.startsWith('/admin/marketing'))  return <AdminRoute><MarketingModulePage /></AdminRoute>

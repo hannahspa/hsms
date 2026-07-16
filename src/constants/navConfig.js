@@ -42,6 +42,7 @@ export const ADMIN_NAV = [
     { id: 'km-tongquan',  label: 'Báo Cáo Marketing',   path: '/admin/marketing' },
     { id: 'km-inbox',     label: 'Hộp Thư',             path: '/admin/marketing/hop-thu' },
     { id: 'km-homnay',    label: 'Hôm Nay Cần Chạm',    path: '/admin/cham-soc-khach' },
+    { id: 'km-phieutv',   label: 'Phiếu Tư Vấn Khách',  path: '/admin/phieu-tu-van' },
     { id: 'km-tudong',    label: 'Máy Chăm Khách',      path: '/admin/marketing/tu-dong' },
     { id: 'km-fanpage',   label: 'Máy Đăng Bài',        path: '/admin/marketing/fanpage-noi-dung' },
     { id: 'km-cauhinh',   label: 'Cấu Hình & Dạy AI',   path: '/admin/marketing/cau-hinh-kenh' },
@@ -103,6 +104,7 @@ export const LETAN_NAV = [
   { sec: 'Khách Hàng' },
   { id: 'crm',          icon: '💝', label: 'CRM Khách Hàng',  path: '/admin/crm' },
   { id: 'mkt-inbox',    icon: '💬', label: 'Hộp Thư', path: '/admin/marketing/hop-thu' },
+  { id: 'phieutv',      icon: '📝', label: 'Phiếu Tư Vấn Khách', path: '/admin/phieu-tu-van' },
   { id: 'chamsoc', icon: '💗', label: 'Chăm Sóc Khách', children: [
     { id: 'cs-homnay',   label: 'Hôm Nay Cần Chạm',       path: '/admin/cham-soc-khach' },
     { id: 'cs-tudong',   label: 'Chiến Dịch Tự Động',     path: '/admin/marketing/tu-dong' },
