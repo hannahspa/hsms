@@ -53,10 +53,31 @@ serve(async (req) => {
       supabase.from('marketing_ai_config').select('value').eq('key', 'telegram_group').maybeSingle(),
     ])
     if (!lh) return json({ error: 'Khong tim thay lich hen' }, 404)
-    if (lh.tg_bao_luc) return json({ ok: true, skipped: 'da_bao' })
-    if (['huy', 'tu_choi'].includes(lh.trang_thai)) return json({ ok: true, skipped: 'lich_huy' })
     const group = String(cfg?.value || '').trim()
     if (!group) return json({ error: 'Chua cau hinh telegram_group' }, 400)
+
+    // ── KHÁCH HỦY HẸN (17/07) — báo nhóm để KTV khỏi chờ; không đụng tg_bao_luc ──
+    if (body.type === 'huy') {
+      const homNayHuy = lh.ngay_hen === new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10)
+      const ngayViHuy = String(lh.ngay_hen || '').split('-').reverse().slice(0, 2).join('/')
+      const textHuy = ['😔 KHÁCH HỦY HẸN',
+        `👤 ${esc(lh.ten_khach || 'Khách')}`,
+        ...dongDichVu(lh),
+        `⏰ ${esc(String(lh.gio_hen || '').slice(0, 5))}${homNayHuy ? ' hôm nay' : ` ngày ${ngayViHuy}`}`,
+        'Cả nhà cập nhật lịch trống nha 🌸',
+      ].join('\n')
+      const resHuy = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: group, text: textHuy, parse_mode: 'HTML' }),
+      })
+      const tgHuy = await resHuy.json().catch(() => ({}))
+      if (!tgHuy.ok) return json({ error: 'Telegram: ' + JSON.stringify(tgHuy).slice(0, 200) }, 500)
+      return json({ ok: true, sent: true, type: 'huy' })
+    }
+
+    if (lh.tg_bao_luc) return json({ ok: true, skipped: 'da_bao' })
+    if (['huy', 'tu_choi'].includes(lh.trang_thai)) return json({ ok: true, skipped: 'lich_huy' })
 
     // Dòng KTV — giọng dễ thương như người thật (anh Nam 16/07); có telegram_chat_id → tag thẳng
     let dongKtv = '💖 Chị yêu nào làm cũng được ạ'

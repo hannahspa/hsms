@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { todayISO } from '../lib/utils'
 import { addDurationISO } from '../lib/dateMath'
-import { calcServiceCommission, getCommissionPercent } from '../lib/serviceCommission'
+import { calcServiceCommission, getCommissionPercent, getMyspaCommissionRule } from '../lib/serviceCommission'
 import { buildTreatmentPolicy, getTreatmentCardDisplayValue } from '../lib/treatmentCardPolicy'
 
 const PAYMENT_METHODS = new Set(['tien_mat', 'chuyen_khoan', 'quet_the', 'the_tra_truoc'])
@@ -153,6 +153,21 @@ function withTreatmentDisplayValue(card = {}) {
   }
 }
 
+// Tour buổi DÙNG THẺ = MỨC CỐ ĐỊNH của dịch vụ (anh Nam 10/07) — KHÔNG theo % giá trị thẻ.
+// Fix 17/07: luồng "tạo đơn từ lịch hẹn" trước đây tính perSession×% ra số lẻ (vd 21.429đ
+// thay vì 30.000đ cố định — ca thật DH-20260716-011). Đồng bộ với handleAddCard bên POS.
+function tourCoDinhChoThe(service, card) {
+  if (service) {
+    const rule = getMyspaCommissionRule(service, 'ktv')
+    if (rule?.type === 'absolute' && rule.amount > 0) return Math.round(Number(rule.amount))
+    const fixed = calcServiceCommission(service, Number(service.gia_co_ban || 0), 'ktv')
+    if (fixed > 0) return fixed
+  }
+  const perSession = Math.round((card?.gia_tri_the || 0) / Math.max(1, card?.so_buoi_tong || 1))
+  const tiLe = service ? getCommissionPercent(service, 'ktv') : 0
+  return Math.round(perSession * (Number(tiLe) || 0) / 100)
+}
+
 export const posService = {
   // ═══════════════════════════════════════════════════
   // ĐƠN HÀNG
@@ -247,7 +262,7 @@ export const posService = {
       try {
         const { data: exact } = await supabase
           .from('the_lieu_trinh')
-          .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai, bi_dong, da_xoa')
+          .select('id, ten_dich_vu, dich_vu_id, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai, bi_dong, da_xoa')
           .eq('id', appointment.the_lieu_trinh_id)
           .maybeSingle()
         if (exact && exact.trang_thai === 'active' && (exact.so_buoi_con_lai || 0) > 0 && !exact.bi_dong && !exact.da_xoa) matchedCard = exact
@@ -257,7 +272,7 @@ export const posService = {
       try {
         const { data: cards } = await supabase
           .from('the_lieu_trinh')
-          .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai')
+          .select('id, ten_dich_vu, dich_vu_id, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai')
           .eq('khach_hang_id', khachHangId)
           .eq('trang_thai', 'active')
           .eq('bi_dong', false)
@@ -272,9 +287,15 @@ export const posService = {
     }
 
     if (matchedCard) {
-      // Dùng thẻ: 0đ với khách, tour KTV = (giá trị thẻ / số buổi) × % hoa hồng
-      const perSession = Math.round((matchedCard.gia_tri_the || 0) / Math.max(1, matchedCard.so_buoi_tong || 1))
-      const tienTourCard = Math.round(perSession * (tiLe || 0) / 100)
+      // Dùng thẻ: 0đ với khách, tour KTV = MỨC CỐ ĐỊNH của dịch vụ (fix 17/07 — trước ra số lẻ 21.429đ)
+      let svcThe = service
+      if (!svcThe && matchedCard.dich_vu_id) {
+        try {
+          const { data } = await supabase.from('dich_vu').select('*').eq('id', matchedCard.dich_vu_id).maybeSingle()
+          svcThe = data
+        } catch { svcThe = null }
+      }
+      const tienTourCard = tourCoDinhChoThe(svcThe, matchedCard)
       await this.addLineItem(order.id, {
         loai_item: 'the_lieu_trinh',
         the_lieu_trinh_id: matchedCard.id,
@@ -329,13 +350,14 @@ export const posService = {
             .maybeSingle()
           if (exCard && exCard.trang_thai === 'active' && (exCard.so_buoi_con_lai || 0) > 0 && !exCard.bi_dong && !exCard.da_xoa) {
             let exCardTiLe = 0
+            let svcOfCard = null
             if (exCard.dich_vu_id) {
               try {
-                const { data: svcOfCard } = await supabase.from('dich_vu').select('*').eq('id', exCard.dich_vu_id).maybeSingle()
+                const { data } = await supabase.from('dich_vu').select('*').eq('id', exCard.dich_vu_id).maybeSingle()
+                svcOfCard = data
                 exCardTiLe = svcOfCard ? getCommissionPercent(svcOfCard, 'ktv') : 0
-              } catch { exCardTiLe = 0 }
+              } catch { svcOfCard = null }
             }
-            const perSession = Math.round((exCard.gia_tri_the || 0) / Math.max(1, exCard.so_buoi_tong || 1))
             await this.addLineItem(order.id, {
               loai_item: 'the_lieu_trinh',
               the_lieu_trinh_id: exCard.id,
@@ -343,7 +365,7 @@ export const posService = {
               nhan_vien_id: ex.nhan_vien_id || null,
               so_luong: 1, don_gia: 0, thanh_tien: 0,
               ti_le_hoa_hong: exCardTiLe || null,
-              tien_tour: Math.round(perSession * (exCardTiLe || 0) / 100),
+              tien_tour: tourCoDinhChoThe(svcOfCard, exCard),
               tien_hoa_hong: 0,
               ghi_chu: `Dung the tu lich hen: ${exCard.ten_dich_vu}`,
               meta: { source: 'lich_hen', lichHenId: appointment.id, tenDichVu: exCard.ten_dich_vu, dungThe: true },

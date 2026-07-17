@@ -14,16 +14,14 @@ if not GROUP:
     print('chua_setgroup')
     raise SystemExit(0)
 
+# Câu chữ do anh Nam chốt 17/07 — đổi thì sửa đúng 2 chuỗi này
 loai = (sys.argv[1] if len(sys.argv) > 1 else 'in').strip()
 if loai == 'out':
-    msg = ('🌙 19:50 rồi cả nhà ơi!\n'
-           '✅ Nhớ CHECK-OUT trên HSMS trước khi về nha 💖\n'
-           '📝 Lễ tân nhớ hoàn tất Phiếu Tư Vấn cho khách hôm nay luôn nè.\n'
-           'Cả nhà về cẩn thận, mai gặp lại nhaaa 🌸')
+    msg = ('🌙 19:50 Rồi các chị yêu ơi! Nhớ CHECK-OUT trước khi về nha các chị 💖 '
+           'Lễ tân nhớ hoàn tất Phiếu Tư Vấn cho khách hôm nay luôn dùm em ạ.')
 else:
-    msg = ('☀️ Chào buổi sáng cả nhà 🌸\n'
-           '⏰ 9:10 rồi — ai tới spa rồi nhớ CHECK-IN trên HSMS liền nha!\n'
-           'Chúc cả nhà hôm nay đông khách, việc nhẹ tay, tip dày ví 💖✨')
+    msg = ('☀️ Chào buổi sáng cả nhà 🌸 9:10 rồi — chị yêu nào tới spa rồi nhớ CHECK-IN '
+           'trên Hệ Thống dùm em ạ! Chúc cả nhà hôm nay đông khách, làm việc vui vẻ, tip dày ví 💖✨')
 
 data = urllib.parse.urlencode({'chat_id': GROUP, 'text': msg}).encode('utf-8')
 try:

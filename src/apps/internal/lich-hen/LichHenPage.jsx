@@ -112,6 +112,10 @@ export default function LichHenPage({ user }) {
   }
   const handleStatus = async (id, tt) => {
     await supabase.from('lich_hen').update({ trang_thai: tt }).eq('id', id)
+    // Khách hủy hẹn → báo nhóm Telegram ngay để KTV khỏi chờ (anh Nam 17/07)
+    if (tt === 'huy') {
+      supabase.functions.invoke('telegram-notify', { body: { lich_hen_id: id, type: 'huy' } }).catch(() => {})
+    }
     await fetchHen()
     showToast(tt === 'da_xac_nhan' ? 'Đã xác nhận' : tt === 'da_xong' ? 'Đã hoàn thành' : 'Đã hủy hẹn')
   }
