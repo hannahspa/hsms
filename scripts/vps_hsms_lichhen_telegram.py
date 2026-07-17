@@ -24,13 +24,15 @@ def q(sql):
     return r.stdout.strip()
 
 def send(text):
+    """Gửi tin nhóm → trả message_id (để tin hủy sau này reply vào), None nếu lỗi."""
     data = urllib.parse.urlencode({'chat_id': GROUP, 'text': text, 'parse_mode': 'HTML'}).encode('utf-8')
     try:
-        urllib.request.urlopen(urllib.request.Request(API + '/sendMessage', data=data), timeout=20)
-        return True
+        r = urllib.request.urlopen(urllib.request.Request(API + '/sendMessage', data=data), timeout=20)
+        d = json.loads(r.read().decode('utf-8'))
+        return (d.get('result') or {}).get('message_id') or True
     except Exception as e:
         print('Err send', e)
-        return False
+        return None
 
 def dong_dv(r):
     """Mỗi dịch vụ 1 dòng 🌷; trùng nhau gộp '🌷 2 Massage...' (anh Nam 17/07)."""
@@ -82,7 +84,9 @@ for line in [l for l in rows.split('\n') if l.strip()]:
            f"⏰ {str(r.get('gio_hen') or '')[:5]}" + (' hôm nay ✨' if r.get('hom_nay') else f" ngày {r.get('ngay')} 📆"))
     if r.get('ghi_chu'):
         msg += f"\n📝 {html.escape(r['ghi_chu'])}"
-    if send(msg):
-        q(f"UPDATE lich_hen SET tg_bao_luc = now() WHERE id='{r['id']}'")
+    mid = send(msg)
+    if mid:
+        mid_sql = f", tg_message_id = {int(mid)}" if isinstance(mid, int) else ''
+        q(f"UPDATE lich_hen SET tg_bao_luc = now(){mid_sql} WHERE id='{r['id']}'")
         sent += 1
 print(f'sent={sent}')

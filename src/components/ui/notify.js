@@ -103,4 +103,60 @@ export function confirmDialog(opts = {}) {
   })
 }
 
+/**
+ * promptDialog(opts) → Promise<string|null>  (null = bấm huỷ; chuỗi có thể rỗng nếu allowEmpty)
+ * opts: { title, message, placeholder, confirmLabel, cancelLabel, allowEmpty }
+ * Dùng: const lyDo = await promptDialog({ title:'Lý do', placeholder:'Nhập lý do…' })
+ */
+export function promptDialog(opts = {}) {
+  const {
+    title = 'Nhập thông tin', message = '', placeholder = '',
+    confirmLabel = 'Xác Nhận', cancelLabel = 'Huỷ', allowEmpty = true,
+  } = opts
+  injectStyles()
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div')
+    overlay.style.cssText = `position:fixed;inset:0;z-index:100060;background:rgba(26,18,9,.42);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px;animation:hsmsOverlayIn .2s ease`
+
+    const box = document.createElement('div')
+    box.style.cssText = `width:100%;max-width:420px;background:${C.card};border-radius:${RADIUS.lg}px;overflow:hidden;box-shadow:0 24px 64px rgba(26,18,9,.34);border:1px solid ${C.border};animation:hsmsBoxIn .24s cubic-bezier(.22,.61,.36,1);font-family:${FONT.sans}`
+
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid ${C.border}">
+        <span style="font-size:22px;line-height:1">✍️</span>
+        <div style="font-family:${FONT.serif};font-size:18px;font-weight:700;color:${C.text}">${title}</div>
+      </div>
+      <div style="padding:20px 22px">
+        ${message ? `<div style="font-size:13.5px;color:${C.textSub};line-height:1.6;margin-bottom:12px">${message}</div>` : ''}
+        <input data-act="input" placeholder="${placeholder}" style="width:100%;box-sizing:border-box;height:42px;border-radius:10px;border:1.5px solid ${C.border};padding:0 13px;font:500 13.5px ${FONT.sans};outline:none;color:${C.text};background:#fdfcfb" />
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid ${C.border};background:${C.bg}">
+        <button data-act="cancel" style="background:${C.card};color:${C.primary};border:1px solid ${C.border};padding:10px 18px;border-radius:${RADIUS.full}px;font:700 13.5px ${FONT.sans};cursor:pointer">${cancelLabel}</button>
+        <button data-act="ok" style="background:linear-gradient(135deg,#2D7A4F,#1f5c3a);color:#fff;border:none;padding:10px 18px;border-radius:${RADIUS.full}px;font:700 13.5px ${FONT.sans};cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18)">${confirmLabel}</button>
+      </div>`
+
+    const input = box.querySelector('[data-act="input"]')
+    const close = (val) => {
+      window.removeEventListener('keydown', onKey)
+      overlay.remove()
+      resolve(val)
+    }
+    const ok = () => {
+      const v = String(input.value || '').trim()
+      if (!v && !allowEmpty) { input.style.borderColor = '#C0392B'; input.focus(); return }
+      close(v)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') close(null); if (e.key === 'Enter') ok() }
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null) })
+    box.querySelector('[data-act="cancel"]').addEventListener('click', () => close(null))
+    box.querySelector('[data-act="ok"]').addEventListener('click', ok)
+    window.addEventListener('keydown', onKey)
+
+    overlay.appendChild(box)
+    document.body.appendChild(overlay)
+    setTimeout(() => input.focus(), 60)
+  })
+}
+
 export default notify

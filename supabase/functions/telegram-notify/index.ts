@@ -48,7 +48,7 @@ serve(async (req) => {
 
     const [{ data: lh }, { data: cfg }] = await Promise.all([
       supabase.from('lich_hen')
-        .select('id, ten_khach, ngay_hen, gio_hen, ten_dich_vu, dich_vu_list, ghi_chu, trang_thai, tg_bao_luc, nhan_vien:nhan_vien_id(ho_ten, telegram_chat_id)')
+        .select('id, ten_khach, ngay_hen, gio_hen, ten_dich_vu, dich_vu_list, ghi_chu, trang_thai, tg_bao_luc, tg_message_id, ly_do_huy, nhan_vien:nhan_vien_id(ho_ten, telegram_chat_id)')
         .eq('id', id).maybeSingle(),
       supabase.from('marketing_ai_config').select('value').eq('key', 'telegram_group').maybeSingle(),
     ])
@@ -64,12 +64,19 @@ serve(async (req) => {
         `👤 ${esc(lh.ten_khach || 'Khách')}`,
         ...dongDichVu(lh),
         `⏰ ${esc(String(lh.gio_hen || '').slice(0, 5))}${homNayHuy ? ' hôm nay' : ` ngày ${ngayViHuy}`}`,
+        ...(lh.ly_do_huy ? [`📝 Lý do: ${esc(lh.ly_do_huy)}`] : []),
         'Cả nhà cập nhật lịch trống nha 🌸',
       ].join('\n')
       const resHuy = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: group, text: textHuy, parse_mode: 'HTML' }),
+        body: JSON.stringify({
+          chat_id: group, text: textHuy, parse_mode: 'HTML',
+          // Reply vào đúng tin đặt hẹn của lịch này (nếu bot từng báo) — thread liền mạch
+          ...(lh.tg_message_id ? {
+            reply_parameters: { message_id: Number(lh.tg_message_id), allow_sending_without_reply: true },
+          } : {}),
+        }),
       })
       const tgHuy = await resHuy.json().catch(() => ({}))
       if (!tgHuy.ok) return json({ error: 'Telegram: ' + JSON.stringify(tgHuy).slice(0, 200) }, 500)
@@ -107,7 +114,11 @@ serve(async (req) => {
     const tg = await res.json().catch(() => ({}))
     if (!tg.ok) return json({ error: 'Telegram: ' + JSON.stringify(tg).slice(0, 200) }, 500)
 
-    await supabase.from('lich_hen').update({ tg_bao_luc: new Date().toISOString() }).eq('id', id)
+    await supabase.from('lich_hen').update({
+      tg_bao_luc: new Date().toISOString(),
+      // Lưu message_id để tin hủy sau này REPLY vào đúng tin đặt này
+      tg_message_id: tg.result?.message_id || null,
+    }).eq('id', id)
     return json({ ok: true, sent: true })
   } catch (e) {
     return json({ error: String(e?.message || e) }, 500)

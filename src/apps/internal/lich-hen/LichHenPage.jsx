@@ -10,7 +10,7 @@ import {
   Avatar, navBtn, miniBtn,
 } from './lichHenShared'
 import ModalDatHen from './ModalDatHen'
-import { confirmDialog } from '../../../components/ui/notify'
+import { confirmDialog, promptDialog } from '../../../components/ui/notify'
 import { WeekView, MonthView } from './LichHenViews'
 
 // ══════════════════════════════════════════════════════════
@@ -112,12 +112,22 @@ export default function LichHenPage({ user }) {
   }
   const handleStatus = async (id, tt) => {
     await supabase.from('lich_hen').update({ trang_thai: tt }).eq('id', id)
-    // Khách hủy hẹn → báo nhóm Telegram ngay để KTV khỏi chờ (anh Nam 17/07)
-    if (tt === 'huy') {
-      supabase.functions.invoke('telegram-notify', { body: { lich_hen_id: id, type: 'huy' } }).catch(() => {})
-    }
     await fetchHen()
     showToast(tt === 'da_xac_nhan' ? 'Đã xác nhận' : tt === 'da_xong' ? 'Đã hoàn thành' : 'Đã hủy hẹn')
+  }
+  // Hủy hẹn: hỏi LÝ DO → lưu + báo nhóm Telegram ngay (reply vào tin đặt) — anh Nam 17/07
+  const handleHuy = async (id) => {
+    const lyDo = await promptDialog({
+      title: 'Huỷ lịch hẹn',
+      message: 'Nhập lý do khách huỷ — bot sẽ báo vào nhóm cho cả nhà biết:',
+      placeholder: 'VD: Khách bận đột xuất, hẹn lại sau…',
+      confirmLabel: 'Huỷ lịch',
+    })
+    if (lyDo === null) return
+    await supabase.from('lich_hen').update({ trang_thai: 'huy', ly_do_huy: lyDo || null }).eq('id', id)
+    supabase.functions.invoke('telegram-notify', { body: { lich_hen_id: id, type: 'huy' } }).catch(() => {})
+    await fetchHen()
+    showToast('Đã hủy hẹn')
   }
   const changePeriod = delta => {
     if (viewMode === 'week') setNgayXem(addDaysISO(ngayXem, delta * 7))
@@ -505,7 +515,7 @@ export default function LichHenPage({ user }) {
                       <div style={{ display: 'flex', gap: 3, marginTop: 'auto', flexWrap: 'wrap' }}>
                         <button onClick={e => { e.stopPropagation(); handleCreateOrder(h) }} disabled={busy} style={{ ...miniBtn('#2D7A4F'), opacity: busy ? 0.6 : 1 }}>{busy ? '...' : '✓ Khách đến'}</button>
                         <button onClick={e => { e.stopPropagation(); setModal(h) }} style={miniBtn('#8a6a35')}>Đổi lịch</button>
-                        <button onClick={async e => { e.stopPropagation(); if (await confirmDialog({ title: 'Huỷ lịch hẹn', message: 'Khách huỷ lịch hẹn này?', danger: true, confirmLabel: 'Huỷ lịch' })) handleStatus(h.id, 'huy') }} style={miniBtn('#d8654f')}>Huỷ</button>
+                        <button onClick={e => { e.stopPropagation(); handleHuy(h.id) }} style={miniBtn('#d8654f')}>Huỷ</button>
                       </div>
                     )}
                   </div>
