@@ -32,15 +32,21 @@ def send(text):
         print('Err send', e)
         return False
 
-def ten_dv(r):
+def dong_dv(r):
+    """Mỗi dịch vụ 1 dòng 🌷; trùng nhau gộp '🌷 2 Massage...' (anh Nam 17/07)."""
     try:
         dl = json.loads(r.get('dich_vu_list') or '[]')
         names = [str(d.get('ten_dich_vu') or d.get('ten') or '').strip() for d in dl if isinstance(d, dict)]
-        names = [n for n in names if n]
     except Exception:
         names = []
-    chinh = (r.get('ten_dich_vu') or '').strip()
-    return ' + '.join([x for x in [chinh] + names if x]) or 'Dịch vụ'
+    names = [n for n in [(r.get('ten_dich_vu') or '').strip()] + names if n]
+    if not names:
+        return ['🌷 Dịch vụ']
+    dem = {}
+    for n in names:
+        dem[n] = dem.get(n, 0) + 1
+    return [f"🌷 {str(c) + ' ' if c > 1 else ''}{html.escape(n)}"
+            for n, c in sorted(dem.items(), key=lambda x: -x[1])]
 
 rows = q("""SELECT row_to_json(t) FROM (
   SELECT lh.id::text, lh.ten_khach, to_char(lh.ngay_hen,'DD/MM') AS ngay, lh.gio_hen,
@@ -72,7 +78,7 @@ for line in [l for l in rows.split('\n') if l.strip()]:
     msg = ('🔔 CÓ KHÁCH ĐẶT HẸN 🌸\n'
            f"👤 {html.escape(r.get('ten_khach') or 'Khách')}\n"
            f'{dong_ktv}\n'
-           f'🌷 {html.escape(ten_dv(r))}\n'
+           + '\n'.join(dong_dv(r)) + '\n'
            f"⏰ {str(r.get('gio_hen') or '')[:5]}" + (' hôm nay ✨' if r.get('hom_nay') else f" ngày {r.get('ngay')} 📆"))
     if r.get('ghi_chu'):
         msg += f"\n📝 {html.escape(r['ghi_chu'])}"

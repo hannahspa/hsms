@@ -23,12 +23,19 @@ const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g,
 // Tên gọi thân mật: "chị" + 2 chữ cuối (spa toàn nữ)
 const tenGon = (hoTen: string) => hoTen.trim().split(/\s+/).slice(-2).join(' ')
 
-function tenDichVu(lh: Record<string, any>) {
+// Mỗi dịch vụ 1 dòng 🌷; dịch vụ trùng nhau gộp số lượng "🌷 2 Massage..." (anh Nam 17/07)
+function dongDichVu(lh: Record<string, any>): string[] {
   const list = Array.isArray(lh.dich_vu_list) ? lh.dich_vu_list : []
-  const names = list.map((d: any) => String(d?.ten_dich_vu || d?.ten || '').trim()).filter(Boolean)
-  const chinh = String(lh.ten_dich_vu || '').trim()
-  const all = [chinh, ...names].filter(Boolean)
-  return all.join(' + ') || 'Dịch vụ'
+  const names = [
+    String(lh.ten_dich_vu || '').trim(),
+    ...list.map((d: any) => String(d?.ten_dich_vu || d?.ten || '').trim()),
+  ].filter(Boolean)
+  if (!names.length) return ['🌷 Dịch vụ']
+  const dem = new Map<string, number>()
+  for (const n of names) dem.set(n, (dem.get(n) || 0) + 1)
+  return [...dem.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([n, c]) => `🌷 ${c > 1 ? c + ' ' : ''}${esc(n)}`)
 }
 
 serve(async (req) => {
@@ -66,7 +73,7 @@ serve(async (req) => {
     const text = ['🔔 CÓ KHÁCH ĐẶT HẸN 🌸',
       `👤 ${esc(lh.ten_khach || 'Khách')}`,
       dongKtv,
-      `🌷 ${esc(tenDichVu(lh))}`,
+      ...dongDichVu(lh),
       `⏰ ${esc(String(lh.gio_hen || '').slice(0, 5))}${homNay ? ' hôm nay ✨' : ` ngày ${ngayVi} 📆`}`,
       ...(lh.ghi_chu ? [`📝 ${esc(lh.ghi_chu)}`] : []),
     ].join('\n')
