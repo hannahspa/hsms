@@ -106,11 +106,11 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
     return matchSearch && matchWarranty
   })
 
-  // TRẦN tiền tour cho Lễ tân (anh Nam 12/07: "đơn 1tr stick 300k là vô lý — chặn"):
-  // tối đa 10% giá trị dịch vụ, sàn 50k để không phá dịch vụ giá rẻ có tour cố định.
-  // Admin không giới hạn (xử ngoại lệ). DV có mức cố định thì đã tourLocked sẵn.
-  const tourCeiling = Math.max(Math.round(baseTienTour * 0.10), 50000)
-  const overCeiling = !isAdmin && !isSaleCommission && !isFreeWarrantyTour && !tourLocked && tienTour > tourCeiling
+  // TRẦN tiền tour — TUYỆT ĐỐI, áp cả Admin (triết lý Hannah Spa 15/07):
+  // tối đa 10% giá trị dịch vụ (sàn 50k cho dịch vụ giá rẻ). Mức tour set chết
+  // của dịch vụ (absoluteRuleTour) luôn hợp lệ — trần chỉ chặn NHẬP TAY vượt.
+  const tourCeiling = Math.max(Math.round(baseTienTour * 0.10), 50000, absoluteRuleTour)
+  const overCeiling = !isSaleCommission && !isFreeWarrantyTour && tienTour > tourCeiling
 
   const handleSave = async () => {
     if (restrictWarrantyStaff && selectedKtv?.id && !allowedStaffIds.includes(selectedKtv.id)) {
@@ -118,7 +118,7 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
       return
     }
     if (overCeiling) {
-      notify(`Tiền tour ${formatCurrency(tienTour)} vượt mức quy định (tối đa ${formatCurrency(tourCeiling)} cho dịch vụ này). Nhập lại đúng quy định — cần ngoại lệ thì báo Admin.`, 'warn')
+      notify(`Tiền tour ${formatCurrency(tienTour)} vượt mức quy định (tối đa ${formatCurrency(tourCeiling)} cho dịch vụ này). Trần cứng theo quy tắc Hannah Spa — áp dụng cho mọi tài khoản, kể cả Admin.`, 'warn')
       return
     }
     if (canSplit && splitOver) {
@@ -260,10 +260,10 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
               </div>
             </div>
 
-            {/* Chặn tour vượt quy định (Lễ tân) — anh Nam 12/07 */}
+            {/* Chặn tour vượt quy định — TRẦN TUYỆT ĐỐI mọi tài khoản (triết lý 15/07) */}
             {overCeiling && (
               <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 700, color: '#C0392B', background: '#fdecea', border: '1px solid rgba(192,57,43,.35)', borderRadius: 8, padding: '7px 10px' }}>
-                ⛔ Vượt mức quy định — tối đa {formatCurrency(tourCeiling)} cho dịch vụ này. Không lưu được; cần ngoại lệ thì báo Admin.
+                ⛔ Vượt mức quy định — tối đa {formatCurrency(tourCeiling)} cho dịch vụ này. Trần cứng Hannah Spa, áp dụng cả Admin.
               </div>
             )}
 

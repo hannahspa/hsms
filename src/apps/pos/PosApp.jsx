@@ -10,7 +10,6 @@ import { useAuth } from '../../context/AuthContext'
 import { confirmDialog } from '../../components/ui/notify'
 import PosOrderHistory from './PosOrderHistory'
 import PosProductCatalog from './PosProductCatalog'
-import InboxBell from './InboxBell'
 import CustomerInsight from './components/CustomerInsight'
 import VisitQuickForm from './components/VisitQuickForm'
 import KtvPopupComponent from './components/KtvPopup'
@@ -2320,11 +2319,8 @@ export default function PosApp() {
   const ycId     = params.get('yc')   // admin mở yêu cầu sửa đơn của Lễ tân
   const editMode = params.get('mode') === 'edit' || !!ycId
   return (
-    <>
-      <InboxBell />
-      {path === '/pos/danh-sach'
-        ? <PosOrderHistory onResumeOrder={(o) => { window.location.href = '/pos?resume=' + o.id }} />
-        : <PosCreateOrder resumeOrderId={resumeId} editMode={editMode} ycId={ycId} />}
-    </>
+    path === '/pos/danh-sach'
+      ? <PosOrderHistory onResumeOrder={(o) => { window.location.href = '/pos?resume=' + o.id }} />
+      : <PosCreateOrder resumeOrderId={resumeId} editMode={editMode} ycId={ycId} />
   )
 }
