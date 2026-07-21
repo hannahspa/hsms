@@ -56,6 +56,35 @@ serve(async (req) => {
     const group = String(cfg?.value || '').trim()
     if (!group) return json({ error: 'Chua cau hinh telegram_group' }, 400)
 
+    // ── DỜI LỊCH (20/07) — đổi giờ/ngày; reply vào tin đặt gốc ──
+    if (body.type === 'doi') {
+      const gioCu = String(body.gio_cu || '').slice(0, 5)
+      const gioMoi = String(lh.gio_hen || '').slice(0, 5)
+      const homNayDoi = lh.ngay_hen === new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10)
+      const ngayViDoi = String(lh.ngay_hen || '').split('-').reverse().slice(0, 2).join('/')
+      const ngayCu = String(body.ngay_cu || '').split('-').reverse().slice(0, 2).join('/')
+      const doiNgay = body.ngay_cu && body.ngay_cu !== lh.ngay_hen
+      const textDoi = ['🔄 ĐỔI GIỜ HẸN 🌸',
+        `👤 ${esc(lh.ten_khach || 'Khách')}`,
+        ...dongDichVu(lh),
+        doiNgay
+          ? `⏰ Dời: ${esc(ngayCu)} ${esc(gioCu)} → ${esc(ngayViDoi)} ${esc(gioMoi)} ✨`
+          : `⏰ Dời giờ: ${esc(gioCu)} → ${esc(gioMoi)}${homNayDoi ? ' hôm nay' : ` ngày ${ngayViDoi}`} ✨`,
+        'Cả nhà cập nhật lịch nha 🌸',
+      ].join('\n')
+      const resDoi = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: group, text: textDoi, parse_mode: 'HTML',
+          ...(lh.tg_message_id ? { reply_parameters: { message_id: Number(lh.tg_message_id), allow_sending_without_reply: true } } : {}),
+        }),
+      })
+      const tgDoi = await resDoi.json().catch(() => ({}))
+      if (!tgDoi.ok) return json({ error: 'Telegram: ' + JSON.stringify(tgDoi).slice(0, 200) }, 500)
+      return json({ ok: true, sent: true, type: 'doi' })
+    }
+
     // ── KHÁCH HỦY HẸN (17/07) — báo nhóm để KTV khỏi chờ; không đụng tg_bao_luc ──
     if (body.type === 'huy') {
       const homNayHuy = lh.ngay_hen === new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10)
@@ -98,10 +127,16 @@ serve(async (req) => {
 
     const homNay = lh.ngay_hen === new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10)
     const ngayVi = String(lh.ngay_hen || '').split('-').reverse().slice(0, 2).join('/')
+    // Khách triệt BẢO HÀNH (20/07): liệt kê các KTV có tên trong danh sách triệt
+    const bhKtv = Array.isArray(body.bao_hanh_ktv) ? body.bao_hanh_ktv.filter(Boolean) : []
+    const dongBaoHanh = bhKtv.length
+      ? [`💖 Các chị có tên trong danh sách Triệt: ${esc(bhKtv.map((n: string) => tenGon(String(n))).join(' - '))}`]
+      : []
     const text = ['🔔 CÓ KHÁCH ĐẶT HẸN 🌸',
       `👤 ${esc(lh.ten_khach || 'Khách')}`,
       dongKtv,
-      ...dongDichVu(lh),
+      ...dongBaoHanh,
+      ...dongDichVu(lh).map(d => bhKtv.length ? `${d} (Khách Bảo Hành)` : d),
       `⏰ ${esc(String(lh.gio_hen || '').slice(0, 5))}${homNay ? ' hôm nay ✨' : ` ngày ${ngayVi} 📆`}`,
       ...(lh.ghi_chu ? [`📝 ${esc(lh.ghi_chu)}`] : []),
     ].join('\n')

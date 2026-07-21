@@ -1,5 +1,5 @@
 import { formatCurrency, todayISO } from '../../lib/utils'
-import { getTreatmentCardDisplayValue } from '../../lib/treatmentCardPolicy'
+import { getTreatmentCardDisplayValue, isWarrantyHairRemovalCard, getWarrantyTourLimit } from '../../lib/treatmentCardPolicy'
 
 export function parseVND(value) {
   return parseInt(String(value).replace(/\D/g, ''), 10) || 0
@@ -119,16 +119,23 @@ export function LieuTrinhCard({ card, onUse, onGiaHan }) {
     ? 'HH: Không giới hạn'
     : `HH: ${String(card.ngay_het_han).split('-').reverse().join('/')}${hetHan ? ' (đã hết hạn)' : ''}`
 
+  // Thẻ triệt BẢO HÀNH đã qua giai đoạn tính tour (buổi 11+ = bảo hành free) — anh Nam 20/07
+  const isBaoHanhFree = isWarrantyHairRemovalCard(card)
+    && (card.so_buoi_da_dung || 0) >= (getWarrantyTourLimit(card) || 10)
+
   // ── Màu nền phân loại trạng thái (giống MySpa) ──
-  //   Hết hạn → xám trầm · Có nợ → đỏ · Hoạt động → champagne
+  //   Hết hạn → xám trầm · Có nợ → đỏ · Bảo hành free → tím · Hoạt động → champagne
   const bg = hetHan
     ? 'linear-gradient(135deg,#6E6E6E 0%,#565656 55%,#3F3F3F 100%)'
     : coNo
       ? 'linear-gradient(135deg,#8e2218 0%,#C0392B 55%,#922b21 100%)'
-      : 'linear-gradient(135deg,#C9A96E 0%,#A0714F 55%,#7D5A3C 100%)'
+      : isBaoHanhFree
+        ? 'linear-gradient(135deg,#8E6BC4 0%,#6C3483 55%,#4A235A 100%)'
+        : 'linear-gradient(135deg,#C9A96E 0%,#A0714F 55%,#7D5A3C 100%)'
   const shadow = hetHan
     ? '0 2px 8px rgba(80,80,80,.3)'
-    : coNo ? '0 2px 8px rgba(192,57,43,.35)' : '0 2px 8px rgba(160,113,79,.25)'
+    : coNo ? '0 2px 8px rgba(192,57,43,.35)'
+      : isBaoHanhFree ? '0 2px 8px rgba(108,52,131,.35)' : '0 2px 8px rgba(160,113,79,.25)'
 
   return (
     <div style={{
@@ -148,6 +155,15 @@ export function LieuTrinhCard({ card, onUse, onGiaHan }) {
           padding: '1px 5px', marginBottom: 3,
         }}>
           {hetHan ? '⏳ HẾT HẠN' : '✓ HẾT BUỔI'}
+        </div>
+      )}
+      {isBaoHanhFree && !hetHan && !hetBuoi && (
+        <div style={{
+          display: 'inline-block', fontSize: 8, fontWeight: 800, letterSpacing: '.04em',
+          background: 'rgba(255,255,255,.24)', border: '1px solid rgba(255,255,255,.4)',
+          borderRadius: 4, padding: '1px 5px', marginBottom: 3,
+        }}>
+          🎗 BẢO HÀNH · KTV KHÔNG TOUR
         </div>
       )}
       <div style={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1.3, marginBottom: 1 }}>

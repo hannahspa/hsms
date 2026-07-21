@@ -7,6 +7,7 @@ import DatePicker from '../../../components/shared/DatePicker'
 import { C, fmtDate, dayOfWeek, shortName, GIO_LIST_15, normalizePhone, dedupeHints, removeAccent } from './lichHenShared'
 import { notify } from '../../../components/ui/notify'
 import { znsXacNhanLich } from '../../../lib/zns'
+import { isWarrantyHairRemovalCard } from '../../../lib/treatmentCardPolicy'
 
 const safeSearchTerm = (value) => String(value || '')
   .replace(/[,%()]/g, ' ')
@@ -32,6 +33,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
   const delDvThem = (i) => set('dich_vu_list', dvThem.filter((_, idx) => idx !== i))
   const [dichVuList, setDichVuList] = useState([])
   const [custCards, setCustCards] = useState([])   // thẻ liệu trình active của khách đang chọn
+  const [baoHanhInfo, setBaoHanhInfo] = useState(null)   // chính sách bảo hành thẻ triệt đang chọn
   const [saving, setSaving] = useState(false)
   const [showNgay, setShowNgay] = useState(false)
   const [customerHints, setCustomerHints] = useState([])
@@ -47,7 +49,7 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
     let alive = true
     const today = todayISO()
     supabase.from('the_lieu_trinh')
-      .select('id, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, gia_tri_the, trang_thai, ngay_het_han')
+      .select('id, ma_the, ten_dich_vu, so_buoi_con_lai, so_buoi_tong, so_buoi_da_dung, gia_tri_the, trang_thai, ngay_het_han, combo_id, loai_the, meta')
       .eq('khach_hang_id', form.khach_hang_id).eq('trang_thai', 'active')
       .then(({ data }) => {
         if (!alive) return
@@ -58,6 +60,18 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
       })
     return () => { alive = false }
   }, [form.khach_hang_id])
+
+  // Thẻ triệt BẢO HÀNH đang chọn → tải chính sách (danh sách KTV + có tính tour không)
+  useEffect(() => {
+    const cardId = form.the_lieu_trinh_id
+    const card = cardId ? custCards.find(c => c.id === cardId) : null
+    if (!card || !isWarrantyHairRemovalCard(card)) { setBaoHanhInfo(null); return undefined }
+    let alive = true
+    posService.getTreatmentCardTourPolicy({ ...card, khach_hang_id: form.khach_hang_id })
+      .then(p => { if (alive) setBaoHanhInfo(p) })
+      .catch(() => { if (alive) setBaoHanhInfo(null) })
+    return () => { alive = false }
+  }, [form.the_lieu_trinh_id, custCards, form.khach_hang_id])
 
   // Chọn thẻ liệu trình — NHIỀU SUẤT, kể cả CÙNG 1 THẺ (16/07, anh Nam):
   // 2 người đi chung dùng chung 1 thẻ = bấm thẻ 2 lần → trừ 2 buổi, mỗi suất 1 KTV.
@@ -210,13 +224,25 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
         ghi_chu: form.ghi_chu?.trim() || null, nguoi_nhap: user?.email || user?.ho_ten || 'Lễ Tân',
         dich_vu_list: dvThemSaved,
       }
-      if (initial?.id) await supabase.from('lich_hen').update(payload).eq('id', initial.id)
-      else {
+      if (initial?.id) {
+        await supabase.from('lich_hen').update(payload).eq('id', initial.id)
+        // DỜI LỊCH: đổi giờ hoặc ngày → báo nhóm Telegram (reply vào tin đặt gốc) — anh Nam 20/07
+        const gioCu = String(initial.gio_hen || '').slice(0, 5)
+        const gioMoi = String(form.gio_hen || '').slice(0, 5)
+        const doiGio = gioCu && gioCu !== gioMoi
+        const doiNgay = initial.ngay_hen && initial.ngay_hen !== form.ngay_hen
+        if ((doiGio || doiNgay) && initial.trang_thai !== 'huy') {
+          supabase.functions.invoke('telegram-notify', {
+            body: { lich_hen_id: initial.id, type: 'doi', gio_cu: gioCu, ngay_cu: initial.ngay_hen },
+          }).catch(() => {})
+        }
+      } else {
         payload.trang_thai = 'cho_xac_nhan'
         const { data: lichMoi } = await supabase.from('lich_hen').insert(payload).select('id').single()
         // Bắn thông báo nhóm Telegram NGAY (anh Nam 16/07: không chờ cron 5') — lỗi thì cron tự gửi bù
         if (lichMoi?.id) {
-          supabase.functions.invoke('telegram-notify', { body: { lich_hen_id: lichMoi.id } }).catch(() => {})
+          const bhKtv = baoHanhInfo?.isWarrantyHairRemoval ? (baoHanhInfo.allowedStaffNames || []) : []
+          supabase.functions.invoke('telegram-notify', { body: { lich_hen_id: lichMoi.id, bao_hanh_ktv: bhKtv } }).catch(() => {})
         }
       }
 
@@ -340,6 +366,30 @@ export default function ModalDatHen({ initial, ktvList, onSave, onClose, user })
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Băng KHÁCH BẢO HÀNH — triệt lông bảo hành đã qua 10 buổi (anh Nam 20/07) */}
+          {baoHanhInfo?.isWarrantyHairRemoval && (
+            <div style={{
+              border: '1.5px solid #6C3483', borderRadius: 12, background: 'linear-gradient(135deg,#f6f0fb,#efe6f7)',
+              padding: '12px 15px', display: 'flex', flexDirection: 'column', gap: 6,
+            }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#5B2C6F', display: 'flex', alignItems: 'center', gap: 6 }}>
+                🎗 KHÁCH BẢO HÀNH
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: baoHanhInfo.isFreeWarrantySession ? '#C0392B' : '#2D7A4F', background: '#fff', borderRadius: 6, padding: '2px 8px' }}>
+                  {baoHanhInfo.isFreeWarrantySession
+                    ? 'Buổi bảo hành — KTV KHÔNG tính tiền tour'
+                    : `Còn ${Math.max(0, (baoHanhInfo.tourLimit || 10) - (baoHanhInfo.usedCount || 0))} buổi tính tour trước bảo hành`}
+                </span>
+              </div>
+              {baoHanhInfo.allowedStaffNames?.length > 0 ? (
+                <div style={{ fontSize: 12.5, color: '#5B2C6F' }}>
+                  💖 Các chị có tên trong danh sách Triệt: <b>{baoHanhInfo.allowedStaffNames.map(shortName).join(' - ')}</b>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: C.ink3 }}>Chưa có danh sách KTV từng triệt thẻ này — chọn KTV nào cũng được, nhớ báo khách bảo hành.</div>
+              )}
             </div>
           )}
 

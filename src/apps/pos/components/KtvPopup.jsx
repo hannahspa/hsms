@@ -142,6 +142,16 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
     setSaving(false)
   }
 
+  // ── Thẻ triệt BẢO HÀNH: danh sách KTV được triệt + cảnh báo ngoài danh sách ──
+  const bhNames = treatmentPolicy?.isWarrantyHairRemoval ? (treatmentPolicy.allowedStaffNames || []) : []
+  const normTen = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+  const ktvTrongDs = (nv) => bhNames.some(n => {
+    const a = normTen(n), b = normTen(nv?.ho_ten)
+    return a && b && (a === b || a.endsWith(b) || b.endsWith(a))
+  })
+  const ktvNgoaiDs = bhNames.length > 0 && selectedKtv && !ktvTrongDs(selectedKtv)
+  const buoiConTour = Math.max(0, (treatmentPolicy?.tourLimit || 10) - (treatmentPolicy?.usedCount || 0))
+
   return (
     <RightPanel open onClose={onClose} zIndex={999}
       title="Chọn Kỹ Thuật Viên" subtitle={name}
@@ -167,6 +177,27 @@ export default function KtvPopup({ item, ktvList, onAssign, onClose, isAdmin = f
             style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--bord)', borderRadius: 8, padding: '8px 12px', fontSize: 13, outline: 'none', fontFamily: 'var(--sans)' }}
           />
         </div>
+
+        {treatmentPolicy?.isWarrantyHairRemoval && (
+          <div style={{ margin: '10px 20px 0', padding: '10px 13px', borderRadius: 10, border: '1.5px solid #6C3483', background: 'linear-gradient(135deg,#f6f0fb,#efe6f7)', flexShrink: 0 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: '#5B2C6F' }}>
+              🎗 THẺ BẢO HÀNH{' '}
+              <span style={{ color: isFreeWarrantyTour ? '#C0392B' : '#2D7A4F' }}>
+                {isFreeWarrantyTour ? '· buổi bảo hành — KHÔNG tính tiền tour' : `· còn ${buoiConTour} buổi tính tour`}
+              </span>
+            </div>
+            {bhNames.length > 0 ? (
+              <div style={{ fontSize: 12, color: '#5B2C6F', marginTop: 4 }}>💖 Được triệt: <b>{bhNames.map(shortName).join(' - ')}</b></div>
+            ) : (
+              <div style={{ fontSize: 11.5, color: 'var(--ink3)', marginTop: 4 }}>Chưa có danh sách KTV từng triệt thẻ này.</div>
+            )}
+            {ktvNgoaiDs && (
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: '#C0392B', background: '#fdecea', border: '1px solid rgba(192,57,43,.3)', borderRadius: 7, padding: '5px 9px', marginTop: 6 }}>
+                ⚠ {shortName(selectedKtv.ho_ten)} KHÔNG có trong danh sách triệt — vẫn lưu được, nhớ xác nhận với khách.
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 20px' }}>
           {filtered.map(k => {
