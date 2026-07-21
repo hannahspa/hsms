@@ -2,7 +2,8 @@ import { supabase } from '../lib/supabase'
 import { todayISO } from '../lib/utils'
 import { addDurationISO } from '../lib/dateMath'
 import { calcServiceCommission, getCommissionPercent, getMyspaCommissionRule } from '../lib/serviceCommission'
-import { buildTreatmentPolicy, getTreatmentCardDisplayValue } from '../lib/treatmentCardPolicy'
+import { buildTreatmentPolicy, getTreatmentCardDisplayValue, isWarrantyHairRemovalCard } from '../lib/treatmentCardPolicy'
+import { myspaHistoryService } from './myspaHistoryService'
 
 const PAYMENT_METHODS = new Set(['tien_mat', 'chuyen_khoan', 'quet_the', 'the_tra_truoc'])
 const safeSearchTerm = (value) => String(value || '')
@@ -1286,10 +1287,23 @@ export const posService = {
       .sort()
       .pop()
 
+    // ── Thẻ triệt BẢO HÀNH: bổ sung danh sách KTV từ lịch sử MySpa (2019→2026) ──
+    // 10 buổi đầu thường làm ở MySpa → HSMS thiếu. Merge tên KTV từ bảng staging
+    // myspa_ban_hang_raw để danh sách "được phép triệt free" đầy đủ. (anh Nam 20/07)
+    const allowedNames = new Set([...allowedById.values()])
+    if (isWarrantyHairRemovalCard(card) && card.ma_the) {
+      try {
+        const myspaStaff = await myspaHistoryService.getWarrantyStaff({
+          maThe: card.ma_the, tenDichVu: card.ten_dich_vu,
+        })
+        myspaStaff.forEach(s => { if (s.ktv) allowedNames.add(s.ktv) })
+      } catch (e) { console.warn('MySpa danh sách KTV bảo hành:', e?.message) }
+    }
+
     return buildTreatmentPolicy(card, {
       paidTourSessions: paidRows.reduce((sum, row) => sum + Number(row.so_luong || 1), 0) || paidRows.length,
       allowedStaffIds: [...allowedById.keys()],
-      allowedStaffNames: [...allowedById.values()],
+      allowedStaffNames: [...allowedNames],
       suggestedTour: Number(latestPaid?.tien_tour || 0),
       lastUseDate: latestUse || null,
     })

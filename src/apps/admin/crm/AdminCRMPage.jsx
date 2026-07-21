@@ -7,6 +7,7 @@ import { useAuth } from '../../../context/AuthContext'
 import CardActionsModals from './CardActionsModals'
 import Modal from '../../../components/ui/Modal'
 import CardHistory from '../the-lieu-trinh/components/CardHistory'
+import { MySpaCustomerHistory } from '../the-lieu-trinh/components/MySpaHistory'
 
 const SEG = {
   vip: { l: 'VIP', cls: 'vip' },
@@ -1135,6 +1136,7 @@ function AdminCRMListPage() {
           { k: 'service', l: 'Dịch vụ', icon: I.Box, n: snapshot?.history?.length || 0 },
           { k: 'debt', l: 'Công nợ', icon: I.Receipt, n: snapshot?.debtBalance > 0 ? 1 : 0 },
           { k: 'note', l: 'Ghi chú', icon: I.FileText },
+          { k: 'myspa', l: 'Lịch sử MySpa', icon: I.Clock || I.Receipt },
           { k: 'image', l: 'Hình ảnh', icon: I.Image },
         ]
         return (
@@ -1302,6 +1304,12 @@ function AdminCRMListPage() {
                   <div style={{ fontSize: 10, color: 'var(--ink3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>Thông tin da/liệu trình quan tâm</div>
                   <div style={{ fontSize: 12, color: 'var(--ink2)', lineHeight: 1.45 }}>{selected.ghi_chu_da_lieu || 'Chưa có ghi chú da liễu trong hồ sơ'}</div>
                 </div>
+              </div>
+            )}
+
+            {activeCustomerTab === 'myspa' && (
+              <div style={{ marginBottom: 14 }}>
+                <MySpaCustomerHistory sdt={selected.so_dien_thoai} />
               </div>
             )}
 

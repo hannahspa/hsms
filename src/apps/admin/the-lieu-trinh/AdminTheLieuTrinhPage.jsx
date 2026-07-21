@@ -9,6 +9,7 @@ import CardReviewModal from './components/CardReviewModal'
 import CardEditModal from './components/CardEditModal'
 import ComboEditModal from './components/ComboEditModal'
 import CardHistory from './components/CardHistory'
+import { MySpaCardHistory } from './components/MySpaHistory'
 import { theLieuTrinhService } from '../../../services/theLieuTrinhService'
 import {
   displayConLai,
@@ -584,6 +585,7 @@ export default function AdminTheLieuTrinhPage() {
                   thanh toán & công nợ, nhân viên bán & hoa hồng */}
               <div style={{ minWidth: 0 }}>
                 <CardHistory card={selected} />
+                <MySpaCardHistory card={selected} />
               </div>
               </div>
 
